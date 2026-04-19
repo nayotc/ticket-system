@@ -1,5 +1,7 @@
 package DomainLayer.user;
 
-public class Guest {
-    
+public class Guest extends UserState {
+        public Guest(User user) {
+            super(user);
+        }
 }
