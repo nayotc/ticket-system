@@ -1,5 +1,7 @@
 package ApplicationLayer;
 
+import DomainLayer.IRepository.IUserRepository;
+
 public class UserService {
     private final IUserRepository userRepository;
 
