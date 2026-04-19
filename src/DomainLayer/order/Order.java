@@ -16,6 +16,7 @@ public abstract class Order {
     }
 
     public List<Ticket> getTickets() {
+        return tickets;
         
     }
     
