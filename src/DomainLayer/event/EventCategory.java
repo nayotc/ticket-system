@@ -1,5 +1,9 @@
 package DomainLayer.event;
 
-public class EventCategory {
-    
+public enum EventCategory {
+    CONCERT,
+    SPORTS,
+    THEATER,
+    EXHIBITION,
+    OTHER
 }

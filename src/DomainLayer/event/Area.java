@@ -1,5 +1,9 @@
 package DomainLayer.event;
 
-public class Area {
+public abstract class Area Extends Element {
+
+    public Area(String name, pair<Integer, Integer> location, pair<Integer, Integer> size) {
+        super(name, location, size);
+    }
     
 }
