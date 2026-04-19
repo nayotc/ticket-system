@@ -3,16 +3,17 @@ package InfrastructureLayer;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import DomainLayer.order.Order;
-import DomainLayer.order.Ticket;
 import DomainLayer.IRepository.IOrderRepository;
 
 public class OrderRepository implements IOrderRepository {
 
+    private int counter;
     private OrderRepository instance;
     private ConcurrentHashMap<Integer, Order> orders;
 
     private OrderRepository() {
-        orders = new ConcurrentHashMap<Integer, Order>();
+        this.counter = 1;
+        this.orders = new ConcurrentHashMap<Integer, Order>();
     }
 
     public OrderRepository getInstance() {
@@ -22,7 +23,7 @@ public class OrderRepository implements IOrderRepository {
         return instance;
     }
     
-    public synchronized void addOrder(int orderId, List<Ticket> tickets) {
+    public synchronized void addOrder() {
 
     }
 
@@ -30,7 +31,7 @@ public class OrderRepository implements IOrderRepository {
 
     }
 
-    public void updateOrder() {
+    public void updateOrder(Order order) {
 
     }
 
