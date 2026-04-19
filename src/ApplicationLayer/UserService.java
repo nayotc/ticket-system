@@ -1,17 +1,21 @@
 package ApplicationLayer;
 
 public class UserService {
-    private final UserRepository userRepository;
+    private final IUserRepository userRepository;
 
-    public UserService(UserRepository userRepository){
+    public UserService(IUserRepository userRepository){
         this.userRepository = userRepository;
     }
 
-    public void signUp(sessionToken, string username, string password){
+    public void signUp(SessionToken sessionToken, String username, String password){
 
     }
 
-    public void logIn(sessionToken, string username, string password){
+    public void logIn(SessionToken sessionToken, String username, String password){
+
+    }
+    
+    public void exit(SessionToken sessionToken){
 
     }
 
