@@ -1,18 +1,19 @@
 package ticketsystem.InfrastructureLayer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
-
 
 public class SystemAdminRepository implements ISystemAdminRepository {
 
     private final ConcurrentHashMap<String, SystemAdmin> storage = new ConcurrentHashMap<>();
 
     @Override
-    public  synchronized void addAdmin(SystemAdmin systemAdmin) {
+    public void addAdmin(SystemAdmin systemAdmin) {
         storage.put(systemAdmin.getAdminId(), systemAdmin);
     }
 
@@ -27,7 +28,12 @@ public class SystemAdminRepository implements ISystemAdminRepository {
     }
 
     @Override
-    public synchronized void deleteById(String adminId) {
+    public void deleteById(String adminId) {
         storage.remove(adminId);
+    }
+
+    @Override
+    public int countAdmins() {
+        return storage.size();
     }
 }

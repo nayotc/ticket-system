@@ -1,5 +1,5 @@
 package ticketsystem.DomainLayer.IRepository;
 
-public interface IWatingQueueRepository {
-    
+public interface IWaitingQueueRepository {
+
 }

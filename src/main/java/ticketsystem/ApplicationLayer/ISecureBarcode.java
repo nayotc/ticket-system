@@ -1,5 +1,6 @@
 package ticketsystem.ApplicationLayer;
 
-public class ISecureBarcode {
-    
+public interface ISecureBarcode {
+
+    boolean connect();
 }
