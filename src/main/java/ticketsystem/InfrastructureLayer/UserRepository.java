@@ -24,5 +24,10 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
     public boolean isActiveGuest(String sessionToken) {
         return activeGuests.contains(sessionToken);
     }
+    @Override
+    public int getTotalActiveSessions() {
+        return activeGuests.size();
+    }
+    
     
 }
