@@ -8,7 +8,7 @@ public class UserService {
         this.userRepository = userRepository;
     }
     public String visitSystem(){
-        String sessionToken = java.util.UUID.randomUUID().toString();
+        String sessionToken = new TokenService().generateNewGuestToken();
         userRepository.addGuest(sessionToken);
         return sessionToken;
     }

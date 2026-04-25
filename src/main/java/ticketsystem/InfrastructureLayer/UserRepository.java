@@ -1,32 +1,33 @@
 package ticketsystem.InfrastructureLayer;
+import java.util.Set;
 
 public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUserRepository {
-    private java.util.Set<String> activeGuests;
+    private Set<String> activeUsersTokens;
 
     public UserRepository() {
-        this.activeGuests = new java.util.HashSet<>();
+        this.activeUsersTokens = new java.util.HashSet<>();
     }
 
     @Override
     public void addGuest(String sessionToken) {
-        if (activeGuests.contains(sessionToken)) {
+        if (activeUsersTokens.contains(sessionToken)) {
             throw new IllegalArgumentException("Session token already exists.");
         }
-        activeGuests.add(sessionToken);
+        activeUsersTokens.add(sessionToken);
     }
 
     @Override
     public void removeGuest(String sessionToken) {
-        activeGuests.remove(sessionToken);
+        activeUsersTokens.remove(sessionToken);
     }
 
     @Override
     public boolean isActiveGuest(String sessionToken) {
-        return activeGuests.contains(sessionToken);
+        return activeUsersTokens.contains(sessionToken);
     }
     @Override
     public int getTotalActiveSessions() {
-        return activeGuests.size();
+        return activeUsersTokens.size();
     }
     
     
