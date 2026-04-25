@@ -1,6 +1,6 @@
 package ticketsystem.ApplicationLayer;
 
-public class IPaymentService {
-    private static IPaymentService instance;
-    
+public interface IPaymentService {
+
+    boolean connect();
 }

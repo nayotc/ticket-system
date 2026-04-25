@@ -1,5 +1,5 @@
 package ticketsystem.InfrastructureLayer;
 
-public class WatingQueueRepository {
-    
+public class WaitingQueueRepository {
+
 }
