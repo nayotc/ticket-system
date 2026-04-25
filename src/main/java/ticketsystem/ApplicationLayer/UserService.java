@@ -7,9 +7,14 @@ public class UserService {
     public UserService(IUserRepository userRepository){
         this.userRepository = userRepository;
     }
+    public String visitSystem(){
+        String sessionToken = java.util.UUID.randomUUID().toString();
+        userRepository.addGuest(sessionToken);
+        return sessionToken;
+    }
 
     public void signUp(String sessionToken, String username, String password){
-
+        
     }
 
     public void logIn(String sessionToken, String username, String password){
