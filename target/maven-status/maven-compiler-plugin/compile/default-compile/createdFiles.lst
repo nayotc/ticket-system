@@ -1,0 +1,6 @@
+ticketsystem\InfrastructureLayer\SecureBarcodeProxy.class
+ticketsystem\ApplicationLayer\NotificationsService.class
+ticketsystem\InfrastructureLayer\WaitingQueueRepository.class
+ticketsystem\ApplicationLayer\WaitingQueueService.class
+ticketsystem\DomainLayer\IRepository\IWaitingQueueRepository.class
+ticketsystem\InfrastructureLayer\PaymentServiceProxy.class

@@ -5,11 +5,12 @@ C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-syst
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\IPaymentService.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\ISecureBarcode.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\LotteryService.java
+C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\NotificationsService.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\OrderService.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\SystemAdminService.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\TokenService.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\UserService.java
-C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\WatingQueueService.java
+C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\ApplicationLayer\WaitingQueueService.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\company\Company.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\company\CompanyTree.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\company\ConditionalDiscount.java
@@ -44,7 +45,7 @@ C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-syst
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\IRepository\IOrderRepository.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\IRepository\ISystemAdminRepository.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\IRepository\IUserRepository.java
-C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\IRepository\IWatingQueueRepository.java
+C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\IRepository\IWaitingQueueRepository.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\lottery\Lottery.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\order\ActiveOrder.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\DomainLayer\order\Order.java
@@ -67,6 +68,8 @@ C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-syst
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\InfrastructureLayer\HistoryRepository.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\InfrastructureLayer\LotteryRepository.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\InfrastructureLayer\OrderRepository.java
+C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\InfrastructureLayer\PaymentServiceProxy.java
+C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\InfrastructureLayer\SecureBarcodeProxy.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\InfrastructureLayer\SystemAdminRepository.java
 C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\InfrastructureLayer\UserRepository.java
-C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\InfrastructureLayer\WatingQueueRepository.java
+C:\Users\liatl\OneDrive\Documents\מסמכים\עבודות\סדנה\ticket-system\src\main\java\ticketsystem\InfrastructureLayer\WaitingQueueRepository.java
