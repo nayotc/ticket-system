@@ -33,6 +33,6 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
     public int getTotalActiveSessions() {
         return ActiveSessionsMap.size();
     }
-    
+
     
 }
