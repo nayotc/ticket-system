@@ -32,43 +32,55 @@ public class SystemAdminServiceTest {
 
     @Test
     public void givenValidPreconditions_whenInitSystem_thenSystemShouldInitializeSuccessfully() {
+        //arrange
         when(adminRepoMock.countAdmins()).thenReturn(1);
         when(paymentMock.connect()).thenReturn(true);
         when(barcodeMock.connect()).thenReturn(true);
 
+        //act
         boolean result = systemAdminService.initSystem();
 
+        //assert
         assertTrue(result, "System should initialize successfully.");
     }
 
     @Test
     public void givenNoSystemAdmins_whenInitSystem_thenInitializationShouldFail() {
+        //arrange
         when(adminRepoMock.countAdmins()).thenReturn(0);
 
+        //act
         boolean result = systemAdminService.initSystem();
 
+        //assert
         assertFalse(result, "System should fail to initialize.");
         verify(paymentMock, never()).connect();
     }
 
     @Test
     public void givenPaymentServiceIsDown_whenInitSystem_thenInitializationShouldFail() {
+        //arrange
         when(adminRepoMock.countAdmins()).thenReturn(1);
         when(paymentMock.connect()).thenReturn(false);
 
+        //act
         boolean result = systemAdminService.initSystem();
 
+        //assert
         assertFalse(result, "System should fail if payment service is down.");
     }
 
     @Test
     public void givenBarcodeServiceIsDown_whenInitSystem_thenInitializationShouldFail() {
+        //arrange
         when(adminRepoMock.countAdmins()).thenReturn(1);
         when(paymentMock.connect()).thenReturn(true);
         when(barcodeMock.connect()).thenReturn(false);
 
+        //act
         boolean result = systemAdminService.initSystem();
 
+        //assert
         assertFalse(result, "System should fail if barcode service is down.");
     }
 }
