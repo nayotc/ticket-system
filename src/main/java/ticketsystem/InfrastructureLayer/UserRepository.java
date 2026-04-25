@@ -1,33 +1,37 @@
 package ticketsystem.InfrastructureLayer;
-import java.util.Set;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import ticketsystem.DomainLayer.user.User;
 
 public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUserRepository {
-    private Set<String> activeUsersTokens;
+    private Map<String, User> ActiveSessionsMap;
 
     public UserRepository() {
-        this.activeUsersTokens = new java.util.HashSet<>();
+        this.ActiveSessionsMap = new ConcurrentHashMap<>();
     }
 
     @Override
-    public void addGuest(String sessionToken) {
-        if (activeUsersTokens.contains(sessionToken)) {
-            throw new IllegalArgumentException("Session token already exists.");
+    public boolean addGuest(String sessionToken, User user) {
+        if (ActiveSessionsMap.containsKey(sessionToken)) {
+            return false; // Session token already exists, cannot add guest
         }
-        activeUsersTokens.add(sessionToken);
+        ActiveSessionsMap.put(sessionToken, user);
+        return true; // Guest added successfully
     }
 
     @Override
     public void removeGuest(String sessionToken) {
-        activeUsersTokens.remove(sessionToken);
+        ActiveSessionsMap.remove(sessionToken);
     }
 
     @Override
     public boolean isActiveGuest(String sessionToken) {
-        return activeUsersTokens.contains(sessionToken);
+        return ActiveSessionsMap.containsKey(sessionToken);
     }
     @Override
     public int getTotalActiveSessions() {
-        return activeUsersTokens.size();
+        return ActiveSessionsMap.size();
     }
     
     

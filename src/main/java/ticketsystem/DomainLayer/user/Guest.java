@@ -1,6 +1,6 @@
 package ticketsystem.DomainLayer.user;
-public class Guest extends UserState {
-        public Guest(User user) {
-            super(user);
+public class Guest extends User {
+        public Guest() {
+            
         }
 }
