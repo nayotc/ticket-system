@@ -96,5 +96,29 @@ private final ICompanyRepository companyRepository;
             throw e;
         }
     }
+    public String viewRolesAndPermissionsTree(String sessionId, String companyName) throws Exception {
+    try {
+        // 1. Precondition: Owner is logged in
+        String username = authService.getUsernameBySession(sessionId);
+        if (username == null) {
+            throw new Exception("Error: User must be logged in to view roles.");
+        }
+
+        // 2. שליפת החברה מה-Repository
+        Company company = companyRepository.findByName(companyName)
+                .orElseThrow(() -> new Exception("Error: Company not found."));
+
+        // 3. שליפת המידע מהדומיין
+        String treeData = company.getRolesTreeRepresentation(username);
+
+   //     logger.info("User " + username + " requested roles tree for company: " + companyName);
+        
+        return treeData;
+
+    } catch (Exception e) {
+ //       logger.severe("Failed to retrieve roles tree: " + e.getMessage());
+        throw e;
+    }
+}
 }
 

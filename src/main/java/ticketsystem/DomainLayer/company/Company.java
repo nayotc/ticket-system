@@ -10,6 +10,7 @@ public class Company {
     private boolean isActive;
     private List<String> owners; 
     private List<String> managers; 
+    private final CompanyTree rolesTree;
     private PurchasePolicy purchasePolicy; 
     private DiscountPolicy discountPolicy; 
 
@@ -22,6 +23,7 @@ public class Company {
         this.managers = new ArrayList<>();
         this.purchasePolicy = purchasePolicy;
         this.discountPolicy = discountPolicy;
+        this.rolesTree = new CompanyTree(founderUsername);
     }
 
 
@@ -112,5 +114,12 @@ public void reopenCompany(String requestingUser) throws Exception {
 
     // 5. Main Scenario: marks the company status as Active
     this.isActive = true;
+}
+public String getRolesTreeRepresentation(String requestingUser) throws Exception {
+
+    return this.rolesTree.getStructuredData();
+}
+public void registerNewAppointment(String appointer, String appointee) {
+    rolesTree.addAppointment(appointer, appointee);
 }
 }
