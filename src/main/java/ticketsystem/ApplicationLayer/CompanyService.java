@@ -48,5 +48,31 @@ private final ICompanyRepository companyRepository;
             throw e; 
         }
     }
+    public void closeProductionCompany(String sessionId, String companyName) throws Exception {
+    try {
+        // 1. אימות המשתמש (מול ה-AuthService)
+        String username = authService.getUsernameBySession(sessionId);
+        if (username == null) {
+            throw new Exception("Error: Member must be logged in.");
+        }
+
+        // 2. שליפת החברה מה-Repository
+        Company company = companyRepository.findByName(companyName)
+                .orElseThrow(() -> new Exception("Error: Company not found."));
+
+        // 3. הפעלת לוגיקת הסגירה ב-Domain
+        company.closeOrSuspend(username);
+
+        // 4. שמירת השינוי ב-Repository (עקביות)
+        companyRepository.save(company);
+
+        // 5. תיעוד (דרישת Logging)
+      //  logger.info("Company '" + companyName + "' successfully closed by founder: " + username);
+
+    } catch (Exception e) {
+        //logger.severe("Failed to close company: " + e.getMessage());
+        throw e;
+    }
+}
 }
 
