@@ -109,4 +109,23 @@ public class WaitingQueueServiceTest {
         assertEquals(1, event.getActiveReservationsCount(), "Capacity should drop to 1.");
         verify(notificationsMock, never()).notifyUser(anyString(), anyString());
     }
+
+    @Test
+    public void givenInvalidToken_whenTryReserve_thenUserIsRejected() {
+        // arrange
+        Event event = new Event(5L, "Secret Show", 100L);
+        when(eventRepoMock.getEventById(5)).thenReturn(event);
+        when(tokenServiceMock.validate("invalid-session")).thenReturn(false);
+
+        // act
+        String result = waitingQueueService.tryReserve(5, "invalid-session");
+
+        // assert
+        assertEquals("ERROR: Invalid token", result, "User with invalid token should be rejected.");
+
+        // make sure no changes were made to the event or queue
+        assertEquals(0, event.getActiveReservationsCount(), "Active reservations should remain 0.");
+        // make sure user was not enqueued
+        verify(queueRepoMock).enqueueUser(anyInt(), anyString());
+    }
 }
