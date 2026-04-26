@@ -65,7 +65,7 @@ private final ICompanyRepository companyRepository;
 
         // 4. שמירת השינוי ב-Repository (עקביות)
         companyRepository.save(company);
-
+// TODO: System: notifies all owners and managers regarding the closure
         // 5. תיעוד (דרישת Logging)
       //  logger.info("Company '" + companyName + "' successfully closed by founder: " + username);
 
@@ -74,5 +74,27 @@ private final ICompanyRepository companyRepository;
         throw e;
     }
 }
+/**
+     * Use Case 4.14: Reopen production company
+     */
+    public void reopenProductionCompany(String sessionId, String companyName) throws Exception {
+        try {
+            String username = authService.getUsernameBySession(sessionId);
+            if (username == null) throw new Exception("Error: Member must be logged in.");
+
+            Company company = companyRepository.findByName(companyName)
+                    .orElseThrow(() -> new Exception("Error: Company not found."));
+
+            company.reopenCompany(username);
+            companyRepository.save(company);
+
+            // TODO: System: notifies the relevant Owners and Managers
+       //     logger.info("Company '" + companyName + "' reopened. Notifications sent to relevant stakeholders.");
+
+        } catch (Exception e) {
+     //       logger.severe("Failed to reopen company: " + e.getMessage());
+            throw e;
+        }
+    }
 }
 
