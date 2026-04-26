@@ -1,9 +1,11 @@
 package ticketsystem.InfrastructureLayer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -11,39 +13,52 @@ import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 
 public class WaitingQueueRepository implements IWaitingQueueRepository {
 
-    private final Map<Long, Queue<String>> eventQueues; // ConcurrentHashMap with eventid and queue of sessionIds
+    //fifo
+    private final Map<Long, Queue<String>> eventQueues; // ConcurrentHashMap with eventid and queue of tokens
+
+    // to track which sessions are currently in the queue for each event, for O(1) lookups and removals
+    private final Map<Long, Set<String>> queuedSessionsTracker;
 
     public WaitingQueueRepository() {
         this.eventQueues = new ConcurrentHashMap<>();
-    }
-
-    private Queue<String> getOrCreateQueue(long eventId) {
-        return eventQueues.computeIfAbsent(eventId, k -> new ConcurrentLinkedQueue<>());
+        this.queuedSessionsTracker = new ConcurrentHashMap<>();
     }
 
     @Override
-    public void enqueueUser(long eventId, String sessionId) {
-        Queue<String> queue = getOrCreateQueue(eventId);
-
-        if (!queue.contains(sessionId)) {
-            queue.offer(sessionId); // enter to end of the queue
-            System.out.println("User with Session ID " + sessionId + " added to waiting list for Event " + eventId);
+    public void enqueueUser(long eventId, String token) {
+        //in set the search is atomic and thread safe, so we dont need to check the whole queue
+        Set<String> sessionTracker = queuedSessionsTracker.computeIfAbsent(eventId, k -> ConcurrentHashMap.newKeySet());
+        if (sessionTracker.add(token)) {
+            // only how entered the queue can be added to actual queue
+            Queue<String> queue = eventQueues.computeIfAbsent(eventId, k -> new ConcurrentLinkedQueue<>());
+            queue.offer(token);
         }
     }
 
 // dequeue of a defined num of users from the waiting queue for a specific event.
     @Override
     public List<String> dequeueBatch(long eventId, long batchSize) {
-        Queue<String> queue = getOrCreateQueue(eventId);
-        List<String> approvedUsers = new ArrayList<>();
+        Queue<String> queue = eventQueues.get(eventId);
+        Set<String> sessionTracker = queuedSessionsTracker.get(eventId);
 
-        for (long i = 0; i < batchSize; i++) {
-            String sessionId = queue.poll();
-            if (sessionId != null) {
-                approvedUsers.add(sessionId);
+        if (queue == null || queue.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> approvedUsers = new ArrayList<>();
+        for (int i = 0; i < batchSize; i++) {
+            String token = queue.poll();
+            if (token != null) {
+                approvedUsers.add(token);
+                if (sessionTracker != null) {
+                    sessionTracker.remove(token);
+                }
             } else {
-                break; // queue is empty
+                break;
             }
+        }
+        if (queue.isEmpty()) { // clean up empty queue to save memory
+            eventQueues.remove(eventId);
         }
 
         return approvedUsers;
@@ -51,12 +66,23 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
 
     @Override
     public int getQueueSize(long eventId) {
-        return getOrCreateQueue(eventId).size();
+        Queue<String> queue = eventQueues.get(eventId);
+        return (queue == null) ? 0 : queue.size(); // return queue size or 0 if no queue exists for the event
     }
 
     @Override
-    public void removeUserFromQueue(long eventId, String sessionId) {
-        Queue<String> queue = getOrCreateQueue(eventId);
-        queue.remove(sessionId);
+    public void removeUserFromQueue(long eventId, String token) {
+        Queue<String> queue = eventQueues.get(eventId);
+        Set<String> sessionTracker = queuedSessionsTracker.get(eventId);
+
+        if (queue != null && sessionTracker != null) {
+            sessionTracker.remove(token);
+            queue.remove(token);
+
+            if (queue.isEmpty()) {
+                eventQueues.remove(eventId);
+                queuedSessionsTracker.remove(eventId);
+            }
+        }
     }
 }

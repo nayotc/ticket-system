@@ -18,7 +18,7 @@ public class Event {
     private EventMap map;
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
-    private AtomicInteger activeReservationsCount;
+    private AtomicInteger activeReservationsCount; // for load management and virtual queue
 
     public Event(long id, String name, LocalDateTime date, String location, long trafficThreshold, EventCategory category, EventMap map, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
         this.id = id;

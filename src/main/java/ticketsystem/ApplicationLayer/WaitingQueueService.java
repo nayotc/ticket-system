@@ -11,34 +11,42 @@ public class WaitingQueueService {
     private final IEventRepository eventRepository;
     private final IWaitingQueueRepository queueRepository;
     private final NotificationsService notificationsService;
+    private final TokenService tokenService;
 
     public WaitingQueueService(IEventRepository eventRepository,
             IWaitingQueueRepository queueRepository,
-            NotificationsService notificationsService) {
+            NotificationsService notificationsService, TokenService tokenService) {
         this.eventRepository = eventRepository;
         this.queueRepository = queueRepository;
         this.notificationsService = notificationsService;
+        this.tokenService = tokenService;
     }
 
-    public String tryReserve(int eventId, String sessionId) {
+    public String tryReserve(int eventId, String tokenString) {
+        // Validate the token
+        if (!(tokenService.validate(tokenString))) {
+            return "ERROR: Invalid token";
+        }
+
         Event event = (Event) eventRepository.getEventById(eventId);
         if (event == null) {
             return "ERROR: Event not found";
         }
 
-        if (!event.isOverloaded()) {
+        if (!event.isOverloaded()) { //if event is not overloaded, approve the user immediately
             event.incrementActiveReservations();
-            System.out.println("User with session id" + sessionId + " APPROVED to enter checkout for Event " + eventId);
+            System.out.println("User with session id" + tokenString + " APPROVED to enter checkout for Event " + eventId);
             return "APPROVED";
-        } else {
-            queueRepository.enqueueUser(eventId, sessionId);
+        } else { //enqueue the user and return their position in the queue
+            queueRepository.enqueueUser(eventId, tokenString);
             int position = queueRepository.getQueueSize(eventId);
-            System.out.println("Event is full. User " + sessionId + " moved to QUEUE. Position: " + position);
+            System.out.println("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position);
             return "QUEUED";
         }
     }
 
-    public void processQueue(int eventId) { //called when a spot is released to fill the next batch in the queue
+    //called when a spot is released to fill the next batch in the queue
+    public void processQueue(int eventId) {
         Event event = (Event) eventRepository.getEventById(eventId);
         if (event == null) {
             return;
@@ -46,6 +54,7 @@ public class WaitingQueueService {
 
         long availableSpots = event.getTrafficThreshold() - event.getActiveReservationsCount();
 
+        //if there are available spots, dequeue the next batch of users and approve them
         if (availableSpots > 0) {
             List<String> approvedUsers = queueRepository.dequeueBatch(eventId, availableSpots);
 
