@@ -85,18 +85,32 @@ public class Company {
     }
 
     public void closeOrSuspend(String requestingUser) throws Exception {
-    // 1. בדיקת הרשאות (Alternative flow)
+    // 1. Alternative flow
     if (!this.founderUsername.equals(requestingUser)) {
         throw new Exception("The system rejects the request due to lack of permissions");
     }
 
-    // 2. בדיקת תנאי קדם (Precondition)
+    // Precondition
     if (!this.isActive) {
         throw new Exception("Company is already inactive");
     }
 
-    // 3. שינוי סטטוס (Main Scenario)
+    // Main Scenario
     this.isActive = false;
     
+}
+public void reopenCompany(String requestingUser) throws Exception {
+    // Alternative flow: Actor is not the Founder
+    if (!this.founderUsername.equals(requestingUser)) {
+        throw new Exception("The system rejects the request due to lack of permissions");
+    }
+
+    // 6. Alternative flow: Company is already Active
+    if (this.isActive) {
+        throw new Exception("The company is already Active. No action needed.");
+    }
+
+    // 5. Main Scenario: marks the company status as Active
+    this.isActive = true;
 }
 }
