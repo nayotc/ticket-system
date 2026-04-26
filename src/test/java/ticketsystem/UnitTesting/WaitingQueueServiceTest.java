@@ -20,6 +20,7 @@ import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.ApplicationLayer.TokenService;
 
 public class WaitingQueueServiceTest {
 
@@ -27,14 +28,16 @@ public class WaitingQueueServiceTest {
     private IWaitingQueueRepository queueRepoMock;
     private NotificationsService notificationsMock;
     private WaitingQueueService waitingQueueService;
+    private TokenService tokenServiceMock;
 
     @BeforeEach
     public void setUp() {
         eventRepoMock = mock(IEventRepository.class);
         queueRepoMock = mock(IWaitingQueueRepository.class);
         notificationsMock = mock(NotificationsService.class);
+        tokenServiceMock = mock(TokenService.class);
 
-        waitingQueueService = new WaitingQueueService(eventRepoMock, queueRepoMock, notificationsMock);
+        waitingQueueService = new WaitingQueueService(eventRepoMock, queueRepoMock, notificationsMock, tokenServiceMock);
     }
 
     @Test
@@ -42,6 +45,7 @@ public class WaitingQueueServiceTest {
         //arrange
         Event event = new Event(1L, "Music Festival", 100L);
         when(eventRepoMock.getEventById(1)).thenReturn(event);
+        when(tokenServiceMock.validate("session-123")).thenReturn(true);
 
         //act
         String result = waitingQueueService.tryReserve(1, "session-123");
@@ -59,6 +63,7 @@ public class WaitingQueueServiceTest {
         event.incrementActiveReservations();
         when(eventRepoMock.getEventById(2)).thenReturn(event);
         when(queueRepoMock.getQueueSize(2)).thenReturn(1);
+        when(tokenServiceMock.validate("session-456")).thenReturn(true);
 
         //act
         String result = waitingQueueService.tryReserve(2, "session-456");
@@ -77,6 +82,7 @@ public class WaitingQueueServiceTest {
         event.incrementActiveReservations();
         when(eventRepoMock.getEventById(3)).thenReturn(event);
         when(queueRepoMock.dequeueBatch(3, 1)).thenReturn(Arrays.asList("session-789"));
+        when(tokenServiceMock.validate("session-111")).thenReturn(true);
 
         //act
         waitingQueueService.releaseSpot(3, "session-111");
@@ -94,6 +100,7 @@ public class WaitingQueueServiceTest {
         event.incrementActiveReservations();
         when(eventRepoMock.getEventById(4)).thenReturn(event);
         when(queueRepoMock.dequeueBatch(4, 1)).thenReturn(Collections.emptyList());
+        when(tokenServiceMock.validate("session-222")).thenReturn(true);
 
         // act
         waitingQueueService.releaseSpot(4, "session-222");
