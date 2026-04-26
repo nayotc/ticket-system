@@ -83,4 +83,20 @@ public class Company {
     public void setDiscountPolicy(DiscountPolicy discountPolicy) {
         this.discountPolicy = discountPolicy;
     }
+
+    public void closeOrSuspend(String requestingUser) throws Exception {
+    // 1. בדיקת הרשאות (Alternative flow)
+    if (!this.founderUsername.equals(requestingUser)) {
+        throw new Exception("The system rejects the request due to lack of permissions");
+    }
+
+    // 2. בדיקת תנאי קדם (Precondition)
+    if (!this.isActive) {
+        throw new Exception("Company is already inactive");
+    }
+
+    // 3. שינוי סטטוס (Main Scenario)
+    this.isActive = false;
+    
+}
 }
