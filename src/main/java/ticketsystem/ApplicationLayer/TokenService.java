@@ -8,18 +8,26 @@ import java.util.function.Function;
 
 import javax.crypto.SecretKey;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 
 public class TokenService implements ITokenService {
-    @Value("${jwt.secret}")
-    private final long expirationTime = 1000 * 60 * 60; // 1 hour
-    private SecretKey key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private final SecretKey key;
+    private final long expirationTime = 1000 * 60 * 60; // שעה אחת
+
+    public TokenService() {
+        this("default_secret_key_for_development_purposes_only_32_chars");
+    }
+
+    @Autowired
+    public TokenService(@Value("${jwt.secret}") String secret) {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+    }
 
     @Override
     public String generateNewGuestToken() {
