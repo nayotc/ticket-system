@@ -9,6 +9,8 @@ import java.util.concurrent.Executors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
@@ -18,7 +20,8 @@ public class UserServiceTest {
     public void testVisitSystem_ConcurrentAccess() throws InterruptedException {
         // Arrange: use the real repository to test actual concurrent behavior
         IUserRepository userRepository = new UserRepository();
-        UserService userService = new UserService(userRepository);    
+        ITokenService tokenService = new TokenService();
+        UserService userService = new UserService(userRepository, tokenService);    
         int numberOfThreads = 100;
 
         //Act: simulate 100 guests visiting the system concurrently

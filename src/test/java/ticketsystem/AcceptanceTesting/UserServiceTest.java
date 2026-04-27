@@ -5,17 +5,21 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class UserServiceTest {
         private UserRepository userRepository;
         private UserService userService;
+        private ITokenService tokenService;
     @Test
     void TestSuccessfulSystemVisit_Acceptance(){
         // Arrange: use the real repository to test the actual behavior
         userRepository = new UserRepository();
-        userService = new UserService(userRepository);
+        tokenService = new TokenService();  
+        userService = new UserService(userRepository, tokenService);
 
         // Act: invoke the method under test
         String sessionToken = userService.visitSystem();
