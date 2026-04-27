@@ -7,12 +7,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.NotificationsService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 
 public class QueueConcurrencyTest {
@@ -24,8 +30,9 @@ public class QueueConcurrencyTest {
         NotificationsService fakeNotifications = createFakeNotifications();
         TokenService fakeTokenService = createFakeTokenService();
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
+        ISystemLogger fakeLogger = createFakeLogger();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService);
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService, fakeLogger);
         Event event = new Event(99, "Tomorrowland", 100);
         fakeEventRepo.addEvent(event);
 
@@ -71,6 +78,7 @@ public class QueueConcurrencyTest {
         assertEquals(100, event.getActiveReservationsCount(), "Event should be at exact maximum capacity.");
         assertEquals(900, queuedCount.get(), "Exactly 900 users should be queued.");
         assertEquals(900, queueRepo.getQueueSize(99), "Queue repository should hold exactly 900 users.");
+
     }
 
     // test to ensure that duplicate requests from the same sessionId are handled correctly
@@ -80,8 +88,8 @@ public class QueueConcurrencyTest {
         NotificationsService fakeNotifications = createFakeNotifications();
         TokenService fakeTokenService = createFakeTokenService();
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
-
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService);
+        ISystemLogger fakeLogger = createFakeLogger();
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService, fakeLogger);
 
         // create an event that is already at full capacity
         Event event = new Event(99, "Tomorrowland", 100);
@@ -125,8 +133,9 @@ public class QueueConcurrencyTest {
         NotificationsService fakeNotifications = createFakeNotifications();
         TokenService fakeTokenService = createFakeTokenService();
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
+        ISystemLogger fakeLogger = createFakeLogger();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService);
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService, fakeLogger);
 
         // full event with 100 active reservations and 200 people in the queue
         Event event = new Event(99, "Tomorrowland", 100);
@@ -166,6 +175,7 @@ public class QueueConcurrencyTest {
         executor.shutdown();
 
         assertEquals(100, event.getActiveReservationsCount(), "Event should be instantly refilled to max capacity.");
+        verify(fakeLogger, times(50)).logEvent(eq("releaseSpot"), anyString());
 
         // originally there were 200 users in the queue, 50 should have been approved and removed, leaving 150 still waiting
         assertEquals(150, queueRepo.getQueueSize(99), "Queue should have exactly 150 users left.");
@@ -205,6 +215,18 @@ public class QueueConcurrencyTest {
             @Override
             public boolean validate(String sessionId) {
                 return true; // All sessions valid for testing
+            }
+        };
+    }
+
+    private ISystemLogger createFakeLogger() {
+        return new ISystemLogger() {
+            @Override
+            public void logEvent(String useCase, String details) {
+            }
+
+            @Override
+            public void logError(String useCase, String errorMessage, Throwable exception) {
             }
         };
     }

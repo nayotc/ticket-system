@@ -1,0 +1,35 @@
+<configuration>
+
+    <appender name="EVENT_FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logs/event.log</file> <append>true</append>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [EVENT] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logs/error.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [SYSTEM-ERROR] [%thread] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="EventLogger" level="INFO" additivity="false">
+        <appender-ref ref="EVENT_FILE" />
+    </logger>
+
+    <logger name="ErrorLogger" level="ERROR" additivity="false">
+        <appender-ref ref="ERROR_FILE" />
+    </logger>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+</configuration>

@@ -6,8 +6,10 @@ import java.util.Collections;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -15,12 +17,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.NotificationsService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
 public class WaitingQueueServiceTest {
 
@@ -29,6 +33,7 @@ public class WaitingQueueServiceTest {
     private NotificationsService notificationsMock;
     private WaitingQueueService waitingQueueService;
     private TokenService tokenServiceMock;
+    private ISystemLogger loggerMock;
 
     @BeforeEach
     public void setUp() {
@@ -36,8 +41,9 @@ public class WaitingQueueServiceTest {
         queueRepoMock = mock(IWaitingQueueRepository.class);
         notificationsMock = mock(NotificationsService.class);
         tokenServiceMock = mock(TokenService.class);
+        loggerMock = mock(ISystemLogger.class);
 
-        waitingQueueService = new WaitingQueueService(eventRepoMock, queueRepoMock, notificationsMock, tokenServiceMock);
+        waitingQueueService = new WaitingQueueService(eventRepoMock, queueRepoMock, notificationsMock, tokenServiceMock, loggerMock);
     }
 
     @Test
@@ -54,6 +60,7 @@ public class WaitingQueueServiceTest {
         assertEquals("APPROVED", result, "User should be approved instantly.");
         assertEquals(1, event.getActiveReservationsCount(), "Active reservations should be 1.");
         verify(queueRepoMock, never()).enqueueUser(anyInt(), anyString());
+
     }
 
     @Test
@@ -126,6 +133,49 @@ public class WaitingQueueServiceTest {
         // make sure no changes were made to the event or queue
         assertEquals(0, event.getActiveReservationsCount(), "Active reservations should remain 0.");
         // make sure user was not enqueued
-        verify(queueRepoMock).enqueueUser(anyInt(), anyString());
+        verify(queueRepoMock, never()).enqueueUser(anyInt(), anyString());
+    }
+
+    //logging and error handling tests
+    @Test
+    public void testTryReserve_LogsEventAndMasksToken() {
+        // arrange
+        when(tokenServiceMock.validate("SECRET_TOKEN_12345")).thenReturn(true);
+        Event mockEvent = new Event(6L, "Concert", 100L);
+        when(eventRepoMock.getEventById(6)).thenReturn(mockEvent);
+
+        // act
+        waitingQueueService.tryReserve(6, "SECRET_TOKEN_12345");
+
+        // assert 
+        verify(loggerMock, times(1)).logEvent(eq("tryReserve"), contains("SECR***"));
+        verify(loggerMock, never()).logError(anyString(), anyString(), any());
+    }
+
+    @Test
+    public void testTryReserve_NegativeScenario_LogsAsEventNotError() {
+        // arrange
+        when(tokenServiceMock.validate("invalid")).thenReturn(false);
+
+        // act
+        waitingQueueService.tryReserve(7, "invalid");
+
+        // assert 
+        verify(loggerMock, times(1)).logEvent(eq("tryReserve"), contains("Negative Scenario"));
+        verify(loggerMock, never()).logError(anyString(), anyString(), any());
+    }
+
+    @Test
+    public void testTryReserve_SystemException_LogsAsError() {
+        // arrange 
+        when(tokenServiceMock.validate("token123")).thenReturn(true);
+        when(eventRepoMock.getEventById(anyInt())).thenThrow(new RuntimeException("Database connection lost"));
+
+        // act
+        String result = waitingQueueService.tryReserve(8, "token123");
+
+        // assert - verifies it goes to Error Log
+        assertEquals("ERROR: System failure", result);
+        verify(loggerMock, times(1)).logError(eq("tryReserve"), contains("System error"), any(RuntimeException.class));
     }
 }

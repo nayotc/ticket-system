@@ -9,10 +9,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 
 public class WaitingQueueRepository implements IWaitingQueueRepository {
 
+    private final ISystemLogger logger;
     //fifo
     private final Map<Long, Queue<String>> eventQueues; // ConcurrentHashMap with eventid and queue of tokens
 
@@ -22,10 +24,12 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
     public WaitingQueueRepository() {
         this.eventQueues = new ConcurrentHashMap<>();
         this.queuedSessionsTracker = new ConcurrentHashMap<>();
+        this.logger = new LogbackSystemLogger();
     }
 
     @Override
     public void enqueueUser(long eventId, String token) {
+        logger.logEvent("enqueueUser", "Enqueuing user for event ID: " + eventId + ", token: " + token);
         //in set the search is atomic and thread safe, so we dont need to check the whole queue
         Set<String> sessionTracker = queuedSessionsTracker.computeIfAbsent(eventId, k -> ConcurrentHashMap.newKeySet());
         if (sessionTracker.add(token)) {
@@ -38,6 +42,7 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
 // dequeue of a defined num of users from the waiting queue for a specific event.
     @Override
     public List<String> dequeueBatch(long eventId, long batchSize) {
+        logger.logEvent("dequeueBatch", "Dequeuing batch of users for event ID: " + eventId + ", batch size: " + batchSize);
         Queue<String> queue = eventQueues.get(eventId);
         Set<String> sessionTracker = queuedSessionsTracker.get(eventId);
 
@@ -66,12 +71,14 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
 
     @Override
     public int getQueueSize(long eventId) {
+        logger.logEvent("getQueueSize", "Getting queue size for event ID: " + eventId);
         Queue<String> queue = eventQueues.get(eventId);
         return (queue == null) ? 0 : queue.size(); // return queue size or 0 if no queue exists for the event
     }
 
     @Override
     public void removeUserFromQueue(long eventId, String token) {
+        logger.logEvent("removeUserFromQueue", "Removing user from queue for event ID: " + eventId + ", token: " + token);
         Queue<String> queue = eventQueues.get(eventId);
         Set<String> sessionTracker = queuedSessionsTracker.get(eventId);
 

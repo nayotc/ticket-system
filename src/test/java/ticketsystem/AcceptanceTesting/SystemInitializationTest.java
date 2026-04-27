@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
@@ -22,8 +23,15 @@ public class SystemInitializationTest {
         realAdminRepo = new SystemAdminRepository();
         PaymentServiceProxy paymentProxy = new PaymentServiceProxy();
         SecureBarcodeProxy barcodeProxy = new SecureBarcodeProxy();
+        ISystemLogger fakeLogger = new ISystemLogger() {
+            public void logEvent(String useCase, String details) {
+            }
 
-        systemAdminService = new SystemAdminService(realAdminRepo, paymentProxy, barcodeProxy);
+            public void logError(String useCase, String errorMessage, Throwable exception) {
+            }
+        };
+
+        systemAdminService = new SystemAdminService(realAdminRepo, paymentProxy, barcodeProxy, fakeLogger);
     }
 
     @Test
