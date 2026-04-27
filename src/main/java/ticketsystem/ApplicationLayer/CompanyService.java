@@ -3,7 +3,7 @@ import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.*;
 import java.util.logging.Logger;
 public class CompanyService {
-private final ICompanyRepository companyRepository;
+    private final ICompanyRepository companyRepository;
     private final AuthService authService;
  //   private static final Logger logger = Logger.getLogger(CompanyService.class.getName());
 
@@ -43,14 +43,12 @@ private final ICompanyRepository companyRepository;
           //  logger.info("User " + username + " successfully created company: " + companyName);
 
         } catch (Exception e) {
-            // יומן שגיאות 
             //logger.severe("Operation failed: " + e.getMessage());
             throw e; 
         }
     }
     public void closeProductionCompany(String sessionId, String companyName) throws Exception {
     try {
-        // 1. אימות המשתמש (מול ה-AuthService)
         String username = authService.getUsernameBySession(sessionId);
         if (username == null) {
             throw new Exception("Error: Member must be logged in.");
@@ -65,7 +63,7 @@ private final ICompanyRepository companyRepository;
 
         // 4. שמירת השינוי ב-Repository (עקביות)
         companyRepository.save(company);
-// TODO: System: notifies all owners and managers regarding the closure
+        // TODO: System: notifies all owners and managers regarding the closure
         // 5. תיעוד (דרישת Logging)
       //  logger.info("Company '" + companyName + "' successfully closed by founder: " + username);
 
