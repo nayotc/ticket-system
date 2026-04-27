@@ -7,6 +7,7 @@ public class Ticket {
     private int row;
     private int chair;
     private double price;
+    private TicketStatus status;
 
     public Ticket(int ticketId, int eventId, int row, int chair, double price) {
         this.ticketId = ticketId;
@@ -14,6 +15,7 @@ public class Ticket {
         this.row = row;
         this.chair = chair;
         this.price = price;
+        this.status = TicketStatus.PENDING;
     }
 
     public int getTicketId() {
@@ -56,4 +58,14 @@ public class Ticket {
         this.price = price;
     }
     
+    public TicketStatus getStatus() {
+        return this.status;
+    }
+    public void setStatus(TicketStatus status) {
+        this.status = status;
+    }
+    
+    public void setStatusToActive() {
+        this.status = TicketStatus.ACTIVE;
+    }
 }
