@@ -22,7 +22,7 @@ public class Member extends User {
     }
 
     public String getUserName() {
-        return this.userName;
+        return userName;
     }
     protected void setUserName(String userName) {
         this.userName = userName;
