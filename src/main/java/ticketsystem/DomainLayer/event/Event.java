@@ -3,30 +3,36 @@ package ticketsystem.DomainLayer.event;
 import java.time.LocalDateTime;
 
 public class Event {
-    private final long id;
+    private final Long id;
     private String name;
+    private Long companyId;
+    // member
     private LocalDateTime Date;
     private String location;
-    private long trafficThreshold;
-    private enum status {ACTIVE, INACTIVE, CANCELLED};
+    private Long trafficThreshold;
+    private enum eventStatus {ACTIVE, INACTIVE, CANCELLED};
+    private eventStatus status;
     private EventCategory category;
     private EventMap map;
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
+    // waiting queue
     
-    public Event(long id, String name, LocalDateTime date, String location, long trafficThreshold, EventCategory category, EventMap map, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
+    public Event(Long id, String name, Long companyId, LocalDateTime date, String location, Long trafficThreshold, EventCategory category, EventMap map, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
         this.id = id;
         this.name = name;
+        this.companyId = companyId;
         this.Date = date;
         this.location = location;
         this.trafficThreshold = trafficThreshold;
+        this.status = eventStatus.ACTIVE; // Default status
         this.category = category;
         this.map = map;
         this.purchasePolicy = purchasePolicy;
         this.discountPolicy = discountPolicy;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
@@ -36,6 +42,14 @@ public class Event {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
     }
 
     public LocalDateTime getDate() {
@@ -54,12 +68,20 @@ public class Event {
         this.location = location;
     }
 
-    public long getTrafficThreshold() {
+    public Long getTrafficThreshold() {
         return trafficThreshold;
     }
 
-    public void setTrafficThreshold(long trafficThreshold) {
+    public void setTrafficThreshold(Long trafficThreshold) {
         this.trafficThreshold = trafficThreshold;
+    }
+
+    public eventStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(eventStatus status) {
+        this.status = status;
     }
 
     public EventCategory getCategory() {
