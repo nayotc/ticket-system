@@ -1,5 +1,7 @@
 package ticketsystem.DomainLayer.IRepository;
 
+import java.util.List;
+
 public interface IWaitingQueueRepository {
 
     void enqueueUser(long eventId, String sessionId);
@@ -9,4 +11,7 @@ public interface IWaitingQueueRepository {
     int getQueueSize(long eventId);
 
     void removeUserFromQueue(long eventId, String sessionId);
+
+    public List<String> clearQueue(int eventId);
+
 }

@@ -85,4 +85,15 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
             }
         }
     }
+
+    @Override
+    public List<String> clearQueue(int eventId) {
+        Queue<String> queue = eventQueues.remove(eventId);
+        Set<String> sessionTracker = queuedSessionsTracker.remove(eventId);
+
+        if (queue != null) {
+            return new ArrayList<>(queue);
+        }
+        return Collections.emptyList();
+    }
 }

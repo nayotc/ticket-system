@@ -32,6 +32,9 @@ public class WaitingQueueService {
         if (event == null) {
             return "ERROR: Event not found";
         }
+        // if (event.isSoldOut()) { //      will add when we have event logic pushed!
+        //     return new QueueResponse("ERROR: Sold Out");
+        // }
 
         if (!event.isOverloaded()) { //if event is not overloaded, approve the user immediately
             event.incrementActiveReservations();
@@ -73,5 +76,17 @@ public class WaitingQueueService {
             event.decrementActiveReservations();
             processQueue(eventId); //call batch processing to fill the new available spot
         }
+    }
+
+    public void leaveQueue(int eventId, String sessionId) {
+        queueRepository.removeUserFromQueue(eventId, sessionId);
+    }
+
+    public void expireUserSession(int eventId, String sessionId) {
+        releaseSpot(eventId, sessionId);
+    }
+
+    public void handleSoldOutEvent(int eventId) {
+        List<String> remainingUsers = queueRepository.clearQueue(eventId);
     }
 }
