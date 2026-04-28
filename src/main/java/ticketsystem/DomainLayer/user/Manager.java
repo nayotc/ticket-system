@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 public class Manager extends CompanyRole {
 
     private Long appointedByMemberId;
+<<<<<<< HEAD
     private Set<Permission> permissions;
 
     public Manager(Long companyId, Long appointedByMemberId, Set<Permission> permissions) {
@@ -47,4 +48,8 @@ public class Manager extends CompanyRole {
                 .map(Permission::getKey)
                 .collect(Collectors.toSet());
     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 28466bf (Finish use-case assign manager to company without notifications)
 }
