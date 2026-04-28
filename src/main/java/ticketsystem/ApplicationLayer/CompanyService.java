@@ -1,122 +1,112 @@
 package ticketsystem.ApplicationLayer;
+
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.*;
-import java.util.logging.Logger;
+
 public class CompanyService {
     private final ICompanyRepository companyRepository;
-    private final AuthService authService;
- //   private static final Logger logger = Logger.getLogger(CompanyService.class.getName());
+    private final ITokenService tokenService;
 
-    public CompanyService(ICompanyRepository repo, AuthService auth) {
+    public CompanyService(ICompanyRepository repo, ITokenService tokenService) {
         this.companyRepository = repo;
-        this.authService = auth;
+        this.tokenService = tokenService;
     }
 
-    
-     // Use Case 3.2: Create a production company.
+    private String getRegisteredUserId(String token) throws Exception {
+        if (!tokenService.validateToken(token)) {
+            throw new Exception("Error: Invalid or expired session token.");
+        }
+        
+        String subject = tokenService.extractSubject(token);
+        
+        if (subject != null && subject.startsWith("GUEST_")) {
+            throw new Exception("Error: Member must be logged in. Guests are not allowed.");
+        }
+        
+        return subject;
+    }
 
-    public void createProductionCompany(String sessionId, String companyName) throws Exception {
+    /**
+     * Use Case 3.2: Create a production company.
+     * כעת מחזיר long (את ה-ID המספרי של החברה שנוצרה)
+     */
+    public long createProductionCompany(String sessionId, String companyName) throws Exception {
         try {
-            // 1. Precondition: Member is logged-in
-            String username = authService.getUsernameBySession(sessionId);
-            if (username == null) {
-          //      logger.warning("Attempt to create company without login. Session: " + sessionId); // דרישת מעקב 
-                throw new Exception("Error: Member must be logged in.");
-            }
+            String userId = getRegisteredUserId(sessionId);
 
-            // 2. Alternative flow: Company already exists
             if (companyRepository.existsByName(companyName)) {
                 throw new Exception("Error: A company with this name already exists.");
             }
 
-            // 3. Main Scenario: Register new company [cite: 114]
             Company newCompany = new Company(
                 companyName, 
-                username, 
+                userId, 
                 new PurchasePolicy(), 
                 new DiscountPolicy()
             );
 
-            companyRepository.save(newCompany); // שמירה ב-Repository
+            companyRepository.save(newCompany); 
 
-            // 4. System: logs event
-          //  logger.info("User " + username + " successfully created company: " + companyName);
+            return newCompany.getId();
 
         } catch (Exception e) {
-            //logger.severe("Operation failed: " + e.getMessage());
             throw e; 
         }
     }
-    public void closeProductionCompany(String sessionId, String companyName) throws Exception {
-    try {
-        String username = authService.getUsernameBySession(sessionId);
-        if (username == null) {
-            throw new Exception("Error: Member must be logged in.");
-        }
 
-        // 2. שליפת החברה מה-Repository
-        Company company = companyRepository.findByName(companyName)
-                .orElseThrow(() -> new Exception("Error: Company not found."));
-
-        // 3. הפעלת לוגיקת הסגירה ב-Domain
-        company.closeOrSuspend(username);
-
-        // 4. שמירת השינוי ב-Repository (עקביות)
-        companyRepository.save(company);
-        // TODO: System: notifies all owners and managers regarding the closure
-        // 5. תיעוד (דרישת Logging)
-      //  logger.info("Company '" + companyName + "' successfully closed by founder: " + username);
-
-    } catch (Exception e) {
-        //logger.severe("Failed to close company: " + e.getMessage());
-        throw e;
-    }
-}
-/**
-     * Use Case 4.14: Reopen production company
+    /**
+     * Use Case 4.13: Close or suspend production company
+     * שונה: מקבל long companyId
      */
-    public void reopenProductionCompany(String sessionId, String companyName) throws Exception {
+    public void closeProductionCompany(String sessionId, long companyId) throws Exception {
         try {
-            String username = authService.getUsernameBySession(sessionId);
-            if (username == null) throw new Exception("Error: Member must be logged in.");
+            String userId = getRegisteredUserId(sessionId);
 
-            Company company = companyRepository.findByName(companyName)
+            Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
-            company.reopenCompany(username);
+            company.closeOrSuspend(userId);
             companyRepository.save(company);
 
-            // TODO: System: notifies the relevant Owners and Managers
-       //     logger.info("Company '" + companyName + "' reopened. Notifications sent to relevant stakeholders.");
-
         } catch (Exception e) {
-     //       logger.severe("Failed to reopen company: " + e.getMessage());
             throw e;
         }
     }
-    public String viewRolesAndPermissionsTree(String sessionId, String companyName) throws Exception {
-    try {
-        // 1. Precondition: Owner is logged in
-        String username = authService.getUsernameBySession(sessionId);
-        if (username == null) {
-            throw new Exception("Error: User must be logged in to view roles.");
+
+    /**
+     * Use Case 4.14: Reopen production company
+     * שונה: מקבל long companyId
+     */
+    public void reopenProductionCompany(String sessionId, long companyId) throws Exception {
+        try {
+            String userId = getRegisteredUserId(sessionId);
+
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new Exception("Error: Company not found."));
+
+            company.reopenCompany(userId);
+            companyRepository.save(company);
+
+        } catch (Exception e) {
+            throw e;
         }
+    }
 
-        // 2. שליפת החברה מה-Repository
-        Company company = companyRepository.findByName(companyName)
-                .orElseThrow(() -> new Exception("Error: Company not found."));
+    /**
+     * Use Case 4.15: View roles and permissions tree
+     * שונה: מקבל long companyId
+     */
+    public String viewRolesAndPermissionsTree(String sessionId, long companyId) throws Exception {
+        try {
+            String userId = getRegisteredUserId(sessionId);
 
-        // 3. שליפת המידע מהדומיין
-        String treeData = company.getRolesTreeRepresentation(username);
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new Exception("Error: Company not found."));
 
-   //     logger.info("User " + username + " requested roles tree for company: " + companyName);
-        
-        return treeData;
+            return company.getRolesTreeRepresentation(userId);
 
-    } catch (Exception e) {
- //       logger.severe("Failed to retrieve roles tree: " + e.getMessage());
-        throw e;
+        } catch (Exception e) {
+            throw e;
+        }
     }
 }
-}
-

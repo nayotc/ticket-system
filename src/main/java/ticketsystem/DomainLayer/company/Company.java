@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Collections;
 
 public class Company {
+    private static long idCounter = 1; 
+    
+    private long id; 
     private String name;
     private final String founderUsername; 
     private boolean isActive;
@@ -15,17 +18,31 @@ public class Company {
     private DiscountPolicy discountPolicy; 
 
     public Company(String name, String founderUsername, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
+        this.id = idCounter++; 
+        
         this.name = name;
         this.founderUsername = founderUsername;
         this.isActive = true; 
+        
         this.owners = new ArrayList<>();
-        this.owners.add(founderUsername);
+        this.owners.add(founderUsername); 
+        
         this.managers = new ArrayList<>();
         this.purchasePolicy = purchasePolicy;
         this.discountPolicy = discountPolicy;
+        
         this.rolesTree = new CompanyTree(founderUsername);
     }
 
+    // --- Getters & Setters ---
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
 
     public String getName() {
         return name;
@@ -39,15 +56,8 @@ public class Company {
         return founderUsername;
     }
 
-    public boolean getIsActive() {
+    public boolean isActive() {
         return isActive;
-    }
-
-    public void setIsActive(boolean isActive, String requestingUser) throws IllegalAccessException {
-        if (!requestingUser.equals(founderUsername)) {
-            throw new IllegalAccessException("Only the founder can change the company's activity status.");
-        }
-        this.isActive = isActive;
     }
 
     public List<String> getOwners() {
@@ -86,40 +96,49 @@ public class Company {
         this.discountPolicy = discountPolicy;
     }
 
+    private boolean isFounder(String user) {
+        return user.equals(this.founderUsername);
+    }
+
+    private boolean isOwner(String user) {
+        return owners.contains(user); 
+    }
+
+    // --- Use Cases Logic ---
+
     public void closeOrSuspend(String requestingUser) throws Exception {
-    // 1. Alternative flow
-    if (!this.founderUsername.equals(requestingUser)) {
-        throw new Exception("The system rejects the request due to lack of permissions");
+        if (!isFounder(requestingUser)) {
+            throw new Exception("The system rejects the request due to lack of permissions. Only the Founder can close the company.");
+        }
+
+        if (!this.isActive) {
+            throw new Exception("Company is already inactive.");
+        }
+
+        this.isActive = false;
     }
 
-    // Precondition
-    if (!this.isActive) {
-        throw new Exception("Company is already inactive");
+    public void reopenCompany(String requestingUser) throws Exception {
+        if (!isFounder(requestingUser)) {
+            throw new Exception("The system rejects the request due to lack of permissions. Only the Founder can reopen the company.");
+        }
+
+        if (this.isActive) {
+            throw new Exception("The company is already Active. No action needed.");
+        }
+
+        this.isActive = true;
     }
 
-    // Main Scenario
-    this.isActive = false;
-    
-}
-public void reopenCompany(String requestingUser) throws Exception {
-    // Alternative flow: Actor is not the Founder
-    if (!this.founderUsername.equals(requestingUser)) {
-        throw new Exception("The system rejects the request due to lack of permissions");
+    public String getRolesTreeRepresentation(String requestingUser) throws Exception {
+        if (!isOwner(requestingUser)) {
+            throw new Exception("The system rejects the request due to lack of permissions. Only Owners can view the roles tree.");
+        }
+        
+        return this.rolesTree.getStructuredData();
     }
 
-    // 6. Alternative flow: Company is already Active
-    if (this.isActive) {
-        throw new Exception("The company is already Active. No action needed.");
+    public void registerNewAppointment(String appointer, String appointee) {
+        rolesTree.addAppointment(appointer, appointee);
     }
-
-    // 5. Main Scenario: marks the company status as Active
-    this.isActive = true;
-}
-public String getRolesTreeRepresentation(String requestingUser) throws Exception {
-
-    return this.rolesTree.getStructuredData();
-}
-public void registerNewAppointment(String appointer, String appointee) {
-    rolesTree.addAppointment(appointer, appointee);
-}
 }

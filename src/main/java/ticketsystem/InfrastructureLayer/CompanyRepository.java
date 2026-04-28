@@ -24,4 +24,14 @@ public class CompanyRepository implements ICompanyRepository{
     public Optional<Company> findByName(String name) {
         return Optional.ofNullable(companies.get(name));
     }
+
+    @Override
+    public boolean existsById(long id) {
+        return companies.containsKey(id);
+    }
+
+    @Override
+    public Optional<Company> findById(long id) {
+        return Optional.ofNullable(companies.get(id));
+    }
 }
