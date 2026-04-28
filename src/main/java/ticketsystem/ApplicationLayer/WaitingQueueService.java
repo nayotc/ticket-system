@@ -11,11 +11,11 @@ public class WaitingQueueService {
     private final IEventRepository eventRepository;
     private final IWaitingQueueRepository queueRepository;
     private final NotificationsService notificationsService;
-    private final TokenService tokenService;
+    private final ITokenService tokenService;
 
     public WaitingQueueService(IEventRepository eventRepository,
             IWaitingQueueRepository queueRepository,
-            NotificationsService notificationsService, TokenService tokenService) {
+            NotificationsService notificationsService, ITokenService tokenService) {
         this.eventRepository = eventRepository;
         this.queueRepository = queueRepository;
         this.notificationsService = notificationsService;

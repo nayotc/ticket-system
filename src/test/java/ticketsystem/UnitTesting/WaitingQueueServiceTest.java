@@ -15,12 +15,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.NotificationsService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.ApplicationLayer.TokenService;
 
 public class WaitingQueueServiceTest {
 
@@ -28,14 +28,14 @@ public class WaitingQueueServiceTest {
     private IWaitingQueueRepository queueRepoMock;
     private NotificationsService notificationsMock;
     private WaitingQueueService waitingQueueService;
-    private TokenService tokenServiceMock;
+    private ITokenService tokenServiceMock;
 
     @BeforeEach
     public void setUp() {
         eventRepoMock = mock(IEventRepository.class);
         queueRepoMock = mock(IWaitingQueueRepository.class);
         notificationsMock = mock(NotificationsService.class);
-        tokenServiceMock = mock(TokenService.class);
+        tokenServiceMock = mock(ITokenService.class);
 
         waitingQueueService = new WaitingQueueService(eventRepoMock, queueRepoMock, notificationsMock, tokenServiceMock);
     }
