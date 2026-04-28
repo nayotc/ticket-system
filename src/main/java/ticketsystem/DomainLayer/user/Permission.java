@@ -35,6 +35,7 @@ public enum Permission {
                 .filter(p -> p.key.equalsIgnoreCase(key))
                 .findFirst();
     }
+<<<<<<< HEAD
 
     /**
      * Returns a set containing all available permissions in the system.
@@ -43,4 +44,6 @@ public enum Permission {
     public static Set<Permission> getAllPermissions() {
         return EnumSet.allOf(Permission.class);
     }
+=======
+>>>>>>> ba7482c (Update Permission enum class)
 }
