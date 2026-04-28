@@ -6,13 +6,20 @@ public class Owner extends CompanyRole {
 
     private List<Long> appointeesMemberIds;
     private Long appointedByMemberId;
-    private RoleStatus status;
 
     public Owner(Long companyId, Long appointedByMemberId) {
         super(companyId);
         this.appointedByMemberId = appointedByMemberId;
         this.appointeesMemberIds = new ArrayList<>();
         this.status = RoleStatus.PENDING;
+    }
+
+    public RoleStatus getStatus() {
+        return status;
+    }
+
+    public void activate() {
+        this.status = RoleStatus.ACTIVE;
     }
 
     public Long getAppointedByMemberId() {
