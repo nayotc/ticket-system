@@ -203,7 +203,7 @@ public class QueueConcurrencyTest {
     private TokenService createFakeTokenService() {
         return new TokenService() {
             @Override
-            public boolean validate(String sessionId) {
+            public boolean validateToken(String sessionId) {
                 return true; // All sessions valid for testing
             }
         };

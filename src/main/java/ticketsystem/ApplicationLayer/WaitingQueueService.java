@@ -24,7 +24,7 @@ public class WaitingQueueService {
 
     public String tryReserve(int eventId, String tokenString) {
         // Validate the token
-        if (!(tokenService.validate(tokenString))) {
+        if (!(tokenService.validateToken(tokenString))) {
             return "ERROR: Invalid token";
         }
 

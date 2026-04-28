@@ -45,7 +45,7 @@ public class WaitingQueueServiceTest {
         //arrange
         Event event = new Event(1L, "Music Festival", 100L);
         when(eventRepoMock.getEventById(1)).thenReturn(event);
-        when(tokenServiceMock.validate("session-123")).thenReturn(true);
+        when(tokenServiceMock.validateToken("session-123")).thenReturn(true);
 
         //act
         String result = waitingQueueService.tryReserve(1, "session-123");
@@ -63,7 +63,7 @@ public class WaitingQueueServiceTest {
         event.incrementActiveReservations();
         when(eventRepoMock.getEventById(2)).thenReturn(event);
         when(queueRepoMock.getQueueSize(2)).thenReturn(1);
-        when(tokenServiceMock.validate("session-456")).thenReturn(true);
+        when(tokenServiceMock.validateToken("session-456")).thenReturn(true);
 
         //act
         String result = waitingQueueService.tryReserve(2, "session-456");
@@ -82,7 +82,7 @@ public class WaitingQueueServiceTest {
         event.incrementActiveReservations();
         when(eventRepoMock.getEventById(3)).thenReturn(event);
         when(queueRepoMock.dequeueBatch(3, 1)).thenReturn(Arrays.asList("session-789"));
-        when(tokenServiceMock.validate("session-111")).thenReturn(true);
+        when(tokenServiceMock.validateToken("session-111")).thenReturn(true);
 
         //act
         waitingQueueService.releaseSpot(3, "session-111");
@@ -100,7 +100,7 @@ public class WaitingQueueServiceTest {
         event.incrementActiveReservations();
         when(eventRepoMock.getEventById(4)).thenReturn(event);
         when(queueRepoMock.dequeueBatch(4, 1)).thenReturn(Collections.emptyList());
-        when(tokenServiceMock.validate("session-222")).thenReturn(true);
+        when(tokenServiceMock.validateToken("session-222")).thenReturn(true);
 
         // act
         waitingQueueService.releaseSpot(4, "session-222");
@@ -115,7 +115,7 @@ public class WaitingQueueServiceTest {
         // arrange
         Event event = new Event(5L, "Secret Show", 100L);
         when(eventRepoMock.getEventById(5)).thenReturn(event);
-        when(tokenServiceMock.validate("invalid-session")).thenReturn(false);
+        when(tokenServiceMock.validateToken("invalid-session")).thenReturn(false);
 
         // act
         String result = waitingQueueService.tryReserve(5, "invalid-session");
@@ -126,6 +126,6 @@ public class WaitingQueueServiceTest {
         // make sure no changes were made to the event or queue
         assertEquals(0, event.getActiveReservationsCount(), "Active reservations should remain 0.");
         // make sure user was not enqueued
-        verify(queueRepoMock).enqueueUser(anyInt(), anyString());
+        verify(queueRepoMock, never()).enqueueUser(anyInt(), anyString());
     }
 }
