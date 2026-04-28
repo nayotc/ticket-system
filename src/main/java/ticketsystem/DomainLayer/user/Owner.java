@@ -6,6 +6,7 @@ public class Owner extends CompanyRole {
 
     private List<Long> appointeesMemberIds;
     private Long appointedByMemberId;
+    private RoleStatus status;
 
     public Owner(Long companyId, Long appointedByMemberId) {
         super(companyId);
