@@ -1,4 +1,5 @@
 package ticketsystem.DomainLayer;
+<<<<<<< HEAD
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.CompanyRole;
@@ -9,6 +10,16 @@ import ticketsystem.DomainLayer.user.Manager;
 
 public class MembershipDomainService {
 =======
+=======
+import java.util.List;
+import java.util.Set;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Owner;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Founder;
+>>>>>>> e7f5697 (starting to implement giveup ownership use case)
 import ticketsystem.DomainLayer.user.Manager;
 
 public class MembershipDomainService {
@@ -25,9 +36,31 @@ public class MembershipDomainService {
     }
 >>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
 
+<<<<<<< HEAD
     public boolean validatePermission(CompanyRole role, Permission permission) {
         
         // 1. Check existence
+=======
+    public void resignOwnershipFromCompany(Member resigningOwner, Company company) {
+        CompanyRole role = resigningOwner.getRole(company.getId());
+        if (validateResignation(role)) {
+            Owner owner = (Owner) role;
+            Long appointerId = owner.getAppointedByMemberId();
+            List<Long> appointeesIds = owner.getAppointeesMemberIds();
+            resigningOwner.deleteRole(company.getId());
+            // TODO: delete owner from appointer's appointees list
+            // TODO: transfer resiningOwner appointees to be appointed by resiningOwner's appointer
+            // TODO: notify appointer and appointees of ownership resignation
+            // TODO: save changes to the repository
+        }
+        else {
+            throw new IllegalArgumentException("Invalid ownership resignation.");
+        }
+    }
+
+    public boolean validatePermission(Member member, Long companyId, Permission permission) {
+        CompanyRole role = member.getRole(companyId);
+>>>>>>> e7f5697 (starting to implement giveup ownership use case)
         if (role == null) {
             return false;
         }
@@ -44,6 +77,7 @@ public class MembershipDomainService {
         return role.hasPermission(permission); 
     }
 
+<<<<<<< HEAD
     public void validateAssignmentRequest(CompanyRole appointerRole, CompanyRole targetRole) throws Exception {
         
         // 1. Validate the appointer exists
@@ -116,6 +150,23 @@ public class MembershipDomainService {
         }
 
         // 3. If validation passes, the service will handle the removal of the pending role
+=======
+    public boolean validateResignation(CompanyRole role) {
+        if (role == null) {
+            return false;
+        }
+
+        // Alternative Flow: Owner is the Founder
+        if (role instanceof Founder) {
+            return false;
+        }
+
+        if (!(role instanceof Owner)) {
+            return false;
+        }
+
+        return true;
+>>>>>>> e7f5697 (starting to implement giveup ownership use case)
     }
 
 

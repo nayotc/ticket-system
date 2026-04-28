@@ -24,13 +24,19 @@ public class Manager extends CompanyRole {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> e7f5697 (starting to implement giveup ownership use case)
     public void setAppointer(Long newAppointedByMemberId) {
         this.appointedByMemberId = newAppointedByMemberId;
     }
 
+<<<<<<< HEAD
     public Set<Permission> getPermissions() {
         return this.permissions;
 =======
+=======
+>>>>>>> e7f5697 (starting to implement giveup ownership use case)
     public void activate() {
         this.status = RoleStatus.ACTIVE;
 >>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)

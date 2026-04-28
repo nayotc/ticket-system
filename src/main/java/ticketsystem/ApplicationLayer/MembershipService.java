@@ -39,9 +39,63 @@ public class MembershipService {
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
+<<<<<<< HEAD
         
         // 2. Extract user ID from token and retrieve member information
         Long memberId = tokenService.extractUserId(sessionToken);
+=======
+        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
+        Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        Member appointer = userRepository.getMemberById(memberId);
+        Member appointee = userRepository.getMemberById(targetMemberId);
+        CompanyRole newRole = membership.assignManagerToCompany(companyId, appointer, appointee, permissions);
+        // TODO: add/save newRole to the repository
+    }
+
+    public void approveManagerAssignment(String sessionToken, long companyId) throws Exception {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
+        Long appointeeId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        Member appointee = userRepository.getMemberById(appointeeId);
+        appointee.activateRole(companyId);
+        Manager manager = (Manager) appointee.getRole(companyId);
+        Long appointerId = manager.getAppointedByMemberId();
+        Member appointer = userRepository.getMemberById(appointerId);
+        Company company = companyRepository.findById(companyId);
+        company.registerNewAppointment(appointer.getUserName(), appointee.getUserName());
+    }
+
+    public void rejectManagerAssignment(String sessionToken, long companyId) throws Exception {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
+        Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        Member appointee = userRepository.getMemberById(memberId);
+        appointee.rejectRole(companyId);
+        // TODO: delete newRole from the repository
+    }
+
+    public void giveUpOwnership(String sessionToken, Long companyId) throws Exception {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
+        Long ownerId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        Member resigningOwner = userRepository.getMemberById(ownerId);
+        Company company = companyRepository.findById(companyId);
+        membership.resignOwnershipFromCompany(resigningOwner, company);
+    }
+
+    public boolean validatePermission(String sessionToken, long companyId, Permission requiredPermission) {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
+        long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
+>>>>>>> e7f5697 (starting to implement giveup ownership use case)
         Member member = userRepository.getMemberById(memberId);
 
         // 3. Retrieve the member's role in the specified company and validate the required permission

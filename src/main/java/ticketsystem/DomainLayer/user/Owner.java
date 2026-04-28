@@ -29,6 +29,10 @@ public class Owner extends CompanyRole {
         this.appointedByMemberId = newAppointedByMemberId;
     }
 
+    public void setAppointer(Long newAppointedByMemberId) {
+        this.appointedByMemberId = newAppointedByMemberId;
+    }
+
     public List<Long> getAppointeesMemberIds() {
         return this.appointeesMemberIds; 
     }
