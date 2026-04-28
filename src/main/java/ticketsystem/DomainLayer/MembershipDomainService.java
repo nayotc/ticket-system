@@ -1,6 +1,7 @@
 package ticketsystem.DomainLayer;
 import java.util.HashSet;
 import java.util.Set;
+<<<<<<< HEAD
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.CompanyRole;
@@ -242,6 +243,45 @@ public class MembershipDomainService {
         // 8. If all validations pass, update manager's permissions
         ((Manager) managerRole).setPermissions(permissions);
         return true;
+=======
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Owner;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Founder;
+import ticketsystem.DomainLayer.user.Manager;
+
+public class MembershipDomainService {
+    
+    public CompanyRole assignManagerToCompany(long companyId, Member appointer, Member appointee, Set<Permission> permissions) {
+        if (!appointer.isOwner(companyId)) {
+            throw new IllegalArgumentException("Only owners can assign managers.");
+        }
+        if (appointee.getRole(companyId) != null) {
+            throw new IllegalArgumentException("Appointee has already a role in the company.");
+        }
+        CompanyRole managerRole = new Manager(appointee, companyId, permissions, appointer.getId());
+        return managerRole;
+    }
+
+    public boolean validatePermission(Member member, Long companyId, Permission permission) {
+        CompanyRole role = member.getRole(companyId);
+        if (role == null) {
+            return false;
+        }
+        else if (role instanceof Founder) {
+            return true;
+        }
+        else if (role instanceof Owner) {
+            return true;
+        }
+        else if (role instanceof Manager) {
+            return ((Manager) role).hasPermission(permission);
+        }
+        else {
+            return false;
+        }   
+>>>>>>> a90fe66 (Finish use-case assign manager to company without notifications)
     }
     public Set<Long> getManagementSubTreeMemberIds(Long rootMemberId, Long companyId) {
         Set<Long> result = new HashSet<>();
