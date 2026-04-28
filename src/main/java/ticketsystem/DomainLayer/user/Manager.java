@@ -7,8 +7,13 @@ public class Manager extends CompanyRole {
     private Long appointedByMemberId;
     private Set<Permission> permissions;
 
+<<<<<<< HEAD
     public Manager(Long companyId, Long appointedByMemberId, Set<Permission> permissions) {
         super(companyId);
+=======
+    public Manager(Member memberMock, Long companyId, Set<Permission> permissions, Long appointedByMemberId) {
+        super(memberMock, companyId);
+>>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
         this.appointedByMemberId = appointedByMemberId;
         this.status = RoleStatus.PENDING;
         this.permissions = permissions;
@@ -18,12 +23,17 @@ public class Manager extends CompanyRole {
         return this.appointedByMemberId; 
     }
 
+<<<<<<< HEAD
     public void setAppointer(Long newAppointedByMemberId) {
         this.appointedByMemberId = newAppointedByMemberId;
     }
 
     public Set<Permission> getPermissions() {
         return this.permissions;
+=======
+    public void activate() {
+        this.status = RoleStatus.ACTIVE;
+>>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
     }
 
     public boolean hasPermission(Permission permission) {

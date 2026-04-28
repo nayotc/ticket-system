@@ -25,7 +25,13 @@ public class Founder extends CompanyRole{
     }
 
     public boolean hasPermission(Permission permission) {
+<<<<<<< HEAD
         return true; // Founder has all permissions
     }
 
+=======
+        // Founder has all permissions active immediately
+        return true;
+    }
+>>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
 }

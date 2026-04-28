@@ -2,11 +2,28 @@ package ticketsystem.DomainLayer;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.CompanyRole;
+<<<<<<< HEAD
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Manager;
 
 public class MembershipDomainService {
+=======
+import ticketsystem.DomainLayer.user.Manager;
+
+public class MembershipDomainService {
+    
+    public CompanyRole assignManagerToCompany(long companyId, Member appointer, Member appointee, Set<Permission> permissions) {
+        if (!(appointer.getRole(companyId) instanceof Owner)) {
+            throw new IllegalArgumentException("Only owners can assign managers.");
+        }
+        if (appointee.getRole(companyId) != null) {
+            throw new IllegalArgumentException("Appointee has already a role in the company.");
+        }
+        CompanyRole managerRole = new Manager(appointee, companyId, permissions, appointer.getId());
+        return managerRole;
+    }
+>>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
 
     public boolean validatePermission(CompanyRole role, Permission permission) {
         
@@ -14,6 +31,7 @@ public class MembershipDomainService {
         if (role == null) {
             return false;
         }
+<<<<<<< HEAD
         
         // 2. Check role status - Only ACTIVE roles can perform actions
         if (role.getStatus() != RoleStatus.ACTIVE) {
@@ -21,6 +39,8 @@ public class MembershipDomainService {
         }
         
         // 3. Polymorphic permission evaluation
+=======
+>>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
         return role.hasPermission(permission); 
     }
 

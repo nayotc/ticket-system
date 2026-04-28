@@ -18,9 +18,15 @@ public abstract class CompanyRole {
         return status;
     }
 
+<<<<<<< HEAD
     public void setStatus(RoleStatus status) {
         this.status = status;
     }
 
     public abstract boolean hasPermission(Permission permission);
 }
+=======
+    public abstract boolean hasPermission(Permission permission);
+
+}
+>>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
