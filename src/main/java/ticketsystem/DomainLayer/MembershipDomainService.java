@@ -248,13 +248,12 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.CompanyRole;
-import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Manager;
 
 public class MembershipDomainService {
     
     public CompanyRole assignManagerToCompany(long companyId, Member appointer, Member appointee, Set<Permission> permissions) {
-        if (!appointer.isOwner(companyId)) {
+        if (!(appointer.getRole(companyId) instanceof Owner)) {
             throw new IllegalArgumentException("Only owners can assign managers.");
         }
         if (appointee.getRole(companyId) != null) {
@@ -269,6 +268,7 @@ public class MembershipDomainService {
         if (role == null) {
             return false;
         }
+<<<<<<< HEAD
         else if (role instanceof Founder) {
             return true;
         }
@@ -282,6 +282,9 @@ public class MembershipDomainService {
             return false;
         }   
 >>>>>>> a90fe66 (Finish use-case assign manager to company without notifications)
+=======
+        return role.hasPermission(permission); 
+>>>>>>> 566afd7 (Add unit tests for Member and CompanyRole classes)
     }
     public Set<Long> getManagementSubTreeMemberIds(Long rootMemberId, Long companyId) {
         Set<Long> result = new HashSet<>();
