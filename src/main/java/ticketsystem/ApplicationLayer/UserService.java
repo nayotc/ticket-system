@@ -51,11 +51,13 @@ public class UserService {
             return null;
         }
         Member member = userRepository.getMemberByUsername(username);
+        //TODO: implement add Guest's active order to Member's active order if exists
+        tokenService.removeActiveSession(sessionToken);
         return tokenService.addActiveSession(member);
     }
 
     public void exit(String sessionToken) {
-
+        
     }
 
 }

@@ -84,6 +84,7 @@ public class UserServiceTest {
         String loginToken = userService.login(sessionToken1, "newUser", "password123");
         // Assert: check that the login token is valid and the user is logged in
         assertNotNull(loginToken, "Login token should not be null");
+        assertFalse(tokenService.isActiveSession(sessionToken1), "Original session token should no longer be active after login");
         assertFalse(loginToken.isEmpty(), "Login token should not be empty");
         assertTrue(tokenService.isActiveSession(loginToken), "Login token should be active");
         assertTrue(tokenService.validateToken(loginToken), "Login token should be valid");
