@@ -8,5 +8,4 @@ public interface IEventRepository {
     void addEvent(Event event);
     long getMaxId();
     
-    
 }

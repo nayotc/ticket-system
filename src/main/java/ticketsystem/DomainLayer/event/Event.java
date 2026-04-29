@@ -1,16 +1,20 @@
 package ticketsystem.DomainLayer.event;
 
 import java.time.LocalDateTime;
+import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventMap;
+import ticketsystem.DomainLayer.event.PurchasePolicy;
+import ticketsystem.DomainLayer.event.DiscountPolicy;
 
 public class Event {
     private final Long id;
     private String name;
     private Long companyId;
-    // member
+    private Long openedBy; // userId of the creator
     private LocalDateTime Date;
     private String location;
     private Long trafficThreshold;
-    private enum eventStatus {ACTIVE, INACTIVE, CANCELLED};
+    private enum eventStatus {DRAFT,ACTIVE, INACTIVE, CANCELLED};
     private eventStatus status;
     private EventCategory category;
     private EventMap map;
@@ -18,18 +22,19 @@ public class Event {
     private DiscountPolicy discountPolicy;
     // waiting queue
     
-    public Event(Long id, String name, Long companyId, LocalDateTime date, String location, Long trafficThreshold, EventCategory category, EventMap map, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
+    public Event(Long id,LocalDateTime date,String name, Long companyId, Long openedBy, String location, Long trafficThreshold, EventCategory category, Pair<Integer, Integer> mapSize) {
         this.id = id;
         this.name = name;
-        this.companyId = companyId;
         this.Date = date;
+        this.companyId = companyId;
+        this.openedBy = openedBy;
         this.location = location;
         this.trafficThreshold = trafficThreshold;
-        this.status = eventStatus.ACTIVE; // Default status
+        this.status = eventStatus.DRAFT; // Default status
         this.category = category;
-        this.map = map;
-        this.purchasePolicy = purchasePolicy;
-        this.discountPolicy = discountPolicy;
+        this.map = new EventMap(mapSize); 
+        this.purchasePolicy = new PurchasePolicy("Default purchase policy");
+        this.discountPolicy = new DiscountPolicy();
     }
 
     public Long getId() {
@@ -44,14 +49,6 @@ public class Event {
         this.name = name;
     }
 
-    public Long getCompanyId() {
-        return companyId;
-    }
-
-    public void setCompanyId(Long companyId) {
-        this.companyId = companyId;
-    }
-
     public LocalDateTime getDate() {
         return Date;
     }
@@ -60,6 +57,18 @@ public class Event {
         Date = date;
     }
 
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
+    }
+
+    public Long getOpenedBy() {
+        return openedBy;
+    }
+    
     public String getLocation() {
         return location;
     }
@@ -114,6 +123,11 @@ public class Event {
 
     public void setDiscountPolicy(DiscountPolicy discountPolicy) {
         this.discountPolicy = discountPolicy;
+    }
+
+    public boolean isSoldOut() {
+        //TODO Implement
+        return false;
     }
 
 }
