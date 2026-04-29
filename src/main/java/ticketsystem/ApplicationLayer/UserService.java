@@ -41,7 +41,7 @@ public class UserService {
         return true;
     }
 
-    public String logIn(String sessionToken, String username, String password) {
+    public String login(String sessionToken, String username, String password) {
         if (!tokenService.validateToken(sessionToken)) {
             System.out.println("Invalid session token");
             return null;
