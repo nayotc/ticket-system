@@ -14,6 +14,7 @@ import org.mockito.MockitoAnnotations;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
+import ticketsystem.DomainLayer.history.PurchasedTicket;
 import ticketsystem.DomainLayer.order.Ticket;
 
 
@@ -44,7 +45,7 @@ public class HistoryServiceTest {
         // 2. user1 is logged in (simulated)
         // 3. purchase history exists for user1
         List<Purchase> fakeHistory = new ArrayList<>();
-        List<Ticket> tickets = new ArrayList<>(); 
+        List<PurchasedTicket> tickets = new ArrayList<>(); 
         
         // Creating a purchase using the 6-parameter constructor:
         // (orderId, tickets, eventName, location, memberId, companyId)

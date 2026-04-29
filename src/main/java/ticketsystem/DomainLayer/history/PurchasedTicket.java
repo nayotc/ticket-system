@@ -64,8 +64,4 @@ public class PurchasedTicket {
     public void setStatus(TicketStatus status) {
         this.status = status;
     }
-    
-    public void setStatusToActive() {
-        this.status = TicketStatus.ACTIVE;
-    }
 }
