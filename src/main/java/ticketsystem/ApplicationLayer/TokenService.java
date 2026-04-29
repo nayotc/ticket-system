@@ -3,7 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
@@ -15,32 +15,74 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.DomainLayer.user.Guest;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.User;
+import ticketsystem.InfrastructureLayer.TokenRepository;
 
 public class TokenService implements ITokenService {
     private final SecretKey key;
     private final long expirationTime = 1000 * 60 * 60; // שעה אחת
+    private ITokenRepository tokenRepository;
 
     public TokenService() {
         this("default_secret_key_for_development_purposes_only_32_chars");
+        this.tokenRepository = new TokenRepository();
     }
 
     @Autowired
     public TokenService(@Value("${jwt.secret}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        this.tokenRepository = new TokenRepository();
+    }
+
+    @Override
+    public String addActiveSession(User user) {
+        if (user instanceof Guest) {
+            String sessionToken = generateNewGuestToken();
+            while (!tokenRepository.addActiveSession(sessionToken, user)) {
+                sessionToken = generateNewGuestToken();
+            }
+            return sessionToken;
+        }
+        if (user instanceof Member member) {
+            String sessionToken = generateNewMemberToken(member.getId());
+            while (!tokenRepository.addActiveSession(sessionToken, user)) {
+                sessionToken = generateNewMemberToken(member.getId());
+            }
+            return sessionToken;
+        }
+        return null;
+    }
+
+    @Override
+    public boolean isActiveSession(String sessionToken) {
+        return tokenRepository.isActiveSession(sessionToken);
+    }
+
+    @Override
+    public int getTotalActiveSessions() {
+        return tokenRepository.getTotalActiveSessions();
+    }
+
+    @Override
+    public void removeActiveSession(String sessionToken) {
+        tokenRepository.removeActiveSession(sessionToken);
     }
 
     @Override
     public String generateNewGuestToken() {
-        String guestId = "GUEST_" + UUID.randomUUID().toString();
+        long guestId = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", "GUEST");
-        return generateToken(claims, guestId);
+        return generateToken(claims, String.valueOf(guestId));
     }
 
     @Override
     public String generateNewMemberToken(Long userId) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", "REGISTERED");
+        claims.put("role", "MEMBER");
         return generateToken(claims, String.valueOf(userId));
     }
 
@@ -66,16 +108,30 @@ public class TokenService implements ITokenService {
     }
 
     @Override
-    public String extractSubject(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
     public String extractRole(String token) {
         return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
+    @Override
     public boolean isGuestToken(String token) {
         return "GUEST".equals(extractRole(token));
+    }
+
+    @Override
+    public boolean isMemberToken(String token) {
+        return "MEMBER".equals(extractRole(token));
+    }
+
+    @Override
+    public Long extractUserId(String token) {
+        String subject = extractSubject(token);
+        if (subject == null || subject.isBlank()) {
+            return null;
+        }
+        return Long.valueOf(subject);
+    }
+    private String extractSubject(String token) {
+        return extractClaim(token, Claims::getSubject);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
