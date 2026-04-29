@@ -55,7 +55,7 @@ public class UserServiceTest {
         executor.shutdown();
 
         assertEquals(numberOfThreads, generatedTokens.size(), "Should generate unique tokens");
-        assertEquals(numberOfThreads, userRepository.getTotalActiveSessions(), "All 100 guests should be saved");
+        assertEquals(numberOfThreads, tokenService.getTotalActiveSessions(), "All 100 guests should be saved");
     }
     @Test
     public void testSignUp_ConcurrentAccess() throws InterruptedException {

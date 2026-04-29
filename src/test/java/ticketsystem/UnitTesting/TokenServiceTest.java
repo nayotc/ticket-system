@@ -37,7 +37,7 @@ public class TokenServiceTest {
         // non-empty string)
         assertNotNull(token, "Generated token should not be null");
         assertFalse(token.isEmpty(), "Generated token should not be empty");
-        assertEquals(String.valueOf(userId), tokenService.extractSubject(token), "Extracted subject should match the user ID");
+        assertEquals(userId, tokenService.extractUserId(token), "Extracted subject should match the user ID");
     }
 
     @Test

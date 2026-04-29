@@ -58,6 +58,7 @@ public class TokenService implements ITokenService {
 
     @Override
     public boolean isActiveSession(String sessionToken) {
+        if (sessionToken == null) return false;
         return tokenRepository.isActiveSession(sessionToken);
     }
 
@@ -68,6 +69,7 @@ public class TokenService implements ITokenService {
 
     @Override
     public void removeActiveSession(String sessionToken) {
+        if (sessionToken == null) return;
         tokenRepository.removeActiveSession(sessionToken);
     }
 
@@ -99,6 +101,7 @@ public class TokenService implements ITokenService {
 
     @Override
     public boolean validateToken(String token) {
+        if (token == null) return false;
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
@@ -109,21 +112,25 @@ public class TokenService implements ITokenService {
 
     @Override
     public String extractRole(String token) {
+        if (token == null) return null;
         return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
     @Override
     public boolean isGuestToken(String token) {
+        if (token == null) return false;
         return "GUEST".equals(extractRole(token));
     }
 
     @Override
     public boolean isMemberToken(String token) {
+        if (token == null) return false;
         return "MEMBER".equals(extractRole(token));
     }
 
     @Override
     public Long extractUserId(String token) {
+        if (token == null) return null;
         String subject = extractSubject(token);
         if (subject == null || subject.isBlank()) {
             return null;
@@ -131,15 +138,18 @@ public class TokenService implements ITokenService {
         return Long.valueOf(subject);
     }
     private String extractSubject(String token) {
+        if (token == null) return null;
         return extractClaim(token, Claims::getSubject);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        if (token == null) return null;
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
     private Claims extractAllClaims(String token) {
+        if (token == null) return null;
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()

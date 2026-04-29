@@ -37,7 +37,7 @@ public class UserService {
         userRepository.addRegisteredMember(newId, new Member(newId, username), password);
     }
 
-    public String logIn(String sessionToken, String username, String password) {
+    public String login(String sessionToken, String username, String password) {
         if (!tokenService.validateToken(sessionToken)) {
             System.out.println("Invalid session token");
             return null;
