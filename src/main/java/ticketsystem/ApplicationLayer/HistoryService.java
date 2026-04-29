@@ -5,8 +5,8 @@ import java.util.List;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
-import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.history.Purchase;
+import ticketsystem.DomainLayer.history.PurchasedTicket;
 
 public class HistoryService {
     private final IHistoryRepository historyRepository;
@@ -16,18 +16,16 @@ public class HistoryService {
     }
     
     public void addPurchase(OrderDTO order) {
-        List<Ticket> tickets = new ArrayList<>();
+        List<PurchasedTicket> tickets = new ArrayList<>();
         
         for (TicketDTO tDto : order.getTickets()) {
-            Ticket ticket = new Ticket(
+            PurchasedTicket ticket = new PurchasedTicket(
                 tDto.getTicketId(),
                 tDto.getEventId(),
                 tDto.getRow(),
                 tDto.getChair(),
                 tDto.getPrice()
             );
-        
-        ticket.setStatusToActive();;
         
         tickets.add(ticket);
     }
@@ -40,7 +38,7 @@ public class HistoryService {
         List<OrderDTO> historyDtoList = new ArrayList<>();
         for (Purchase p : purchases) {
             List<TicketDTO> ticketDtos = new ArrayList<>();
-            for (Ticket t : p.getTickets()) {
+            for (PurchasedTicket t : p.getTickets()) {
                 ticketDtos.add(new TicketDTO(
                     t.getTicketId(),
                     t.getEventId(),

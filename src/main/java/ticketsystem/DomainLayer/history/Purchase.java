@@ -3,25 +3,28 @@ package ticketsystem.DomainLayer.history;
 import java.util.ArrayList;
 import java.util.List;
 
-import ticketsystem.DomainLayer.order.Order;
-import ticketsystem.DomainLayer.order.Ticket;
 
-public class Purchase extends Order {
+public class Purchase {
+    private int purchaseId;
+    private List<PurchasedTicket> tickets;
     private String eventName;
     private String location;
     private int memberId;
     private int companyId;
 
-    public Purchase(int orderId, List<Ticket> tickets, String eventName, String location, int memberId, int companyId) {
-        super(orderId);
+    public Purchase(int purchaseId, List<PurchasedTicket> tickets, String eventName, String location, int memberId, int companyId) {
+        this.purchaseId = purchaseId;
         this.tickets = new ArrayList<>(tickets);
         this.eventName = eventName;
         this.location = location;
         this.memberId = memberId;
         this.companyId = companyId;
     }
-    public void setId(int orderId) {
-        this.orderId = orderId;
+    public int getId() {
+        return purchaseId;
+    }
+    public void setId(int purchaseId) {
+        this.purchaseId = purchaseId;
     }
     public Integer getMemberId() {
         return memberId;
@@ -35,7 +38,7 @@ public class Purchase extends Order {
     public String getLocation() {
         return location;
     }
-    public List<Ticket> getTickets() {
+    public List<PurchasedTicket> getTickets() {
         return new ArrayList<>(tickets);
     }
     

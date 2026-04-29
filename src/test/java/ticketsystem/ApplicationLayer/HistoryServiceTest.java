@@ -13,7 +13,7 @@ import org.mockito.MockitoAnnotations;
 
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
-import ticketsystem.DomainLayer.order.Purchase;
+import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.order.Ticket;
 
 

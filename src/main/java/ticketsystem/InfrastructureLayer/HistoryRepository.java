@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
-import ticketsystem.DomainLayer.order.Purchase;
+import ticketsystem.DomainLayer.history.Purchase;
 
 public class HistoryRepository implements IHistoryRepository {
     private int counter;
