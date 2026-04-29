@@ -277,4 +277,34 @@ public class UserServiceTest {
         assertFalse(result2, "Updating member password should fail when the token does not belong to the user");
     }
 
+
+    @Test
+    void TestSuccessfulExitByGuest_Acceptance() {
+        // Arrange: simulate a guest visiting the system and signing up
+        String sessionToken = userService.visitSystem();
+
+        // Act: exit the system
+        userService.exit(sessionToken);
+
+        // Assert: check that the session token is no longer active
+        assertFalse(tokenService.isActiveSession(sessionToken), "Session token should not be active after exit");
+        assertFalse(tokenService.validateToken(sessionToken), "Session token should not be valid after exit");
+    }
+
+    @Test
+    void TestSuccessfulExitByMember_Acceptance() {
+        // Arrange: simulate a member visiting the system and signing up
+        String sessionToken = userService.visitSystem();
+        userService.signUp(sessionToken, "newUser", "password123");
+        String loginToken = userService.login(sessionToken, "newUser", "password123");
+
+        // Act: exit the system
+        userService.exit(loginToken);
+
+        // Assert: check that the session token is no longer active
+        assertFalse(tokenService.isActiveSession(loginToken), "Session token should not be active after exit");
+        assertFalse(tokenService.isActiveSession(sessionToken), "Session token should not be active after exit");
+        assertFalse(tokenService.validateToken(loginToken), "Login token should not be valid after exit");
+        assertFalse(tokenService.validateToken(sessionToken), "Session token should not be valid after exit");
+    }
 }
