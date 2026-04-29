@@ -1,7 +1,10 @@
-package ticketsystem.DomainLayer.order;
+package ticketsystem.DomainLayer.history;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import ticketsystem.DomainLayer.order.Order;
+import ticketsystem.DomainLayer.order.Ticket;
 
 public class Purchase extends Order {
     private String eventName;

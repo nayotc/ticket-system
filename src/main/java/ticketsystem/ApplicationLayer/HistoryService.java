@@ -2,12 +2,11 @@ package ticketsystem.ApplicationLayer;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
-import ticketsystem.DomainLayer.order.Purchase;
 import ticketsystem.DomainLayer.order.Ticket;
+import ticketsystem.DomainLayer.history.Purchase;
 
 public class HistoryService {
     private final IHistoryRepository historyRepository;

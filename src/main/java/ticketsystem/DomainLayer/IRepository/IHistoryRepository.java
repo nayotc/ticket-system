@@ -2,7 +2,7 @@ package ticketsystem.DomainLayer.IRepository;
 
 import java.util.List;
 
-import ticketsystem.DomainLayer.order.Purchase;
+import ticketsystem.DomainLayer.history.Purchase;
 
 public interface IHistoryRepository {
     void addPurchase(Purchase purchase); 

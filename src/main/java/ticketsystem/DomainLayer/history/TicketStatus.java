@@ -1,7 +1,6 @@
-package ticketsystem.DomainLayer.order;
+package ticketsystem.DomainLayer.history;
 
 public enum TicketStatus {
-    PENDING,
     ACTIVE,
     CANCELED,
     USED,
