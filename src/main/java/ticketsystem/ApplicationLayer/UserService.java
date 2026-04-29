@@ -41,8 +41,17 @@ public class UserService {
         return true;
     }
 
-    public void logIn(String sessionToken, String username, String password) {
-
+    public String logIn(String sessionToken, String username, String password) {
+        if (!tokenService.validateToken(sessionToken)) {
+            System.out.println("Invalid session token");
+            return null;
+        }
+        if (!userRepository.isUserDetailsCorrect(username, password)) {
+            System.out.println("User Details are incorrect");
+            return null;
+        }
+        Member member = userRepository.getMemberByUsername(username);
+        return tokenService.addActiveSession(member);
     }
 
     public void exit(String sessionToken) {
