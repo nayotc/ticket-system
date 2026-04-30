@@ -88,6 +88,41 @@ public class ReservationService {
         return reservation;
     }
 
+    //UC 2.7
+    public ActiveOrder viewActiveOrder(String token, int eventId) {
+        try{
+            OrderOwner owner = getOrderOwnerFromToken(token);
+            ActiveOrder order = getExistingOrder(owner, eventId);
+            Event event = getEvent(eventId);
+            getExistingReservation(order, event);
+            return order;
+        }
+        catch (Exception e) {
+            System.err.println("Error in viewActiveOrder: " + e.getMessage());
+            throw e;
+        }
+  
+    }
+
+    public ActiveOrder removeTicketFromActiveOrder(String token, int eventId, int ticketId) {
+        try{
+        OrderOwner owner = getOrderOwnerFromToken(token);
+        ActiveOrder order = getExistingOrder(owner, eventId);
+        Event event = getEvent(eventId);
+        
+        Reservation reservation = getExistingReservation(order, event);
+
+        order.deleteTicket(ticketId);
+        saveAll(reservation, order);
+        return order;
+        }
+        catch (Exception e) {
+            System.err.println("Error in removeTicketFromActiveOrder: " + e.getMessage());
+            throw e;
+        }
+
+    }
+
 
 //helper method to extract userId from token and validate it
 
@@ -121,11 +156,17 @@ public class ReservationService {
                 }
                 return reservation;
     }
-
+    //with event and order and reservation
     private void saveAll(Reservation reservation, ActiveOrder order, Event event) {
         reservationRepository.saveReservation(reservation);
         orderRepository.updateOrder(order);
         eventRepository.updateEvent(event);
+    }
+
+    //with reservation and order
+    private void saveAll(Reservation reservation, ActiveOrder order) {
+        reservationRepository.saveReservation(reservation);
+        orderRepository.updateOrder(order);
     }
 
 
