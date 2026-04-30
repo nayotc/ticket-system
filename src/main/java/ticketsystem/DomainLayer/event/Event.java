@@ -18,7 +18,7 @@ public class Event {
     private EventMap map;
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
-    private AtomicInteger activeReservationsCount; // for load management and virtual queue
+    private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
 
     public Event(long id, String name, LocalDateTime date, String location, long trafficThreshold, EventCategory category, EventMap map, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
         this.id = id;
@@ -30,7 +30,6 @@ public class Event {
         this.map = map;
         this.purchasePolicy = purchasePolicy;
         this.discountPolicy = discountPolicy;
-        this.activeReservationsCount = new AtomicInteger(0);
     }
 
     public long getId() {
@@ -118,20 +117,6 @@ public class Event {
 
     public int getActiveReservationsCount() {
         return activeReservationsCount.get();
-    }
-
-    // for generaitng "dummy" events for the tests of load and queue processing
-    public Event(long id, String name, long threshold) {
-        this.id = id;
-        this.name = name;
-        this.trafficThreshold = threshold;
-        this.Date = null;
-        this.location = null;
-        this.category = null;
-        this.map = null;
-        this.purchasePolicy = null;
-        this.discountPolicy = null;
-        this.activeReservationsCount = new AtomicInteger(0);
     }
 
 }
