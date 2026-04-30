@@ -28,7 +28,7 @@ public class ReservationService {
 
     }
 
-    public void reserveSeatTicket(String token, int eventId, int row, int chair) {
+    public void selectSeatTicket(String token, int eventId, int row, int chair) {
         int userId = getUserIdFromToken(token);
         ActiveOrder order = getOrCreateOrder(userId, eventId);
         Event event = getEvent(eventId);        
@@ -40,7 +40,7 @@ public class ReservationService {
         eventRepository.updateEvent(event);
     }
 
-    public void reserveStandingTicket(String token, int eventId) {
+    public void selecttandingTicket(String token, int eventId) {
         int userId = getUserIdFromToken(token);
 
         ActiveOrder order = getOrCreateOrder(userId, eventId);
