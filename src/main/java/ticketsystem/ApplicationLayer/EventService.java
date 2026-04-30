@@ -58,7 +58,7 @@ public class EventService {
             }
             // main scenario: create and add event
             Long userId = Long.valueOf(tokenService.extractSubject(sessionId));  // TODO: remove casting
-            Long eventId = eventRepository.getMaxId();
+            Long eventId = eventRepository.getNextId();
             Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category, mapSize);
             eventRepository.addEvent(event);
             // logger.servere("Event created successfully: " + event.getName());

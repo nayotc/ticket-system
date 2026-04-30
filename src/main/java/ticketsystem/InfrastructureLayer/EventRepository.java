@@ -7,7 +7,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
 
 public class EventRepository implements IEventRepository {
-    private Long maxId = 1L;
+    private Long currentId = 1L;
     private final ConcurrentHashMap<Long, Event> eventStorage = new ConcurrentHashMap<>();
 
     public void addEvent(Event event) {
@@ -15,10 +15,10 @@ public class EventRepository implements IEventRepository {
         eventStorage.put(event.getId(), event);
     }
 
-    public long getMaxId() {
-        Long currentMaxId = maxId;
-        maxId++;
-        return currentMaxId;
+    public long getNextId() {
+        Long nextId = currentId;
+        currentId++;
+        return nextId;
     }
 
     

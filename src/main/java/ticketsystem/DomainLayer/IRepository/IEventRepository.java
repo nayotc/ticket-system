@@ -6,6 +6,6 @@ import ticketsystem.DomainLayer.event.Event;
 
 public interface IEventRepository {
     void addEvent(Event event);
-    long getMaxId();
+    long getNextId();
     
 }

@@ -1,7 +1,10 @@
 package ticketsystem.UnitTesting;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.EventService;
@@ -9,6 +12,7 @@ import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.MembershipDomainService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -17,29 +21,60 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
+
 public class EventServiceTest {
     private IEventRepository mockEventRepository;
-    private EventService mockEventService;
+    private EventService EventService;
     private ITokenService mockTokenService;
-    private MembershipService mockMembershipService;
+    private MembershipDomainService mockMembershipDomainService;
 
-    @Test
-    void TestInsertEvent_returnValidTokenAndAddOnce() {
-        // Arrange: set up the mock behavior
-        // Create a mock instance of the repository to isolate the service logic
+    @BeforeEach
+    void setUp() {
         mockEventRepository = mock(IEventRepository.class);
         mockTokenService = mock(ITokenService.class);
-        mockEventService = new EventService(mockEventRepository, mockTokenService);
-        mockMembershipService = mock(MembershipService.class);
-        when(mockMembershipService.validatePermission(anyString(), any(Long.class), anyString())).thenReturn(true);
-        when(mockTokenService.validateToken(anyString())).thenReturn(true);
-        when(mockTokenService.extractSubject(anyString())).thenReturn(String.valueOf(1L));  // TODO: remove casting
-        when(mockEventRepository.getMaxId()).thenReturn(1L);
-        EventCategory category = EventCategory.CONCERT;
-        // Act: invoke the method under test
-        mockEventService.insertEvent("validSessionId", "Test Event", 1L, null, "Test Location", 100L, category, new Pair<>(10, 10));
+        mockMembershipDomainService = mock(MembershipDomainService.class);
 
-        // Assert:
+        EventService = new EventService(
+                mockEventRepository,
+                mockTokenService,
+                mockMembershipDomainService
+        );
+    }
+
+    @Test
+    void GivenValidTokenAndPermission_WhenInsertEvent_ThenAddEventOnce() {
+        // Arrange
+        String sessionId = "validSessionId";
+        Long companyId = 1L;
+
+        when(mockTokenService.validateToken(sessionId)).thenReturn(true);
+        when(mockTokenService.extractSubject(sessionId)).thenReturn("1");
+
+        when(mockMembershipDomainService.validatePermission(
+                sessionId,
+                companyId,
+                "event:create"
+        )).thenReturn(true);
+
+        when(mockEventRepository.getNextId()).thenReturn(1L);
+
+        LocalDateTime futureDate = LocalDateTime.now().plusDays(1);
+
+        // Act + Assert
+        assertDoesNotThrow(() ->
+                EventService.insertEvent(
+                        sessionId,
+                        "Test Event",
+                        companyId,
+                        futureDate,
+                        "Test Location",
+                        100L,
+                        EventCategory.CONCERT,
+                        new Pair<>(10, 10)
+                )
+        );
+
         verify(mockEventRepository, times(1)).addEvent(any());
     }
 
