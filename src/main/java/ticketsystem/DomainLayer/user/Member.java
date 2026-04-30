@@ -1,24 +1,39 @@
 package ticketsystem.DomainLayer.user;
+<<<<<<< HEAD
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+=======
+>>>>>>> 0dbf918 (Refactor MembershipRepository and CompanyRole)
 
 public class Member extends User {
 
     private final Long memberId;
     private String userName;
+<<<<<<< HEAD
     private ConcurrentMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
+=======
+    private String password;
+>>>>>>> 0dbf918 (Refactor MembershipRepository and CompanyRole)
 
     public Member(Long memberId, String userName) {
         this.memberId = memberId;
         this.userName = userName;
+<<<<<<< HEAD
         this.myRoles = new ConcurrentHashMap<Long, CompanyRole>();
     }
 
     public Long getId() {
         return this.memberId;
+=======
+        this.password = password;
+    }
+
+    public long getId() {
+        return this.id;
+>>>>>>> 0dbf918 (Refactor MembershipRepository and CompanyRole)
     }
 
     public String getUserName() {
@@ -28,6 +43,7 @@ public class Member extends User {
         this.userName = userName;
     }
 
+<<<<<<< HEAD
     public List<CompanyRole> getAllRoles() {
         return myRoles.values().stream().collect(Collectors.toList());
     }
@@ -67,4 +83,6 @@ public class Member extends User {
         }
     }
 
+=======
+>>>>>>> 0dbf918 (Refactor MembershipRepository and CompanyRole)
 }

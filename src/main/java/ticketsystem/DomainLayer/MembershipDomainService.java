@@ -24,12 +24,12 @@ import ticketsystem.DomainLayer.user.Manager;
 
 public class MembershipDomainService {
     
-    public CompanyRole assignManagerToCompany(long companyId, Member appointer, Member appointee, Set<Permission> permissions) {
+    public CompanyRole assignManagerToCompany(long companyId, Member appointer, Member appointee, Set<Permission> permissions) throws Exception {
         if (!(appointer.getRole(companyId) instanceof Owner)) {
-            throw new IllegalArgumentException("Only owners can assign managers.");
+            throw new Exception("Only owners can assign managers.");
         }
         if (appointee.getRole(companyId) != null) {
-            throw new IllegalArgumentException("Appointee has already a role in the company.");
+            throw new Exception("Appointee has already a role in the company.");
         }
         CompanyRole managerRole = new Manager(appointee, companyId, permissions, appointer.getId());
         return managerRole;
@@ -54,7 +54,7 @@ public class MembershipDomainService {
             // TODO: save changes to the repository
         }
         else {
-            throw new IllegalArgumentException("Invalid ownership resignation.");
+            throw new Exception("Invalid ownership resignation.");
         }
     }
 
@@ -155,16 +155,13 @@ public class MembershipDomainService {
         if (role == null) {
             return false;
         }
-
         // Alternative Flow: Owner is the Founder
         if (role instanceof Founder) {
             return false;
         }
-
         if (!(role instanceof Owner)) {
             return false;
         }
-
         return true;
 >>>>>>> e7f5697 (starting to implement giveup ownership use case)
     }

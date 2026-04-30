@@ -89,6 +89,8 @@ public class MembershipService {
         membership.resignOwnershipFromCompany(resigningOwner, company);
     }
 
+    private 
+
     public boolean validatePermission(String sessionToken, long companyId, Permission requiredPermission) {
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
