@@ -12,6 +12,6 @@ public interface IWaitingQueueRepository {
 
     void removeUserFromQueue(long eventId, String sessionId);
 
-    public List<String> clearQueue(int eventId);
+    public List<String> clearQueue(long eventId);
 
 }

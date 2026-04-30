@@ -87,7 +87,7 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
     }
 
     @Override
-    public List<String> clearQueue(int eventId) {
+    public List<String> clearQueue(long eventId) {
         Queue<String> queue = eventQueues.remove(eventId);
         Set<String> sessionTracker = queuedSessionsTracker.remove(eventId);
 
