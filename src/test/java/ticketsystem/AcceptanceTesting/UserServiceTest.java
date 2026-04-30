@@ -10,17 +10,21 @@ import org.junit.jupiter.api.Test;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class UserServiceTest {
     private UserRepository userRepository;
     private UserService userService;
     private ITokenService tokenService;
+    private ITokenRepository tokenRepository;
 
     @BeforeEach
     public void setup() {
         userRepository = new UserRepository();
-        tokenService = new TokenService();
+        tokenRepository = new TokenRepository();
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository); 
         userService = new UserService(userRepository, tokenService);
     }
 
@@ -32,8 +36,8 @@ public class UserServiceTest {
         // Assert: check that the session token is valid and the guest is added
         assertNotNull(sessionToken, "Session token should not be null");
         assertFalse(sessionToken.isEmpty(), "Session token should not be empty");
-        assertFalse(userRepository.isActiveSession("invalid-token"), "Invalid token should not be active");
-        assertTrue(userRepository.isActiveSession(sessionToken), "Valid token should be active");
+        assertFalse(tokenService.isActiveSession("invalid-token"), "Invalid token should not be active");
+        assertTrue(tokenService.isActiveSession(sessionToken), "Valid token should be active");
 
     }
 
