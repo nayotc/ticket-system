@@ -36,7 +36,7 @@ public class MembershipRepository implements IMembershipRepository {
         return instance;
     }
 
-    private String generateKey(long companyId, long memberId) {
+    private String generateKey(Long companyId, Long memberId) {
         return companyId + "_" + memberId;
     }
 
