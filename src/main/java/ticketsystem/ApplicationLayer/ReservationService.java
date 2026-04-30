@@ -65,31 +65,30 @@ public class ReservationService {
         }
     }
 
-    public void expireReservation(String token, int eventId) {
-        try {
-            OrderOwner owner = getOrderOwnerFromToken(token);
+    // public void expireReservation(String token, int eventId) {
+    //     try {
+    //         OrderOwner owner = getOrderOwnerFromToken(token);
 
-            ActiveOrder order = getExistingOrder(owner, eventId);
-            Event event = getEvent(eventId);
+    //         ActiveOrder order = getExistingOrder(owner, eventId);
+    //         Event event = getEvent(eventId);
 
-            Reservation reservation =
-                    reservationRepository.getReservationByOrderId(order.getOrderId());
+    //         Reservation reservation =reservationRepository.getReservationByOrderId(order.getOrderId());
 
-            if (reservation == null) {
-                return;
-            }
+    //         if (reservation == null) {
+    //             return;
+    //         }
 
-            reservation.expire();
+    //         reservation.expire();
 
-            reservationRepository.deleteReservationByOrderId(order.getOrderId());
-            orderRepository.updateOrder(order);
-            eventRepository.updateEvent(event);
+    //         reservationRepository.deleteReservationByOrderId(order.getOrderId());
+    //         orderRepository.updateOrder(order);
+    //         eventRepository.updateEvent(event);
 
-        } catch (Exception e) {
-            System.err.println("Error in expireReservation: " + e.getMessage());
-            throw e;
-        }
-    }
+    //     } catch (Exception e) {
+    //         System.err.println("Error in expireReservation: " + e.getMessage());
+    //         throw e;
+    //     }
+    // }
 
     //get existing reservation and check if it's expired
     private Reservation getExistingReservation(ActiveOrder order, Event event) {
@@ -131,6 +130,14 @@ public class ReservationService {
                         reservationRepository.getReservationByOrderId(order.getOrderId());
                 if (reservation == null) {
                     reservation = new Reservation(
+                            reservationRepository.generateNextId(),
+                            order,event);}
+                else if(reservation.isExpired()) {
+                    reservation.expire();
+                    reservationRepository.deleteReservationByOrderId(order.getOrderId());
+                    orderRepository.updateOrder(order);
+                    eventRepository.updateEvent(event);
+                     reservation = new Reservation(
                             reservationRepository.generateNextId(),
                             order,
                             event
