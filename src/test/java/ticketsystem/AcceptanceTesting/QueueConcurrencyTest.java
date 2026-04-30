@@ -1,8 +1,13 @@
 package ticketsystem.AcceptanceTesting;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,7 +17,10 @@ import ticketsystem.ApplicationLayer.NotificationsService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.DomainLayer.event.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 
 public class QueueConcurrencyTest {
@@ -26,7 +34,7 @@ public class QueueConcurrencyTest {
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
         WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService);
-        Event event = new Event(99, "Tomorrowland", 100);
+        var event = new Event(1L, "Music Festival1", LocalDateTime.now(), "Central Park", 100L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
         fakeEventRepo.addEvent(event);
 
         int numberOfUsers = 1000;
@@ -34,13 +42,16 @@ public class QueueConcurrencyTest {
         CountDownLatch latch = new CountDownLatch(1);
         CountDownLatch completionLatch = new CountDownLatch(numberOfUsers);
 
+        // Added list to track futures
+        List<Future<?>> futures = new ArrayList<>();
+
         AtomicInteger approvedCount = new AtomicInteger(0);
         AtomicInteger queuedCount = new AtomicInteger(0);
 
         // create 1000 tasks simulating users trying to reserve at the same time
         for (int i = 0; i < numberOfUsers; i++) {
             final String sessionId = "User-" + i;
-            executor.submit(() -> {
+            futures.add(executor.submit(() -> {
                 try {
                     latch.await();
 
@@ -56,13 +67,22 @@ public class QueueConcurrencyTest {
                 } finally {
                     completionLatch.countDown();
                 }
-            });
+            }));
         }
 
         latch.countDown(); //release all 1000 threads to start processing
 
         completionLatch.await(); //until all threads have finished
         executor.shutdown();
+
+        // Check for any exceptions that occurred inside the threads
+        for (Future<?> future : futures) {
+            try {
+                future.get();
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         System.out.println("Approved: " + approvedCount.get());
         System.out.println("Queued: " + queuedCount.get());
@@ -84,7 +104,7 @@ public class QueueConcurrencyTest {
         WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService);
 
         // create an event that is already at full capacity
-        Event event = new Event(99, "Tomorrowland", 100);
+        var event = new Event(1L, "Music Festival2", LocalDateTime.now(), "Central Park", 100L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
         for (int i = 0; i < 100; i++) {
             event.incrementActiveReservations();
         }
@@ -96,10 +116,11 @@ public class QueueConcurrencyTest {
         CountDownLatch latch = new CountDownLatch(1);
         CountDownLatch completionLatch = new CountDownLatch(numberOfDuplicates);
 
+        List<Future<?>> futures = new ArrayList<>();
         final String duplicateSession = "Sneaky-User";
 
         for (int i = 0; i < numberOfDuplicates; i++) {
-            executor.submit(() -> {
+            futures.add(executor.submit(() -> {
                 try {
                     latch.await();
                     queueService.tryReserve(99, duplicateSession);
@@ -108,13 +129,21 @@ public class QueueConcurrencyTest {
                 } finally {
                     completionLatch.countDown();
                 }
-            });
+            }));
         }
 
         latch.countDown();
         completionLatch.await();
         executor.shutdown();
 
+        // Check for any exceptions that occurred inside the threads
+        for (Future<?> future : futures) {
+            try {
+                future.get();
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
         // ensure that only 1 entry for this sessionId is in the queue, not 100
         assertEquals(1, queueRepo.getQueueSize(99), "Duplicate requests should result in exactly 1 entry in the queue.");
     }
@@ -129,7 +158,7 @@ public class QueueConcurrencyTest {
         WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService);
 
         // full event with 100 active reservations and 200 people in the queue
-        Event event = new Event(99, "Tomorrowland", 100);
+        var event = new Event(1L, "Music Festival3", LocalDateTime.now(), "Central Park", 100L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
         for (int i = 0; i < 100; i++) {
             event.incrementActiveReservations();
         }
@@ -146,9 +175,11 @@ public class QueueConcurrencyTest {
         CountDownLatch latch = new CountDownLatch(1);
         CountDownLatch completionLatch = new CountDownLatch(numberOfReleases);
 
+        List<Future<?>> futures = new ArrayList<>();
+
         for (int i = 0; i < numberOfReleases; i++) {
             final String finishingUser = "Active-User-" + i;
-            executor.submit(() -> {
+            futures.add(executor.submit(() -> {
                 try {
                     latch.await();
                     // every time a spot is released, the next user in the queue should be approved and take that spot, so the event should remain at full capacity
@@ -158,12 +189,21 @@ public class QueueConcurrencyTest {
                 } finally {
                     completionLatch.countDown();
                 }
-            });
+            }));
         }
 
         latch.countDown();
         completionLatch.await();
         executor.shutdown();
+
+        // Check for any exceptions that occurred inside the threads
+        for (Future<?> future : futures) {
+            try {
+                future.get();
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         assertEquals(100, event.getActiveReservationsCount(), "Event should be instantly refilled to max capacity.");
 

@@ -71,6 +71,7 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
             }
             if (queue.isEmpty()) { // clean up empty queue to save memory
                 eventQueues.remove(eventId);
+                queuedSessionsTracker.remove(eventId);
             }
 
             return approvedUsers;
