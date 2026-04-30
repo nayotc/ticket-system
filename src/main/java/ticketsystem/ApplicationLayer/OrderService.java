@@ -14,17 +14,29 @@ public class OrderService {
     }
 
     public ActiveOrder getOrCreateActiveOrder(String token, int eventId) {
-        int userId = getUserIdFromToken(token);
+        try {
+            int userId = getUserIdFromToken(token);
+            ActiveOrder order =
+                    orderRepository.getActiveOrderByUserIdAndEventId(userId, eventId);
 
-        ActiveOrder order =
-                orderRepository.getActiveOrderByUserIdAndEventId(userId, eventId);
+            if (order == null) {
+                int orderId = orderRepository.getNextId();
+                order = new ActiveOrder(orderId, userId, eventId);
+                orderRepository.addOrder(order);
+            }
 
-        if (order == null) {
-            int orderId = orderRepository.getNextId();
-            order = new ActiveOrder(orderId, userId, eventId);
-            orderRepository.addOrder(order);
+            return order;
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Invalid token");
         }
-
-        return order;
-        }
+    
     }
+
+       private int getUserIdFromToken(String token) {
+        if (!tokenService.validateToken(token)) {
+            throw new IllegalArgumentException("Invalid or expired token");
+        }
+        String subject = tokenService.extractSubject(token);
+        return Integer.parseInt(subject);
+    }
+}

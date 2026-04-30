@@ -29,51 +29,66 @@ public class ReservationService {
     }
 
     public void selectSeatTicket(String token, int eventId, int row, int chair) {
-        int userId = getUserIdFromToken(token);
-        ActiveOrder order = getOrCreateOrder(userId, eventId);
-        Event event = getEvent(eventId);        
-        Reservation reservation = getOrCreateReservation(order, event);
-        reservation.reserveSeatTicket(eventId, row, chair);
+            try {
+                int userId = getUserIdFromToken(token);
 
-        reservationRepository.saveReservation(reservation);
-        orderRepository.updateOrder(order);
-        eventRepository.updateEvent(event);
+                ActiveOrder order = getOrCreateOrder(userId, eventId);
+                Event event = getEvent(eventId);
+                Reservation reservation = getOrCreateReservation(order, event);
+
+                reservation.selectSeatTicket(eventId, row, chair);
+
+                saveAll(reservation, order, event);
+
+            } catch (Exception e) {
+                System.err.println("Error in selectSeatTicket: " + e.getMessage());
+                throw e;
+            }
     }
 
-    public void selecttandingTicket(String token, int eventId) {
-        int userId = getUserIdFromToken(token);
+    public void selectStandingTicket(String token, int eventId) {
+        try {
+            int userId = getUserIdFromToken(token);
 
-        ActiveOrder order = getOrCreateOrder(userId, eventId);
-        Event event = getEvent(eventId);
+            ActiveOrder order = getOrCreateOrder(userId, eventId);
+            Event event = getEvent(eventId);
+            Reservation reservation = getOrCreateReservation(order, event);
 
-        Reservation reservation = getOrCreateReservation(order, event);
-        double price = event.getStandingArea().getPrice();
+            double price = event.getStandingArea().getPrice();
+            reservation.selectStandingTicket(eventId, price);
 
-        reservation.reserveStandingTicket(eventId, price);
+            saveAll(reservation, order, event);
 
-        reservationRepository.saveReservation(reservation);
-        orderRepository.updateOrder(order);
-        eventRepository.updateEvent(event);
+        } catch (Exception e) {
+            System.err.println("Error in selectStandingTicket: " + e.getMessage());
+            throw e;
+        }
     }
 
     public void expireReservation(String token, int eventId) {
-        int userId = getUserIdFromToken(token);
+        try {
+            int userId = getUserIdFromToken(token);
 
-        ActiveOrder order = getExistingOrder(userId, eventId);
-        Event event = getEvent(eventId);
+            ActiveOrder order = getExistingOrder(userId, eventId);
+            Event event = getEvent(eventId);
 
-        Reservation reservation =
-                reservationRepository.getReservationByOrderId(order.getOrderId());
+            Reservation reservation =
+                    reservationRepository.getReservationByOrderId(order.getOrderId());
 
-        if (reservation == null) {
-            return;
+            if (reservation == null) {
+                return;
+            }
+
+            reservation.expire();
+
+            reservationRepository.deleteReservationByOrderId(order.getOrderId());
+            orderRepository.updateOrder(order);
+            eventRepository.updateEvent(event);
+
+        } catch (Exception e) {
+            System.err.println("Error in expireReservation: " + e.getMessage());
+            throw e;
         }
-
-        reservation.expire();
-
-        reservationRepository.deleteReservationByOrderId(order.getOrderId());
-        orderRepository.updateOrder(order);
-        eventRepository.updateEvent(event);
     }
 
     //get existing reservation and check if it's expired
@@ -104,15 +119,12 @@ public class ReservationService {
         if (!tokenService.validateToken(token)) {
             throw new IllegalArgumentException("Invalid or expired token");
         }
-
         String subject = tokenService.extractSubject(token);
-
         return Integer.parseInt(subject);
     }
 
-        private Event getEvent(int eventId) {
+    private Event getEvent(int eventId) {
         Event event = eventRepository.getEventById(eventId);
-
         if (event == null) {
             throw new IllegalArgumentException("Event not found");
         }
@@ -120,17 +132,25 @@ public class ReservationService {
         return event;
     }
 
-    private Reservation getOrCreateReservation(ActiveOrder order, Event event) {
-        Reservation reservation =
-                reservationRepository.getReservationByOrderId(order.getOrderId());
-
-        if (reservation == null || reservation.isExpired()) {
-            reservation = new Reservation(
-                    reservationRepository.generateNextId(),order, event);
-        }
-
-        return reservation;
+        private Reservation getOrCreateReservation(ActiveOrder order, Event event) {
+                Reservation reservation =
+                        reservationRepository.getReservationByOrderId(order.getOrderId());
+                if (reservation == null) {
+                    reservation = new Reservation(
+                            reservationRepository.generateNextId(),
+                            order,
+                            event
+                    );
+                }
+                return reservation;
     }
+
+    private void saveAll(Reservation reservation, ActiveOrder order, Event event) {
+        reservationRepository.saveReservation(reservation);
+        orderRepository.updateOrder(order);
+        eventRepository.updateEvent(event);
+    }
+
 
         private ActiveOrder getOrCreateOrder(int userId, int eventId) {
         ActiveOrder order =
