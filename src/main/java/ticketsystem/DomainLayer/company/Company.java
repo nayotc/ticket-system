@@ -107,11 +107,11 @@ public class Company {
     // --- Use Cases Logic ---
 
     public void closeOrSuspend(String requestingUser) throws Exception {
-        if (!isFounder(requestingUser)) {
+        if (!isFounder(requestingUser)) { // if not founder - throw exception
             throw new Exception("The system rejects the request due to lack of permissions. Only the Founder can close the company.");
         }
 
-        if (!this.isActive) {
+        if (!this.isActive) { // if the company is already inactive
             throw new Exception("Company is already inactive.");
         }
 
@@ -119,11 +119,11 @@ public class Company {
     }
 
     public void reopenCompany(String requestingUser) throws Exception {
-        if (!isFounder(requestingUser)) {
+        if (!isFounder(requestingUser)) { // if not founder - throw exception
             throw new Exception("The system rejects the request due to lack of permissions. Only the Founder can reopen the company.");
         }
 
-        if (this.isActive) {
+        if (this.isActive) { // if the company is already active
             throw new Exception("The company is already Active. No action needed.");
         }
 
@@ -131,14 +131,14 @@ public class Company {
     }
 
     public String getRolesTreeRepresentation(String requestingUser) throws Exception {
-        if (!isOwner(requestingUser)) {
+        if (!isOwner(requestingUser)) { // if not owner
             throw new Exception("The system rejects the request due to lack of permissions. Only Owners can view the roles tree.");
         }
         
         return this.rolesTree.getStructuredData();
     }
 
-    public void registerNewAppointment(String appointer, String appointee) {
+    public void registerNewAppointment(String appointer, String appointee) { // insert the appointment to the tree
         rolesTree.addAppointment(appointer, appointee);
     }
 }

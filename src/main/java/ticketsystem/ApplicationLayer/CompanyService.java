@@ -12,7 +12,7 @@ public class CompanyService {
         this.tokenService = tokenService;
     }
 
-    private String getRegisteredUserId(String token) throws Exception {
+    private String getRegisteredUserId(String token) throws Exception { // gets a token and returns user name
         if (!tokenService.validateToken(token)) {
             throw new Exception("Error: Invalid or expired session token.");
         }
@@ -28,7 +28,6 @@ public class CompanyService {
 
     /**
      * Use Case 3.2: Create a production company.
-     * כעת מחזיר long (את ה-ID המספרי של החברה שנוצרה)
      */
     public long createProductionCompany(String sessionId, String companyName) throws Exception {
         try {
@@ -56,13 +55,12 @@ public class CompanyService {
 
     /**
      * Use Case 4.13: Close or suspend production company
-     * שונה: מקבל long companyId
      */
     public void closeProductionCompany(String sessionId, long companyId) throws Exception {
         try {
             String userId = getRegisteredUserId(sessionId);
 
-            Company company = companyRepository.findById(companyId)
+            Company company = companyRepository.findById(companyId) // gets the company from the CompanyRepository
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
             company.closeOrSuspend(userId);
@@ -75,13 +73,12 @@ public class CompanyService {
 
     /**
      * Use Case 4.14: Reopen production company
-     * שונה: מקבל long companyId
      */
     public void reopenProductionCompany(String sessionId, long companyId) throws Exception {
         try {
             String userId = getRegisteredUserId(sessionId);
 
-            Company company = companyRepository.findById(companyId)
+            Company company = companyRepository.findById(companyId) // gets the company from the CompanyRepository
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
             company.reopenCompany(userId);
@@ -94,13 +91,12 @@ public class CompanyService {
 
     /**
      * Use Case 4.15: View roles and permissions tree
-     * שונה: מקבל long companyId
      */
     public String viewRolesAndPermissionsTree(String sessionId, long companyId) throws Exception {
         try {
             String userId = getRegisteredUserId(sessionId);
 
-            Company company = companyRepository.findById(companyId)
+            Company company = companyRepository.findById(companyId) // gets the company from the CompanyRepository
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
             return company.getRolesTreeRepresentation(userId);
