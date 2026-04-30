@@ -12,6 +12,8 @@ public class Purchase {
     private int memberId;
     private int companyId;
 
+    public Purchase() {
+    }
     public Purchase(int purchaseId, List<PurchasedTicket> tickets, String eventName, String location, int memberId, int companyId) {
         this.purchaseId = purchaseId;
         this.tickets = new ArrayList<>(tickets);
@@ -20,10 +22,10 @@ public class Purchase {
         this.memberId = memberId;
         this.companyId = companyId;
     }
-    public int getId() {
+    public int getPurchaseId() {
         return purchaseId;
     }
-    public void setId(int purchaseId) {
+    public void setPurchaseId(int purchaseId) {
         this.purchaseId = purchaseId;
     }
     public Integer getMemberId() {

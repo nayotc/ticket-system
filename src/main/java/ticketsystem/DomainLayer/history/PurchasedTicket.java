@@ -9,6 +9,8 @@ public class PurchasedTicket {
     private double price;
     private TicketStatus status;
 
+    public PurchasedTicket() {
+    }
     public PurchasedTicket(int ticketId, int eventId, int row, int chair, double price) {
         this.ticketId = ticketId;
         this.eventId = eventId;

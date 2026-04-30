@@ -1,6 +1,8 @@
 package ticketsystem.ApplicationLayer;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
@@ -48,6 +50,8 @@ public class HistoryServiceTest {
         // --- Given (Arrange) ---
         // 1. Valid token is provided
         when(tokenService.validateToken(validToken)).thenReturn(true);
+        // אנחנו אומרים ל-Mock: "כשמבקשים ממך לחלץ מידע מהטוקן התקין, תחזיר את ה-ID של המשתמש כמחרוזת"
+        when(tokenService.extractSubject(validToken)).thenReturn(String.valueOf(user1Id));
         
         // 2. Purchase history exists for user1
         List<Purchase> fakeHistory = new ArrayList<>();
@@ -61,7 +65,7 @@ public class HistoryServiceTest {
         when(historyRepository.getPurchasesByMemberId(user1Id)).thenReturn(fakeHistory);
 
         // --- When (Act) ---
-        List<OrderDTO> result = historyService.getHistoryForUser(user1Id, validToken);
+        List<OrderDTO> result = historyService.getHistoryForUser( validToken);
 
         // --- Then (Assert) ---
         assertNotNull(result, "The result should not be null");
@@ -83,9 +87,11 @@ public class HistoryServiceTest {
         // --- Given (Arrange) ---
         when(tokenService.validateToken(validToken)).thenReturn(true);
         when(historyRepository.getPurchasesByMemberId(user1Id)).thenReturn(new ArrayList<>());
+        // אנחנו אומרים ל-Mock: "כשמבקשים ממך לחלץ מידע מהטוקן התקין, תחזיר את ה-ID של המשתמש כמחרוזת"
+        when(tokenService.extractSubject(validToken)).thenReturn(String.valueOf(user1Id));  
 
         // --- When (Act) ---
-        List<OrderDTO> result = historyService.getHistoryForUser(user1Id, validToken);
+        List<OrderDTO> result = historyService.getHistoryForUser(validToken);
 
         // --- Then (Assert) ---
         assertNotNull(result, "Result should be an empty list, not null");
@@ -106,7 +112,7 @@ public class HistoryServiceTest {
 
         // --- When & Then (Act & Assert) ---
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            historyService.getHistoryForUser(user1Id, invalidToken);
+            historyService.getHistoryForUser(invalidToken);
         });
         
         assertEquals("Invalid or expired token", exception.getMessage());
@@ -118,41 +124,19 @@ public class HistoryServiceTest {
     /**
      * Add Purchase - Successful Scenario
      */
-    @Test
-    void GivenValidTokenAndOrderDto_WhenAddPurchase_ThenRepositoryAddPurchaseIsCalled() {
-        // --- Given (Arrange) ---
-        when(tokenService.validateToken(validToken)).thenReturn(true);
-        
+ @Test
+    void GivenOrderDTO_WhenOnOrderCompleted_ThenPurchaseIsAdded() {
+        // --- Arrange ---
         List<TicketDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new TicketDTO(10, 20, 1, 1, 150.0, "ACTIVE"));
-        OrderDTO orderDto = new OrderDTO(1, ticketDTOs, "Rock Concert", "Barby", user1Id, 5);
+        OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", user1Id, 5);
+        when(historyRepository.generateNextId()).thenReturn(999);
 
-        // --- When (Act) ---
-        historyService.addPurchase(orderDto, validToken);
+        // --- Act ---
+        historyService.onOrderCompleted(orderDto);
 
-        // --- Then (Assert) ---
-        verify(tokenService, times(1)).validateToken(validToken);
-        // Verifying that the repository method was called exactly once with any Purchase object
+        // --- Assert ---
         verify(historyRepository, times(1)).addPurchase(any(Purchase.class));
-    }
-
-    /**
-     * Add Purchase - Unauthorized Scenario
-     */
-    @Test
-    void GivenInvalidToken_WhenAddPurchase_ThenThrowsIllegalArgumentException() {
-        // --- Given (Arrange) ---
-        when(tokenService.validateToken(invalidToken)).thenReturn(false);
-        OrderDTO orderDto = new OrderDTO(1, new ArrayList<>(), "Rock Concert", "Barby", user1Id, 5);
-
-        // --- When & Then (Act & Assert) ---
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            historyService.addPurchase(orderDto, invalidToken);
-        });
-        
-        assertEquals("Invalid or expired token", exception.getMessage());
-        
-        // Verify that the repository was NEVER called because the token was invalid
-        verify(historyRepository, never()).addPurchase(any(Purchase.class));
+        verify(historyRepository, times(1)).generateNextId();
     }
 }

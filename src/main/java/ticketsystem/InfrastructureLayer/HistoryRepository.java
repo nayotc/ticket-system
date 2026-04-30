@@ -33,7 +33,7 @@ public class HistoryRepository implements IHistoryRepository {
 
     @Override
     public void addPurchase(Purchase purchase) {
-        allPurchases.put(purchase.getId(), purchase);
+        allPurchases.put(purchase.getPurchaseId(), purchase);
         purchasesByMemberId.computeIfAbsent(purchase.getMemberId(), k -> new CopyOnWriteArrayList<>())
                        .add(purchase);
         purchasesByCompanyId.computeIfAbsent(purchase.getCompanyId(), k -> new CopyOnWriteArrayList<>())

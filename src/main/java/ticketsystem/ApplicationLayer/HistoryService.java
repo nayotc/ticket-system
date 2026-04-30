@@ -2,15 +2,16 @@ package ticketsystem.ApplicationLayer;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.OrderDTO;
-import ticketsystem.DTO.TicketDTO;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
-import ticketsystem.DomainLayer.history.PurchasedTicket;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 
-public class HistoryService {
+public class HistoryService implements OrderCompletedListener {
     private final IHistoryRepository historyRepository;
     private final TokenService tokenService;
 
@@ -19,12 +20,10 @@ public class HistoryService {
         this.tokenService = tokenService;
     }
     
-    public void addPurchase(OrderDTO order, String token) {
+    @Override
+    public void onOrderCompleted(OrderDTO order) {
         try{
-            // Validate token
-            if (!tokenService.validateToken(token)) {
-                throw new IllegalArgumentException("Invalid or expired token");
-            }
+            //we don't need to validate the token here because this method is called after the order is completed, and we assume that the order completion process has already validated the token. However, if you want to add an extra layer of security, you can validate the token here as well before processing the order details.
             int newPurchaseId = historyRepository.generateNextId();
             order.setPurchaseId(newPurchaseId);
             ObjectMapper objectMapper = new ObjectMapper();
