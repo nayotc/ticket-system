@@ -1,5 +1,8 @@
 package ticketsystem.DomainLayer.order;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 public class Ticket {
 
     private int ticketId;
@@ -7,6 +10,9 @@ public class Ticket {
     private int row;
     private int chair;
     private double price;
+    private LocalDateTime reservedUntil;
+
+    //location 0,0 is standing
 
     public Ticket(int ticketId, int eventId, int row, int chair, double price) {
         this.ticketId = ticketId;
@@ -14,6 +20,7 @@ public class Ticket {
         this.row = row;
         this.chair = chair;
         this.price = price;
+      
     }
 
     public int getTicketId() {
@@ -56,4 +63,7 @@ public class Ticket {
         this.price = price;
     }
     
+
+
+
 }
