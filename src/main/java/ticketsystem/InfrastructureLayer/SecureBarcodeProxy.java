@@ -4,9 +4,10 @@ import ticketsystem.ApplicationLayer.ISecureBarcode;
 
 public class SecureBarcodeProxy implements ISecureBarcode {
 
+    public static boolean isConnectionSuccessful = true; // for testing purposes
+
     @Override
     public boolean connect() {
-        System.out.println("Secure Barcode Proxy Successfully connected to external Secure Barcode Service.");
-        return true;
+        return isConnectionSuccessful;
     }
 }

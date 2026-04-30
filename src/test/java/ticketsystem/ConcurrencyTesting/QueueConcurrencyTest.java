@@ -1,4 +1,4 @@
-package ticketsystem.AcceptanceTesting;
+package ticketsystem.ConcurrencyTesting;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

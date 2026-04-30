@@ -43,9 +43,10 @@ public class WaitingQueueServiceTest {
         // Arrange
         Event event = new Event(1L, "Music Festival", LocalDateTime.now(), "Central Park", 100L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
         fakeEventRepo.addEvent(event);
+        String validToken = TokenService.generateNewGuestToken();
 
         // Act
-        String result = waitingQueueService.tryReserve(1, "session-123");
+        String result = waitingQueueService.tryReserve(1, validToken);
 
         // Assert
         assertEquals("APPROVED", result, "User should be approved instantly.");
@@ -58,10 +59,12 @@ public class WaitingQueueServiceTest {
         // Arrange
         Event event = new Event(2L, "Art Expo", LocalDateTime.now(), "Central Park", 1L, EventCategory.EXHIBITION, null, new PurchasePolicy("Default"), new DiscountPolicy());
         fakeEventRepo.addEvent(event);
-        waitingQueueService.tryReserve(2, "session-first");
+        String validToken = TokenService.generateNewGuestToken();
+
+        waitingQueueService.tryReserve(2, validToken);
 
         // Act 
-        String result = waitingQueueService.tryReserve(2, "session-456");
+        String result = waitingQueueService.tryReserve(2, validToken);
 
         // Assert
         assertEquals("QUEUED", result, "User should be queued because event is full.");
@@ -74,15 +77,17 @@ public class WaitingQueueServiceTest {
         // Arrange 
         Event event = new Event(3L, "Rock Concert", LocalDateTime.now(), "Central Park", 1L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
         fakeEventRepo.addEvent(event);
+        String validToken1 = TokenService.generateNewGuestToken();
+        String validToken2 = TokenService.generateNewGuestToken();
 
-        waitingQueueService.tryReserve(3, "session-111");
-        waitingQueueService.tryReserve(3, "session-789");
+        waitingQueueService.tryReserve(3, validToken1);
+        waitingQueueService.tryReserve(3, validToken2);
 
         // Act 
-        waitingQueueService.releaseSpot(3, "session-111");
+        waitingQueueService.releaseSpot(3, validToken1);
 
         // Assert
-        assertTrue(fakeNotifications.notifiedUsers.contains("session-789"), "The queued user should have received a notification.");
+        assertTrue(fakeNotifications.notifiedUsers.contains(validToken2), "The queued user should have received a notification.");
         assertEquals(1, event.getActiveReservationsCount(), "Capacity should be full again because the queued user took the spot.");
         assertEquals(0, realQueueRepo.getQueueSize(3), "Queue should be empty after the user was dequeued.");
     }
@@ -93,11 +98,14 @@ public class WaitingQueueServiceTest {
         Event event = new Event(4L, "Jazz Night", LocalDateTime.now(), "Central Park", 2L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
         fakeEventRepo.addEvent(event);
 
-        waitingQueueService.tryReserve(4, "session-111");
-        waitingQueueService.tryReserve(4, "session-222");
+        String validToken1 = TokenService.generateNewGuestToken();
+        String validToken2 = TokenService.generateNewGuestToken();
+
+        waitingQueueService.tryReserve(4, validToken1);
+        waitingQueueService.tryReserve(4, validToken2);
 
         // Act 
-        waitingQueueService.releaseSpot(4, "session-222");
+        waitingQueueService.releaseSpot(4, validToken2);
 
         // Assert
         assertEquals(1, event.getActiveReservationsCount(), "Capacity should drop to 1.");
