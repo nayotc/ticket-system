@@ -22,17 +22,13 @@ public class Reservation {
         this.order = order;
         this.event = event;
     }
-    public Ticket createTicket(int eventId, int row, int chair, double price) {
-        return new Ticket(ticketIdCounter++, eventId, row, chair, price);
-    }
-
 
     public void reserveSeatTicket(int eventId,int row, int chair) {
          Seat seat = event.getSeatByLocation(row, chair);
         if (seat.getStatus() != Seat.SeatStatus.AVAILABLE) {
             throw new IllegalStateException("Seat is not available");
         }
-        Ticket ticket=createTicket(eventId, seat.getPosition().row(), seat.getPosition().number(), seat.getPrice());
+        Ticket ticket=new Ticket(generateTicketId(), eventId, seat.getPosition().row(), seat.getPosition().number(), seat.getPrice());
         seat.setStatus(Seat.SeatStatus.RESERVED);
         order.addTicket(ticket);
     }
@@ -42,7 +38,7 @@ public class Reservation {
             throw new IllegalStateException("not available");
         }
         if (event.getStandingArea().hasAvailableSpots()) {
-            Ticket ticket = createTicket(eventId, 0, 0, price);
+            Ticket ticket = new Ticket(generateTicketId(), eventId, 0, 0, price);
             event.getStandingArea().reserveStandingSpot();
             order.addTicket(ticket);
         } else {
@@ -75,5 +71,8 @@ public class Reservation {
         order.deleteTicket(ticket.getTicketId());
         }
     }
-
+//mybe move to order
+    public int generateTicketId() {
+        return ++ticketIdCounter;
+    }
 }
