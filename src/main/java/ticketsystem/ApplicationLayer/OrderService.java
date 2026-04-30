@@ -14,29 +14,71 @@ public class OrderService {
     }
 
     public ActiveOrder getOrCreateActiveOrder(String token, int eventId) {
-        try {
-            int userId = getUserIdFromToken(token);
-            ActiveOrder order =
-                    orderRepository.getActiveOrderByUserIdAndEventId(userId, eventId);
+        OrderOwner owner = getOrderOwnerFromToken(token);
 
-            if (order == null) {
-                int orderId = orderRepository.getNextId();
-                order = new ActiveOrder(orderId, userId, eventId);
-                orderRepository.addOrder(order);
-            }
+        ActiveOrder order;
 
-            return order;
-        } catch (IllegalArgumentException e) {
-            throw new IllegalStateException("Invalid token");
+        if (owner.isGuest()) {
+            order = orderRepository.getActiveOrderBySessionTokenAndEventId(
+                    owner.getSessionToken(),
+                    eventId
+            );
+        } else {
+            order = orderRepository.getActiveOrderByUserIdAndEventId(
+                    owner.getUserId(),
+                    eventId
+            );
         }
-    
+
+        if (order == null) {
+            int orderId = orderRepository.getNextId();
+
+            order = new ActiveOrder(
+                    orderId,
+                    owner.getUserId(),
+                    owner.getSessionToken(),
+                    eventId
+            );
+
+            orderRepository.addOrder(order);
+        }
+
+        return order;
     }
 
-       private int getUserIdFromToken(String token) {
+    private OrderOwner getOrderOwnerFromToken(String token) {
         if (!tokenService.validateToken(token)) {
             throw new IllegalArgumentException("Invalid or expired token");
         }
+
         String subject = tokenService.extractSubject(token);
-        return Integer.parseInt(subject);
+
+        if (tokenService.isGuestToken(token)) {
+            return new OrderOwner(null, subject);
+        }
+
+        return new OrderOwner(Integer.parseInt(subject), subject);
+    }
+
+    private static class OrderOwner {
+        private final Integer userId;
+        private final String sessionToken;
+
+        public OrderOwner(Integer userId, String sessionToken) {
+            this.userId = userId;
+            this.sessionToken = sessionToken;
+        }
+
+        public Integer getUserId() {
+            return userId;
+        }
+
+        public String getSessionToken() {
+            return sessionToken;
+        }
+
+        public boolean isGuest() {
+            return userId == null;
+        }
     }
 }

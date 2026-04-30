@@ -214,26 +214,26 @@ public class ReservationService {
     }
 
     private static class OrderOwner {
-    private final Integer userId;
-    private final String sessionToken;
+        private final Integer userId;
+        private final String sessionToken;
 
-    public OrderOwner(Integer userId, String sessionToken) {
-        this.userId = userId;
-        this.sessionToken = sessionToken;
-    }
+        public OrderOwner(Integer userId, String sessionToken) {
+            this.userId = userId;
+            this.sessionToken = sessionToken;
+        }
 
-    public Integer getUserId() {
-        return userId;
-    }
+        public Integer getUserId() {
+            return userId;
+        }
 
-    public String getSessionToken() {
-        return sessionToken;
-    }
+        public String getSessionToken() {
+            return sessionToken;
+        }
 
-    public boolean isGuest() {
-        return userId == null;
+        public boolean isGuest() {
+            return userId == null;
+        }
     }
-}
 
 }
 
