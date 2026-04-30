@@ -29,47 +29,47 @@ public class ReservationService {
     }
 
     public void selectSeatTicket(String token, int eventId, int row, int chair) {
-            try {
-                int userId = getUserIdFromToken(token);
-
-                ActiveOrder order = getOrCreateOrder(userId, eventId);
-                Event event = getEvent(eventId);
-                Reservation reservation = getOrCreateReservation(order, event);
-
-                reservation.selectSeatTicket(eventId, row, chair);
-
-                saveAll(reservation, order, event);
-
-            } catch (Exception e) {
-                System.err.println("Error in selectSeatTicket: " + e.getMessage());
-                throw e;
-            }
-    }
-
-    public void selectStandingTicket(String token, int eventId) {
         try {
-            int userId = getUserIdFromToken(token);
+            OrderOwner owner = getOrderOwnerFromToken(token);
 
-            ActiveOrder order = getOrCreateOrder(userId, eventId);
+            ActiveOrder order = getOrCreateOrder(owner, eventId);
             Event event = getEvent(eventId);
             Reservation reservation = getOrCreateReservation(order, event);
 
-            double price = event.getStandingArea().getPrice();
-            reservation.selectStandingTicket(eventId, price);
+            reservation.selectSeatTicket(eventId, row, chair);
 
             saveAll(reservation, order, event);
 
         } catch (Exception e) {
-            System.err.println("Error in selectStandingTicket: " + e.getMessage());
+            System.err.println("Error in selectSeatTicket: " + e.getMessage());
             throw e;
+        }
+    }
+
+    public void selectStandingTicket(String token, int eventId) {
+    try {
+        OrderOwner owner = getOrderOwnerFromToken(token);
+
+        ActiveOrder order = getOrCreateOrder(owner, eventId);
+        Event event = getEvent(eventId);
+        Reservation reservation = getOrCreateReservation(order, event);
+
+        double price = event.getStandingArea().getPrice();
+        reservation.selectStandingTicket(eventId, price);
+
+        saveAll(reservation, order, event);
+
+    } catch (Exception e) {
+        System.err.println("Error in selectStandingTicket: " + e.getMessage());
+        throw e;
         }
     }
 
     public void expireReservation(String token, int eventId) {
         try {
-            int userId = getUserIdFromToken(token);
+            OrderOwner owner = getOrderOwnerFromToken(token);
 
-            ActiveOrder order = getExistingOrder(userId, eventId);
+            ActiveOrder order = getExistingOrder(owner, eventId);
             Event event = getEvent(eventId);
 
             Reservation reservation =
@@ -115,13 +115,7 @@ public class ReservationService {
 
 
 //helper method to extract userId from token and validate it
-    private int getUserIdFromToken(String token) {
-        if (!tokenService.validateToken(token)) {
-            throw new IllegalArgumentException("Invalid or expired token");
-        }
-        String subject = tokenService.extractSubject(token);
-        return Integer.parseInt(subject);
-    }
+
 
     private Event getEvent(int eventId) {
         Event event = eventRepository.getEventById(eventId);
@@ -152,22 +146,51 @@ public class ReservationService {
     }
 
 
-        private ActiveOrder getOrCreateOrder(int userId, int eventId) {
-        ActiveOrder order =
-                orderRepository.getActiveOrderByUserIdAndEventId(userId, eventId);
+    private ActiveOrder getOrCreateOrder(OrderOwner owner, int eventId) {
+    ActiveOrder order;
+
+        if (owner.isGuest()) {
+            order = orderRepository.getActiveOrderBySessionTokenAndEventId(
+                    owner.getSessionToken(),
+                    eventId
+            );
+        } else {
+            order = orderRepository.getActiveOrderByUserIdAndEventId(
+                    owner.getUserId(),
+                    eventId
+            );
+        }
 
         if (order == null) {
             int orderId = orderRepository.getNextId();
-            order = new ActiveOrder(orderId, userId, eventId);
-            orderRepository.updateOrder(order); // upsert
+
+            order = new ActiveOrder(
+                    orderId,
+                    owner.getUserId(),
+                    owner.getSessionToken(),
+                    eventId
+            );
+
+            orderRepository.updateOrder(order);
         }
 
         return order;
     }
 
-    private ActiveOrder getExistingOrder(int userId, int eventId) {
-        ActiveOrder order =
-                orderRepository.getActiveOrderByUserIdAndEventId(userId, eventId);
+    private ActiveOrder getExistingOrder(OrderOwner owner, int eventId) {
+        ActiveOrder order;
+
+        if (owner.isGuest()) {
+            order = orderRepository.getActiveOrderBySessionTokenAndEventId(
+                    owner.getSessionToken(),
+                    eventId
+            );
+        } else {
+            order = orderRepository.getActiveOrderByUserIdAndEventId(
+                    owner.getUserId(),
+                    eventId
+            );
+        }
 
         if (order == null) {
             throw new IllegalArgumentException("Active order not found");
@@ -175,6 +198,42 @@ public class ReservationService {
 
         return order;
     }
+
+        private OrderOwner getOrderOwnerFromToken(String token) {
+        if (!tokenService.validateToken(token)) {
+            throw new IllegalArgumentException("Invalid or expired token");
+        }
+
+        String subject = tokenService.extractSubject(token);
+
+        if (tokenService.isGuestToken(token)) {
+            return new OrderOwner(null, subject);
+        }
+
+        return new OrderOwner(Integer.parseInt(subject), token);
+    }
+
+    private static class OrderOwner {
+    private final Integer userId;
+    private final String sessionToken;
+
+    public OrderOwner(Integer userId, String sessionToken) {
+        this.userId = userId;
+        this.sessionToken = sessionToken;
+    }
+
+    public Integer getUserId() {
+        return userId;
+    }
+
+    public String getSessionToken() {
+        return sessionToken;
+    }
+
+    public boolean isGuest() {
+        return userId == null;
+    }
+}
 
 }
 

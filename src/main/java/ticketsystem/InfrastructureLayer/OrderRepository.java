@@ -67,4 +67,13 @@ public class OrderRepository implements IOrderRepository {
         //if order doesn't exist,it will be added to the repository
         orders.put(order.getOrderId(), order);
     }
+
+    public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, int eventId) {
+        for (ActiveOrder order : orders.values()) {
+            if (sessionToken.equals(order.getSessionToken()) && order.getEventId() == eventId) {
+                return order;
+            }
+        }
+        return null;
+    }
 }
