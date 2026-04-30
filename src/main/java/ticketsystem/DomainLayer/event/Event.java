@@ -30,7 +30,7 @@ public class Event {
         this.openedBy = openedBy;
         this.location = location;
         this.trafficThreshold = trafficThreshold;
-        this.status = eventStatus.DRAFT; // Default status
+        this.status = eventStatus.DRAFT; // Default status until the map is set and the event is activated
         this.category = category;
         this.map = new EventMap(mapSize); 
         this.purchasePolicy = new PurchasePolicy("Default purchase policy");
