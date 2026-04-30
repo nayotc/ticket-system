@@ -28,6 +28,7 @@ public class ReservationService {
 
     }
 
+    //UC 2.4, 2.5
     public void selectSeatTicket(String token, int eventId, int row, int chair) {
         try {
             OrderOwner owner = getOrderOwnerFromToken(token);
@@ -46,7 +47,7 @@ public class ReservationService {
         }
     }
 
-    public void selectStandingTicket(String token, int eventId) {
+    public void selectStandingTicket(String token, int eventId, int quantity) {
     try {
         OrderOwner owner = getOrderOwnerFromToken(token);
 
@@ -55,7 +56,7 @@ public class ReservationService {
         Reservation reservation = getOrCreateReservation(order, event);
 
         double price = event.getStandingArea().getPrice();
-        reservation.selectStandingTicket(eventId, price);
+        reservation.selectStandingTicket(eventId, price, quantity);
 
         saveAll(reservation, order, event);
 
@@ -65,30 +66,7 @@ public class ReservationService {
         }
     }
 
-
-    //get existing reservation and check if it's expired
-    private Reservation getExistingReservation(ActiveOrder order, Event event) {
-        Reservation reservation =
-                reservationRepository.getReservationByOrderId(order.getOrderId());
-
-        if (reservation == null) {
-            throw new IllegalArgumentException("Reservation not found");
-        }
-
-        if (reservation.isExpired()) {
-            reservation.expire();
-
-            reservationRepository.deleteReservationByOrderId(order.getOrderId());
-            orderRepository.updateOrder(order);
-            eventRepository.updateEvent(event);
-
-            throw new IllegalStateException("Reservation expired");
-        }
-
-        return reservation;
-    }
-
-    //UC 2.7
+        //UC 2.7
     public ActiveOrder viewActiveOrder(String token, int eventId) {
         try{
             OrderOwner owner = getOrderOwnerFromToken(token);
@@ -123,6 +101,28 @@ public class ReservationService {
 
     }
 
+
+    //get existing reservation and check if it's expired
+    private Reservation getExistingReservation(ActiveOrder order, Event event) {
+        Reservation reservation =
+                reservationRepository.getReservationByOrderId(order.getOrderId());
+
+        if (reservation == null) {
+            throw new IllegalArgumentException("Reservation not found");
+        }
+
+        if (reservation.isExpired()) {
+            reservation.expire();
+
+            reservationRepository.deleteReservationByOrderId(order.getOrderId());
+            orderRepository.updateOrder(order);
+            eventRepository.updateEvent(event);
+
+            throw new IllegalStateException("Reservation expired");
+        }
+
+        return reservation;
+    }
 
 //helper method to extract userId from token and validate it
 

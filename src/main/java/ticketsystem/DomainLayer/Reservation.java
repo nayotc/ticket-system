@@ -36,16 +36,18 @@ public class Reservation {
         order.addTicket(ticket);
     }
 
-    public void selectStandingTicket(int eventId, double price) {
+    public void selectStandingTicket(int eventId, double price, int quantity) {
         validateActive();
-        if (event.getStandingArea().getAvailableSpots() <= 0) {
+        if (event.getStandingArea().getAvailableSpots() < quantity) {
             throw new IllegalStateException("not available");
         }
         /*לבדוק שלא מוגרל */
         if (event.getStandingArea().hasAvailableSpots()) {
-            Ticket ticket = new Ticket(generateTicketId(), eventId, 0, 0, price);
-            event.getStandingArea().reserveStandingSpot();
-            order.addTicket(ticket);
+            for(int i=0; i<quantity; i++) {
+                 Ticket ticket = new Ticket(generateTicketId(), eventId, 0, 0, price);
+                event.getStandingArea().reserveStandingSpot();
+                order.addTicket(ticket);
+            }
         } else {
             throw new IllegalStateException("No standing spots available");
         }
