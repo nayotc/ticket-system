@@ -7,6 +7,8 @@ import ticketsystem.DTO.TicketDTO;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.history.PurchasedTicket;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 public class HistoryService {
     private final IHistoryRepository historyRepository;
@@ -23,56 +25,28 @@ public class HistoryService {
             if (!tokenService.validateToken(token)) {
                 throw new IllegalArgumentException("Invalid or expired token");
             }
-            List<PurchasedTicket> tickets = new ArrayList<>();
-            for (TicketDTO tDto : order.getTickets()) {
-                PurchasedTicket ticket = new PurchasedTicket(
-                    tDto.getTicketId(),
-                    tDto.getEventId(),
-                    tDto.getRow(),
-                    tDto.getChair(),
-                    tDto.getPrice()
-                );
-            tickets.add(ticket);
-            }
-            Purchase purchase = new Purchase(order.getOrderId(), tickets, order.getEventName(), order.getLocation(), order.getMemberId(), order.getCompanyId());
-            historyRepository.addPurchase(purchase);
+            ObjectMapper objectMapper = new ObjectMapper();
+            Purchase purchase = objectMapper.convertValue(order, Purchase.class);
+            historyRepository.addPurchase(purchase);     //purchase is the object after you pay 
         } 
         catch (IllegalArgumentException e) {
             throw e;
         }
     }
 
-    public List<OrderDTO> getHistoryForUser(int memberId, String token) {
+    public List<OrderDTO> getHistoryForUser(String token) {
         try{
             // Validate token
             if (!tokenService.validateToken(token)) {
                 throw new IllegalArgumentException("Invalid or expired token");
             }
+            int memberId = Integer.parseInt(tokenService.extractSubject(token));
             List<Purchase> purchases = historyRepository.getPurchasesByMemberId(memberId);
-            List<OrderDTO> historyDtoList = new ArrayList<>();
-            for (Purchase p : purchases) {
-                List<TicketDTO> ticketDtos = new ArrayList<>();
-                for (PurchasedTicket t : p.getTickets()) {
-                    ticketDtos.add(new TicketDTO(
-                        t.getTicketId(),
-                        t.getEventId(),
-                        t.getRow(),
-                        t.getChair(),
-                        t.getPrice(),
-                        t.getStatus().name()
-                    ));
-                }
-
-                OrderDTO orderDto = new OrderDTO(
-                    p.getId(),          
-                    ticketDtos,         
-                    p.getEventName(),   
-                    p.getLocation(),    
-                    p.getMemberId(),   
-                    p.getCompanyId()
-                );
-                historyDtoList.add(orderDto);
-            }
+            ObjectMapper objectMapper = new ObjectMapper();
+            List<OrderDTO> historyDtoList = objectMapper.convertValue(
+                purchases, 
+                new TypeReference<List<OrderDTO>>() {}
+            );
             return historyDtoList;
         }
         catch (IllegalArgumentException e) {
