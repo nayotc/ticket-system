@@ -1,14 +1,16 @@
 package ticketsystem.DomainLayer.IRepository;
 
 import java.util.List;
-import ticketsystem.DomainLayer.order.Order;
+import ticketsystem.DomainLayer.order.ActiveOrder;
 
 public interface IOrderRepository {
 
-    void addOrder();
-    Order findOrderById(int orderId);
-    void updateOrder(Order order);
+    void addOrder(ActiveOrder order);
+    ActiveOrder findOrderById(int orderId);
+    void updateOrder(ActiveOrder order);
     void deleteOrder(int orderId);
-    List<Order> getAll();
+    List<ActiveOrder> getAll();
+    ActiveOrder getActiveOrderByUserIdAndEventId(int userId, int eventId);
+    int getNextId();
     
 }

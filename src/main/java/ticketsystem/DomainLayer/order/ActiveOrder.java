@@ -3,22 +3,47 @@ package ticketsystem.DomainLayer.order;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ActiveOrder extends Order {
+public class ActiveOrder {
 
     private int orderId;
+    private int userId;
+    private int eventId;
     private List<Ticket> tickets;
 
-    public ActiveOrder(int orderId) {
-        super(orderId);
+    public ActiveOrder(int orderId, int userId, int eventId) {
+        this.orderId = orderId;
+        this.userId = userId;
+        this.eventId = eventId;
         this.tickets = new ArrayList<>();
     }
 
-    public void addTicket() {
+
+    public void addTicket(Ticket ticket) {
+        this.tickets.add(ticket);
 
     }
 
     public void deleteTicket(int ticketId) {
+        this.tickets.removeIf(ticket -> ticket.getTicketId() == ticketId);
+    }
 
+    public List<Ticket> getTickets() {
+        return this.tickets;
+    }
+
+    public int getOrderId() {
+        return this.orderId;
+    }
+
+    public void completeOrder() {
+        
     }
     
+    public int getUserId() {
+        return this.userId;
+    }
+
+    public int getEventId() {
+        return this.eventId;
+    }
 }
