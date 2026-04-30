@@ -24,12 +24,12 @@ public class MembershipRepository implements IMembershipRepository {
         return instance;
     }
 
-    private String generateKey(long companyId, long memberId) {
+    private String generateKey(Long companyId, Long memberId) {
         return companyId + "_" + memberId;
     }
 
     @Override
-    public void addRole(CompanyRole role) {
+    public synchronized void addRole(CompanyRole role) {
         if (role == null) throw new IllegalArgumentException("Role cannot be null");
         
         String key = generateKey(role.getCompanyId(), role.getMemberId());
@@ -39,12 +39,12 @@ public class MembershipRepository implements IMembershipRepository {
     }
 
     @Override
-    public CompanyRole findRole(long companyId, long memberId) {
+    public CompanyRole findRole(Long companyId, Long memberId) {
         return rolesTable.get(generateKey(companyId, memberId));
     }
 
     @Override
-    public void updateRole(CompanyRole role) {
+    public synchronized void updateRole(CompanyRole role) {
         if (role == null) throw new IllegalArgumentException("Role cannot be null");
         
         String key = generateKey(role.getCompanyId(), role.getMemberId());
@@ -54,12 +54,12 @@ public class MembershipRepository implements IMembershipRepository {
     }
 
     @Override
-    public void deleteRole(long companyId, long memberId) {
+    public synchronized void deleteRole(Long companyId, Long memberId) {
         rolesTable.remove(generateKey(companyId, memberId));
     }
 
     @Override
-    public List<CompanyRole> getAllRolesInCompany(long companyId) {
+    public List<CompanyRole> getAllRolesInCompany(Long companyId) {
         return rolesTable.values().stream()
                 .filter(role -> role.getCompanyId() == companyId)
                 .collect(Collectors.toList());

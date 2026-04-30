@@ -16,6 +16,7 @@ import java.util.Set;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
@@ -23,16 +24,55 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Manager;
 
 public class MembershipDomainService {
+<<<<<<< HEAD
     
     public CompanyRole assignManagerToCompany(long companyId, Member appointer, Member appointee, Set<Permission> permissions) throws Exception {
         if (!(appointer.getRole(companyId) instanceof Owner)) {
             throw new Exception("Only owners can assign managers.");
+=======
+
+    public void validateManagerAssignmentRequest(CompanyRole appointerRole, CompanyRole targetRole) throws Exception {
+        if (appointerRole == null) {
+            throw new Exception("You do not have a role in this company.");
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
         }
-        if (appointee.getRole(companyId) != null) {
-            throw new Exception("Appointee has already a role in the company.");
+        if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
+            throw new Exception("Only Owners and Founders can appoint managers.");
         }
-        CompanyRole managerRole = new Manager(appointee, companyId, permissions, appointer.getId());
-        return managerRole;
+        if (targetRole != null) {
+            throw new Exception("This user already has an active or pending role in this company.");
+        }
+    }
+
+    public void validateAndApproveManager(CompanyRole approvedRole, CompanyRole parentRole, Long appointeeId) throws Exception {
+        if (approvedRole == null || !(approvedRole instanceof Manager)) {
+            throw new Exception("No pending manager invitation found.");
+        }
+        if (approvedRole.getStatus() == RoleStatus.ACTIVE) {
+            throw new Exception("This role is already active.");
+        }
+        if (parentRole == null) {
+            throw new Exception("Appointer does not have a role in this company.");
+        }
+        // Change status to ACTIVE
+        ((Manager) approvedRole).activate();
+        // Add to Parent's Appointees Tree
+        if (parentRole instanceof Owner) {
+            ((Owner) parentRole).addAppointee(appointeeId);
+        } else if (parentRole instanceof Founder) {
+            ((Founder) parentRole).addAppointee(appointeeId);
+        } else {
+            throw new Exception("Managers cannot appoint other managers.");
+        }
+    }
+
+    public void validateRejectManager(CompanyRole pendingRole) throws Exception {
+        if (pendingRole == null) {
+            throw new Exception("No pending invitation found to reject.");
+        }
+        if (pendingRole.getStatus() == RoleStatus.ACTIVE) {
+            throw new Exception("You cannot reject a role that is already active.");
+        }
     }
 >>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
 
@@ -58,6 +98,7 @@ public class MembershipDomainService {
         }
     }
 
+<<<<<<< HEAD
     public boolean validatePermission(Member member, Long companyId, Permission permission) {
         CompanyRole role = member.getRole(companyId);
 >>>>>>> e7f5697 (starting to implement giveup ownership use case)
@@ -151,6 +192,8 @@ public class MembershipDomainService {
 
         // 3. If validation passes, the service will handle the removal of the pending role
 =======
+=======
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     public boolean validateResignation(CompanyRole role) {
         if (role == null) {
             return false;
@@ -166,5 +209,11 @@ public class MembershipDomainService {
 >>>>>>> e7f5697 (starting to implement giveup ownership use case)
     }
 
+    public boolean validatePermission(CompanyRole role, Permission permission) {
+        if (role == null) {
+            return false;
+        }
+        return role.hasPermission(permission); 
+    }
 
 }

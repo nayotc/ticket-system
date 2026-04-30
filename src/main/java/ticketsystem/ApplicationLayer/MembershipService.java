@@ -3,6 +3,7 @@ import java.util.Optional;
 import java.util.Set;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.IMembershipRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Member;
@@ -16,6 +17,7 @@ import ticketsystem.DomainLayer.user.Manager;
 public class MembershipService {
 
     private final ITokenService tokenService;
+<<<<<<< HEAD
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
     private final MembershipDomainService domainService;
@@ -27,6 +29,17 @@ public class MembershipService {
         this.companyRepository = companyRepository;
         this.domainService = domainService;
         this.notificationsService = notificationsService;
+=======
+    //private final IUserRepository userRepository;
+    //private final ICompanyRepository companyRepository;
+    private final IMembershipRepository membershipRepository;
+    private final MembershipDomainService domainService;
+
+    public MembershipService(ITokenService tokenService, IMembershipRepository membershipRepository, MembershipDomainService domainService) {
+        this.tokenService = tokenService;
+        this.membershipRepository = membershipRepository;
+        this.domainService = domainService;
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     }
 
     /**
@@ -46,10 +59,11 @@ public class MembershipService {
 =======
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
         Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
-        Member appointer = userRepository.getMemberById(memberId);
-        Member appointee = userRepository.getMemberById(targetMemberId);
-        CompanyRole newRole = membership.assignManagerToCompany(companyId, appointer, appointee, permissions);
-        // TODO: add/save newRole to the repository
+        CompanyRole appointerRole = membershipRepository.findRole(companyId, memberId);
+        CompanyRole targetRole = membershipRepository.findRole(companyId, targetMemberId);
+        domainService.validateManagerAssignmentRequest(appointerRole, targetRole);        
+        Manager newManager = new Manager(targetMemberId, companyId, permissions, memberId);
+        membershipRepository.addRole(newManager);
     }
 
     public void approveManagerAssignment(String sessionToken, long companyId) throws Exception {
@@ -58,26 +72,44 @@ public class MembershipService {
         }
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
         Long appointeeId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        CompanyRole approvedRole = membershipRepository.findRole(companyId, appointeeId);
+        if (approvedRole == null) {
+            throw new Exception("No pending invitation found.");
+        }
+        if (!(approvedRole instanceof Manager)) {
+            throw new Exception("The pending role found is not a manager role.");
+        }
+        Long appointerId = ((Manager) approvedRole).getAppointedByMemberId();
+        CompanyRole parentRole = membershipRepository.findRole(companyId, appointerId);
+        domainService.validateAndApproveManager(approvedRole, parentRole, appointeeId);
+        membershipRepository.updateRole(approvedRole);
+        membershipRepository.updateRole(parentRole);
+        // TODO: Update and Notify to the Company on the New Manager
         Member appointee = userRepository.getMemberById(appointeeId);
-        appointee.activateRole(companyId);
-        Manager manager = (Manager) appointee.getRole(companyId);
-        Long appointerId = manager.getAppointedByMemberId();
         Member appointer = userRepository.getMemberById(appointerId);
         Company company = companyRepository.findById(companyId);
         company.registerNewAppointment(appointer.getUserName(), appointee.getUserName());
     }
+<<<<<<< HEAD
 
     public void rejectManagerAssignment(String sessionToken, long companyId) throws Exception {
+=======
+    
+    public void rejectManagerAssignment(String sessionToken, Long companyId) throws Exception {
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
-        Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
-        Member appointee = userRepository.getMemberById(memberId);
-        appointee.rejectRole(companyId);
-        // TODO: delete newRole from the repository
+        Long appointeeId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        CompanyRole pendingRole = membershipRepository.findRole(companyId, appointeeId);
+        domainService.validateRejectManager(pendingRole);
+        // Optional: Get appointer ID before we delete the role, so we can notify them.
+        Long appointerId = ((Manager) pendingRole).getAppointedByMemberId();
+        membershipRepository.deleteRole(companyId, appointeeId);
     }
 
+<<<<<<< HEAD
     public void giveUpOwnership(String sessionToken, Long companyId) throws Exception {
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
@@ -92,10 +124,14 @@ public class MembershipService {
     private 
 
     public boolean validatePermission(String sessionToken, long companyId, Permission requiredPermission) {
+=======
+    public boolean validatePermission(String sessionToken, Long companyId, Permission requiredPermission) throws Exception {
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
+<<<<<<< HEAD
         long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
 >>>>>>> e7f5697 (starting to implement giveup ownership use case)
         Member member = userRepository.getMemberById(memberId);
@@ -239,6 +275,11 @@ public class MembershipService {
         
         // 6. Return a success message or status
         return "Assignment rejected successfully.";
+=======
+        Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        CompanyRole memberRole = membershipRepository.findRole(companyId, memberId);
+        return domainService.validatePermission(memberRole, requiredPermission);
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     }
 
 }

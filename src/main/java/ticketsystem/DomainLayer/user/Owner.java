@@ -7,8 +7,13 @@ public class Owner extends CompanyRole {
     private List<Long> appointeesMemberIds;
     private Long appointedByMemberId;
 
+<<<<<<< HEAD
     public Owner(Long companyId, Long appointedByMemberId) {
         super(companyId);
+=======
+    public Owner(Long memberId, Long companyId, Long appointedByMemberId) {
+        super(memberId, companyId);
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
         this.appointedByMemberId = appointedByMemberId;
         this.appointeesMemberIds = new ArrayList<>();
         this.status = RoleStatus.PENDING;
@@ -38,11 +43,19 @@ public class Owner extends CompanyRole {
     }
 
     public void addAppointee(Long memberId) {
+<<<<<<< HEAD
         this.appointeesMemberIds.add(memberId);
     }
 
     public void deleteAppointee(Long memberId) {
         this.appointeesMemberIds.remove(memberId);
+=======
+        appointeesMemberIds.add(memberId);
+    }
+
+    public void deleteAppointee(Long memberId) {
+        appointeesMemberIds.remove(memberId);
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     }
 
     public boolean hasPermission(Permission permission) {

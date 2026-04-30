@@ -6,11 +6,11 @@ public interface IMembershipRepository {
 
     void addRole(CompanyRole role);
     
-    CompanyRole findRole(long companyId, long memberId);
+    CompanyRole findRole(Long companyId, Long memberId);
     
     void updateRole(CompanyRole role);
     
-    void deleteRole(long companyId, long memberId);
+    void deleteRole(Long companyId, Long memberId);
     
-    List<CompanyRole> getAllRolesInCompany(long companyId);
+    List<CompanyRole> getAllRolesInCompany(Long companyId);
 }

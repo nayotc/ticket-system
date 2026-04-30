@@ -8,12 +8,17 @@ public class Manager extends CompanyRole {
     private Set<Permission> permissions;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     public Manager(Long companyId, Long appointedByMemberId, Set<Permission> permissions) {
         super(companyId);
 =======
     public Manager(Member memberMock, Long companyId, Set<Permission> permissions, Long appointedByMemberId) {
         super(memberMock, companyId);
 >>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
+=======
+    public Manager(Long memberId, Long companyId, Set<Permission> permissions, Long appointedByMemberId) {
+        super(memberId, companyId);
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
         this.appointedByMemberId = appointedByMemberId;
         this.status = RoleStatus.PENDING;
         this.permissions = permissions;
@@ -43,7 +48,11 @@ public class Manager extends CompanyRole {
     }
 
     public boolean hasPermission(Permission permission) {
+<<<<<<< HEAD
         return this.status == RoleStatus.ACTIVE && this.permissions.contains(permission); // Managers have specific permissions when active
+=======
+        return status == RoleStatus.ACTIVE && permissions.contains(permission); // Managers have specific permissions when active
+>>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     }
 
     public void addPermission(Permission permission) {
