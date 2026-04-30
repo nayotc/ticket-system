@@ -8,9 +8,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.NotificationsService;
@@ -53,7 +55,10 @@ public class QueueConcurrencyTest {
             final String sessionId = "User-" + i;
             futures.add(executor.submit(() -> {
                 try {
-                    latch.await();
+                    // Thread will wait maximum 5 seconds to start
+                    if (!latch.await(5, TimeUnit.SECONDS)) {
+                        throw new RuntimeException("Timeout waiting for start signal");
+                    }
 
                     String result = queueService.tryReserve(99, sessionId);
 
@@ -72,7 +77,8 @@ public class QueueConcurrencyTest {
 
         latch.countDown(); //release all 1000 threads to start processing
 
-        completionLatch.await(); //until all threads have finished
+        boolean completed = completionLatch.await(10, TimeUnit.SECONDS); //untill all threads finish or timeout
+        assertTrue(completed, "Test timed out! One or more threads got stuck and did not finish.");
         executor.shutdown();
 
         // Check for any exceptions that occurred inside the threads
@@ -122,7 +128,10 @@ public class QueueConcurrencyTest {
         for (int i = 0; i < numberOfDuplicates; i++) {
             futures.add(executor.submit(() -> {
                 try {
-                    latch.await();
+                    // Thread will wait maximum 5 seconds to start
+                    if (!latch.await(5, TimeUnit.SECONDS)) {
+                        throw new RuntimeException("Timeout waiting for start signal");
+                    }
                     queueService.tryReserve(99, duplicateSession);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -133,7 +142,8 @@ public class QueueConcurrencyTest {
         }
 
         latch.countDown();
-        completionLatch.await();
+        boolean completed = completionLatch.await(10, TimeUnit.SECONDS);
+        assertTrue(completed, "Test timed out! One or more threads got stuck and did not finish.");
         executor.shutdown();
 
         // Check for any exceptions that occurred inside the threads
@@ -181,7 +191,10 @@ public class QueueConcurrencyTest {
             final String finishingUser = "Active-User-" + i;
             futures.add(executor.submit(() -> {
                 try {
-                    latch.await();
+                    // Thread will wait maximum 5 seconds to start
+                    if (!latch.await(5, TimeUnit.SECONDS)) {
+                        throw new RuntimeException("Timeout waiting for start signal");
+                    }
                     // every time a spot is released, the next user in the queue should be approved and take that spot, so the event should remain at full capacity
                     queueService.releaseSpot(99, finishingUser);
                 } catch (InterruptedException e) {
@@ -193,7 +206,8 @@ public class QueueConcurrencyTest {
         }
 
         latch.countDown();
-        completionLatch.await();
+        boolean completed = completionLatch.await(10, TimeUnit.SECONDS);
+        assertTrue(completed, "Test timed out! One or more threads got stuck and did not finish.");
         executor.shutdown();
 
         // Check for any exceptions that occurred inside the threads
