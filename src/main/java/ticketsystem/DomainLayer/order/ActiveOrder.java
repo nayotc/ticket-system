@@ -26,9 +26,12 @@ public class ActiveOrder {
     }
 
     public void deleteTicket(int ticketId) {
-        this.tickets.removeIf(ticket -> ticket.getTicketId() == ticketId);
-    }
+      boolean removed = tickets.removeIf(t -> t.getTicketId() == ticketId);
 
+        if (!removed) {
+            throw new IllegalArgumentException("Ticket not found");
+        }
+    }
     public List<Ticket> getTickets() {
         return this.tickets;
     }
