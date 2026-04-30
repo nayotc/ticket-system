@@ -19,81 +19,101 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
     // to track which sessions are currently in the queue for each event, for O(1) lookups and removals
     private final Map<Long, Set<String>> queuedSessionsTracker;
 
+    // to synchronize complex operations on the same event
+    private final Map<Long, Object> eventLocks;
+
     public WaitingQueueRepository() {
         this.eventQueues = new ConcurrentHashMap<>();
         this.queuedSessionsTracker = new ConcurrentHashMap<>();
+        this.eventLocks = new ConcurrentHashMap<>();
+    }
+
+    //helper function to pull specific lock for an event
+    private Object getEventLock(long eventId) {
+        return eventLocks.computeIfAbsent(eventId, k -> new Object());
     }
 
     @Override
     public void enqueueUser(long eventId, String token) {
-        //in set the search is atomic and thread safe, so we dont need to check the whole queue
-        Set<String> sessionTracker = queuedSessionsTracker.computeIfAbsent(eventId, k -> ConcurrentHashMap.newKeySet());
-        if (sessionTracker.add(token)) {
-            // only how entered the queue can be added to actual queue
-            Queue<String> queue = eventQueues.computeIfAbsent(eventId, k -> new ConcurrentLinkedQueue<>());
-            queue.offer(token);
+        synchronized (getEventLock(eventId)) {
+            //in set the search is atomic and thread safe, so we dont need to check the whole queue
+            Set<String> sessionTracker = queuedSessionsTracker.computeIfAbsent(eventId, k -> ConcurrentHashMap.newKeySet());
+            if (sessionTracker.add(token)) {
+                // only how entered the queue can be added to actual queue
+                Queue<String> queue = eventQueues.computeIfAbsent(eventId, k -> new ConcurrentLinkedQueue<>());
+                queue.offer(token);
+            }
         }
     }
 
 // dequeue of a defined num of users from the waiting queue for a specific event.
     @Override
     public List<String> dequeueBatch(long eventId, long batchSize) {
-        Queue<String> queue = eventQueues.get(eventId);
-        Set<String> sessionTracker = queuedSessionsTracker.get(eventId);
+        synchronized (getEventLock(eventId)) {
+            Queue<String> queue = eventQueues.get(eventId);
+            Set<String> sessionTracker = queuedSessionsTracker.get(eventId);
 
-        if (queue == null || queue.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<String> approvedUsers = new ArrayList<>();
-        for (int i = 0; i < batchSize; i++) {
-            String token = queue.poll();
-            if (token != null) {
-                approvedUsers.add(token);
-                if (sessionTracker != null) {
-                    sessionTracker.remove(token);
-                }
-            } else {
-                break;
+            if (queue == null || queue.isEmpty()) {
+                return Collections.emptyList();
             }
-        }
-        if (queue.isEmpty()) { // clean up empty queue to save memory
-            eventQueues.remove(eventId);
-        }
 
-        return approvedUsers;
+            List<String> approvedUsers = new ArrayList<>();
+            for (int i = 0; i < batchSize; i++) {
+                String token = queue.poll();
+                if (token != null) {
+                    approvedUsers.add(token);
+                    if (sessionTracker != null) {
+                        sessionTracker.remove(token);
+                    }
+                } else {
+                    break;
+                }
+            }
+            if (queue.isEmpty()) { // clean up empty queue to save memory
+                eventQueues.remove(eventId);
+            }
+
+            return approvedUsers;
+        }
     }
 
     @Override
     public int getQueueSize(long eventId) {
-        Queue<String> queue = eventQueues.get(eventId);
-        return (queue == null) ? 0 : queue.size(); // return queue size or 0 if no queue exists for the event
+        // also synchronize to avoid race conditions
+        synchronized (getEventLock(eventId)) {
+            Queue<String> queue = eventQueues.get(eventId);
+            return (queue == null) ? 0 : queue.size(); // return queue size or 0 if no queue exists for the event
+        }
     }
 
     @Override
     public void removeUserFromQueue(long eventId, String token) {
-        Queue<String> queue = eventQueues.get(eventId);
-        Set<String> sessionTracker = queuedSessionsTracker.get(eventId);
+        synchronized (getEventLock(eventId)) {
+            Queue<String> queue = eventQueues.get(eventId);
+            Set<String> sessionTracker = queuedSessionsTracker.get(eventId);
 
-        if (queue != null && sessionTracker != null) {
-            sessionTracker.remove(token);
-            queue.remove(token);
+            if (queue != null && sessionTracker != null) {
+                sessionTracker.remove(token);
+                queue.remove(token);
 
-            if (queue.isEmpty()) {
-                eventQueues.remove(eventId);
-                queuedSessionsTracker.remove(eventId);
+                if (queue.isEmpty()) {
+                    eventQueues.remove(eventId);
+                    queuedSessionsTracker.remove(eventId);
+                }
             }
         }
     }
 
     @Override
     public List<String> clearQueue(long eventId) {
-        Queue<String> queue = eventQueues.remove(eventId);
-        Set<String> sessionTracker = queuedSessionsTracker.remove(eventId);
+        synchronized (getEventLock(eventId)) {
+            Queue<String> queue = eventQueues.remove(eventId);
+            Set<String> sessionTracker = queuedSessionsTracker.remove(eventId);
 
-        if (queue != null) {
-            return new ArrayList<>(queue);
+            if (queue != null) {
+                return new ArrayList<>(queue);
+            }
+            return Collections.emptyList();
         }
-        return Collections.emptyList();
     }
 }
