@@ -10,5 +10,6 @@ public interface IHistoryRepository {
     List<Purchase> getPurchasesByMemberId(int memberId);
     List<Purchase> getPurchasesByCompanyId(int companyId);
     List<Purchase> getAllPurchases();
+    int generateNextId();
     
 }

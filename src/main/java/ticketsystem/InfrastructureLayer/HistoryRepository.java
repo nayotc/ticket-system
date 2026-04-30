@@ -4,21 +4,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 
 public class HistoryRepository implements IHistoryRepository {
-    private int counter;
+    private AtomicInteger counter;
     private static HistoryRepository instance;
     private Map<Integer, Purchase> allPurchases;
     private Map<Integer, List<Purchase>> purchasesByMemberId;
     private Map<Integer, List<Purchase>> purchasesByCompanyId;
 
     private HistoryRepository() {
-        this.counter = 1;
-        this.allPurchases = new ConcurrentHashMap<Integer, Purchase>();
-        this.purchasesByMemberId = new ConcurrentHashMap<Integer, List<Purchase>>();
-        this.purchasesByCompanyId = new ConcurrentHashMap<Integer, List<Purchase>>();
+        this.counter = new AtomicInteger(1);
+        this.allPurchases = new ConcurrentHashMap<>();
+        this.purchasesByMemberId = new ConcurrentHashMap<>();
+        this.purchasesByCompanyId = new ConcurrentHashMap<>();
     }
 
     public static HistoryRepository getInstance() {
@@ -30,12 +33,10 @@ public class HistoryRepository implements IHistoryRepository {
 
     @Override
     public void addPurchase(Purchase purchase) {
-        purchase.setId(counter);
-        allPurchases.put(counter, purchase);
-        counter++;
-        purchasesByMemberId.computeIfAbsent(purchase.getMemberId(), k -> new ArrayList<>())
+        allPurchases.put(purchase.getId(), purchase);
+        purchasesByMemberId.computeIfAbsent(purchase.getMemberId(), k -> new CopyOnWriteArrayList<>())
                        .add(purchase);
-        purchasesByCompanyId.computeIfAbsent(purchase.getCompanyId(), k -> new ArrayList<>())
+        purchasesByCompanyId.computeIfAbsent(purchase.getCompanyId(), k -> new CopyOnWriteArrayList<>())
                             .add(purchase);
     }
 
@@ -46,7 +47,7 @@ public class HistoryRepository implements IHistoryRepository {
 
     @Override
     public List<Purchase> getPurchasesByMemberId(int memberId) {
-        List<Purchase> purchases = purchasesByMemberId.getOrDefault(memberId, new ArrayList<>());
+        List<Purchase> purchases = purchasesByMemberId.getOrDefault(memberId, new CopyOnWriteArrayList<>());
         return new ArrayList<>(purchases);
     }
 
@@ -61,4 +62,8 @@ public class HistoryRepository implements IHistoryRepository {
         return new ArrayList<>(allPurchases.values());
     }
     
+    @Override
+    public int generateNextId() {
+        return counter.getAndIncrement(); 
+    }
 }

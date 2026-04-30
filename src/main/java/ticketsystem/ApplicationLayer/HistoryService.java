@@ -25,6 +25,8 @@ public class HistoryService {
             if (!tokenService.validateToken(token)) {
                 throw new IllegalArgumentException("Invalid or expired token");
             }
+            int newPurchaseId = historyRepository.generateNextId();
+            order.setPurchaseId(newPurchaseId);
             ObjectMapper objectMapper = new ObjectMapper();
             Purchase purchase = objectMapper.convertValue(order, Purchase.class);
             historyRepository.addPurchase(purchase);     //purchase is the object after you pay 
