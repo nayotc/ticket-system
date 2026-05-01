@@ -10,6 +10,7 @@ import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -19,22 +20,20 @@ import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.User;
-import ticketsystem.InfrastructureLayer.TokenRepository;
 
+@Service 
 public class TokenService implements ITokenService {
     private final SecretKey key;
-    private final long expirationTime = 1000 * 60 * 60; // שעה אחת
-    private ITokenRepository tokenRepository;
-
-    public TokenService() {
-        this("default_secret_key_for_development_purposes_only_32_chars");
-        this.tokenRepository = new TokenRepository();
-    }
+    private final long expirationTime = 1000 * 60 * 60; // 1 hour in milliseconds
+    private final ITokenRepository tokenRepository;
 
     @Autowired
-    public TokenService(@Value("${jwt.secret}") String secret) {
+    public TokenService(
+            @Value("${jwt.secret:default_secret_key_for_development_purposes_only_32_chars}") String secret,
+            ITokenRepository tokenRepository) {
+        
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
-        this.tokenRepository = new TokenRepository();
+        this.tokenRepository = tokenRepository;
     }
 
     @Override

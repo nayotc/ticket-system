@@ -3,9 +3,12 @@ package ticketsystem.InfrastructureLayer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.stereotype.Repository;
+
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.user.User;
 
+@Repository
 public class TokenRepository implements ITokenRepository {
     private final Map<String, User> ActiveSessionsMap;
 
