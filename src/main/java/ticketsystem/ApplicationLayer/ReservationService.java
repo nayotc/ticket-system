@@ -130,7 +130,7 @@ public class ReservationService {
             double amount = order.calculateTotalPrice();
 
             //pay
-            paymentService.processPayment(paymentDetails, amount);
+            paymentService.pay(OrderDTO.from(order),details );
 
             //update reservation and order status
             reservation.completeCheckout();

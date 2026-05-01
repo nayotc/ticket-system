@@ -13,4 +13,12 @@ public class PaymentServiceProxy implements IPaymentService {
         return isConnectionSuccessful;
     }
 
+    @Override
+    public void pay(OrderDTO order, PaymentDetails details) {
+        System.out.println("Payment Proxy: Processing payment for Order ID: " + order.getOrderId() + " with amount: $" + amount);
+        // Simulate payment processing logic here       
+        }
+
+
+
 }
