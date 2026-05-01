@@ -22,6 +22,8 @@ public class Owner extends CompanyRole {
         this.status = RoleStatus.ACTIVE;
     }
 
+=======
+>>>>>>> 30ec61a (Add UC 4.8 (Assign Owner) and generalize role assignment code)
     public Long getAppointedByMemberId() {
         return this.appointedByMemberId;        
     }
