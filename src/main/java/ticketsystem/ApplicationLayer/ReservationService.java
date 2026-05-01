@@ -25,12 +25,16 @@ public class ReservationService {
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
             IReservationRepository reservationRepository,
-            TokenService tokenService
+            TokenService tokenService,
+            IPaymentService paymentService,
+            ISecureBarcode secureBarcode
     ) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.reservationRepository = reservationRepository;
         this.tokenService = tokenService;
+        this.paymentService = paymentService;
+        this.secureBarcode = secureBarcode;
     }
 
     // UC 2.4, 2.5
@@ -112,8 +116,7 @@ public class ReservationService {
             reservation.submitActiveOrderForCheckout(order);
 
             saveAll(reservation, order);
-            checkout(token, orderId);
-
+           
         } catch (Exception e) {
 
             System.err.println("Error in submitActiveOrderForCheckout: " + e.getMessage());
@@ -121,7 +124,7 @@ public class ReservationService {
         }
     }
 
-    public void checkout(String token, int orderId) {
+    public void checkout(String token, int orderId, PaymentDetails details) {
         try {
             OrderOwner owner = getOrderOwnerFromToken(token);
             ActiveOrder order = getExistingOrder(owner, orderId);
