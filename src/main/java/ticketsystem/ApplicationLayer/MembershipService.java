@@ -2,7 +2,6 @@ package ticketsystem.ApplicationLayer;
 import java.util.Set;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
-import ticketsystem.DomainLayer.IRepository.IMembershipRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Member;
@@ -11,7 +10,6 @@ import ticketsystem.DomainLayer.user.Permission;
 public class MembershipService {
 
     private final ITokenService tokenService;
-<<<<<<< HEAD
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
     private final MembershipDomainService membershipDomain;
@@ -23,17 +21,6 @@ public class MembershipService {
         this.companyRepository = companyRepository;
         this.membershipDomain = membershipDomain;
         this.notificationsService = notificationsService;
-=======
-    //private final IUserRepository userRepository;
-    //private final ICompanyRepository companyRepository;
-    private final IMembershipRepository membershipRepository;
-    private final MembershipDomainService domainService;
-
-    public MembershipService(ITokenService tokenService, IMembershipRepository membershipRepository, MembershipDomainService domainService) {
-        this.tokenService = tokenService;
-        this.membershipRepository = membershipRepository;
-        this.domainService = domainService;
->>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     }
 
     /**
@@ -46,22 +33,12 @@ public class MembershipService {
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
-<<<<<<< HEAD
         
         // Extract user ID from token
         Long memberId = tokenService.extractUserId(sessionToken);
         
         // Use the domain service to validate the permission based on the member's role
         return membershipDomain.validatePermission(memberId, companyId, requiredPermission);
-=======
-        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
-        Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
-        CompanyRole appointerRole = membershipRepository.findRole(companyId, memberId);
-        CompanyRole targetRole = membershipRepository.findRole(companyId, targetMemberId);
-        domainService.validateManagerAssignmentRequest(appointerRole, targetRole);        
-        Manager newManager = new Manager(targetMemberId, companyId, permissions, memberId);
-        membershipRepository.addRole(newManager);
->>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     }
 
     /**
@@ -73,28 +50,9 @@ public class MembershipService {
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
-<<<<<<< HEAD
         
         // Extract user ID from token and retrieve member information
         Long appointerId = tokenService.extractUserId(sessionToken);
-=======
-        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
-        Long appointeeId = Long.parseLong(tokenService.extractSubject(sessionToken));
-        CompanyRole approvedRole = membershipRepository.findRole(companyId, appointeeId);
-        if (approvedRole == null) {
-            throw new Exception("No pending invitation found.");
-        }
-        if (!(approvedRole instanceof Manager)) {
-            throw new Exception("The pending role found is not a manager role.");
-        }
-        Long appointerId = ((Manager) approvedRole).getAppointedByMemberId();
-        CompanyRole parentRole = membershipRepository.findRole(companyId, appointerId);
-        domainService.validateAndApproveManager(approvedRole, parentRole, appointeeId);
-        membershipRepository.updateRole(approvedRole);
-        membershipRepository.updateRole(parentRole);
-        // TODO: Update and Notify to the Company on the New Manager
-        Member appointee = userRepository.getMemberById(appointeeId);
->>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
         Member appointer = userRepository.getMemberById(appointerId);
         if (appointer == null) {
             throw new Exception("Appointer not found.");
@@ -117,7 +75,6 @@ public class MembershipService {
         // Return true if the request was successfully processed
         return true;
     }
-<<<<<<< HEAD
 
 /**
      * Use Case 4.8: Request to assign an owner to a company
@@ -300,30 +257,5 @@ public class MembershipService {
     }
 
     
-=======
-    
-    public void rejectManagerAssignment(String sessionToken, Long companyId) throws Exception {
-        if (!tokenService.validateToken(sessionToken)) {
-            throw new Exception("Session authentication failed.");
-        }
-        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
-        Long appointeeId = Long.parseLong(tokenService.extractSubject(sessionToken));
-        CompanyRole pendingRole = membershipRepository.findRole(companyId, appointeeId);
-        domainService.validateRejectManager(pendingRole);
-        // Optional: Get appointer ID before we delete the role, so we can notify them.
-        Long appointerId = ((Manager) pendingRole).getAppointedByMemberId();
-        membershipRepository.deleteRole(companyId, appointeeId);
-    }
-
-    public boolean validatePermission(String sessionToken, Long companyId, Permission requiredPermission) throws Exception {
-        if (!tokenService.validateToken(sessionToken)) {
-            throw new Exception("Session authentication failed.");
-        }
-        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
-        Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
-        CompanyRole memberRole = membershipRepository.findRole(companyId, memberId);
-        return domainService.validatePermission(memberRole, requiredPermission);
-    }
->>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
 
 }
