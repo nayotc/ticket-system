@@ -1,90 +1,86 @@
 package ticketsystem.InfrastructureLayer;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.DomainLayer.user.User;
 
 public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUserRepository {
 
-    private Map<Long, User> RegisteredMembersMap;
-    private Map<String, String> HashedPasswordsMap;
+    private Map<Long, Member> registeredMembersMap;
+    private Map<String, String> hashedPasswordsMap;
     private PasswordEncoder passwordEncoder;
+    private Map<String, Long> usernameToIdMap;
 
     public UserRepository() {
-        this.RegisteredMembersMap = new ConcurrentHashMap<>();
-        this.HashedPasswordsMap = new ConcurrentHashMap<>();
+        this.registeredMembersMap = new ConcurrentHashMap<>();
+        this.hashedPasswordsMap = new ConcurrentHashMap<>();
         this.passwordEncoder = new BCryptPasswordEncoder();
+        this.usernameToIdMap = new ConcurrentHashMap<>();
     }
 
     @Override
-    public boolean addRegisteredMember(long id, User user, String password) {
-        if (RegisteredMembersMap.containsKey(id)) {
-            return false; // Member ID already exists, cannot add member
+    public boolean addRegisteredMember(long id, Member member, String password) {
+        if (usernameToIdMap.putIfAbsent(member.getUserName(), id) != null) {
+            return false; // Username already exists, cannot add member
         }
-        RegisteredMembersMap.put(id, user);
-        if (user instanceof Member member) {
-            HashedPasswordsMap.put(member.getUserName(), hashPassword(password));
+        if (registeredMembersMap.putIfAbsent(id, member) != null) {
+            // Rollback: Remove the username mapping if the ID is already taken
+            usernameToIdMap.remove(member.getUserName());
+            return false;
         }
-        return true; // Member added successfully
+
+        // Store the hashed password
+        hashedPasswordsMap.put(member.getUserName(), hashPassword(password));
+
+        return true;
     }
 
     @Override
     public boolean removeRegisteredMember(long id) {
-        if (!RegisteredMembersMap.containsKey(id)) {
-            return false; // Member ID does not exist, cannot remove member
+        Member removedMember = registeredMembersMap.remove(id);
+
+        if (removedMember == null) {
+            return false; // No member with the given ID was found, nothing to remove
         }
-        User removed = RegisteredMembersMap.remove(id);
-        if (removed instanceof Member member) {
-            HashedPasswordsMap.remove(member.getUserName());
-        }
-        return true; // Member removed successfully
+        String username = removedMember.getUserName();
+        usernameToIdMap.remove(username);
+        hashedPasswordsMap.remove(username);
+
+        return true;
     }
 
     @Override
     public boolean isIDTaken(long id) {
-        return RegisteredMembersMap.containsKey(id);
+        return registeredMembersMap.containsKey(id);
     }
 
     @Override
     public boolean isUsernameTaken(String username) {
-        return RegisteredMembersMap.values().stream()
-                .filter(user -> user instanceof Member)
-                .map(user -> (Member) user)
-                .anyMatch(member -> member.getUserName().equals(username));
+        return usernameToIdMap.containsKey(username);
     }
 
     @Override
     public int getAllRegisteredMembersCount() {
-        return RegisteredMembersMap.size();
+        return registeredMembersMap.size();
     }
 
     @Override
     public Member getMemberByUsername(String username) {
-        return RegisteredMembersMap.values().stream()
-                .filter(Member.class::isInstance)
-                .map(Member.class::cast)
-                .filter(member -> member.getUserName().equals(username))
-                .findFirst()
-                .orElse(null);
+        return registeredMembersMap.get(usernameToIdMap.get(username));
     }
 
     @Override
     public Member getMemberById(long id) {
-        User user = RegisteredMembersMap.get(id);
-        if (user instanceof Member member) {
-            return member;
-        }
-        return null;
+        return registeredMembersMap.get(id);
     }
 
     @Override
-    public boolean isUserDetailsCorrect(String username, String password) {
-        String hashed = HashedPasswordsMap.get(username);
+    public boolean isMemberDetailsCorrect(String username, String password) {
+        String hashed = hashedPasswordsMap.get(username);
         return hashed != null && verifyPassword(password, hashed);
     }
 

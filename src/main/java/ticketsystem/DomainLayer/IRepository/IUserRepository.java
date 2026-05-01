@@ -1,11 +1,10 @@
 package ticketsystem.DomainLayer.IRepository;
 
 import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.DomainLayer.user.User;
 
 public interface IUserRepository {
 
-    boolean addRegisteredMember(long id, User user, String password);
+    boolean addRegisteredMember(long id, Member member, String password);
 
     boolean removeRegisteredMember(long id);
 
@@ -19,6 +18,5 @@ public interface IUserRepository {
 
     Member getMemberById(long id);
 
-    boolean isUserDetailsCorrect(String username, String password);
-
+    boolean isMemberDetailsCorrect(String username, String password);
 }
