@@ -29,8 +29,8 @@ public class OrderRepository implements IOrderRepository {
         this.orders.put(order.getOrderId(), order);
     }
 
-    public ActiveOrder findOrderById(int orderId) {
-        return null;
+    public ActiveOrder getActiveOrderById(int orderId) {
+        return orders.get(orderId);
 
     }
 
@@ -76,5 +76,9 @@ public class OrderRepository implements IOrderRepository {
         }
         return null;
     }
+
+    
+
+
 
 }

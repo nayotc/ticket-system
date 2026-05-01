@@ -1,6 +1,5 @@
 package ticketsystem.ApplicationLayer;
 
-import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
