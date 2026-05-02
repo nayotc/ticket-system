@@ -2,6 +2,9 @@ package ticketsystem.UnitTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ticketsystem.DomainLayer.company.Company;
@@ -106,18 +109,29 @@ class CompanyTest {
 
     @Test
     void testViewRolesTree_ByOwner_Success() throws Exception {
+        // Create a mock permissions map for testing
+        Map<String, String> mockPermissions = new HashMap<>();
+        mockPermissions.put(FOUNDER_ID, "Role: OWNER");
+        mockPermissions.put(SECOND_OWNER_ID, "Role: OWNER");
+        mockPermissions.put(MANAGER_ID, "Role: MANAGER, Permissions: inventory:event:manage");
+
         // Both the founder and the additional owner are permitted to view the roles tree
-        String treeForFounder = company.getRolesTreeRepresentation(FOUNDER_ID);
-        String treeForOwner = company.getRolesTreeRepresentation(SECOND_OWNER_ID);
+        String treeForFounder = company.getRolesTreeRepresentation(FOUNDER_ID, mockPermissions);
+        String treeForOwner = company.getRolesTreeRepresentation(SECOND_OWNER_ID, mockPermissions);
         
         assertNotNull(treeForFounder);
         assertNotNull(treeForOwner);
+        
+        // Additional check to verify the map data is integrated into the string output
+        assertTrue(treeForFounder.contains("Role: OWNER"), "Tree should contain the provided permissions string.");
     }
 
     @Test
     void testViewRolesTree_ByManager_ThrowsException() {
+        Map<String, String> mockPermissions = new HashMap<>(); // Empty map is fine for this test
+        
         // A manager attempts to view the roles tree and receives an error
-        Exception exception = assertThrows(Exception.class, () -> company.getRolesTreeRepresentation(MANAGER_ID));
+        Exception exception = assertThrows(Exception.class, () -> company.getRolesTreeRepresentation(MANAGER_ID, mockPermissions));
         assertTrue(exception.getMessage().contains("Only Owners can view"));
     }
 }

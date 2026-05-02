@@ -2,6 +2,7 @@ package ticketsystem.DomainLayer.company;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Collections;
 
 public class Company {
@@ -130,15 +131,21 @@ public class Company {
         this.isActive = true;
     }
 
-    public String getRolesTreeRepresentation(String requestingUser) throws Exception {
-        if (!isOwner(requestingUser)) { // if not owner
-            throw new Exception("The system rejects the request due to lack of permissions. Only Owners can view the roles tree.");
+    public String getRolesTreeRepresentation(String requestingUser, Map<String, String> userPermissions) throws Exception {
+            if (!isOwner(requestingUser)) { 
+                throw new Exception("The system rejects the request due to lack of permissions. Only Owners can view the roles tree.");
+            }
+            
+            return this.rolesTree.getStructuredData(userPermissions);
         }
-        
-        return this.rolesTree.getStructuredData();
-    }
 
     public void registerNewAppointment(String appointer, String appointee) { // insert the appointment to the tree
         rolesTree.addAppointment(appointer, appointee);
+    }
+
+    public void removeUserFromAllRoles(String userId) {
+        this.owners.remove(userId);
+        this.managers.remove(userId);
+        this.rolesTree.removeNode(userId);
     }
 }

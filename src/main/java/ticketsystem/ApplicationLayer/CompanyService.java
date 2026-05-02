@@ -1,5 +1,7 @@
 package ticketsystem.ApplicationLayer;
 
+import java.util.List;
+
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.*;
 
@@ -89,20 +91,49 @@ public class CompanyService {
         }
     }
 
-    /**
-     * Use Case 4.15: View roles and permissions tree
-     */
-    public String viewRolesAndPermissionsTree(String sessionId, long companyId) throws Exception {
+    // /**
+    //  * Use Case 4.15: View roles and permissions tree
+    //  */
+    // public String viewRolesAndPermissionsTree(String sessionId, long companyId) throws Exception {
+    //     try {
+    //         String userId = getRegisteredUserId(sessionId);
+
+    //         Company company = companyRepository.findById(companyId) // gets the company from the CompanyRepository
+    //                 .orElseThrow(() -> new Exception("Error: Company not found."));
+
+    //         return company.getRolesTreeRepresentation(userId);
+
+    //     } catch (Exception e) {
+    //         throw e;
+    //     }
+    // }
+
+public void removeUserFromAllCompanies(String userIdToDelete) throws Exception {
         try {
-            String userId = getRegisteredUserId(sessionId);
+            // Phase 1: Validation - Efficiently check if the user is a Founder anywhere directly in the DB
+            boolean isFounderAnywhere = companyRepository.existsByFounderUsername(userIdToDelete);
+            
+            if (isFounderAnywhere) {
+                // If the user is a founder, throw an exception and completely stop the deletion process
+                throw new Exception("Cannot delete user: The user is a Founder of one or more companies.");
+            }
 
-            Company company = companyRepository.findById(companyId) // gets the company from the CompanyRepository
-                    .orElseThrow(() -> new Exception("Error: Company not found."));
+            // Phase 2: Fetch ONLY the companies where the user is an owner or a manager
+            // We pass 'userIdToDelete' twice because we check both the 'owners' and 'managers' lists
+            List<Company> relevantCompanies = companyRepository.findByOwnersContainingOrManagersContaining(userIdToDelete, userIdToDelete);
 
-            return company.getRolesTreeRepresentation(userId);
-
+            // Phase 3: Remove from roles and save
+            for (Company company : relevantCompanies) {
+                // Remove the user and handle reassigning their appointees
+                company.removeUserFromAllRoles(userIdToDelete);
+                
+                // We don't need a 'needsSaving' flag anymore, because we only fetched companies that actually need updating
+                companyRepository.save(company);
+            }
+            
         } catch (Exception e) {
-            throw e;
+            // Propagate the exception so the calling layer can return an appropriate message
+            throw new Exception("Failed to remove user from companies: " + e.getMessage());
         }
     }
 }
