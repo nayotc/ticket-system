@@ -28,32 +28,39 @@ public class ReservationService {
 
     }
 
-    public void reserveSeatTicket(String token, int eventId, int row, int chair) {
-        int userId = getUserIdFromToken(token);
-        ActiveOrder order = getOrCreateOrder(userId, eventId);
-        Event event = getEvent(eventId);        
-        Reservation reservation = getOrCreateReservation(order, event);
-        reservation.reserveSeatTicket(eventId, row, chair);
+     public void selectSeatTicket(String token, int eventId, int row, int chair) {
+        try {
+            OrderOwner owner = getOrderOwnerFromToken(token);
+            ActiveOrder order = getOrCreateOrder(owner, eventId);
+            Event event = getEvent(eventId);
+            Reservation reservation = getOrCreateReservation(order, event);
 
-        reservationRepository.saveReservation(reservation);
-        orderRepository.updateOrder(order);
-        eventRepository.updateEvent(event);
+            reservation.selectSeatTicket(eventId, row, chair);
+
+            saveAll(reservation, order, event);
+
+        } catch (Exception e) {
+            System.err.println("Error in selectSeatTicket: " + e.getMessage());
+            throw e;
+        }
     }
 
-    public void reserveStandingTicket(String token, int eventId) {
-        int userId = getUserIdFromToken(token);
+    public void selectStandingTicket(String token, int eventId, int quantity) {
+        try {
+            OrderOwner owner = getOrderOwnerFromToken(token);
+            ActiveOrder order = getOrCreateOrder(owner, eventId);
+            Event event = getEvent(eventId);
+            Reservation reservation = getOrCreateReservation(order, event);
 
-        ActiveOrder order = getOrCreateOrder(userId, eventId);
-        Event event = getEvent(eventId);
+            double price = event.getStandingArea().getPrice();
+            reservation.selectStandingTicket(eventId, price, quantity);
 
-        Reservation reservation = getOrCreateReservation(order, event);
-        double price = event.getStandingArea().getPrice();
+            saveAll(reservation, order, event);
 
-        reservation.reserveStandingTicket(eventId, price);
-
-        reservationRepository.saveReservation(reservation);
-        orderRepository.updateOrder(order);
-        eventRepository.updateEvent(event);
+        } catch (Exception e) {
+            System.err.println("Error in selectStandingTicket: " + e.getMessage());
+            throw e;
+        }
     }
 
     public void expireReservation(String token, int eventId) {

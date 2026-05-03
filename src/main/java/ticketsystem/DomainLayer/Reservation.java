@@ -23,24 +23,31 @@ public class Reservation {
         this.event = event;
     }
 
-    public void reserveSeatTicket(int eventId,int row, int chair) {
+ public void selectSeatTicket(int eventId,int row, int chair) {
+        validateActive();
          Seat seat = event.getSeatByLocation(row, chair);
         if (seat.getStatus() != Seat.SeatStatus.AVAILABLE) {
             throw new IllegalStateException("Seat is not available");
         }
+        /*לבדוק שלא מוגרל */
+
         Ticket ticket=new Ticket(generateTicketId(), eventId, seat.getPosition().row(), seat.getPosition().number(), seat.getPrice());
         seat.setStatus(Seat.SeatStatus.RESERVED);
         order.addTicket(ticket);
     }
 
-    public void reserveStandingTicket(int eventId, double price) {
-        if (event.getStandingArea().getAvailableSpots() <= 0) {
+    public void selectStandingTicket(int eventId, double price, int quantity) {
+        validateActive();
+        if (event.getStandingArea().getAvailableSpots() < quantity) {
             throw new IllegalStateException("not available");
         }
+        /*לבדוק שלא מוגרל */
         if (event.getStandingArea().hasAvailableSpots()) {
-            Ticket ticket = new Ticket(generateTicketId(), eventId, 0, 0, price);
-            event.getStandingArea().reserveStandingSpot();
-            order.addTicket(ticket);
+            for(int i=0; i<quantity; i++) {
+                 Ticket ticket = new Ticket(generateTicketId(), eventId, 0, 0, price);
+                event.getStandingArea().reserveStandingSpot();
+                order.addTicket(ticket);
+            }
         } else {
             throw new IllegalStateException("No standing spots available");
         }
