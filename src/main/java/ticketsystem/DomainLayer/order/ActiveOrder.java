@@ -28,15 +28,13 @@ public class ActiveOrder {
     }
 
     public Ticket deleteTicket(int ticketId) {
-      
-        for(Ticket ticket : tickets) {
-            if (ticket.getTicketId() == ticketId) {
-                tickets.remove(ticket);
-                return ticket;
-            }
-        }
-           
-            throw new IllegalArgumentException("Ticket not found");
+
+        Ticket ticketToRemove = tickets.stream()
+                .filter(ticket -> ticket.getTicketId() == ticketId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
+        tickets.remove(ticketToRemove);
+        return ticketToRemove;
     
     }
 
@@ -119,7 +117,7 @@ public class ActiveOrder {
     }
 
     public void paymentFailed() {
-        
+
         this.status = OrderStatus.PAYMENT_FAILED;
     }
 
