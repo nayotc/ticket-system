@@ -50,7 +50,7 @@ public class ReservationService {
             saveAll(reservation, order, event);
 
         } catch (Exception e) {
-            System.err.println("Error in selectSeatTicket: " + e.getMessage());
+            logError("selectSeatTicket failed: " + e.getMessage());
             throw e;
         }
     }
@@ -68,7 +68,7 @@ public class ReservationService {
             saveAll(reservation, order, event);
 
         } catch (Exception e) {
-            System.err.println("Error in selectStandingTicket: " + e.getMessage());
+            logError("selectStandingTicket failed: " + e.getMessage());
             throw e;
         }
     }
@@ -85,7 +85,7 @@ public class ReservationService {
             return order.toString();
 
         } catch (Exception e) {
-            System.err.println("Error in viewActiveOrder: " + e.getMessage());
+            logError("viewActiveOrder failed: " + e.getMessage());
             throw e;
         }
     }
@@ -101,7 +101,7 @@ public class ReservationService {
             saveAll(reservation, order);
 
         } catch (Exception e) {
-            System.err.println("Error in removeTicketFromActiveOrder: " + e.getMessage());
+            logError("removeTicketFromActiveOrder failed: " + e.getMessage());
             throw e;
         }
     }
@@ -119,7 +119,7 @@ public class ReservationService {
            
         } catch (Exception e) {
 
-            System.err.println("Error in submitActiveOrderForCheckout: " + e.getMessage());
+            logError("submitActiveOrderForCheckout failed: " + e.getMessage());
             throw e;
         }
     }
@@ -131,19 +131,20 @@ public class ReservationService {
             Reservation reservation = getExistingReservation(order);
 
             double amount = order.calculateTotalPrice();
+            OrderDTO orderDTO = OrderDTO.from(order);
 
             //pay
-            paymentService.pay(OrderDTO.from(order),details );
+            paymentService.pay(orderDTO,details );
 
             //update reservation and order status
             reservation.completeCheckout();
 
             saveAll(reservation, order);
 
-            notifyListeners(OrderDTO.from(order));
+            notifyListeners(orderDTO);
 
         } catch (Exception e) {
-            System.err.println("Error in checkout: " + e.getMessage());
+            logError("checkout failed: " + e.getMessage());
             throw e;
         }
     }
@@ -160,33 +161,39 @@ public class ReservationService {
 
     private Reservation getExistingReservation(ActiveOrder order) {
         Reservation reservation = reservationRepository.getReservationByOrderId(order.getOrderId());
-        Event event = eventRepository.getEventById(order.getEventId());
+        Event event = getEvent(order.getEventId());
 
         if (reservation == null) {
+            logWarning("Reservation not found for orderId=" + order.getOrderId());
             throw new IllegalArgumentException("Reservation not found");
         }
 
         if (reservation.isExpired()) {
+            logWarning("Reservation expired for orderId=" + order.getOrderId());
             reservation.expire();
 
             reservationRepository.deleteReservationByOrderId(order.getOrderId());
             orderRepository.updateOrder(order);
             eventRepository.updateEvent(event);
-
+            
             throw new IllegalStateException("Reservation expired");
         }
 
         return reservation;
     }
 
+
     private Reservation getOrCreateReservation(ActiveOrder order, Event event) {
         Reservation reservation = reservationRepository.getReservationByOrderId(order.getOrderId());
 
         if (reservation == null) {
+            logWarning("Reservation not found. Creating new reservation for orderId=" + order.getOrderId());
             return createReservation(order, event);
         }
 
         if (reservation.isExpired()) {
+            logWarning("Reservation expired. Recreating reservation for orderId=" + order.getOrderId());
+
             reservation.expire();
 
             reservationRepository.deleteReservationByOrderId(order.getOrderId());
@@ -211,6 +218,7 @@ public class ReservationService {
         Event event = eventRepository.getEventById(eventId);
 
         if (event == null) {
+            logWarning("Event not found. eventId=" + eventId);
             throw new IllegalArgumentException("Event not found");
         }
 
