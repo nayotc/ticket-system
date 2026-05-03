@@ -44,7 +44,7 @@ public class OrderRepository implements IOrderRepository {
 
     }
 
-    public ActiveOrder getActiveOrderByUserIdAndEventId(int userId, int eventId) {
+    public ActiveOrder getActiveOrderByUserIdAndEventId(Integer userId, int eventId) {
         for (ActiveOrder order : orders.values()) {
             if (order.getUserId() == userId && order.getEventId() == eventId) {
                 return order;
@@ -67,4 +67,14 @@ public class OrderRepository implements IOrderRepository {
         //if order doesn't exist,it will be added to the repository
         orders.put(order.getOrderId(), order);
     }
+
+    public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, int eventId) {
+        for (ActiveOrder order : orders.values()) {
+            if (sessionToken.equals(order.getSessionToken()) && order.getEventId() == eventId) {
+                return order;
+            }
+        }
+        return null;
+    }
+
 }

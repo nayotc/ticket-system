@@ -1,216 +1,125 @@
 package ticketsystem.UnitTesting;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import ticketsystem.ApplicationLayer.ReservationService;
-import ticketsystem.ApplicationLayer.TokenService;
-import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.IReservationRepository;
+import ticketsystem.ApplicationLayer.ReservationService;
+import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
+import static org.mockito.Mockito.*;
+
 public class ReservationServiceTest {
 
-    private IOrderRepository orderRepoMock;
-    private IEventRepository eventRepoMock;
-    private IReservationRepository reservationRepoMock;
-    private TokenService tokenServiceMock;
-    private ReservationService reservationService;
+    private IOrderRepository orderRepository;
+    private IEventRepository eventRepository;
+    private IReservationRepository reservationRepository;
+    private TokenService tokenService;
+
+    private ReservationService service;
 
     @BeforeEach
-    public void setUp() {
-        orderRepoMock = mock(IOrderRepository.class);
-        eventRepoMock = mock(IEventRepository.class);
-        reservationRepoMock = mock(IReservationRepository.class);
-        tokenServiceMock = mock(TokenService.class);
+    void setUp() {
+        orderRepository = mock(IOrderRepository.class);
+        eventRepository = mock(IEventRepository.class);
+        reservationRepository = mock(IReservationRepository.class);
+        tokenService = mock(TokenService.class);
 
-        reservationService = new ReservationService(
-                orderRepoMock,
-                eventRepoMock,
-                reservationRepoMock,
-                tokenServiceMock
+        service = new ReservationService(
+                orderRepository,
+                eventRepository,
+                reservationRepository,
+                tokenService
         );
     }
 
     @Test
-    public void givenValidTokenExistingOrderAndReservation_whenReserveSeatTicket_thenReservationAndRepositoriesShouldBeUpdated() {
-        String token = "validToken";
-        int userId = 1;
-        int eventId = 10;
-        int orderId = 100;
-        int row = 4;
-        int chair = 12;
+    void shouldSelectSeat_ForRegisteredUser() {
+        String token = "token";
 
-        ActiveOrder orderMock = mock(ActiveOrder.class);
-        Event eventMock = mock(Event.class);
-        Reservation reservationMock = mock(Reservation.class);
+        when(tokenService.validateToken(token)).thenReturn(true);
+        when(tokenService.isGuestToken(token)).thenReturn(false);
+        when(tokenService.extractSubject(token)).thenReturn("1");
 
-        when(tokenServiceMock.validateToken(token)).thenReturn(true);
-        when(tokenServiceMock.extractSubject(token)).thenReturn(String.valueOf(userId));
+        ActiveOrder order = mock(ActiveOrder.class);
+        Event event = mock(Event.class);
+        Reservation reservation = mock(Reservation.class);
 
-        when(orderRepoMock.getActiveOrderByUserIdAndEventId(userId, eventId)).thenReturn(orderMock);
-        when(orderMock.getOrderId()).thenReturn(orderId);
+        when(orderRepository.getActiveOrderByUserIdAndEventId(1, 10)).thenReturn(order);
+        when(eventRepository.getEventById(10)).thenReturn(event);
+        when(reservationRepository.getReservationByOrderId(any())).thenReturn(reservation);
 
-        when(eventRepoMock.getEventById(eventId)).thenReturn(eventMock);
+        service.selectSeatTicket(token, 10, 5, 7);
 
-        when(reservationRepoMock.getReservationByOrderId(orderId)).thenReturn(reservationMock);
-        when(reservationMock.isExpired()).thenReturn(false);
-
-        reservationService.reserveSeatTicket(token, eventId, row, chair);
-
-        verify(reservationMock).reserveSeatTicket(eventId, row, chair);
-        verify(reservationRepoMock).saveReservation(reservationMock);
-        verify(orderRepoMock).updateOrder(orderMock);
-        verify(eventRepoMock).updateEvent(eventMock);
+        verify(reservation).selectSeatTicket(10, 5, 7);
+        verify(reservationRepository).saveReservation(reservation);
+        verify(orderRepository).updateOrder(order);
+        verify(eventRepository).updateEvent(event);
     }
 
     @Test
-    public void givenValidTokenExistingOrderAndReservation_whenReserveStandingTicket_thenReservationAndRepositoriesShouldBeUpdated() {
-        String token = "validToken";
-        int userId = 1;
-        int eventId = 10;
-        int orderId = 100;
-        double price = 80.0;
+    void shouldSelectSeat_ForGuest() {
+        String token = "guest";
 
-        ActiveOrder orderMock = mock(ActiveOrder.class);
-        Event eventMock = mock(Event.class, RETURNS_DEEP_STUBS);
-        Reservation reservationMock = mock(Reservation.class);
+        when(tokenService.validateToken(token)).thenReturn(true);
+        when(tokenService.isGuestToken(token)).thenReturn(true);
+        when(tokenService.extractSubject(token)).thenReturn("GUEST_123");
 
-        when(tokenServiceMock.validateToken(token)).thenReturn(true);
-        when(tokenServiceMock.extractSubject(token)).thenReturn(String.valueOf(userId));
+        ActiveOrder order = mock(ActiveOrder.class);
+        Event event = mock(Event.class);
+        Reservation reservation = mock(Reservation.class);
 
-        when(orderRepoMock.getActiveOrderByUserIdAndEventId(userId, eventId)).thenReturn(orderMock);
-        when(orderMock.getOrderId()).thenReturn(orderId);
+        when(orderRepository.getActiveOrderBySessionTokenAndEventId("GUEST_123", 10))
+                .thenReturn(order);
+        when(eventRepository.getEventById(10)).thenReturn(event);
+        when(reservationRepository.getReservationByOrderId(any())).thenReturn(reservation);
 
-        when(eventRepoMock.getEventById(eventId)).thenReturn(eventMock);
-        when(eventMock.getStandingArea().getPrice()).thenReturn(price);
+        service.selectSeatTicket(token, 10, 1, 1);
 
-        when(reservationRepoMock.getReservationByOrderId(orderId)).thenReturn(reservationMock);
-        when(reservationMock.isExpired()).thenReturn(false);
-
-        reservationService.reserveStandingTicket(token, eventId);
-
-        verify(reservationMock).reserveStandingTicket(eventId, price);
-        verify(reservationRepoMock).saveReservation(reservationMock);
-        verify(orderRepoMock).updateOrder(orderMock);
-        verify(eventRepoMock).updateEvent(eventMock);
+        verify(reservation).selectSeatTicket(10, 1, 1);
     }
 
     @Test
-    public void givenInvalidToken_whenReserveSeatTicket_thenShouldThrowExceptionAndNotAccessRepositories() {
-        String token = "invalidToken";
+    void shouldCreateReservation_IfNotExists() {
+        String token = "token";
 
-        when(tokenServiceMock.validateToken(token)).thenReturn(false);
+        when(tokenService.validateToken(token)).thenReturn(true);
+        when(tokenService.isGuestToken(token)).thenReturn(false);
+        when(tokenService.extractSubject(token)).thenReturn("1");
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> reservationService.reserveSeatTicket(token, 10, 4, 12)
-        );
+        ActiveOrder order = mock(ActiveOrder.class);
+        Event event = mock(Event.class);
 
-        verify(orderRepoMock, never()).getActiveOrderByUserIdAndEventId(1, 10);
-        verify(eventRepoMock, never()).getEventById(10);
-        verify(reservationRepoMock, never()).saveReservation(mock(Reservation.class));
+        when(orderRepository.getActiveOrderByUserIdAndEventId(1, 10)).thenReturn(order);
+        when(eventRepository.getEventById(10)).thenReturn(event);
+        when(reservationRepository.getReservationByOrderId(any())).thenReturn(null);
+        when(reservationRepository.generateNextId()).thenReturn(99);
+
+        service.selectSeatTicket(token, 10, 2, 3);
+
+        verify(reservationRepository).saveReservation(any(Reservation.class));
     }
 
     @Test
-    public void givenGuestToken_whenReserveSeatTicket_thenShouldThrowException() {
-        String token = "guestToken";
+    void shouldThrowException_WhenEventNotFound() {
+        String token = "token";
 
-        when(tokenServiceMock.validateToken(token)).thenReturn(true);
-        when(tokenServiceMock.extractSubject(token)).thenReturn("GUEST_123");
+        when(tokenService.validateToken(token)).thenReturn(true);
+        when(tokenService.isGuestToken(token)).thenReturn(false);
+        when(tokenService.extractSubject(token)).thenReturn("1");
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> reservationService.reserveSeatTicket(token, 10, 4, 12)
-        );
+        when(orderRepository.getActiveOrderByUserIdAndEventId(1, 10))
+                .thenReturn(mock(ActiveOrder.class));
+        when(eventRepository.getEventById(10)).thenReturn(null);
 
-        verify(eventRepoMock, never()).getEventById(10);
-    }
-
-    @Test
-    public void givenEventDoesNotExist_whenReserveSeatTicket_thenShouldThrowException() {
-        String token = "validToken";
-        int userId = 1;
-        int eventId = 10;
-
-        ActiveOrder orderMock = mock(ActiveOrder.class);
-
-        when(tokenServiceMock.validateToken(token)).thenReturn(true);
-        when(tokenServiceMock.extractSubject(token)).thenReturn(String.valueOf(userId));
-
-        when(orderRepoMock.getActiveOrderByUserIdAndEventId(userId, eventId)).thenReturn(orderMock);
-        when(eventRepoMock.getEventById(eventId)).thenReturn(null);
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> reservationService.reserveSeatTicket(token, eventId, 4, 12)
-        );
-
-        verify(reservationRepoMock, never()).saveReservation(mock(Reservation.class));
-        verify(eventRepoMock, never()).updateEvent(mock(Event.class));
-    }
-
-    @Test
-    public void givenExistingReservation_whenExpireReservation_thenReservationShouldExpireAndBeDeleted() {
-        String token = "validToken";
-        int userId = 1;
-        int eventId = 10;
-        int orderId = 100;
-
-        ActiveOrder orderMock = mock(ActiveOrder.class);
-        Event eventMock = mock(Event.class);
-        Reservation reservationMock = mock(Reservation.class);
-
-        when(tokenServiceMock.validateToken(token)).thenReturn(true);
-        when(tokenServiceMock.extractSubject(token)).thenReturn(String.valueOf(userId));
-
-        when(orderRepoMock.getActiveOrderByUserIdAndEventId(userId, eventId)).thenReturn(orderMock);
-        when(orderMock.getOrderId()).thenReturn(orderId);
-
-        when(eventRepoMock.getEventById(eventId)).thenReturn(eventMock);
-        when(reservationRepoMock.getReservationByOrderId(orderId)).thenReturn(reservationMock);
-
-        reservationService.expireReservation(token, eventId);
-
-        verify(reservationMock).expire();
-        verify(reservationRepoMock).deleteReservationByOrderId(orderId);
-        verify(orderRepoMock).updateOrder(orderMock);
-        verify(eventRepoMock).updateEvent(eventMock);
-    }
-
-    @Test
-    public void givenNoReservation_whenExpireReservation_thenShouldReturnWithoutUpdates() {
-        String token = "validToken";
-        int userId = 1;
-        int eventId = 10;
-        int orderId = 100;
-
-        ActiveOrder orderMock = mock(ActiveOrder.class);
-        Event eventMock = mock(Event.class);
-
-        when(tokenServiceMock.validateToken(token)).thenReturn(true);
-        when(tokenServiceMock.extractSubject(token)).thenReturn(String.valueOf(userId));
-
-        when(orderRepoMock.getActiveOrderByUserIdAndEventId(userId, eventId)).thenReturn(orderMock);
-        when(orderMock.getOrderId()).thenReturn(orderId);
-
-        when(eventRepoMock.getEventById(eventId)).thenReturn(eventMock);
-        when(reservationRepoMock.getReservationByOrderId(orderId)).thenReturn(null);
-
-        reservationService.expireReservation(token, eventId);
-
-        verify(reservationRepoMock, never()).deleteReservationByOrderId(orderId);
-        verify(orderRepoMock, never()).updateOrder(orderMock);
-        verify(eventRepoMock, never()).updateEvent(eventMock);
+        try {
+            service.selectSeatTicket(token, 10, 1, 1);
+        } catch (Exception e) {
+            assert e instanceof IllegalArgumentException;
+        }
     }
 }

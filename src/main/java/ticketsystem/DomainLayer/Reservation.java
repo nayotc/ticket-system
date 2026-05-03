@@ -23,7 +23,9 @@ public class Reservation {
         this.event = event;
     }
 
+
  public void selectSeatTicket(int eventId,int row, int chair) {
+
         validateActive();
          Seat seat = event.getSeatByLocation(row, chair);
         if (seat.getStatus() != Seat.SeatStatus.AVAILABLE) {
@@ -36,9 +38,11 @@ public class Reservation {
         order.addTicket(ticket);
     }
 
+
     public void selectStandingTicket(int eventId, double price, int quantity) {
         validateActive();
         if (event.getStandingArea().getAvailableSpots() < quantity) {
+
             throw new IllegalStateException("not available");
         }
         /*לבדוק שלא מוגרל */
@@ -78,8 +82,16 @@ public class Reservation {
         order.deleteTicket(ticket.getTicketId());
         }
     }
-//mybe move to order
+    
+    //mybe move to order
     public int generateTicketId() {
         return ++ticketIdCounter;
     }
+
+    private void validateActive() {
+    if (isExpired()) {
+        expire();
+        throw new IllegalStateException("Reservation expired");
+    }
+}
 }

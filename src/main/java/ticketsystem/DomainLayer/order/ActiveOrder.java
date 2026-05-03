@@ -6,13 +6,15 @@ import java.util.List;
 public class ActiveOrder {
 
     private int orderId;
-    private int userId;
+    private Integer userId;
+    private String sessionToken;
     private int eventId;
     private List<Ticket> tickets;
 
-    public ActiveOrder(int orderId, int userId, int eventId) {
+    public ActiveOrder(int orderId, int userId,String sessionToken, int eventId) {
         this.orderId = orderId;
         this.userId = userId;
+        this.sessionToken = sessionToken;
         this.eventId = eventId;
         this.tickets = new ArrayList<>();
     }
@@ -45,5 +47,9 @@ public class ActiveOrder {
 
     public int getEventId() {
         return this.eventId;
+    }
+
+    public String getSessionToken() {
+        return this.sessionToken;
     }
 }
