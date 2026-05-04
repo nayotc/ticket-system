@@ -1,5 +1,10 @@
 package ticketsystem.ApplicationLayer;
+<<<<<<< HEAD
 import java.util.Optional;
+=======
+import java.util.HashMap;
+import java.util.Map;
+>>>>>>> 1d842e6 (Add uc 4.15 View roles and permissions tree)
 import java.util.Set;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -18,6 +23,7 @@ public class MembershipService {
 
     private final ITokenService tokenService;
 <<<<<<< HEAD
+<<<<<<< HEAD
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
     private final MembershipDomainService domainService;
@@ -32,6 +38,10 @@ public class MembershipService {
 =======
     //private final IUserRepository userRepository;
     //private final ICompanyRepository companyRepository;
+=======
+    private final IUserRepository userRepository;
+    private final ICompanyRepository companyRepository;
+>>>>>>> 1d842e6 (Add uc 4.15 View roles and permissions tree)
     private final IMembershipRepository membershipRepository;
     private final MembershipDomainService domainService;
 
@@ -142,15 +152,22 @@ public class MembershipService {
     }
 
     /**
+<<<<<<< HEAD
      * Use Case 4.7: Request to assign a manager to a company
      */
     public String requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) throws Exception {
         
+=======
+     * Use Case 4.15: View roles and permissions tree
+     */
+    public String viewRolesAndPermissionsTree(String sessionToken, long companyId) throws Exception {
+>>>>>>> 1d842e6 (Add uc 4.15 View roles and permissions tree)
         // 1. Authenticate session
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
         
+<<<<<<< HEAD
         // 2. Extract user ID from token and retrieve member information
         Long appointerId = tokenService.extractUserId(sessionToken);
         Member appointer = userRepository.getMemberById(appointerId);
@@ -280,6 +297,50 @@ public class MembershipService {
         CompanyRole memberRole = membershipRepository.findRole(companyId, memberId);
         return domainService.validatePermission(memberRole, requiredPermission);
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
+=======
+        // 2. Extract the requesting member
+        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
+        long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        Member requester = userRepository.getMemberById(memberId);
+        
+        // Note for teammate: Make sure the Member class has a getUserName() method
+        String requestingUsername = requester.getUserName(); 
+
+        // 3. Fetch the company
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new Exception("Error: Company not found."));
+
+        // 4. Build the permissions map (Username -> Permissions String)
+        Map<String, String> permissionsMap = new HashMap<>();
+
+        // Add all owners to the map (Owners have full permissions implicitly)
+        for (String ownerUsername : company.getOwners()) {
+            permissionsMap.put(ownerUsername, "Role: OWNER");
+        }
+
+        // Add all managers and their specific permissions to the map
+        for (String managerUsername : company.getManagers()) {
+            try {
+                // Note for teammate: Make sure IUserRepository has getMemberByUsername(String username)
+                Member managerMember = userRepository.getMemberByUsername(managerUsername);
+                
+                if (managerMember != null) {
+                    CompanyRole role = managerMember.getRole(companyId);
+                    
+                    if (role instanceof Manager) {
+                        Set<String> perms = ((Manager) role).getPermissionKeys();
+                        String permString = perms.isEmpty() ? "No specific permissions" : "Permissions: " + String.join(", ", perms);
+                        permissionsMap.put(managerUsername, "Role: MANAGER, " + permString);
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore if user is not found to prevent the whole tree from failing
+            }
+        }
+
+        // 5. Request the tree representation from the Company domain object
+        return company.getRolesTreeRepresentation(requestingUsername, permissionsMap);
+>>>>>>> 1d842e6 (Add uc 4.15 View roles and permissions tree)
     }
 
 }
