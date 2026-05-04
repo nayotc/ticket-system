@@ -3,6 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
@@ -139,6 +140,33 @@ public class EventService {
         }
     }
 
+    
+    public Boolean deleteEvent(String sessionId, Long eventId) {
+        try {
+            // precondition: user logged in
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+            Long companyId = eventRepository.getEventById(eventId).getCompanyId();
+            // precondition: user has permission to remove an event
+            if (!membershipDomain.validatePermission(sessionId, companyId, "event:remove")) {
+                throw new IllegalArgumentException("User does not have permission to remove an event");
+            }
+            eventStatus status = eventRepository.getEventById(eventId).getStatus();
+            if (status == eventStatus.ACTIVE || status == eventStatus.DRAFT) {
+                throw new IllegalArgumentException("Only inactive or cancelled events can be removed");
+            }
+            long expectedVersion = eventRepository.getEventById(eventId).getVersion();
+            // main scenario: remove event
+            eventRepository.deleteEvent(eventId, expectedVersion);
+            // logger.servere("Event removed successfully: " + eventId);
+            return true;
+        } catch (Exception e) {
+            //logger.servere("remove event failed: " + e.getMessage());
+            throw e;
+        }
+    }
+
     public EventMapDTO getEventMap(String sessionId, Long eventId) {
         try {
             // precondition: user logged in
@@ -195,4 +223,6 @@ public class EventService {
             throw new IllegalArgumentException("Price must be a non-negative number");
         }
     }
+
+
 }
