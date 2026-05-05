@@ -36,14 +36,15 @@ public class Reservation {
         Ticket ticket=new Ticket(generateTicketId(), eventId, seat.getPosition().row(), seat.getPosition().number(), seat.getPrice());
         seat.setStatus(Seat.SeatStatus.RESERVED);
         order.addTicket(ticket);
-    }
+    } 
 
-    public void selectStandingTicket(int eventId, double price, int quantity) {
+    public void selectStandingTicket(int eventId, int quantity) {
         validateActive();
         if (event.getStandingArea().getAvailableSpots() < quantity) {
             throw new IllegalStateException("not available");
         }
         /*לבדוק שלא מוגרל */
+        int price =event.getStandingArea().getPrice();
         if (event.getStandingArea().hasAvailableSpots()) {
             for(int i=0; i<quantity; i++) {
                  Ticket ticket = new Ticket(generateTicketId(), eventId, 0, 0, price);

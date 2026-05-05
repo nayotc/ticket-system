@@ -3,6 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.util.ArrayList;
 import java.util.List;
 
+import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
@@ -18,7 +19,7 @@ public class ReservationService {
     private final IReservationRepository reservationRepository;
     private final IPaymentService paymentService;
     private final ISecureBarcode secureBarcode;
-    private final List<OrderCompletedListener> listeners = new ArrayList<>();
+   // private final List<OrderCompletedListener> listeners = new ArrayList<>();
     private final TokenService tokenService;
 
 
@@ -41,8 +42,9 @@ public class ReservationService {
     // UC 2.4, 2.5
     public void selectSeatTicket(String token, int eventId, int row, int chair) {
         try {
-            OrderOwner owner = getOrderOwnerFromToken(token);
-            ActiveOrder order = getOrCreateOrder(owner, eventId);
+            validateToken(token);
+
+            ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = getEvent(eventId);
             Reservation reservation = getOrCreateReservation(order, event);
 
@@ -55,16 +57,14 @@ public class ReservationService {
             throw e;
         }
     }
-
     public void selectStandingTicket(String token, int eventId, int quantity) {
         try {
-            OrderOwner owner = getOrderOwnerFromToken(token);
-            ActiveOrder order = getOrCreateOrder(owner, eventId);
+            
+            validateToken(token);
+            ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = getEvent(eventId);
             Reservation reservation = getOrCreateReservation(order, event);
-
-            double price = event.getStandingArea().getPrice();
-            reservation.selectStandingTicket(eventId, price, quantity);
+            reservation.selectStandingTicket(eventId, quantity);
 
             saveAll(reservation, order, event);
 
@@ -77,8 +77,8 @@ public class ReservationService {
     // UC 2.7
     public String viewActiveOrder(String token, int eventId) {
         try {
-            OrderOwner owner = getOrderOwnerFromToken(token);
-            ActiveOrder order = getExistingOrder(owner, eventId);
+            validateToken(token);
+            ActiveOrder order = getExistingOrder(token, eventId);
             Reservation reservation = getExistingReservation(order);
 
             reservation.viewActiveOrder(order);
@@ -93,8 +93,8 @@ public class ReservationService {
 
     public void removeTicketFromActiveOrder(String token, int eventId, int ticketId) {
         try {
-            OrderOwner owner = getOrderOwnerFromToken(token);
-            ActiveOrder order = getExistingOrder(owner, eventId);
+            validateToken(token);
+            ActiveOrder order = getExistingOrder(token, eventId);
             Reservation reservation = getExistingReservation(order);
 
             reservation.removeTicketFromActiveOrder(order, ticketId);
@@ -108,10 +108,10 @@ public class ReservationService {
     }
 
     // UC 2.8
-    public void submitActiveOrderForCheckout(String token, int orderId) {
+    public void submitActiveOrderForCheckout(String token, int orderId, int eventId) {
         try {
-            OrderOwner owner = getOrderOwnerFromToken(token);
-            ActiveOrder order = getExistingOrder(owner, orderId);
+            validateToken(token);
+            ActiveOrder order = getExistingOrder(token, eventId);
             Reservation reservation = getExistingReservation(order);
 
             reservation.submitActiveOrderForCheckout(order);
@@ -125,10 +125,11 @@ public class ReservationService {
         }
     }
 
-    public void checkout(String token, int orderId, PaymentDetails details) {
+    public void checkout(String token, int orderId, int eventId, PaymentDetails details) {
         try {
-            OrderOwner owner = getOrderOwnerFromToken(token);
-            ActiveOrder order = getExistingOrder(owner, orderId);
+            validateToken(token);
+            ActiveOrder order = getExistingOrder(token, eventId);
+   
             Reservation reservation = getExistingReservation(order);
 
             double amount = order.calculateTotalPrice();
@@ -227,25 +228,29 @@ public class ReservationService {
         return event;
     }
 
-    private ActiveOrder getOrCreateOrder(OrderOwner owner, int eventId) {
-        ActiveOrder order = findActiveOrder(owner, eventId);
+    private ActiveOrder getOrCreateOrder(String token, int eventId) {
+         ActiveOrder order = findActiveOrder(token, eventId);
 
-        if (order == null) {
-            order = new ActiveOrder(
-                    orderRepository.getNextId(),
-                    owner.getUserId(),
-                    owner.getSessionToken(),
-                    eventId
-            );
+    if (order == null) {
+        Long userId = tokenService.isMemberToken(token)
+                ? tokenService.extractUserId(token)
+                : null;
 
-            orderRepository.updateOrder(order);
-        }
+        order = new ActiveOrder(
+                orderRepository.getNextId(),
+                userId,
+                token,
+                eventId
+        );
+
+        orderRepository.updateOrder(order);
+    }
 
         return order;
     }
-
-    private ActiveOrder getExistingOrder(OrderOwner owner, int eventId) {
-        ActiveOrder order = findActiveOrder(owner, eventId);
+    
+    private ActiveOrder getExistingOrder(String token, int eventId) {
+        ActiveOrder order = findActiveOrder(token, eventId);
 
         if (order == null) {
             throw new IllegalArgumentException("Active order not found");
@@ -254,16 +259,18 @@ public class ReservationService {
         return order;
     }
 
-    private ActiveOrder findActiveOrder(OrderOwner owner, int eventId) {
-        if (owner.isGuest()) {
+    private ActiveOrder findActiveOrder(String token, int eventId) {
+        if (tokenService.isGuestToken(token)) {
             return orderRepository.getActiveOrderBySessionTokenAndEventId(
-                    owner.getSessionToken(),
+                    token,
                     eventId
             );
         }
 
+        Long userId = tokenService.extractUserId(token);
+
         return orderRepository.getActiveOrderByUserIdAndEventId(
-                owner.getUserId(),
+                userId,
                 eventId
         );
     }
@@ -280,43 +287,13 @@ public class ReservationService {
     }
 
 
-    // Token handling
-    private OrderOwner getOrderOwnerFromToken(String token) {
-        if (!tokenService.validateToken(token)) {
-            throw new IllegalArgumentException("Invalid or expired token");
+  private void validateToken(String token) {
+    if (!tokenService.validateToken(token)) {
+        throw new IllegalArgumentException("Invalid or expired token");
         }
-
-        String subject = tokenService.extractSubject(token);
-
-        if (tokenService.isGuestToken(token)) {
-            return new OrderOwner(null, subject);
-        }
-
-        return new OrderOwner(Integer.parseInt(subject), token);
     }
+
     
-    private static class OrderOwner {
-
-        private final Integer userId;
-        private final String sessionToken;
-
-        public OrderOwner(Integer userId, String sessionToken) {
-            this.userId = userId;
-            this.sessionToken = sessionToken;
-        }
-
-        public Integer getUserId() {
-            return userId;
-        }
-
-        public String getSessionToken() {
-            return sessionToken;
-        }
-
-        public boolean isGuest() {
-            return userId == null;
-        }
-    }
     //for logging - can be replaced with a proper logging framework
     private void logWarning(String msg) {
         /* ... */ }

@@ -1,6 +1,8 @@
 package ticketsystem.InfrastructureLayer;
 
 import ticketsystem.ApplicationLayer.IPaymentService;
+import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PaymentDetails;
 
 public class PaymentServiceProxy implements IPaymentService {
 
@@ -15,7 +17,7 @@ public class PaymentServiceProxy implements IPaymentService {
 
     @Override
     public void pay(OrderDTO order, PaymentDetails details) {
-        System.out.println("Payment Proxy: Processing payment for Order ID: " + order.getOrderId() + " with amount: $" + amount);
+      //  System.out.println("Payment Proxy: Processing payment for Order ID: " + order.getOrderId() + " with amount: $" + details.getAmount());
         // Simulate payment processing logic here       
         }
 
