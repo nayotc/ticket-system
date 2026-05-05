@@ -26,6 +26,7 @@ public class MembershipService {
 <<<<<<< HEAD
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
+<<<<<<< HEAD
     private final MembershipDomainService domainService;
     private final NotificationsService notificationsService;
 
@@ -43,15 +44,21 @@ public class MembershipService {
     private final ICompanyRepository companyRepository;
 >>>>>>> 1d842e6 (Add uc 4.15 View roles and permissions tree)
     private final IMembershipRepository membershipRepository;
+=======
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
     private final MembershipDomainService domainService;
+    private final INotificationService notificationService;
 
-    public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, IMembershipRepository membershipRepository, MembershipDomainService domainService) {
+    public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService domainService, INotificationService notificationService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
-        this.membershipRepository = membershipRepository;
         this.domainService = domainService;
+<<<<<<< HEAD
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
+=======
+        this.notificationService = notificationService;
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
     }
 
     /**
@@ -72,15 +79,15 @@ public class MembershipService {
 =======
 =======
         
+<<<<<<< HEAD
         // 2. Extract the requesting member ID
 >>>>>>> 4368f6f (Add comments)
+=======
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
         Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
-        
-        // 3. Fetch the member's current role in the target company
-        CompanyRole memberRole = membershipRepository.findRole(companyId, memberId);
-        
-        // 4. Domain Validation and Permission Check
+        Member member = userRepository.getMemberById(memberId);
+        CompanyRole memberRole = member.getRoleInCompany(companyId);
         return domainService.validatePermission(memberRole, requiredPermission);
     }
 
@@ -98,67 +105,10 @@ public class MembershipService {
             throw new Exception("Session authentication failed.");
         }
         
-        // 2. Extract the requesting member ID (The Appointer)
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
-        Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
-        
-        // 3. Fetch current roles from the repository
-        CompanyRole appointerRole = membershipRepository.findRole(companyId, memberId);
-        CompanyRole targetRole = membershipRepository.findRole(companyId, targetMemberId);
-        
-        // 4. Domain Validation
-        domainService.validateManagerAssignmentRequest(appointerRole, targetRole);        
-        
-        // 5. Create the Draft Entity
-        Manager newManager = new Manager(targetMemberId, companyId, permissions, memberId);
-        
-        // 6. Save the draft to the repository
-        membershipRepository.addRole(newManager);
-
-        // 7. Side Effects (Notifications)
-        // TODO: Notify to the Target Member on the appointment request, so they can approve or reject it.
-    }
-
-    /**
-     * Use Case 4.7: Approve a pending manager assignment
-     */
-    public void approveManagerAssignment(String sessionToken, Long companyId) throws Exception {
-        
-        // 1. Authenticate session
-        if (!tokenService.validateToken(sessionToken)) {
-            throw new Exception("Session authentication failed.");
-        }
-        
-        // 2. Extract the requesting member ID (The Appointee)
-        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
-        Long appointeeId = Long.parseLong(tokenService.extractSubject(sessionToken));
-        
-        // 3. Fetch the Draft Role from the repository
-        CompanyRole approvedRole = membershipRepository.findRole(companyId, appointeeId);
-        
-        // 4. Initial validation: Ensure the draft exists and is the correct type
-        if (approvedRole == null) {
-            throw new Exception("No pending invitation found.");
-        }
-        if (!(approvedRole instanceof Manager)) {
-            throw new Exception("The pending role found is not a manager role.");
-        }
-        
-        // 5. Fetch the Appointer (Parent Role) to update their hierarchy tree
-        Long appointerId = ((Manager) approvedRole).getAppointedByMemberId();
-        CompanyRole parentRole = membershipRepository.findRole(companyId, appointerId);
-        
-        // 6. Domain Validation & State Mutation
-        domainService.validateAndApproveManager(approvedRole, parentRole, appointeeId);
-        
-        // 7. Save the updated states to the repository
-        membershipRepository.updateRole(approvedRole);
-        membershipRepository.updateRole(parentRole);
-        
-        // 8. Side Effects: Update Company tree with new manager
-        // TODO: Update and Notify to the Company on the New Manager
-        Member appointee = userRepository.getMemberById(appointeeId);
+        Long appointerId = Long.parseLong(tokenService.extractSubject(sessionToken));
         Member appointer = userRepository.getMemberById(appointerId);
+<<<<<<< HEAD
         Company company = companyRepository.findById(companyId);
         
         company.registerNewAppointment(appointer.getUserName(), appointee.getUserName());
@@ -199,6 +149,15 @@ public class MembershipService {
         // 6. Execute Deletion! (Clean up the draft entity)
         // Since they were never added to the appointer's tree, simply deleting the role is safe.
         membershipRepository.deleteRole(companyId, appointeeId);
+=======
+        CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
+        Member targetMember = userRepository.getMemberById(targetMemberId);
+        CompanyRole targetRole = targetMember.getRoleInCompany(companyId);
+        domainService.validateManagerAssignmentRequest(appointerRole, targetRole);           
+        targetMember.addManagerRole(companyId, appointerId, permissions);
+        userRepository.updateMember(targetMember);
+        notificationService.notify(targetMemberId, "You have been assigned to become a manager at " + companyRepository.findById(companyId).getName() + ". Please review and approve or reject this assignment.");
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
     }
 
 <<<<<<< HEAD

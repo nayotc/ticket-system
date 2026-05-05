@@ -7,12 +7,17 @@ public class Founder extends CompanyRole{
     private List<Long> appointeesMemberIds;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     public Founder(Long companyId) {
         super(companyId);
 =======
     public Founder(Long memberId, Long companyId) {
         super(memberId, companyId);
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
+=======
+    public Founder(Long companyId) {
+        super(companyId);
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
         this.appointeesMemberIds = new ArrayList<>();
         this.status = RoleStatus.ACTIVE; // Founder is active immediately upon creation
     }

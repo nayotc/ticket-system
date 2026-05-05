@@ -4,6 +4,7 @@ public abstract class CompanyRole {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     protected Long companyId;
     protected RoleStatus status;
 
@@ -13,17 +14,24 @@ public abstract class CompanyRole {
     protected long companyId;
 =======
     protected Long memberId;
+=======
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
     protected Long companyId;
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     protected RoleStatus status;
 
+<<<<<<< HEAD
     public CompanyRole(Long memberId, Long companyId) {
         this.memberId = memberId;
 >>>>>>> 0dbf918 (Refactor MembershipRepository and CompanyRole)
+=======
+    public CompanyRole(Long companyId) {
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
         this.companyId = companyId;
         this.status = RoleStatus.PENDING;
     }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     public Long getCompanyId() {
@@ -39,6 +47,8 @@ public abstract class CompanyRole {
         return memberId;
     }
 
+=======
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
     public Long getCompanyId() {
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
         return companyId;

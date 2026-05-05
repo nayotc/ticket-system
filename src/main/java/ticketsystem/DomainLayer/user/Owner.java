@@ -8,12 +8,17 @@ public class Owner extends CompanyRole {
     private Long appointedByMemberId;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     public Owner(Long companyId, Long appointedByMemberId) {
         super(companyId);
 =======
     public Owner(Long memberId, Long companyId, Long appointedByMemberId) {
         super(memberId, companyId);
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
+=======
+    public Owner(Long companyId, Long appointedByMemberId) {
+        super(companyId);
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
         this.appointedByMemberId = appointedByMemberId;
         this.appointeesMemberIds = new ArrayList<>();
         this.status = RoleStatus.PENDING;

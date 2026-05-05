@@ -9,6 +9,7 @@ public class Manager extends CompanyRole {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     public Manager(Long companyId, Long appointedByMemberId, Set<Permission> permissions) {
         super(companyId);
 =======
@@ -19,6 +20,10 @@ public class Manager extends CompanyRole {
     public Manager(Long memberId, Long companyId, Set<Permission> permissions, Long appointedByMemberId) {
         super(memberId, companyId);
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
+=======
+    public Manager(Long companyId, Set<Permission> permissions, Long appointedByMemberId) {
+        super(companyId);
+>>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
         this.appointedByMemberId = appointedByMemberId;
         this.status = RoleStatus.PENDING;
         this.permissions = permissions;
