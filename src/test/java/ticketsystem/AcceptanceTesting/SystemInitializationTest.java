@@ -22,7 +22,9 @@ public class SystemInitializationTest {
         realAdminRepo = new SystemAdminRepository();
         PaymentServiceProxy paymentProxy = new PaymentServiceProxy();
         SecureBarcodeProxy barcodeProxy = new SecureBarcodeProxy();
-
+        PaymentServiceProxy.isConnectionSuccessful = true;
+        PaymentServiceProxy.wasConnectCalled = false;
+        SecureBarcodeProxy.isConnectionSuccessful = true;
         systemAdminService = new SystemAdminService(realAdminRepo, paymentProxy, barcodeProxy);
     }
 
@@ -30,6 +32,8 @@ public class SystemInitializationTest {
     public void givenSystemAdminExists_whenInitSystem_thenSystemInitializesWithProxies() {
         SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
         realAdminRepo.addAdmin(admin);
+        PaymentServiceProxy.isConnectionSuccessful = true;
+        SecureBarcodeProxy.isConnectionSuccessful = true;
 
         boolean result = systemAdminService.initSystem();
         assertTrue(result, "Acceptance Test Failed: System should initialize successfully using infrastructure proxies.");
@@ -38,8 +42,45 @@ public class SystemInitializationTest {
 
     @Test
     public void givenEmptyRepository_whenInitSystem_thenInitializationFails() {
+        PaymentServiceProxy.isConnectionSuccessful = true;
 
+        // Act
         boolean result = systemAdminService.initSystem();
+
+        // Assert
         assertFalse(result, "Acceptance Test Failed: System allowed initialization without a System Admin.");
+        assertFalse(PaymentServiceProxy.wasConnectCalled, "Payment service should not be contacted if no admin exists.");
+    }
+
+    @Test
+    public void givenPaymentServiceIsDown_whenInitSystem_thenInitializationFails() {
+        // Arrange
+        SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
+        realAdminRepo.addAdmin(admin);
+
+        PaymentServiceProxy.isConnectionSuccessful = false;
+        SecureBarcodeProxy.isConnectionSuccessful = true;
+
+        // Act
+        boolean result = systemAdminService.initSystem();
+
+        // Assert
+        assertFalse(result, "Acceptance Test Failed: System should fail to initialize if payment service is down.");
+    }
+
+    @Test
+    public void givenBarcodeServiceIsDown_whenInitSystem_thenInitializationFails() {
+        // Arrange
+        SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
+        realAdminRepo.addAdmin(admin);
+
+        PaymentServiceProxy.isConnectionSuccessful = true;
+        SecureBarcodeProxy.isConnectionSuccessful = false;
+
+        // Act
+        boolean result = systemAdminService.initSystem();
+
+        // Assert
+        assertFalse(result, "Acceptance Test Failed: System should fail to initialize if barcode service is down.");
     }
 }
