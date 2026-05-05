@@ -3,6 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.util.ArrayList;
 import java.util.List;
 
+import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
@@ -148,7 +149,7 @@ public class ReservationService {
             throw e;
         }
     }
-
+    //listener
     public void addOrderListener(OrderCompletedListener listener) {
             listeners.add(listener);
     }
@@ -159,6 +160,7 @@ public class ReservationService {
         }
     }
 
+    // Helper methods
     private Reservation getExistingReservation(ActiveOrder order) {
         Reservation reservation = reservationRepository.getReservationByOrderId(order.getOrderId());
         Event event = getEvent(order.getEventId());
@@ -188,21 +190,21 @@ public class ReservationService {
 
         if (reservation == null) {
             logWarning("Reservation not found. Creating new reservation for orderId=" + order.getOrderId());
-            return createReservation(order, event);
+            reservation= createReservation(order, event);
+            saveAll(reservation, order, event);
         }
 
-        if (reservation.isExpired()) {
+        else if (reservation.isExpired()) {
             logWarning("Reservation expired. Recreating reservation for orderId=" + order.getOrderId());
 
             reservation.expire();
 
             reservationRepository.deleteReservationByOrderId(order.getOrderId());
-            orderRepository.updateOrder(order);
-            eventRepository.updateEvent(event);
 
-            return createReservation(order, event);
+            reservation= createReservation(order, event);
+            saveAll(reservation, order, event);
+           
         }
-
         return reservation;
     }
 
@@ -277,6 +279,8 @@ public class ReservationService {
         orderRepository.updateOrder(order);
     }
 
+
+    // Token handling
     private OrderOwner getOrderOwnerFromToken(String token) {
         if (!tokenService.validateToken(token)) {
             throw new IllegalArgumentException("Invalid or expired token");
@@ -290,7 +294,7 @@ public class ReservationService {
 
         return new OrderOwner(Integer.parseInt(subject), token);
     }
-
+    
     private static class OrderOwner {
 
         private final Integer userId;
@@ -313,4 +317,10 @@ public class ReservationService {
             return userId == null;
         }
     }
+    //for logging - can be replaced with a proper logging framework
+    private void logWarning(String msg) {
+        /* ... */ }
+
+    private void logError(String msg) {
+        /* ... */ }
 }
