@@ -15,6 +15,7 @@ public class CompanyTree {
         this.hierarchy = new HashMap<>();
         this.hierarchy.put(founderId, new ArrayList<>());
         this.roles = new HashMap<>();
+        this.roles.put(founderId, "FOUNDER"); 
     }
 
     public void addAppointment(long appointerId, long appointeeId, String role) {

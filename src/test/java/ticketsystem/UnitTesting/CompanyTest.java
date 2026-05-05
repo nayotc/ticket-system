@@ -13,20 +13,21 @@ import ticketsystem.DomainLayer.company.PurchasePolicy;
 
 class CompanyTest {
 
-    private Company company;
-    // We now use string-based IDs since TokenService uses user IDs, not usernames
-    private final String FOUNDER_ID = "100";
-    private final String SECOND_OWNER_ID = "101";
-    private final String MANAGER_ID = "102";
+private Company company;
+    // We now use long-based IDs
+    private final long FOUNDER_ID = 100L;
+    private final long SECOND_OWNER_ID = 101L;
+    private final long MANAGER_ID = 102L;
 
     @BeforeEach
     void setUp() {
         // Create a new company before each test
         company = new Company("BGU Productions", FOUNDER_ID, new PurchasePolicy(), new DiscountPolicy());
         
-        // Add an additional owner and a manager to test permissions
-        company.addOwner(SECOND_OWNER_ID);
-        company.addManager(MANAGER_ID);
+        // Add an additional owner and a manager using the updated method
+        // This ensures they are added BOTH to the role lists (owners/managers) AND to the CompanyTree
+        company.registerNewAppointment(FOUNDER_ID, SECOND_OWNER_ID, "OWNER");
+        company.registerNewAppointment(FOUNDER_ID, MANAGER_ID, "MANAGER");
     }
 
     // --- Tests for UC 3.2 (Create Company) & ID Generation ---
@@ -109,11 +110,11 @@ class CompanyTest {
 
     @Test
     void testViewRolesTree_ByOwner_Success() throws Exception {
-        // Create a mock permissions map for testing
-        Map<String, String> mockPermissions = new HashMap<>();
-        mockPermissions.put(FOUNDER_ID, "Role: OWNER");
-        mockPermissions.put(SECOND_OWNER_ID, "Role: OWNER");
-        mockPermissions.put(MANAGER_ID, "Role: MANAGER, Permissions: inventory:event:manage");
+        // Create a mock permissions map for testing (Now using Long keys)
+        Map<Long, String> mockPermissions = new HashMap<>();
+        mockPermissions.put(FOUNDER_ID, "All Permissions");
+        mockPermissions.put(SECOND_OWNER_ID, "All Permissions");
+        mockPermissions.put(MANAGER_ID, "inventory:event:manage");
 
         // Both the founder and the additional owner are permitted to view the roles tree
         String treeForFounder = company.getRolesTreeRepresentation(FOUNDER_ID, mockPermissions);
@@ -122,16 +123,18 @@ class CompanyTest {
         assertNotNull(treeForFounder);
         assertNotNull(treeForOwner);
         
-        // Additional check to verify the map data is integrated into the string output
-        assertTrue(treeForFounder.contains("Role: OWNER"), "Tree should contain the provided permissions string.");
+        // Additional check to verify the role and permissions are integrated into the string output
+        assertTrue(treeForFounder.contains("Role: FOUNDER"), "Tree should contain the internal role (FOUNDER).");
+        assertTrue(treeForFounder.contains("Permissions: inventory:event:manage"), "Tree should contain the provided permissions string.");
     }
 
     @Test
     void testViewRolesTree_ByManager_ThrowsException() {
-        Map<String, String> mockPermissions = new HashMap<>(); // Empty map is fine for this test
+        Map<Long, String> mockPermissions = new HashMap<>(); // Empty map is fine for this test
         
         // A manager attempts to view the roles tree and receives an error
         Exception exception = assertThrows(Exception.class, () -> company.getRolesTreeRepresentation(MANAGER_ID, mockPermissions));
         assertTrue(exception.getMessage().contains("Only Owners can view"));
     }
+
 }
