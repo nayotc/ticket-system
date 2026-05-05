@@ -9,10 +9,12 @@ import ticketsystem.DomainLayer.user.Member;
 public class UserService {
     private final IUserRepository userRepository;
     private final ITokenService tokenService;
+    private final IPasswordService passwordService;
 
     public UserService(IUserRepository userRepository, ITokenService tokenService) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
+        this.passwordService = new PasswordService();
     }
     // 1. System Visit: Allows a guest to visit the system and receive a session token.
     public String visitSystem() {
@@ -20,22 +22,23 @@ public class UserService {
         return tokenService.addActiveSession(guest);
     }
     // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe username and password.
-    public void signUp(String sessionToken, String username, String password) {
+    public boolean signUp(String sessionToken, String username, String password) {
         if (!tokenService.validateToken(sessionToken)) {
-            return;
+            return false;
         }
         if (!tokenService.isGuestToken(sessionToken)) {
-            return;
+            return false;
         }
         if (userRepository.isUsernameTaken(username)) {
-            return;
+            return false;
         }
         Long newId = new SecureRandom().nextLong();
         while (userRepository.isIDTaken(newId)) {
             newId = new SecureRandom().nextLong();
         }
-
-        userRepository.addRegisteredMember(newId, new Member(newId, username), password);
+        String hashedPassword = passwordService.hashPassword(password);
+        userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
+        return true;
     }
 
     public void logIn(String sessionToken, String username, String password) {

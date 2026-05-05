@@ -3,27 +3,22 @@ package ticketsystem.InfrastructureLayer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
 import ticketsystem.DomainLayer.user.Member;
 
 public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUserRepository {
 
     private Map<Long, Member> registeredMembersMap;
     private Map<String, String> hashedPasswordsMap;
-    private PasswordEncoder passwordEncoder;
     private Map<String, Long> usernameToIdMap;
 
     public UserRepository() {
         this.registeredMembersMap = new ConcurrentHashMap<>();
-        this.hashedPasswordsMap = new ConcurrentHashMap<>();
-        this.passwordEncoder = new BCryptPasswordEncoder();
         this.usernameToIdMap = new ConcurrentHashMap<>();
+        this.hashedPasswordsMap = new ConcurrentHashMap<>();
     }
 
     @Override
-    public boolean addRegisteredMember(long id, Member member, String password) {
+    public boolean addRegisteredMember(long id, Member member, String hashedPassword) {
         if (usernameToIdMap.putIfAbsent(member.getUserName(), id) != null) {
             return false; // Username already exists, cannot add member
         }
@@ -34,7 +29,7 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
         }
 
         // Store the hashed password
-        hashedPasswordsMap.put(member.getUserName(), hashPassword(password));
+        hashedPasswordsMap.put(member.getUserName(), hashedPassword);
 
         return true;
     }
@@ -79,17 +74,8 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
     }
 
     @Override
-    public boolean isMemberDetailsCorrect(String username, String password) {
-        String hashed = hashedPasswordsMap.get(username);
-        return hashed != null && verifyPassword(password, hashed);
-    }
-
-    private String hashPassword(String password) {
-        return passwordEncoder.encode(password);
-    }
-
-    private boolean verifyPassword(String password, String hashedPassword) {
-        return passwordEncoder.matches(password, hashedPassword);
+    public String getHashedPasswordByUsername(String username) {
+        return hashedPasswordsMap.get(username);
     }
 
 }

@@ -18,5 +18,5 @@ public interface IUserRepository {
 
     Member getMemberById(long id);
 
-    boolean isMemberDetailsCorrect(String username, String password);
+    String getHashedPasswordByUsername(String username);
 }

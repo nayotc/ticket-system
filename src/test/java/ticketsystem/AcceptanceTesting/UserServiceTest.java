@@ -47,9 +47,10 @@ public class UserServiceTest {
         String sessionToken = userService.visitSystem();
 
         // Act: sign up with a unique username
-        userService.signUp(sessionToken, "newUser", "password123");
+        boolean answer=userService.signUp(sessionToken, "newUser", "password123");
 
         // Assert: check that the new member is added to the repository
+        assertTrue(answer, "Sign up should succeed with a unique username");
         assertTrue(userRepository.isUsernameTaken("newUser"), "Username should be taken after sign up");
         assertEquals(userRepository.getAllRegisteredMembersCount(), 1,
                 "There should be one registered member after sign up");
@@ -63,10 +64,11 @@ public class UserServiceTest {
 
         // Act: attempt to sign up with the same username
         String sessionToken2 = userService.visitSystem();
-        userService.signUp(sessionToken2, "existingUser", "password456");
+        boolean answer=userService.signUp(sessionToken2, "existingUser", "password456");
 
         // Assert: check that the second sign-up attempt fails due to username being
         // taken
+        assertFalse(answer, "Sign up should fail with a taken username");
         assertTrue(userRepository.isUsernameTaken("existingUser"), "Username should be taken");
         assertEquals(userRepository.getAllRegisteredMembersCount(), 1,
                 "There should still be only one registered member");
