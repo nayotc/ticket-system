@@ -55,7 +55,8 @@ public class Reservation {
         }
     }
        public void viewActiveOrder(ActiveOrder order) {
-                    
+            validateActive();
+            
     }
 
     public void removeTicketFromActiveOrder(ActiveOrder order,int ticketId) {
