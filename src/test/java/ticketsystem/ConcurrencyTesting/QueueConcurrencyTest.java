@@ -23,6 +23,7 @@ import ticketsystem.DomainLayer.event.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.PurchasePolicy;
+import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 
 public class QueueConcurrencyTest {
@@ -255,7 +256,7 @@ public class QueueConcurrencyTest {
     }
 
     private TokenService createFakeTokenService() {
-        return new TokenService() {
+        return new TokenService("manual_test_secret_32_chars_long", new TokenRepository()) {
             @Override
             public boolean validateToken(String sessionId) {
                 return true; // All sessions valid for testing
