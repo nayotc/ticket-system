@@ -6,51 +6,55 @@ import java.util.List;
 import java.util.Map;
 
 public class CompanyTree {
-    private final Map<String, List<String>> hierarchy;
-    private final String founder;
+    private final Map<Long, List<Long>> hierarchy;
+    private final Map<Long, String> roles;
+    private final long founderId;
 
-    public CompanyTree(String founder) {
-        this.founder = founder;
+    public CompanyTree(long founderId) {
+        this.founderId = founderId;
         this.hierarchy = new HashMap<>();
-        this.hierarchy.put(founder, new ArrayList<>());
+        this.hierarchy.put(founderId, new ArrayList<>());
+        this.roles = new HashMap<>();
     }
 
-    public void addAppointment(String appointer, String appointee) {
-        hierarchy.computeIfAbsent(appointer, k -> new ArrayList<>()).add(appointee);
-        hierarchy.putIfAbsent(appointee, new ArrayList<>());
+    public void addAppointment(long appointerId, long appointeeId, String role) {
+        hierarchy.computeIfAbsent(appointerId, k -> new ArrayList<>()).add(appointeeId);
+        hierarchy.putIfAbsent(appointeeId, new ArrayList<>());
+        roles.put(appointeeId, role); // Save the role of the new appointee
     }
 
-    // --- Deletion Methods ---
-
+   // --- Deletion Methods ---
     /**
      * Removes a user from the roles tree and reassigns their appointees to their appointer.
      */
-    public void removeNode(String userToRemove) {
+    public void removeNode(long memberIdToRemove) throws Exception {
         // Edge case: Cannot remove the founder
-        if (userToRemove.equals(founder)) {
-            return; 
+        if (memberIdToRemove == founderId) {
+            throw new Exception("Error: Cannot remove the Founder from the company tree."); 
         }
 
-        String appointerOfDeletedUser = null;
+        Long appointerOfDeletedUser = null;
 
         // 1. Find the parent (appointer) of the user we want to remove
-        for (Map.Entry<String, List<String>> entry : hierarchy.entrySet()) {
-            if (entry.getValue().contains(userToRemove)) {
+        for (Map.Entry<Long, List<Long>> entry : hierarchy.entrySet()) {
+            if (entry.getValue().contains(memberIdToRemove)) {
                 appointerOfDeletedUser = entry.getKey();
                 // Remove the user from their appointer's list
-                entry.getValue().remove(userToRemove);
+                entry.getValue().remove(Long.valueOf(memberIdToRemove));
                 break;
             }
         }
 
-        // If the user wasn't found in the tree at all, we can stop here
+        // If the user wasn't found in the tree at all, throw an exception
         if (appointerOfDeletedUser == null) {
-            return;
+            throw new Exception("Error: Member ID " + memberIdToRemove + " was not found in the roles tree.");
         }
 
         // 2. Extract all the appointees (children) of the user to be removed
-        // hierarchy.remove(userToRemove) removes the node and returns its list of appointees
-        List<String> orphanedAppointees = hierarchy.remove(userToRemove);
+        List<Long> orphanedAppointees = hierarchy.remove(memberIdToRemove);
+        
+        // Remove the role mapping of the deleted user
+        roles.remove(memberIdToRemove);
 
         // 3. Reassign the orphaned appointees to the appointer of the deleted user
         if (orphanedAppointees != null && !orphanedAppointees.isEmpty()) {
@@ -60,24 +64,28 @@ public class CompanyTree {
     
     // ---------------------------------
 
-    public String getStructuredData(Map<String, String> userPermissions) {
-            StringBuilder sb = new StringBuilder();
-            buildTreeString(founder, 0, sb, userPermissions);
-            return sb.toString();
-        }
+    public String getStructuredData(Map<Long, String> userPermissions) {
+        StringBuilder sb = new StringBuilder();
+        buildTreeString(founderId, 0, sb, userPermissions);
+        return sb.toString();
+    }
 
-    private void buildTreeString(String current, int depth, StringBuilder sb, Map<String, String> userPermissions) {
+    private void buildTreeString(long current, int depth, StringBuilder sb, Map<Long, String> userPermissions) {
         for (int i = 0; i < depth; i++) sb.append("  ");
-        sb.append("- ").append(current);
+        
+        // MODIFIED: Fetch the role from the internal map and add it to the string
+        String role = roles.getOrDefault(current, "UNKNOWN");
+        sb.append("- ID: ").append(current).append(" (Role: ").append(role).append(")");
 
+        // Add specific permissions from the external map (if any exist)
         if (userPermissions != null && userPermissions.containsKey(current)) {
-            sb.append(" [").append(userPermissions.get(current)).append("]");
+            sb.append(" [Permissions: ").append(userPermissions.get(current)).append("]");
         }
         sb.append("\n");
 
-        List<String> appointees = hierarchy.get(current);
+        List<Long> appointees = hierarchy.get(current);
         if (appointees != null) {
-            for (String appointee : appointees) {
+            for (Long appointee : appointees) {
                 buildTreeString(appointee, depth + 1, sb, userPermissions);
             }
         }

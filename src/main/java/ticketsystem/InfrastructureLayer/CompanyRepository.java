@@ -46,17 +46,17 @@ public class CompanyRepository implements ICompanyRepository {
         return new ArrayList<>(companies.values());
     }
     @Override
-    public boolean existsByFounderUsername(String founderUsername) {
+    public boolean existsByFounderId(long founderId) {
         // Efficiently checks if any company has this user as its founder
         return companies.values().stream()
-                .anyMatch(c -> c.getFounderUsername().equals(founderUsername));
+                .anyMatch(c -> c.getFounderId() == founderId);
     }
 
     @Override
-    public List<Company> findByOwnersContainingOrManagersContaining(String owner, String manager) {
+    public List<Company> findByOwnersContainingOrManagersContaining(long ownerId, long managerId) {
         // Filters and returns only the companies where the user is an owner or a manager
         return companies.values().stream()
-                .filter(c -> c.getOwners().contains(owner) || c.getManagers().contains(manager))
+                .filter(c -> c.getOwners().contains(ownerId) || c.getManagers().contains(managerId))
                 .collect(Collectors.toList());
     }
 }

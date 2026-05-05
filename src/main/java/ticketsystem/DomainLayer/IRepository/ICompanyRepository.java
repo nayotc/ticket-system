@@ -14,9 +14,7 @@ public interface ICompanyRepository {
     List<Company> findAll();
 
     // Checks if there is ANY company where this user is the founder
-    boolean existsByFounderUsername(String founderUsername);
-
+    boolean existsByFounderId(long founderId);
     // Fetches ONLY the companies where the user is listed in the owners OR managers lists
-    List<Company> findByOwnersContainingOrManagersContaining(String owner, String manager);
-
+    List<Company> findByOwnersContainingOrManagersContaining(long ownerId, long managerId);
 }

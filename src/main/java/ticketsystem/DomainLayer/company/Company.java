@@ -10,31 +10,30 @@ public class Company {
     
     private long id; 
     private String name;
-    private final String founderUsername; 
+    private final long founderId;
     private boolean isActive;
-    private List<String> owners; 
-    private List<String> managers; 
+    private List<Long> owners; 
+    private List<Long> managers;
     private final CompanyTree rolesTree;
     private PurchasePolicy purchasePolicy; 
     private DiscountPolicy discountPolicy; 
 
-    public Company(String name, String founderUsername, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
+    public Company(String name, long founderId, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
         this.id = idCounter++; 
         
         this.name = name;
-        this.founderUsername = founderUsername;
+        this.founderId = founderId;
         this.isActive = true; 
         
         this.owners = new ArrayList<>();
-        this.owners.add(founderUsername); 
+        this.owners.add(founderId); 
         
         this.managers = new ArrayList<>();
         this.purchasePolicy = purchasePolicy;
         this.discountPolicy = discountPolicy;
         
-        this.rolesTree = new CompanyTree(founderUsername);
+        this.rolesTree = new CompanyTree(founderId);
     }
-
     // --- Getters & Setters ---
 
     public long getId() {
@@ -53,31 +52,31 @@ public class Company {
         this.name = name;
     }
 
-    public String getFounderUsername() {
-        return founderUsername;
+    public long getFounderUsername() {
+        return founderId;
     }
 
     public boolean isActive() {
         return isActive;
     }
 
-    public List<String> getOwners() {
+    public List<Long> getOwners() {
         return Collections.unmodifiableList(owners);
     }
 
-    public void addOwner(String ownerUsername) {
-        if (!owners.contains(ownerUsername)) {
-            this.owners.add(ownerUsername);
+    public void addOwner(long ownerId) {
+        if (!owners.contains(ownerId)) {
+            this.owners.add(ownerId);
         }
     }
 
-    public List<String> getManagers() {
+    public List<Long> getManagers() {
         return Collections.unmodifiableList(managers);
     }
 
-    public void addManager(String managerUsername) {
-        if (!managers.contains(managerUsername)) {
-            this.managers.add(managerUsername);
+    public void addManager(long managerId) {
+        if (!managers.contains(managerId)) {
+            this.managers.add(managerId);
         }
     }
 
@@ -97,18 +96,23 @@ public class Company {
         this.discountPolicy = discountPolicy;
     }
 
-    private boolean isFounder(String user) {
-        return user.equals(this.founderUsername);
+    private boolean isFounder(long memberId) {
+        return this.founderId == memberId;
     }
 
-    private boolean isOwner(String user) {
-        return owners.contains(user); 
+    private boolean isOwner(long memberId) {
+        return owners.contains(memberId); 
+    }
+
+    public long getFounderId()
+    {
+        return this.founderId;
     }
 
     // --- Use Cases Logic ---
 
-    public void closeOrSuspend(String requestingUser) throws Exception {
-        if (!isFounder(requestingUser)) { // if not founder - throw exception
+    public void closeOrSuspend(long requestingMemberId) throws Exception {
+        if (!isFounder(requestingMemberId)) { // if not founder - throw exception
             throw new Exception("The system rejects the request due to lack of permissions. Only the Founder can close the company.");
         }
 
@@ -119,8 +123,9 @@ public class Company {
         this.isActive = false;
     }
 
-    public void reopenCompany(String requestingUser) throws Exception {
-        if (!isFounder(requestingUser)) { // if not founder - throw exception
+
+    public void reopenCompany(long requestingMemberId) throws Exception {
+        if (!isFounder(requestingMemberId)) { // if not founder - throw exception
             throw new Exception("The system rejects the request due to lack of permissions. Only the Founder can reopen the company.");
         }
 
@@ -131,21 +136,27 @@ public class Company {
         this.isActive = true;
     }
 
-    public String getRolesTreeRepresentation(String requestingUser, Map<String, String> userPermissions) throws Exception {
-            if (!isOwner(requestingUser)) { 
-                throw new Exception("The system rejects the request due to lack of permissions. Only Owners can view the roles tree.");
-            }
-            
-            return this.rolesTree.getStructuredData(userPermissions);
+    public String getRolesTreeRepresentation(long requestingMemberId, Map<Long, String> userPermissions) throws Exception {
+        if (!isOwner(requestingMemberId)) { 
+            throw new Exception("The system rejects the request due to lack of permissions. Only Owners can view the roles tree.");
         }
-
-    public void registerNewAppointment(String appointer, String appointee) { // insert the appointment to the tree
-        rolesTree.addAppointment(appointer, appointee);
+        
+        return this.rolesTree.getStructuredData(userPermissions);
     }
 
-    public void removeUserFromAllRoles(String userId) {
-        this.owners.remove(userId);
-        this.managers.remove(userId);
-        this.rolesTree.removeNode(userId);
+    public void registerNewAppointment(long appointerId, long appointeeId, String role) { 
+        rolesTree.addAppointment(appointerId, appointeeId, role);
+
+        if ("OWNER".equalsIgnoreCase(role)) {
+            addOwner(appointeeId);
+        } else if ("MANAGER".equalsIgnoreCase(role)) {
+            addManager(appointeeId);
+        }
+    }
+
+    public void removeUserFromAllRoles(long memberId) throws Exception {
+        this.owners.remove(Long.valueOf(memberId));
+        this.managers.remove(Long.valueOf(memberId));
+        this.rolesTree.removeNode(memberId);
     }
 }
