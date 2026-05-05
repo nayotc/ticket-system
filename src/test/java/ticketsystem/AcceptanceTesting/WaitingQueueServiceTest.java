@@ -19,14 +19,19 @@ import ticketsystem.DomainLayer.event.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.PurchasePolicy;
+import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.InfrastructureLayer.TokenRepository;
 
 public class WaitingQueueServiceTest {
 
     private FakeEventRepository fakeEventRepo;
     private WaitingQueueRepository realQueueRepo;
     private FakeNotificationsService fakeNotifications;
-    private TokenService TokenService;
+    private ITokenService tokenService;
+    private ITokenRepository tokenRepository;
     private WaitingQueueService waitingQueueService;
 
     @BeforeEach
@@ -34,16 +39,17 @@ public class WaitingQueueServiceTest {
         fakeEventRepo = new FakeEventRepository();
         realQueueRepo = new WaitingQueueRepository();
         fakeNotifications = new FakeNotificationsService();
-        TokenService = new TokenService();
-        waitingQueueService = new WaitingQueueService(fakeEventRepo, realQueueRepo, fakeNotifications, TokenService);
-    }
+        tokenRepository = new TokenRepository();
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        waitingQueueService = new WaitingQueueService(fakeEventRepo, realQueueRepo, fakeNotifications, tokenService);
+        }
 
     @Test
     public void givenEventHasCapacity_whenTryReserve_thenUserIsApproved() {
         // Arrange
         Event event = new Event(1L, "Music Festival", LocalDateTime.now(), "Central Park", 100L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
         fakeEventRepo.addEvent(event);
-        String validToken = TokenService.generateNewGuestToken();
+        String validToken = tokenService.addActiveSession(new Guest());
 
         // Act
         String result = waitingQueueService.tryReserve(1, validToken);
@@ -59,7 +65,7 @@ public class WaitingQueueServiceTest {
         // Arrange
         Event event = new Event(2L, "Art Expo", LocalDateTime.now(), "Central Park", 1L, EventCategory.EXHIBITION, null, new PurchasePolicy("Default"), new DiscountPolicy());
         fakeEventRepo.addEvent(event);
-        String validToken = TokenService.generateNewGuestToken();
+        String validToken = tokenService.addActiveSession(new Guest());
 
         waitingQueueService.tryReserve(2, validToken);
 
@@ -77,11 +83,15 @@ public class WaitingQueueServiceTest {
         // Arrange 
         Event event = new Event(3L, "Rock Concert", LocalDateTime.now(), "Central Park", 1L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
         fakeEventRepo.addEvent(event);
-        String validToken1 = TokenService.generateNewGuestToken();
-        String validToken2 = TokenService.generateNewGuestToken();
 
-        waitingQueueService.tryReserve(3, validToken1);
-        waitingQueueService.tryReserve(3, validToken2);
+        String validToken1 = tokenService.addActiveSession(new Guest());
+        String validToken2 = tokenService.addActiveSession(new Guest());
+
+        String result1 = waitingQueueService.tryReserve(3, validToken1);
+        String result2 = waitingQueueService.tryReserve(3, validToken2);
+
+        assertEquals("APPROVED", result1);
+        assertEquals("QUEUED", result2);
 
         // Act 
         waitingQueueService.releaseSpot(3, validToken1);
@@ -91,18 +101,20 @@ public class WaitingQueueServiceTest {
         assertEquals(1, event.getActiveReservationsCount(), "Capacity should be full again because the queued user took the spot.");
         assertEquals(0, realQueueRepo.getQueueSize(3), "Queue should be empty after the user was dequeued.");
     }
-
     @Test
     public void givenEmptyQueue_whenSpotReleased_thenCapacityDrops() {
         // Arrange
         Event event = new Event(4L, "Jazz Night", LocalDateTime.now(), "Central Park", 2L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
         fakeEventRepo.addEvent(event);
 
-        String validToken1 = TokenService.generateNewGuestToken();
-        String validToken2 = TokenService.generateNewGuestToken();
+        String validToken1 = tokenService.addActiveSession(new Guest());
+        String validToken2 = tokenService.addActiveSession(new Guest());
 
-        waitingQueueService.tryReserve(4, validToken1);
-        waitingQueueService.tryReserve(4, validToken2);
+        String result1 = waitingQueueService.tryReserve(4, validToken1);
+        String result2 = waitingQueueService.tryReserve(4, validToken2);
+
+        assertEquals("APPROVED", result1);
+        assertEquals("APPROVED", result2);
 
         // Act 
         waitingQueueService.releaseSpot(4, validToken2);
