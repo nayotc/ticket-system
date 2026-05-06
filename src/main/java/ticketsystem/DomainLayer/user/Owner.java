@@ -25,12 +25,15 @@ public class Owner extends CompanyRole {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     public void activate() {
         this.status = RoleStatus.ACTIVE;
     }
 
 >>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
+=======
+>>>>>>> e663313 (implementation of use-case 4.7)
     public Long getAppointedByMemberId() {
         return this.appointedByMemberId;        
     }

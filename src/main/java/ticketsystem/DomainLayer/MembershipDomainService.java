@@ -31,9 +31,6 @@ public class MembershipDomainService {
             throw new Exception("Only owners can assign managers.");
 =======
 
-    /**
-     * Domain Validation: Core permission check for any action in the company.
-     */
     public boolean validatePermission(CompanyRole role, Permission permission) {
         
         // 1. Check existence
@@ -41,7 +38,7 @@ public class MembershipDomainService {
             return false;
         }
         
-        // 2. Draft Entity State Check
+        // 2. Check role status - Only ACTIVE roles can perform actions
         if (role.getStatus() != RoleStatus.ACTIVE) {
             return false;
         }
@@ -50,9 +47,6 @@ public class MembershipDomainService {
         return role.hasPermission(permission); 
     }
 
-    /**
-     * Domain Validation: Request phase of assigning a new Manager.
-     */
     public void validateManagerAssignmentRequest(CompanyRole appointerRole, CompanyRole targetRole) throws Exception {
         
         // 1. Validate the appointer exists
@@ -61,76 +55,65 @@ public class MembershipDomainService {
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
         }
         
-        // Validate that the appointer's role status is ACTIVE
+        // 2. Validate the appointer's role status
         if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
             throw new Exception("Your role is not active yet. You cannot appoint managers.");
         }
 
-        // 2. Validate the appointer's role type
+        // 3. Validate the appointer's role type
         if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
             throw new Exception("Only Owners and Founders can appoint managers.");
         }
 
-        // 3. Validate the target is free
+        // 4. Validate the target is free
         if (targetRole != null) {
             throw new Exception("This user already has an active or pending role in this company.");
         }
     }
 
-    /**
-     * Domain Validation & State Mutation: Approve phase of manager assignment.
-     */
-    public void validateAndApproveManager(CompanyRole approvedRole, CompanyRole parentRole, Long appointeeId) throws Exception {
+    public void validateAndApproveAssignment(CompanyRole approvedRole, CompanyRole appointerRole, Long appointeeId) throws Exception {
         
-        // 1. Validate the draft role
-        if (approvedRole == null || !(approvedRole instanceof Manager)) {
-            throw new Exception("No pending manager invitation found.");
+        // 1. Validate the approved role
+        if (approvedRole == null) {
+            throw new Exception("No pending role invitation found.");
         }
+
+        // 2. Ensure the role is in a PENDING state before allowing approval
         if (approvedRole.getStatus() == RoleStatus.ACTIVE) {
             throw new Exception("This role is already active.");
         }
         
-        // 2. Validate the parent (appointer) still exists and is capable of having appointees
-        if (parentRole == null) {
+        // 3. Validate the appointer still exists and is capable of having appointees
+        if (appointerRole == null) {
             throw new Exception("Appointer does not have a role in this company anymore.");
         }
         
-        // Block the approval if the parent is no longer ACTIVE
-        if (parentRole.getStatus() != RoleStatus.ACTIVE) {
+        // 4. Block the approval if the appointer is no longer ACTIVE
+        if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
             throw new Exception("The user who appointed you is no longer active. Invitation is void.");
         }
-
-        // 3. Mutate the state: Change status to ACTIVE
-        ((Manager) approvedRole).activate();
         
-        // 4. Mutate the state: Add to Parent's Appointees Tree
-        if (parentRole instanceof Owner) {
-            ((Owner) parentRole).addAppointee(appointeeId);
-        } else if (parentRole instanceof Founder) {
-            ((Founder) parentRole).addAppointee(appointeeId);
+        // 5. Update the appointer's list of appointees if applicable
+        if (appointerRole instanceof Owner) {
+            ((Owner) appointerRole).addAppointee(appointeeId);
+        } else if (appointerRole instanceof Founder) {
+            ((Founder) appointerRole).addAppointee(appointeeId);
         } else {
             // This prevents data corruption if a Manager somehow tries to approve
-            throw new Exception("Managers cannot appoint other managers.");
+            throw new Exception("Managers cannot appoint others.");
         }
+
+        // 6. Finally, set the approved role to ACTIVE
+        approvedRole.setStatus(RoleStatus.ACTIVE);
     }
 
-    /**
-     * Domain Validation: Reject phase of manager assignment.
-     * Ensures the role is safely in a PENDING state before allowing the Application Layer to delete it.
-     */
     public void validateRejectManager(CompanyRole pendingRole) throws Exception {
         
-        // 1. Ensure the draft exists
-        if (pendingRole == null) {
-            throw new Exception("No pending invitation found to reject.");
-        }
-        
-        // 2. Ensure we don't accidentally delete an established, active role
-        // Note for teammate: If a user wants to leave an ACTIVE role, they must use a "Resign" Use Case,
-        // which handles shifting or deleting their subordinates in the tree. Reject is ONLY for drafts.
-        if (pendingRole.getStatus() == RoleStatus.ACTIVE) {
-            throw new Exception("You cannot reject a role that is already active. Please use the resign function.");
-        }
+    }
+
+    public void validateRejectAssignment(CompanyRole rejectedRole) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'validateRejectAssignment'");
     }
 >>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
 

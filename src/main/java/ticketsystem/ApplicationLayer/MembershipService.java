@@ -12,7 +12,13 @@ import ticketsystem.DomainLayer.IRepository.IMembershipRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.CompanyRole;
+<<<<<<< HEAD
+=======
+import ticketsystem.DomainLayer.user.Founder;
+import ticketsystem.DomainLayer.user.Manager;
+>>>>>>> e663313 (implementation of use-case 4.7)
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.Founder;
@@ -197,11 +203,98 @@ public class MembershipService {
 >>>>>>> 4368f6f (Add comments)
     /**
 <<<<<<< HEAD
+<<<<<<< HEAD
      * Use Case 4.7: Request to assign a manager to a company
      */
     public String requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) throws Exception {
         
 =======
+=======
+     * Approve a pending assignment (Manager or Owner)
+     */
+    public void approveAssignment(String sessionToken, Long companyId) throws Exception {
+        
+        // 1. Authenticate session
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
+        Long appointeeId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        Member appointee = userRepository.getMemberById(appointeeId);
+        CompanyRole approvedRole = appointee.getRoleInCompany(companyId);
+        
+        Long appointerId;
+        if (approvedRole == null) {
+            throw new Exception("No pending role invitation found.");
+        }
+        else if (approvedRole instanceof Manager) {
+            appointerId = ((Manager) approvedRole).getAppointedByMemberId();
+        }
+        else if (approvedRole instanceof Owner) {
+            appointerId = ((Owner) approvedRole).getAppointedByMemberId();
+        }
+        else {
+            // A Founder or unexpected role type cannot be "approved" this way.
+            throw new Exception("The role found is not eligible for approval.");
+        }
+
+        Member appointer = userRepository.getMemberById(appointerId);
+        CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
+        
+        domainService.validateAndApproveAssignment(approvedRole, appointerRole, appointeeId);
+        
+        userRepository.updateRole(approvedRole);
+        userRepository.updateRole(appointerRole);
+        
+        Company company = companyRepository.findById(companyId);
+        company.registerNewAppointment(appointer, appointee);
+    }
+
+    /**
+     * Reject a pending assignment (Manager or Owner)
+     */
+    public void rejectAssignment(String sessionToken, Long companyId) throws Exception {
+        
+        // 1. Authenticate session
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
+        Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
+        Member member = userRepository.getMemberById(memberId);
+        CompanyRole rejectedRole = member.getRoleInCompany(companyId);
+        
+        domainService.validateRejectAssignment(rejectedRole);
+        
+        Long appointerId = null;
+        if (rejectedRole instanceof Manager) {
+            appointerId = ((Manager) rejectedRole).getAppointedByMemberId();
+        } else if (rejectedRole instanceof Owner) {
+            appointerId = ((Owner) rejectedRole).getAppointedByMemberId();
+        }
+        
+        Member appointer = userRepository.getMemberById(appointerId);
+        CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
+
+        if (appointerRole instanceof Owner) {
+            ((Owner) appointerRole).deleteAppointee(memberId);
+            userRepository.updateRole(appointerRole);
+        }
+        else if (appointerRole instanceof Founder) {
+            ((Founder) appointerRole).deleteAppointee(memberId);
+            userRepository.updateRole(appointerRole);
+        }
+        else {
+            throw new Exception("Appointer's role is not valid for this operation.");
+        }
+        
+        member.deleteRoleInCompany(companyId);
+    }
+
+    /**
+>>>>>>> e663313 (implementation of use-case 4.7)
      * Use Case 4.15: View roles and permissions tree
      */
     public String viewRolesAndPermissionsTree(String sessionToken, long companyId) throws Exception {

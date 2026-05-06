@@ -113,10 +113,14 @@ public class Member extends User {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     public void deleteRoleInCompany(Long companyId) {
 =======
     public void deleteRole(Long companyId, Long memberId) {
 >>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
+=======
+    public void deleteRoleInCompany(Long companyId) {
+>>>>>>> e663313 (implementation of use-case 4.7)
         myRoles.remove(companyId);
     }
 

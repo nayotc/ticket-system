@@ -42,6 +42,7 @@ public class Manager extends CompanyRole {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     public Set<Permission> getPermissions() {
         return this.permissions;
 =======
@@ -52,6 +53,8 @@ public class Manager extends CompanyRole {
 >>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
     }
 
+=======
+>>>>>>> e663313 (implementation of use-case 4.7)
     public boolean hasPermission(Permission permission) {
 <<<<<<< HEAD
         return this.status == RoleStatus.ACTIVE && this.permissions.contains(permission); // Managers have specific permissions when active
