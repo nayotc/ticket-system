@@ -14,7 +14,7 @@ public class HistoryRepository implements IHistoryRepository {
     private AtomicInteger counter;
     private static HistoryRepository instance;
     private Map<Integer, Purchase> allPurchases;
-    private Map<Integer, List<Purchase>> purchasesByMemberId;
+    private Map<Long, List<Purchase>> purchasesByMemberId;
     private Map<Integer, List<Purchase>> purchasesByCompanyId;
 
     private HistoryRepository() {
@@ -46,7 +46,7 @@ public class HistoryRepository implements IHistoryRepository {
     }
 
     @Override
-    public List<Purchase> getPurchasesByMemberId(int memberId) {
+    public List<Purchase> getPurchasesByMemberId(long memberId) {
         List<Purchase> purchases = purchasesByMemberId.getOrDefault(memberId, new CopyOnWriteArrayList<>());
         return new ArrayList<>(purchases);
     }

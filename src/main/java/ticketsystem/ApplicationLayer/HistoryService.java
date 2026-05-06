@@ -13,9 +13,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 
 public class HistoryService implements OrderCompletedListener {
     private final IHistoryRepository historyRepository;
-    private final TokenService tokenService;
+    private final ITokenService tokenService;
 
-    public HistoryService(IHistoryRepository historyRepository, TokenService tokenService) {
+    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
     }
@@ -41,7 +41,16 @@ public class HistoryService implements OrderCompletedListener {
             if (!tokenService.validateToken(token)) {
                 throw new IllegalArgumentException("Invalid or expired token");
             }
-            int memberId = Integer.parseInt(tokenService.extractSubject(token));
+
+            if(!tokenService.isMemberToken(token)){
+                throw new IllegalArgumentException("Only members can view personal purchase history");
+            }
+
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId == null){
+                throw new IllegalArgumentException("Could not extract user id from token");
+            }
+
             List<Purchase> purchases = historyRepository.getPurchasesByMemberId(memberId);
             ObjectMapper objectMapper = new ObjectMapper();
             List<OrderDTO> historyDtoList = objectMapper.convertValue(

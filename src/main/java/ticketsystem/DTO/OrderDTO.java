@@ -8,7 +8,7 @@ public class OrderDTO {
     private List<TicketDTO> tickets;
     private String eventName;
     private String location;
-    private int memberId;
+    private long memberId;
     private int companyId;
 
     //for json 
@@ -16,7 +16,7 @@ public class OrderDTO {
     }
 
     public OrderDTO(int purchaseId, List<TicketDTO> tickets, String eventName, 
-                    String location, int memberId, int companyId) {
+                    String location, long memberId, int companyId) {
         this.purchaseId = purchaseId;
         this.tickets = tickets;
         this.eventName = eventName;
@@ -57,11 +57,11 @@ public class OrderDTO {
         this.location = location;
     }
 
-    public int getMemberId() {
+    public long getMemberId() {
         return memberId;
     }
 
-    public void setMemberId(int memberId) {
+    public void setMemberId(long memberId) {
         this.memberId = memberId;
     }
 
