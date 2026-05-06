@@ -25,12 +25,12 @@ public class HistoryServiceTest {
     private IHistoryRepository historyRepository;
     
     @Mock
-    private TokenService tokenService;
+    private ITokenService tokenService;
     
     private HistoryService historyService;
 
     // Simulation of a logged-in user and tokens
-    private final int user1Id = 100;
+    private final long user1Id = 100L;
     private final String validToken = "valid-token-123";
     private final String invalidToken = "invalid-token-456";
 
@@ -50,8 +50,9 @@ public class HistoryServiceTest {
         // --- Given (Arrange) ---
         // 1. Valid token is provided
         when(tokenService.validateToken(validToken)).thenReturn(true);
-        // אנחנו אומרים ל-Mock: "כשמבקשים ממך לחלץ מידע מהטוקן התקין, תחזיר את ה-ID של המשתמש כמחרוזת"
-        when(tokenService.extractSubject(validToken)).thenReturn(String.valueOf(user1Id));
+        // Mock extracting the member ID from the valid token
+        when(tokenService.isMemberToken(validToken)).thenReturn(true);
+        when(tokenService.extractUserId(validToken)).thenReturn(user1Id);
         
         // 2. Purchase history exists for user1
         List<Purchase> fakeHistory = new ArrayList<>();
@@ -87,8 +88,9 @@ public class HistoryServiceTest {
         // --- Given (Arrange) ---
         when(tokenService.validateToken(validToken)).thenReturn(true);
         when(historyRepository.getPurchasesByMemberId(user1Id)).thenReturn(new ArrayList<>());
-        // אנחנו אומרים ל-Mock: "כשמבקשים ממך לחלץ מידע מהטוקן התקין, תחזיר את ה-ID של המשתמש כמחרוזת"
-        when(tokenService.extractSubject(validToken)).thenReturn(String.valueOf(user1Id));  
+        // Mock extracting the member ID from the valid token
+        when(tokenService.isMemberToken(validToken)).thenReturn(true);
+        when(tokenService.extractUserId(validToken)).thenReturn(user1Id);
 
         // --- When (Act) ---
         List<OrderDTO> result = historyService.getHistoryForUser(validToken);

@@ -9,12 +9,12 @@ public class Purchase {
     private List<PurchasedTicket> tickets;
     private String eventName;
     private String location;
-    private int memberId;
+    private long memberId;
     private int companyId;
 
     public Purchase() {
     }
-    public Purchase(int purchaseId, List<PurchasedTicket> tickets, String eventName, String location, int memberId, int companyId) {
+    public Purchase(int purchaseId, List<PurchasedTicket> tickets, String eventName, String location, long memberId, int companyId) {
         this.purchaseId = purchaseId;
         this.tickets = new ArrayList<>(tickets);
         this.eventName = eventName;
@@ -28,7 +28,7 @@ public class Purchase {
     public void setPurchaseId(int purchaseId) {
         this.purchaseId = purchaseId;
     }
-    public Integer getMemberId() {
+    public long getMemberId() {
         return memberId;
     }
     public Integer getCompanyId() {
