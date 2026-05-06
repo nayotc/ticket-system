@@ -2,11 +2,19 @@ package ticketsystem.DomainLayer.user;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+<<<<<<< HEAD
+=======
+import javax.management.relation.RoleStatus;
+
+import ticketsystem.DomainLayer.user.Permission;
+
+>>>>>>> 5c34fef (implementation of use-case 4.7)
 public class Manager extends CompanyRole {
 
     private Long appointedByMemberId;
     private Set<Permission> permissions;
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -24,12 +32,17 @@ public class Manager extends CompanyRole {
     public Manager(Long companyId, Set<Permission> permissions, Long appointedByMemberId) {
         super(companyId);
 >>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
+=======
+    public Manager(Long companyId, Long appointedByMemberId, Set<Permission> permissions) {
+        super(companyId);
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         this.appointedByMemberId = appointedByMemberId;
         this.status = RoleStatus.PENDING;
         this.permissions = permissions;
     }
 
     public Long getAppointedByMemberId() {
+<<<<<<< HEAD
         return this.appointedByMemberId; 
     }
 
@@ -37,10 +50,16 @@ public class Manager extends CompanyRole {
 <<<<<<< HEAD
 =======
 >>>>>>> e7f5697 (starting to implement giveup ownership use case)
+=======
+        return appointedByMemberId; 
+    }
+
+>>>>>>> 5c34fef (implementation of use-case 4.7)
     public void setAppointer(Long newAppointedByMemberId) {
         this.appointedByMemberId = newAppointedByMemberId;
     }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     public Set<Permission> getPermissions() {
@@ -61,6 +80,10 @@ public class Manager extends CompanyRole {
 =======
         return status == RoleStatus.ACTIVE && permissions.contains(permission); // Managers have specific permissions when active
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
+=======
+    public boolean hasPermission(Permission permission) {
+        return this.status == RoleStatus.ACTIVE && this.permissions.contains(permission); // Managers have specific permissions when active
+>>>>>>> 5c34fef (implementation of use-case 4.7)
     }
 
     public void addPermission(Permission permission) {

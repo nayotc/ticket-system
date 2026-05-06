@@ -1,5 +1,6 @@
 package ticketsystem.ApplicationLayer;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import java.util.Optional;
 =======
 import java.util.HashMap;
@@ -21,6 +22,18 @@ import ticketsystem.DomainLayer.user.Manager;
 >>>>>>> e663313 (implementation of use-case 4.7)
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
+=======
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Permission;
+>>>>>>> 5c34fef (implementation of use-case 4.7)
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Manager;
@@ -28,6 +41,7 @@ import ticketsystem.DomainLayer.user.Manager;
 public class MembershipService {
 
     private final ITokenService tokenService;
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     private final IUserRepository userRepository;
@@ -52,6 +66,10 @@ public class MembershipService {
     private final IMembershipRepository membershipRepository;
 =======
 >>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
+=======
+    private final IUserRepository userRepository;
+    private final ICompanyRepository companyRepository;
+>>>>>>> 5c34fef (implementation of use-case 4.7)
     private final MembershipDomainService domainService;
     private final INotificationService notificationService;
 
@@ -61,10 +79,14 @@ public class MembershipService {
         this.companyRepository = companyRepository;
         this.domainService = domainService;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
 =======
         this.notificationService = notificationService;
 >>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
+=======
+        this.notificationService = notificationService;
+>>>>>>> 5c34fef (implementation of use-case 4.7)
     }
 
     /**
@@ -77,6 +99,7 @@ public class MembershipService {
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
         
@@ -92,25 +115,36 @@ public class MembershipService {
 >>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
         Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
+=======
+        
+        Long memberId = tokenService.extractUserId(sessionToken);
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         Member member = userRepository.getMemberById(memberId);
         CompanyRole memberRole = member.getRoleInCompany(companyId);
         return domainService.validatePermission(memberRole, requiredPermission);
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     public void approveManagerAssignment(String sessionToken, long companyId) throws Exception {
 =======
+=======
+>>>>>>> 5c34fef (implementation of use-case 4.7)
     /**
      * Use Case 4.7: Request to assign a manager to a company (Draft Entity Pattern)
      */
     public void requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) throws Exception {
         
         // 1. Authenticate session
+<<<<<<< HEAD
 >>>>>>> 4368f6f (Add comments)
+=======
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
         
+<<<<<<< HEAD
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
         Long appointerId = Long.parseLong(tokenService.extractSubject(sessionToken));
         Member appointer = userRepository.getMemberById(appointerId);
@@ -156,6 +190,10 @@ public class MembershipService {
         // Since they were never added to the appointer's tree, simply deleting the role is safe.
         membershipRepository.deleteRole(companyId, appointeeId);
 =======
+=======
+        Long appointerId = tokenService.extractUserId(sessionToken);
+        Member appointer = userRepository.getMemberById(appointerId);
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
         Member targetMember = userRepository.getMemberById(targetMemberId);
         CompanyRole targetRole = targetMember.getRoleInCompany(companyId);
@@ -163,6 +201,7 @@ public class MembershipService {
         targetMember.addManagerRole(companyId, appointerId, permissions);
         userRepository.updateMember(targetMember);
         notificationService.notify(targetMemberId, "You have been assigned to become a manager at " + companyRepository.findById(companyId).getName() + ". Please review and approve or reject this assignment.");
+<<<<<<< HEAD
 >>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
     }
 
@@ -210,6 +249,11 @@ public class MembershipService {
         
 =======
 =======
+=======
+    }
+
+    /**
+>>>>>>> 5c34fef (implementation of use-case 4.7)
      * Approve a pending assignment (Manager or Owner)
      */
     public void approveAssignment(String sessionToken, Long companyId) throws Exception {
@@ -219,8 +263,12 @@ public class MembershipService {
             throw new Exception("Session authentication failed.");
         }
         
+<<<<<<< HEAD
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
         Long appointeeId = Long.parseLong(tokenService.extractSubject(sessionToken));
+=======
+        Long appointeeId = tokenService.extractUserId(sessionToken);
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         Member appointee = userRepository.getMemberById(appointeeId);
         CompanyRole approvedRole = appointee.getRoleInCompany(companyId);
         
@@ -244,8 +292,13 @@ public class MembershipService {
         
         domainService.validateAndApproveAssignment(approvedRole, appointerRole, appointeeId);
         
+<<<<<<< HEAD
         userRepository.updateRole(approvedRole);
         userRepository.updateRole(appointerRole);
+=======
+        userRepository.updateMember(appointee);
+        userRepository.updateMember(appointer);
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         
         Company company = companyRepository.findById(companyId);
         company.registerNewAppointment(appointer, appointee);
@@ -261,6 +314,7 @@ public class MembershipService {
             throw new Exception("Session authentication failed.");
         }
         
+<<<<<<< HEAD
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
         Long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
         Member member = userRepository.getMemberById(memberId);
@@ -389,28 +443,41 @@ public class MembershipService {
         }
         
         // 2. Extract user ID from token and retrieve member information
+=======
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         Long memberId = tokenService.extractUserId(sessionToken);
         Member member = userRepository.getMemberById(memberId);
         CompanyRole rejectedRole = member.getRoleInCompany(companyId);
         
+<<<<<<< HEAD
         // 3. Validate the rejection action using the domain service
         domainService.validateRejectAssignment(rejectedRole);
         
         // 3. If validation passes, extract the appointer's ID from the pending role and retrieve their information
+=======
+        domainService.validateRejectAssignment(rejectedRole);
+        
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         Long appointerId = null;
         if (rejectedRole instanceof Manager) {
             appointerId = ((Manager) rejectedRole).getAppointedByMemberId();
         } else if (rejectedRole instanceof Owner) {
             appointerId = ((Owner) rejectedRole).getAppointedByMemberId();
         }
+<<<<<<< HEAD
         else {
             throw new Exception("The role found is not eligible for rejection.");
         }
+=======
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         
         Member appointer = userRepository.getMemberById(appointerId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
+<<<<<<< HEAD
         // 4. Update the appointer's list of appointees to remove the rejected member and update the repository
+=======
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         if (appointerRole instanceof Owner) {
             ((Owner) appointerRole).deleteAppointee(memberId);
             userRepository.updateMember(appointer);
@@ -423,6 +490,7 @@ public class MembershipService {
             throw new Exception("Appointer's role is not valid for this operation.");
         }
         
+<<<<<<< HEAD
         // 5. Remove the pending role from the member and update the repository
         member.deleteRoleInCompany(companyId);
         userRepository.updateMember(member);
@@ -438,6 +506,22 @@ public class MembershipService {
         // 2. Extract the requesting member
         // TODO: delete casting to Long after memberId is changed to long in tokenService.extractSubject
         long memberId = Long.parseLong(tokenService.extractSubject(sessionToken));
+=======
+        member.deleteRoleInCompany(companyId);
+    }
+
+    /**
+     * Use Case 4.15: View roles and permissions tree
+     */
+    public String viewRolesAndPermissionsTree(String sessionToken, long companyId) throws Exception {
+        // 1. Authenticate session
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        // 2. Extract the requesting member
+        long memberId = tokenService.extractUserId(sessionToken);
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         Member requester = userRepository.getMemberById(memberId);
         
         // Note for teammate: Make sure the Member class has a getUserName() method
@@ -477,7 +561,10 @@ public class MembershipService {
 
         // 5. Request the tree representation from the Company domain object
         return company.getRolesTreeRepresentation(requestingUsername, permissionsMap);
+<<<<<<< HEAD
 >>>>>>> 1d842e6 (Add uc 4.15 View roles and permissions tree)
+=======
+>>>>>>> 5c34fef (implementation of use-case 4.7)
     }
 
 }

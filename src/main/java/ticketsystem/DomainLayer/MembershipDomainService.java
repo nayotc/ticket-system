@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.CompanyRole;
@@ -11,6 +12,8 @@ import ticketsystem.DomainLayer.user.Manager;
 public class MembershipDomainService {
 =======
 =======
+=======
+>>>>>>> 5c34fef (implementation of use-case 4.7)
 import java.util.List;
 import java.util.Set;
 import ticketsystem.DomainLayer.user.Member;
@@ -20,6 +23,7 @@ import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
+<<<<<<< HEAD
 >>>>>>> e7f5697 (starting to implement giveup ownership use case)
 import ticketsystem.DomainLayer.user.Manager;
 
@@ -30,6 +34,11 @@ public class MembershipDomainService {
         if (!(appointer.getRole(companyId) instanceof Owner)) {
             throw new Exception("Only owners can assign managers.");
 =======
+=======
+import ticketsystem.DomainLayer.user.Manager;
+
+public class MembershipDomainService {
+>>>>>>> 5c34fef (implementation of use-case 4.7)
 
     public boolean validatePermission(CompanyRole role, Permission permission) {
         
@@ -52,7 +61,10 @@ public class MembershipDomainService {
         // 1. Validate the appointer exists
         if (appointerRole == null) {
             throw new Exception("You do not have a role in this company.");
+<<<<<<< HEAD
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
+=======
+>>>>>>> 5c34fef (implementation of use-case 4.7)
         }
         
         // 2. Validate the appointer's role status
@@ -115,6 +127,7 @@ public class MembershipDomainService {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'validateRejectAssignment'");
     }
+<<<<<<< HEAD
 >>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
 
 <<<<<<< HEAD
@@ -259,5 +272,8 @@ public class MembershipDomainService {
     }
 =======
 >>>>>>> 4368f6f (Add comments)
+=======
+
+>>>>>>> 5c34fef (implementation of use-case 4.7)
 
 }
