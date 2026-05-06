@@ -22,6 +22,7 @@ public class Founder extends CompanyRole{
         this.status = RoleStatus.ACTIVE; // Founder is active immediately upon creation
     }
 
+<<<<<<< HEAD
     public List<Long> getAppointeesMemberIds() {
         return this.appointeesMemberIds; 
     }
@@ -56,4 +57,10 @@ public class Founder extends CompanyRole{
 >>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     }
 >>>>>>> 2d153d5 (Add unit tests for Member and CompanyRole classes)
+=======
+    public void deleteAppointee(Long memberId) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'deleteAppointee'");
+    }
+>>>>>>> bd4e6bb (update Founder)
 }
