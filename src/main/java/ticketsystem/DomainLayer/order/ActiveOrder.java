@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer.order;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +12,8 @@ public class ActiveOrder {
     private int eventId;
     private List<Ticket> tickets;
     private OrderStatus status;
+    private final LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
+
 
     public ActiveOrder(int orderId, Long userId,String sessionToken, int eventId) {
         this.orderId = orderId;
@@ -129,4 +132,9 @@ public class ActiveOrder {
     COMPLETED,
     CANCELLED
 }
+
+     public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiresAt);
+    }
+
 }
