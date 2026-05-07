@@ -9,6 +9,7 @@ import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 
 public class SystemAdminRepository implements ISystemAdminRepository {
+// Using ConcurrentHashMap for thread safety in case of concurrent access
 
     private final ConcurrentHashMap<String, SystemAdmin> storage = new ConcurrentHashMap<>();
 

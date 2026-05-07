@@ -1,19 +1,25 @@
 package ticketsystem.DomainLayer.event;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Event {
+
     private final long id;
     private String name;
     private LocalDateTime Date;
     private String location;
     private long trafficThreshold;
-    private enum status {ACTIVE, INACTIVE, CANCELLED};
+
+    private enum status {
+        ACTIVE, INACTIVE, CANCELLED
+    };
     private EventCategory category;
     private EventMap map;
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
-    
+    private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
+
     public Event(long id, String name, LocalDateTime date, String location, long trafficThreshold, EventCategory category, EventMap map, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
         this.id = id;
         this.name = name;
@@ -54,10 +60,6 @@ public class Event {
         this.location = location;
     }
 
-    public long getTrafficThreshold() {
-        return trafficThreshold;
-    }
-
     public void setTrafficThreshold(long trafficThreshold) {
         this.trafficThreshold = trafficThreshold;
     }
@@ -92,6 +94,29 @@ public class Event {
 
     public void setDiscountPolicy(DiscountPolicy discountPolicy) {
         this.discountPolicy = discountPolicy;
+    }
+
+    // use case: virtual queue and load management
+    public boolean isOverloaded() {
+        return this.activeReservationsCount.get() >= this.trafficThreshold;
+    }
+
+    public void incrementActiveReservations() {
+        this.activeReservationsCount.incrementAndGet();
+    }
+
+    public void decrementActiveReservations() {
+        if (this.activeReservationsCount.get() > 0) {
+            this.activeReservationsCount.decrementAndGet();
+        }
+    }
+
+    public long getTrafficThreshold() {
+        return trafficThreshold;
+    }
+
+    public int getActiveReservationsCount() {
+        return activeReservationsCount.get();
     }
 
 }

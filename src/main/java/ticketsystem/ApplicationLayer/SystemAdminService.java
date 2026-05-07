@@ -20,37 +20,31 @@ public class SystemAdminService {
     public boolean initSystem() {
         try {
             if (adminRepository.countAdmins() == 0) {
-                logError("Initialization failed: No System Admin defined.");
+                System.out.println("No system admins found. Please create an admin account to initialize the system.");
                 return false;
             }
 
             boolean paymentConnected = paymentService.connect();
             if (!paymentConnected) {
                 // Alternative Flow: Connection failure
-                logError("Failed to connect to payment services.");
+                System.out.println("Failed to connect to payment services. Please check your configuration.");
                 return false;
             }
 
             boolean barcodeConnected = barcodeService.connect();
             if (!barcodeConnected) {
                 // Alternative Flow: Connection failure
-                logError("Failed to connect to secure barcode services.");
+                System.out.println("Failed to connect to secure barcode services.");
                 return false;
             }
 
-            logEvent("System initialized successfully by System Admin.");
+            System.out.println("System initialized successfully by System Admin.");
             return true;
 
         } catch (Exception e) {
-            logError("Unexpected error during initialization: " + e.getMessage());
+            System.out.println("Unexpected error during initialization: " + e.getMessage());
             return false;
         }
     }
 
-    // לוג
-    private void logEvent(String msg) {
-        /* ... */ }
-
-    private void logError(String msg) {
-        /* ... */ }
 }
