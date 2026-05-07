@@ -3,6 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.util.ArrayList;
 import java.util.List;
 
+import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DomainLayer.Reservation;
@@ -16,7 +17,7 @@ public class ReservationService {
     private final IOrderRepository orderRepository;
     private final IEventRepository eventRepository;
     private final IPaymentService paymentService;
-    private final ISecureBarcode secureBarcode;
+  //  private final ISecureBarcode secureBarcode;
     private final Reservation reservation;
     private final TokenService tokenService;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
@@ -26,8 +27,8 @@ public class ReservationService {
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
             TokenService tokenService,
-            IPaymentService paymentService,
-            ISecureBarcode secureBarcode
+            IPaymentService paymentService
+            //ISecureBarcode secureBarcode
            
     ) {
         this.orderRepository = orderRepository;
@@ -35,7 +36,7 @@ public class ReservationService {
         this.reservation=new Reservation();
         this.tokenService = tokenService;
         this.paymentService = paymentService;
-        this.secureBarcode = secureBarcode;
+       // this.secureBarcode = secureBarcode;
 
     }
 //UC 2.5,2.4
@@ -85,7 +86,7 @@ public class ReservationService {
     }
 
     // UC 2.8
-    public void submitActiveOrderForCheckout(String token, int orderId, int eventId) {
+    public void submitActiveOrderForCheckout(String token, int eventId) {
         try {
             validateToken(token);
             ActiveOrder order = getExistingOrder(token, eventId);
@@ -101,14 +102,14 @@ public class ReservationService {
         }
     }
 
-    public void checkout(String token, int orderId, int eventId, PaymentDetails details) {
+    public void checkout(String token, int eventId, PaymentDetails details) {
         try {
             validateToken(token);
             ActiveOrder order = getExistingOrder(token, eventId);
             Event event = getEvent(eventId);
 
             double amount = order.calculateTotalPrice();
-            OrderDTO orderDTO = OrderDTO.from(order);
+            OrderDTO orderDTO = order.toDTO();
 
             //pay
             boolean paymentResult=paymentService.pay(orderDTO,details );
@@ -158,7 +159,7 @@ public class ReservationService {
                 : null;
 
         order = new ActiveOrder(
-                orderRepository.getNextId(),
+                orderRepository.getNextId(),token,
                 userId,
                 eventId
         );

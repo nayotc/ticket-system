@@ -25,7 +25,7 @@ public class OrderService {
             if (order == null) {
                 throw new IllegalStateException("No active order found for this event");
             }
-            OrderDTO orderDTO = OrderDTO.from(order);
+            OrderDTO orderDTO = order.toDTO();
             return orderDTO;
         } 
         catch (Exception e) {

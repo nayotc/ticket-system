@@ -70,7 +70,7 @@ public class OrderRepository implements IOrderRepository {
 
     public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, int eventId) {
         for (ActiveOrder order : orders.values()) {
-            if (sessionToken.equals(order.getSessionToken()) && order.getEventId() == eventId) {
+            if (order.getEventId() == eventId) {
                 return order;
             }
         }

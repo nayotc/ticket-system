@@ -10,7 +10,6 @@ public class Ticket {
     private int row;
     private int chair;
     private double price;
-    private LocalDateTime reservedUntil;
 
     //location 0,0 is standing
 

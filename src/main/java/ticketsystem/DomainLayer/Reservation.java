@@ -20,17 +20,19 @@ public class Reservation {
 
     public void selectSeatTicket(ActiveOrder order, Event event, int row, int chair) {
        validateActive(order,  event);
-       event.reserveSeat(row, chair);
-       Ticket ticket = new Ticket(generateTicketId(), event.getEventId(), row, chair, event.getPrice());
+       //event.reserveSeat(row, chair);
+       Long eventId = event.getId();
+       Ticket ticket = new Ticket(generateTicketId(), eventId.intValue(), row, chair, /* event.getPrice() */0.0);
         order.addTicket(ticket);
     } 
 
     public void selectStandingTicket(ActiveOrder order, Event event, int quantity) {
       validateActive(order,  event);
 
-        event.reserveStandingTickets(quantity);
+        //event.reserveStandingTickets(quantity);
         for(int i=0; i<quantity; i++) {
-            Ticket ticket = new Ticket(generateTicketId(), event.getEventId(), 0, 0, event.getPrice());
+            Long eventId = event.getId();
+            Ticket ticket = new Ticket(generateTicketId(), eventId.intValue(), 0, 0, /* event.getPrice() */0.0);
             order.addTicket(ticket);
       }
     }
@@ -73,8 +75,8 @@ public class Reservation {
             }
         }
 
-        event.sellStandingTickets(countStandingTickets);
-        event.sellSeatTickets(SeatTickets);
+        //event.sellStandingTickets(countStandingTickets);
+        //event.sellSeatTickets(SeatTickets);
 
     }
     
@@ -88,9 +90,9 @@ public class Reservation {
 
 public void releaseTicket(Ticket ticket, Event event) {
      if(ticket.getRow()==0 && ticket.getChair()==0) {
-            event.releaseStandingTicket(1);
+           // event.releaseStandingTicket(1);
         } else {
-            event.releaseSeatTicket(ticket.getRow(), ticket.getChair());
+            //event.releaseSeatTicket(ticket.getRow(), ticket.getChair());
         }
 }
 
