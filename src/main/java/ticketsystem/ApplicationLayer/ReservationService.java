@@ -19,18 +19,24 @@ public class ReservationService {
     private final ISecureBarcode secureBarcode;
     private final Reservation reservation;
     private final TokenService tokenService;
+    private final List<OrderCompletedListener> listeners = new ArrayList<>();
 
 
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
-            TokenService tokenService
+            TokenService tokenService,
+            IPaymentService paymentService,
+            ISecureBarcode secureBarcode
            
     ) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.reservation=new Reservation();
         this.tokenService = tokenService;
+        this.paymentService = paymentService;
+        this.secureBarcode = secureBarcode;
+
     }
 //UC 2.5,2.4
      public void selectSeatTicket(String token, int eventId, int row, int chair) {
@@ -63,21 +69,6 @@ public class ReservationService {
     }
 
     //UC 2.7
-    public String viewActiveOrder(String token, int eventId) {
-        try {
-            validateToken(token);
-            ActiveOrder order = getExistingOrder(token, eventId);
-
-            reservation.viewActiveOrder(order);
-
-            return order.toString();
-
-        } catch (Exception e) {
-            logError("viewActiveOrder failed: " + e.getMessage());
-            throw e;
-        }
-    }
-
     public void removeTicketFromActiveOrder(String token, int eventId, int ticketId) {
         try {
             validateToken(token);
@@ -98,11 +89,10 @@ public class ReservationService {
         try {
             validateToken(token);
             ActiveOrder order = getExistingOrder(token, eventId);
-            Reservation reservation = getExistingReservation(order);
+            Event event = getEvent(eventId);
+            reservation.submitActiveOrderForCheckout(order, event);
 
-            reservation.submitActiveOrderForCheckout(order);
-
-            saveAll(reservation, order);
+            saveAll(order, event);
            
         } catch (Exception e) {
 
@@ -115,20 +105,19 @@ public class ReservationService {
         try {
             validateToken(token);
             ActiveOrder order = getExistingOrder(token, eventId);
-   
-            Reservation reservation = getExistingReservation(order);
+            Event event = getEvent(eventId);
 
             double amount = order.calculateTotalPrice();
             OrderDTO orderDTO = OrderDTO.from(order);
 
             //pay
-            paymentService.pay(orderDTO,details );
-
-            //update reservation and order status
-            reservation.completeCheckout();
-
-            saveAll(reservation, order);
-
+            boolean paymentResult=paymentService.pay(orderDTO,details );
+            if (!paymentResult) {
+                throw new IllegalStateException("Payment failed");
+            }
+            
+            reservation.completeCheckout(order, event);
+            saveAll(order, event);
             notifyListeners(orderDTO);
 
         } catch (Exception e) {
@@ -171,7 +160,6 @@ public class ReservationService {
         order = new ActiveOrder(
                 orderRepository.getNextId(),
                 userId,
-                token,
                 eventId
         );
 

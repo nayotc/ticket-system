@@ -8,17 +8,17 @@ public class ActiveOrder {
 
     private int orderId;
     private Long userId;
-    private String sessionToken;
+    
     private int eventId;
     private List<Ticket> tickets;
     private OrderStatus status;
     private final LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
+    private boolean timerStopped= false;
 
 
-    public ActiveOrder(int orderId, Long userId,String sessionToken, int eventId) {
+    public ActiveOrder(int orderId, Long userId, int eventId) {
         this.orderId = orderId;
         this.userId = userId;
-        this.sessionToken = sessionToken;
         this.eventId = eventId;
         this.tickets = new ArrayList<>();
         this.status = OrderStatus.ACTIVE;
@@ -65,12 +65,8 @@ public class ActiveOrder {
         return this.status;
     }
 
-    public String getSessionToken() {
-        return this.sessionToken;
-    }
-
     public void submitForCheckout() {
-       
+        stopTimer();
         status = OrderStatus.PENDING_CHECKOUT;
     }
 
@@ -123,7 +119,17 @@ public class ActiveOrder {
 
         this.status = OrderStatus.PAYMENT_FAILED;
     }
+    public void stopTimer() {
+        this.timerStopped = true;
+    }
 
+    public boolean isStopped() {
+        return timerStopped;
+    }
+
+     public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiresAt);
+    }
 
     public enum OrderStatus {
     ACTIVE,
@@ -132,9 +138,5 @@ public class ActiveOrder {
     COMPLETED,
     CANCELLED
 }
-
-     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
-    }
 
 }

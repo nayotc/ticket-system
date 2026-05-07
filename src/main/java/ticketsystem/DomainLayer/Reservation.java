@@ -6,6 +6,7 @@ import java.util.List;
 
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.Seat;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
@@ -26,16 +27,14 @@ public class Reservation {
 
     public void selectStandingTicket(ActiveOrder order, Event event, int quantity) {
       validateActive(order,  event);
-  
+
+        event.reserveStandingTickets(quantity);
         for(int i=0; i<quantity; i++) {
             Ticket ticket = new Ticket(generateTicketId(), event.getEventId(), 0, 0, event.getPrice());
             order.addTicket(ticket);
       }
     }
 
-    public void viewActiveOrder(ActiveOrder order) {
-        validateActive(order,  event);
-    }
 
     public void removeTicketFromActiveOrder(ActiveOrder order, Event event,int ticketId) {
         validateActive(order,  event);
@@ -44,15 +43,11 @@ public class Reservation {
     }
 
 
-    public void submitActiveOrderForCheckout(ActiveOrder order) {
-    if (isExpired()) {
-        expire();
-        throw new IllegalStateException("Reservation expired");
-    }
-
+    public void submitActiveOrderForCheckout(ActiveOrder order, Event event) {
+        validateActive(order,  event);
         order.validateCanBeSubmittedBy();
         order.submitForCheckout();
-        stopTimer();
+        
     }
    
    
@@ -60,25 +55,27 @@ public class Reservation {
     for (Ticket ticket : new ArrayList<>(order.getTickets())) {
         releaseTicket(ticket, event);
         order.deleteTicket(ticket.getTicketId());
+        order.cancelOrder();
         }
     }
 
-    public void stopTimer() {
-        if (isExpired()) {
-            expire();
-            throw new IllegalStateException("Reservation expired");
-        }
-
-        this.timerStopped = true;
-    }
-
-    public boolean isStopped() {
-        return timerStopped;
-    }
-
-    public void completeCheckout() {
+    
+    public void completeCheckout(ActiveOrder order, Event event) {
         order.completeOrder();
-        event.finalizeTickets(order.getTickets());
+        int countStandingTickets = 0;
+        List<Pair<Integer,Integer>> SeatTickets = new ArrayList<>();
+        
+        for (Ticket ticket : new ArrayList<>(order.getTickets())) {
+            if(ticket.getRow()==0 && ticket.getChair()==0) {
+                countStandingTickets++;
+            } else {
+                SeatTickets.add(new Pair<>(ticket.getRow(), ticket.getChair()));
+            }
+        }
+
+        event.sellStandingTickets(countStandingTickets);
+        event.sellSeatTickets(SeatTickets);
+
     }
     
 
@@ -91,9 +88,9 @@ public class Reservation {
 
 public void releaseTicket(Ticket ticket, Event event) {
      if(ticket.getRow()==0 && ticket.getChair()==0) {
-            event.releaseStandingTicket(ticket);
+            event.releaseStandingTicket(1);
         } else {
-            event.releaseSeatTicket(ticket);
+            event.releaseSeatTicket(ticket.getRow(), ticket.getChair());
         }
 }
 
