@@ -19,6 +19,7 @@ public class Event {
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
     private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
+    private int version = 0;
 
     public Event(long id, String name, LocalDateTime date, String location, long trafficThreshold, EventCategory category, EventMap map, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
         this.id = id;
@@ -117,6 +118,14 @@ public class Event {
 
     public int getActiveReservationsCount() {
         return activeReservationsCount.get();
+    }
+
+    public int getVersion() {
+        return version;
+    }
+
+    public void incrementVersion() {
+        this.version++;
     }
 
 }
