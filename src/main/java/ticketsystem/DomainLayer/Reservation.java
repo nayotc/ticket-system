@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import ticketsystem.DTO.TicketDTO;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Seat;
 import ticketsystem.DomainLayer.order.ActiveOrder;
@@ -25,32 +26,42 @@ public class Reservation {
 
     public void selectSeatTicket(int eventId,int row, int chair) {
         validateActive();
+        /* 
+        להעביר לרותם♥
          Seat seat = event.getSeatByLocation(row, chair);
         if (seat.getStatus() != Seat.SeatStatus.AVAILABLE) {
             throw new IllegalStateException("Seat is not available");
         }
-        /*לבדוק שלא מוגרל */
+        /*לבדוק שלא מוגרל 
 
         Ticket ticket=new Ticket(generateTicketId(), eventId, seat.getPosition().row(), seat.getPosition().number(), seat.getPrice());
         seat.setStatus(Seat.SeatStatus.RESERVED);
+        */
+       TicketDTO ticketDTO = event.reserveSeat(row, chair);
+       Ticket ticket = new Ticket(generateTicketId(), ticketDTO.getEventId(), ticketDTO.getRow(), ticketDTO.getChair(), ticketDTO.getPrice());
         order.addTicket(ticket);
     }
 
-    public void selectStandingTicket(int eventId, double price, int quantity) {
+    public void selectStandingTicket(int eventId, int quantity) {
         validateActive();
+        /* 
+        Kהעביר לרותם♥
         if (event.getStandingArea().getAvailableSpots() < quantity) {
             throw new IllegalStateException("not available");
         }
-        /*לבדוק שלא מוגרל */
+        /*לבדוק שלא מוגרל 
         if (event.getStandingArea().hasAvailableSpots()) {
             for(int i=0; i<quantity; i++) {
                  Ticket ticket = new Ticket(generateTicketId(), eventId, 0, 0, price);
                 event.getStandingArea().reserveStandingSpot();
-                order.addTicket(ticket);
+                
             }
-        } else {
-            throw new IllegalStateException("No standing spots available");
-        }
+                */
+        TicketDTO ticketDTO = event.reserveStandingSpot(quantity);
+        for(int i=0; i<quantity; i++) {
+            Ticket ticket = new Ticket(generateTicketId(), ticketDTO.getEventId(), ticketDTO.getRow(), ticketDTO.getChair(), ticketDTO.getPrice());
+            order.addTicket(ticket);
+      }
     }
    
     public int getReservationId() {
