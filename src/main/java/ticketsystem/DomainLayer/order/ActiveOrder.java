@@ -1,17 +1,19 @@
 package ticketsystem.DomainLayer.order;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ActiveOrder {
 
     private int orderId;
-    private Integer userId;
+    private Long userId;
     private String sessionToken;
     private int eventId;
     private List<Ticket> tickets;
+    private final LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
 
-    public ActiveOrder(int orderId, int userId,String sessionToken, int eventId) {
+    public ActiveOrder(int orderId, Long userId,String sessionToken, int eventId) {
         this.orderId = orderId;
         this.userId = userId;
         this.sessionToken = sessionToken;
@@ -25,13 +27,17 @@ public class ActiveOrder {
 
     }
 
-    public void deleteTicket(int ticketId) {
-      boolean removed = tickets.removeIf(t -> t.getTicketId() == ticketId);
+    public Ticket deleteTicket(int ticketId) {
 
-        if (!removed) {
-            throw new IllegalArgumentException("Ticket not found");
-        }
+        Ticket ticketToRemove = tickets.stream()
+                .filter(ticket -> ticket.getTicketId() == ticketId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
+        tickets.remove(ticketToRemove);
+        return ticketToRemove;
+    
     }
+
     public List<Ticket> getTickets() {
         return this.tickets;
     }
@@ -44,7 +50,7 @@ public class ActiveOrder {
         
     }
     
-    public int getUserId() {
+    public Long getUserId() {
         return this.userId;
     }
 
@@ -55,4 +61,10 @@ public class ActiveOrder {
     public String getSessionToken() {
         return this.sessionToken;
     }
+
+     public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiresAt);
+    }
+
+
 }
