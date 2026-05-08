@@ -126,8 +126,31 @@ public class Event {
     }
 
     public boolean isSoldOut() {
-        //TODO Implement
-        return false;
+        return map.isSoldOut();
+    }
+
+    public void reserveSeat(Long areaId, SeatPosition position) {
+        this.map.reserveSeat(areaId, position);
+    }
+
+    public void releaseSeat(Long areaId, SeatPosition position) {
+        this.map.releaseSeat(areaId, position);
+    }
+
+    public void sellSeat(Long areaId, SeatPosition position) {
+        this.map.sellSeat(areaId, position);
+    }
+
+    public void reserveSpot(Long areaId) {
+        this.map.reserveSpot(areaId);
+    }
+
+    public void releaseSpot(Long areaId) {
+        this.map.releaseSpot(areaId);
+    }
+
+    public void sellSpot(Long areaId) {
+        this.map.sellSpot(areaId);
     }
 
 }
