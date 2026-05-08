@@ -20,6 +20,9 @@ public class EventRepository implements IEventRepository {
         return currentId.getAndIncrement();
     }
 
-    
+    Event getEventById(long eventId);
+    void updateEvent(Event event);
+    void deleteEvent(long eventId);
+
 }
 

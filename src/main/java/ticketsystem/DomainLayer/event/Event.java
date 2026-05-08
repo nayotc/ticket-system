@@ -20,6 +20,7 @@ public class Event {
     private EventMap map;
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
+    private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
     // waiting queue
     
     public Event(Long id,LocalDateTime date,String name, Long companyId, Long openedBy, String location, Long trafficThreshold, EventCategory category, Pair<Integer, Integer> mapSize) {
@@ -36,7 +37,7 @@ public class Event {
         this.purchasePolicy = new PurchasePolicy("Default purchase policy");
         this.discountPolicy = new DiscountPolicy();
     }
-
+  
     public Long getId() {
         return id;
     }
@@ -128,7 +129,8 @@ public class Event {
     public boolean isSoldOut() {
         return map.isSoldOut();
     }
-
+  
+    // use case: ticket reservation 
     public void reserveSeat(Long areaId, SeatPosition position) {
         this.map.reserveSeat(areaId, position);
     }
@@ -151,6 +153,29 @@ public class Event {
 
     public void sellSpot(Long areaId) {
         this.map.sellSpot(areaId);
+    }
+  
+    // use case: virtual queue and load management
+    public boolean isOverloaded() {
+        return this.activeReservationsCount.get() >= this.trafficThreshold;
+    }
+
+    public void incrementActiveReservations() {
+        this.activeReservationsCount.incrementAndGet();
+    }
+
+    public void decrementActiveReservations() {
+        if (this.activeReservationsCount.get() > 0) {
+            this.activeReservationsCount.decrementAndGet();
+        }
+    }
+
+    public long getTrafficThreshold() {
+        return trafficThreshold;
+    }
+
+    public int getActiveReservationsCount() {
+        return activeReservationsCount.get();
     }
 
 }

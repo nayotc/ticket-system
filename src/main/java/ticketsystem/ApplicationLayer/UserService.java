@@ -1,28 +1,44 @@
 package ticketsystem.ApplicationLayer;
 
+import java.security.SecureRandom;
+
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Guest;
+import ticketsystem.DomainLayer.user.Member;
 
 public class UserService {
     private final IUserRepository userRepository;
     private final ITokenService tokenService;
+    private final IPasswordService passwordService;
 
     public UserService(IUserRepository userRepository, ITokenService tokenService) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
+        this.passwordService = new PasswordService();
     }
-
+    // 1. System Visit: Allows a guest to visit the system and receive a session token.
     public String visitSystem() {
         Guest guest = new Guest();
-        String sessionToken = tokenService.generateNewGuestToken();
-        while (!userRepository.addGuest(sessionToken, guest)) {
-            sessionToken = tokenService.generateNewGuestToken();
-        }
-        return sessionToken;
+        return tokenService.addActiveSession(guest);
     }
-
-    public void signUp(String sessionToken, String username, String password) {
-
+    // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe username and password.
+    public boolean signUp(String sessionToken, String username, String password) {
+        if (!tokenService.validateToken(sessionToken)) {
+            return false;
+        }
+        if (!tokenService.isGuestToken(sessionToken)) {
+            return false;
+        }
+        if (userRepository.isUsernameTaken(username)) {
+            return false;
+        }
+        Long newId = new SecureRandom().nextLong();
+        while (userRepository.isIDTaken(newId)) {
+            newId = new SecureRandom().nextLong();
+        }
+        String hashedPassword = passwordService.hashPassword(password);
+        userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
+        return true;
     }
 
     public void logIn(String sessionToken, String username, String password) {
