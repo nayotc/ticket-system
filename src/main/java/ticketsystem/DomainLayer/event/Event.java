@@ -1,6 +1,8 @@
 package ticketsystem.DomainLayer.event;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.PurchasePolicy;
@@ -168,10 +170,6 @@ public class Event {
         if (this.activeReservationsCount.get() > 0) {
             this.activeReservationsCount.decrementAndGet();
         }
-    }
-
-    public long getTrafficThreshold() {
-        return trafficThreshold;
     }
 
     public int getActiveReservationsCount() {
