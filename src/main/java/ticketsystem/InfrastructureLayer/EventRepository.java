@@ -2,12 +2,13 @@ package ticketsystem.InfrastructureLayer;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
 
 public class EventRepository implements IEventRepository {
-    private Long currentId = 1L;
+    private AtomicLong currentId = new AtomicLong(1L);
     private final ConcurrentHashMap<Long, Event> eventStorage = new ConcurrentHashMap<>();
 
     public void addEvent(Event event) {
@@ -16,9 +17,7 @@ public class EventRepository implements IEventRepository {
     }
 
     public long getNextId() {
-        Long nextId = currentId;
-        currentId++;
-        return nextId;
+        return currentId.getAndIncrement();
     }
 
     
