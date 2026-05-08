@@ -1,84 +1,74 @@
 package ticketsystem.UnitTesting;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Manager;
 import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.DomainLayer.user.Owner;
-import ticketsystem.DomainLayer.user.User;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.CompanyRole;
+
+import java.util.HashSet;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 public class MemberTest {
 
     private Member member;
-    private final long memberId = 100L;
-    private final long companyId = 1L;
+    private final Long memberId = 100L;
+    private final Long companyId = 1L;
 
     @BeforeEach
-    public void setUp() {
-        User userMock = mock(User.class);
-        member = new Member(userMock, memberId, "testUser", "password123");
+    void setUp() {
+        // Arrange: Initialize a new Member
+        member = new Member(memberId, "john_doe");
     }
 
     @Test
-    public void GivenNewMember_WhenGetProperties_ThenReturnCorrectValues() {
+    void GivenNewMember_WhenGetIdAndName_ThenReturnCorrectValues() {
+        // Act & Assert: Verify initialization
         assertEquals(memberId, member.getId());
-        assertEquals("testUser", member.getUserName());
-        assertEquals("password123", member.getPassword());
+        assertEquals("john_doe", member.getUserName());
     }
 
     @Test
-    public void GivenMember_WhenAddAndGetRole_ThenReturnAddedRole() {
-        CompanyRole roleMock = mock(CompanyRole.class);
-        when(roleMock.getCompanyId()).thenReturn(companyId);
+    void GivenMember_WhenAddFounderRole_ThenRoleIsAdded() {
+        // Act: Add a Founder role
+        member.addFounderRole(companyId);
+
+        // Assert: The role should exist and be of type Founder
+        CompanyRole role = member.getRoleInCompany(companyId);
+        assertNotNull(role);
+        assertTrue(role instanceof Founder);
+    }
+
+    @Test
+    void GivenMemberWithRole_WhenDeleteRoleInCompany_ThenRoleIsRemoved() {
+        // Arrange: Add an Owner role
+        member.addOwnerRole(companyId, 50L);
+
+        // Act: Delete the role
+        member.deleteRoleInCompany(companyId);
+
+        // Assert: The role should no longer exist
+        assertNull(member.getRoleInCompany(companyId));
+    }
+
+    @Test
+    void GivenMemberWithManagerRole_WhenUpdateManagerPermissions_ThenPermissionsChange() {
+        // Arrange: Add a Manager role with initial permissions
+        Set<Permission> initialPerms = new HashSet<>();
+        initialPerms.add(Permission.MANAGE_INQUIRIES);
+        member.addManagerRole(companyId, 50L, initialPerms);
         
-        member.addRole(roleMock);
+        // Act: Update permissions
+        Set<Permission> newPerms = new HashSet<>();
+        newPerms.add(Permission.MANAGE_EVENT_INVENTORY);
+        member.updateManagerPermissions(companyId, newPerms);
 
-        assertEquals(roleMock, member.getRole(companyId));
-    }
-
-    @Test
-    public void GivenMemberWithRole_WhenDeleteRole_ThenRoleIsRemoved() {
-        CompanyRole roleMock = mock(CompanyRole.class);
-        when(roleMock.getCompanyId()).thenReturn(companyId);
-        member.addRole(roleMock);
-
-        member.deleteRole(companyId);
-
-        assertNull(member.getRole(companyId));
-    }
-
-    @Test
-    public void GivenMemberWithManagerRole_WhenActivateRole_ThenManagerIsActivated() {
-        Manager managerMock = mock(Manager.class);
-        when(managerMock.getCompanyId()).thenReturn(companyId);
-        member.addRole(managerMock);
-
-        member.activateRole(companyId);
-
-        verify(managerMock, times(1)).activate();
-    }
-
-    @Test
-    public void GivenMemberWithOwnerRole_WhenActivateRole_ThenOwnerIsActivated() {
-        Owner ownerMock = mock(Owner.class);
-        when(ownerMock.getCompanyId()).thenReturn(companyId);
-        member.addRole(ownerMock);
-
-        member.activateRole(companyId);
-
-        verify(ownerMock, times(1)).activate();
-    }
-
-    @Test
-    public void GivenMemberWithRole_WhenRejectRole_ThenRoleIsRemoved() {
-        CompanyRole roleMock = mock(CompanyRole.class);
-        when(roleMock.getCompanyId()).thenReturn(companyId);
-        member.addRole(roleMock);
-
-        member.rejectRole(companyId);
-
-        assertNull(member.getRole(companyId));
+        // Assert: The manager should have the new permissions
+        Manager updatedManager = (Manager) member.getRoleInCompany(companyId);
+        assertTrue(updatedManager.getPermissionKeys().contains(Permission.MANAGE_EVENT_INVENTORY.getKey()));
+        assertFalse(updatedManager.getPermissionKeys().contains(Permission.MANAGE_INQUIRIES.getKey()));
     }
 }

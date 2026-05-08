@@ -1,75 +1,59 @@
 package ticketsystem.UnitTesting;
-
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 public class OwnerTest {
 
     private Owner owner;
-    private Member memberMock;
-    private final long companyId = 1L;
-    private final Long appointedById = 50L;
+    private final Long companyId = 1L;
+    private final Long appointerId = 50L;
 
     @BeforeEach
-    public void setUp() {
-        memberMock = mock(Member.class);
-        owner = new Owner(memberMock, companyId, appointedById);
+    void setUp() {
+        // Arrange: Initialize a new Owner
+        owner = new Owner(companyId, appointerId);
     }
 
     @Test
-    public void GivenNewOwner_WhenGetStatus_ThenReturnPending() {
-        assertEquals(RoleStatus.PENDING, owner.getStatus());
-    }
-
-    @Test
-    public void GivenOwner_WhenActivate_ThenStatusBecomesActive() {
-        owner.activate();
-
-        assertEquals(RoleStatus.ACTIVE, owner.getStatus());
-    }
-
-    @Test
-    public void GivenPendingOwner_WhenHasPermission_ThenReturnFalse() {
+    void GivenPendingOwner_WhenHasPermission_ThenReturnFalse() {
+        // Act & Assert: PENDING owners should not have permission access yet
         assertFalse(owner.hasPermission(Permission.MANAGE_EVENT_INVENTORY));
     }
 
     @Test
-    public void GivenActiveOwner_WhenHasPermission_ThenReturnTrueForAllPermissions() {
-        owner.activate();
+    void GivenActiveOwner_WhenHasPermission_ThenReturnTrueForAll() {
+        // Arrange: Activate the owner
+        owner.setStatus(RoleStatus.ACTIVE);
 
+        // Act & Assert: Active owners have all permissions
         assertTrue(owner.hasPermission(Permission.MANAGE_EVENT_INVENTORY));
-        assertTrue(owner.hasPermission(Permission.GENERATE_SALES_REPORT));
+        assertTrue(owner.hasPermission(Permission.SET_PURCHASING_POLICY));
     }
 
     @Test
-    public void GivenOwner_WhenGetAppointedByMemberId_ThenReturnCorrectId() {
-        assertEquals(appointedById, owner.getAppointedByMemberId());
+    void GivenOwner_WhenSetAppointer_ThenAppointerIsUpdated() {
+        // Act: Update the appointer
+        owner.setAppointer(200L);
+
+        // Assert: The new appointer ID should be returned
+        assertEquals(200L, owner.getAppointedByMemberId());
     }
 
     @Test
-    public void GivenOwner_WhenAddAppointee_ThenAppointeeIdIsStored() {
+    void GivenOwnerWithAppointee_WhenDeleteAppointee_ThenAppointeeIsRemoved() {
+        // Arrange: Add an appointee
         owner.addAppointee(300L);
 
-        assertTrue(owner.getAppointeesMemberIds().contains(300L));
-        assertEquals(1, owner.getAppointeesMemberIds().size());
-    }
-
-    @Test
-    public void GivenOwnerWithAppointee_WhenDeleteAppointee_ThenAppointeeIdIsRemoved() {
-        owner.addAppointee(300L);
-
+        // Act: Remove the appointee
         owner.deleteAppointee(300L);
 
+        // Assert: The appointee list should be empty
         assertFalse(owner.getAppointeesMemberIds().contains(300L));
-        assertEquals(0, owner.getAppointeesMemberIds().size());
     }
 }

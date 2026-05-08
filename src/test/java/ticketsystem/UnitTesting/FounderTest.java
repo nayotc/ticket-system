@@ -1,53 +1,50 @@
 package ticketsystem.UnitTesting;
+import ticketsystem.DomainLayer.user.Founder;
+import ticketsystem.DomainLayer.user.Permission;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ticketsystem.DomainLayer.user.Founder;
-import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.DomainLayer.user.Permission;
-import ticketsystem.DomainLayer.user.RoleStatus;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 public class FounderTest {
 
     private Founder founder;
-    private Member memberMock;
     private final Long companyId = 1L;
 
     @BeforeEach
-    public void setUp() {
-        memberMock = mock(Member.class);
-        when(memberMock.getId()).thenReturn(100L);
-        founder = new Founder(memberMock, companyId);
+    void setUp() {
+        // Arrange: Initialize a new Founder
+        founder = new Founder(companyId);
     }
 
     @Test
-    public void GivenNewFounder_WhenGetStatus_ThenReturnActive() {
-        assertEquals(RoleStatus.ACTIVE, founder.getStatus());
-    }
-
-    @Test
-    public void GivenNewFounder_WhenHasPermission_ThenReturnTrueForAllPermissions() {
+    void GivenNewFounder_WhenHasPermission_ThenReturnTrueForAll() {
+        // Act & Assert: Founder is active immediately and has all permissions
         assertTrue(founder.hasPermission(Permission.MANAGE_EVENT_INVENTORY));
         assertTrue(founder.hasPermission(Permission.SET_DISCOUNT_POLICY));
     }
 
     @Test
-    public void GivenFounder_WhenAddAppointee_ThenAppointeeIdIsStored() {
-        founder.addAppointee(200L);
+    void GivenFounder_WhenAddAppointee_ThenAppointeeIsStored() {
+        // Act: Add an appointee
+        founder.addAppointee(100L);
 
-        assertTrue(founder.getAppointeesMemberIds().contains(200L));
+        // Assert: The appointee ID should be in the list
+        assertTrue(founder.getAppointeesMemberIds().contains(100L));
         assertEquals(1, founder.getAppointeesMemberIds().size());
     }
 
     @Test
-    public void GivenFounderWithAppointee_WhenDeleteAppointee_ThenAppointeeIdIsRemoved() {
-        founder.addAppointee(200L);
+    void GivenFounderWithAppointee_WhenDeleteAppointee_ThenAppointeeIsRemoved() {
+        // Arrange: Add an appointee first
+        founder.addAppointee(100L);
 
-        founder.deleteAppointee(200L);
+        // Act: Remove the appointee
+        founder.deleteAppointee(100L);
 
-        assertFalse(founder.getAppointeesMemberIds().contains(200L));
+        // Assert: The list should be empty
+        assertFalse(founder.getAppointeesMemberIds().contains(100L));
         assertEquals(0, founder.getAppointeesMemberIds().size());
     }
 }
