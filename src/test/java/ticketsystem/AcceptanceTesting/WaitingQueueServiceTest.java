@@ -82,7 +82,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenUserInQueue_whenSpotReleased_thenNextUserIsProcessedAndNotified() {
         // Arrange 
-        Event event = new Event(3L,LocalDateTime.now().plusDays(1),"Rock Concert", 1L,1L,"Central Park", 100L, EventCategory.CONCERT,new Pair<>(10, 10));
+        Event event = new Event(3L,LocalDateTime.now().plusDays(1),"Rock Concert", 1L,1L,"Central Park", 1L, EventCategory.CONCERT,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
         String validToken1 = tokenService.addActiveSession(new Guest());
@@ -102,6 +102,7 @@ public class WaitingQueueServiceTest {
         assertEquals(1, event.getActiveReservationsCount(), "Capacity should be full again because the queued user took the spot.");
         assertEquals(0, realQueueRepo.getQueueSize(3), "Queue should be empty after the user was dequeued.");
     }
+
     @Test
     public void givenEmptyQueue_whenSpotReleased_thenCapacityDrops() {
         // Arrange
