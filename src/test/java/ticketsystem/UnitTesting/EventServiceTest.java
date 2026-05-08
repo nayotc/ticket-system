@@ -56,7 +56,7 @@ public class EventServiceTest {
 
     @Test
     void GivenValidTokenAndPermission_WhenInsertEvent_ThenAddEventOnce() {
-        when(mockTokenService.extractSubject(validSessionId)).thenReturn("1");
+        when(mockTokenService.extractUserId(validSessionId)).thenReturn(1L);
         when(mockEventRepository.getNextId()).thenReturn(1L);
 
         LocalDateTime futureDate = LocalDateTime.now().plusDays(1);

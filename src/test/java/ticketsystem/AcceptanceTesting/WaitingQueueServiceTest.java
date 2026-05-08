@@ -18,6 +18,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
@@ -47,7 +48,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEventHasCapacity_whenTryReserve_thenUserIsApproved() {
         // Arrange
-        Event event = new Event(1L, "Music Festival", LocalDateTime.now(), "Central Park", 100L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(1L,LocalDateTime.now().plusDays(1),"Music Festival", 1L,1L,"Central Park", 100L, EventCategory.CONCERT,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
         String validToken = tokenService.addActiveSession(new Guest());
 
@@ -63,7 +64,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEventIsFull_whenTryReserve_thenUserIsQueued() {
         // Arrange
-        Event event = new Event(2L, "Art Expo", LocalDateTime.now(), "Central Park", 1L, EventCategory.EXHIBITION, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(2L,LocalDateTime.now().plusDays(1),"Art Expo", 1L,1L,"Central Park", 1L, EventCategory.EXHIBITION,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
         String validToken = tokenService.addActiveSession(new Guest());
 
@@ -81,7 +82,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenUserInQueue_whenSpotReleased_thenNextUserIsProcessedAndNotified() {
         // Arrange 
-        Event event = new Event(3L, "Rock Concert", LocalDateTime.now(), "Central Park", 1L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(3L,LocalDateTime.now().plusDays(1),"Rock Concert", 1L,1L,"Central Park", 100L, EventCategory.CONCERT,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
         String validToken1 = tokenService.addActiveSession(new Guest());
@@ -104,7 +105,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEmptyQueue_whenSpotReleased_thenCapacityDrops() {
         // Arrange
-        Event event = new Event(4L, "Jazz Night", LocalDateTime.now(), "Central Park", 2L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(4L,LocalDateTime.now().plusDays(1),"Jazz Night", 1L,1L,"Central Park", 2L, EventCategory.CONCERT,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
         String validToken1 = tokenService.addActiveSession(new Guest());
@@ -127,7 +128,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenInvalidToken_whenTryReserve_thenUserIsRejected() {
         // Arrange
-        Event event = new Event(5L, "Secret Show", LocalDateTime.now(), "Central Park", 100L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(5L,LocalDateTime.now().plusDays(1),"Secret Show", 1L,1L,"Central Park", 100L, EventCategory.CONCERT,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
         // Act
@@ -162,6 +163,11 @@ public class WaitingQueueServiceTest {
         @Override
         public void updateEvent(Event event) {
             events.put(event.getId(), event);
+        }
+
+        @Override
+        public long getNextId() {
+            return events.size() + 1L;
         }
     }
 

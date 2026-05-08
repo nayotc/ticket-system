@@ -57,7 +57,7 @@ public class EventService {
                 throw new IllegalArgumentException("Map size must be positive");
             }
             // main scenario: create and add event
-            Long userId = Long.valueOf(tokenService.extractSubject(sessionId));  // TODO: remove casting
+            Long userId = tokenService.extractUserId(sessionId);  // TODO: remove casting
             Long eventId = eventRepository.getNextId();
             Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category, mapSize);
             eventRepository.addEvent(event);
