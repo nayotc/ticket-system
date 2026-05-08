@@ -133,6 +133,10 @@ public class Event {
         this.status = status;
     }
 
+    public boolean isActive() {
+        return this.status == eventStatus.ACTIVE;
+    }
+
     public EventCategory getCategory() {
         return category;
     }
@@ -370,6 +374,16 @@ public class Event {
         if (ticketPrice != null && ticketPrice.compareTo(BigDecimal.ZERO) >= 0) {
             this.TicketPrice = ticketPrice;
         }
+    }
+
+    public void cancel() {
+        if (this.status == eventStatus.CANCELLED) {
+            throw new IllegalStateException("Event is already cancelled");
+        }
+        if (this.Date.isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("Cannot cancel an event that has already occurred");
+        }
+        this.status = eventStatus.CANCELLED;
     }
 
 }

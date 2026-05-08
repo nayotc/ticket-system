@@ -19,9 +19,8 @@ public class EventService {
     private final IEventRepository eventRepository;
     private final ITokenService tokenService;
     private final MembershipDomainService membershipDomain;
-
-    public EventService(IEventRepository eventRepository, ITokenService tokenService,
-            MembershipDomainService membershipDomain) {
+    
+    public EventService(IEventRepository eventRepository, ITokenService tokenService, MembershipDomainService membershipDomain) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
@@ -147,12 +146,16 @@ public class EventService {
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
-            Long companyId = eventRepository.getEventById(eventId).getCompanyId();
+            Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event does not exist");
+            }
+            Long companyId = event.getCompanyId();
             // precondition: user has permission to remove an event
             if (!membershipDomain.validatePermission(sessionId, companyId, "event:remove")) {
                 throw new IllegalArgumentException("User does not have permission to remove an event");
             }
-            eventStatus status = eventRepository.getEventById(eventId).getStatus();
+            eventStatus status = event.getStatus();
             if (status == eventStatus.ACTIVE || status == eventStatus.DRAFT) {
                 throw new IllegalArgumentException("Only inactive or cancelled events can be removed");
             }
