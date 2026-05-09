@@ -17,6 +17,7 @@ public class Company {
     private final CompanyTree rolesTree;
     private PurchasePolicy purchasePolicy; 
     private DiscountPolicy discountPolicy; 
+    private Double Rate;
 
     //Version field for Optimistic Locking
     private long version;
@@ -138,6 +139,14 @@ public class Company {
     public long getFounderId()
     {
         return this.founderId;
+    }
+
+    public Double getRate() {
+        return Rate;
+    }
+
+    public void setRate(Double rate) {
+        Rate = rate;
     }
 
     // --- Use Cases Logic ---

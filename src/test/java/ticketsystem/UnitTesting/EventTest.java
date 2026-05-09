@@ -10,12 +10,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.PurchasePolicy;
@@ -39,9 +41,11 @@ public class EventTest {
                 "Music Festival",
                 companyId,
                 openedBy,
-                "Central Park",
+                EventLocation.NEW_YORK,
                 3L,
                 EventCategory.CONCERT,
+                "Famous Artist",
+                new BigDecimal("99.99"),
                 new Pair<>(10, 10)
         );
     }
@@ -53,9 +57,11 @@ public class EventTest {
         assertEquals(eventDate, event.getDate());
         assertEquals(companyId, event.getCompanyId());
         assertEquals(openedBy, event.getOpenedBy());
-        assertEquals("Central Park", event.getLocation());
+        assertEquals(EventLocation.NEW_YORK, event.getLocation());
         assertEquals(3L, event.getTrafficThreshold());
         assertEquals(EventCategory.CONCERT, event.getCategory());
+        assertEquals("Famous Artist", event.getArtistName());
+        assertEquals(new BigDecimal("99.99"), event.getTicketPrice());
 
         assertNotNull(event.getMap());
         assertNotNull(event.getPurchasePolicy());
@@ -88,9 +94,9 @@ public class EventTest {
 
     @Test
     void givenEvent_whenSetLocation_thenLocationIsUpdated() {
-        event.setLocation("Tel Aviv");
+        event.setLocation(EventLocation.TEL_AVIV);
 
-        assertEquals("Tel Aviv", event.getLocation());
+        assertEquals(EventLocation.TEL_AVIV, event.getLocation());
     }
 
     @Test

@@ -1,5 +1,6 @@
 package ticketsystem.AcceptanceTesting;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,6 +21,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.InfrastructureLayer.TokenRepository;
@@ -47,7 +49,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEventHasCapacity_whenTryReserve_thenUserIsApproved() {
         // Arrange
-        Event event = new Event(1L,LocalDateTime.now().plusDays(1),"Music Festival", 1L,1L,"Central Park", 100L, EventCategory.CONCERT,new Pair<>(10, 10));
+        Event event = new Event(1L,LocalDateTime.now().plusDays(1),"Music Festival", 1L,1L,EventLocation.NEW_YORK, 100L, EventCategory.CONCERT,"Michel Jackson",BigDecimal.valueOf(300),new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
         String validToken = tokenService.addActiveSession(new Guest());
 
@@ -63,7 +65,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEventIsFull_whenTryReserve_thenUserIsQueued() {
         // Arrange
-        Event event = new Event(2L,LocalDateTime.now().plusDays(1),"Art Expo", 1L,1L,"Central Park", 1L, EventCategory.EXHIBITION,new Pair<>(10, 10));
+        Event event = new Event(2L,LocalDateTime.now().plusDays(1),"Art Expo", 1L,1L,EventLocation.NEW_YORK, 1L, EventCategory.EXHIBITION,"Artist Name",BigDecimal.valueOf(100),new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
         String validToken = tokenService.addActiveSession(new Guest());
 
@@ -81,7 +83,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenUserInQueue_whenSpotReleased_thenNextUserIsProcessedAndNotified() {
         // Arrange 
-        Event event = new Event(3L,LocalDateTime.now().plusDays(1),"Rock Concert", 1L,1L,"Central Park", 1L, EventCategory.CONCERT,new Pair<>(10, 10));
+        Event event = new Event(3L,LocalDateTime.now().plusDays(1),"Rock Concert", 1L,1L,EventLocation.NEW_YORK, 1L, EventCategory.CONCERT,"Artist Name",BigDecimal.valueOf(100),new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
         String validToken1 = tokenService.addActiveSession(new Guest());
@@ -105,7 +107,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEmptyQueue_whenSpotReleased_thenCapacityDrops() {
         // Arrange
-        Event event = new Event(4L,LocalDateTime.now().plusDays(1),"Jazz Night", 1L,1L,"Central Park", 2L, EventCategory.CONCERT,new Pair<>(10, 10));
+        Event event = new Event(4L,LocalDateTime.now().plusDays(1),"Jazz Night", 1L,1L,EventLocation.NEW_YORK, 2L, EventCategory.CONCERT,"Artist Name",BigDecimal.valueOf(100),new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
         String validToken1 = tokenService.addActiveSession(new Guest());
@@ -128,7 +130,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenInvalidToken_whenTryReserve_thenUserIsRejected() {
         // Arrange
-        Event event = new Event(5L,LocalDateTime.now().plusDays(1),"Secret Show", 1L,1L,"Central Park", 100L, EventCategory.CONCERT,new Pair<>(10, 10));
+        Event event = new Event(5L,LocalDateTime.now().plusDays(1),"Secret Show", 1L,1L,EventLocation.NEW_YORK, 100L, EventCategory.CONCERT,"Artist Name",BigDecimal.valueOf(100), new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
         // Act
@@ -167,6 +169,22 @@ public class WaitingQueueServiceTest {
         @Override
         public long getNextId() {
             return events.size() + 1L;
+        }
+
+        @Override
+        public List<Event> getEventsByCompanyId(long companyId) {
+            List<Event> result = new ArrayList<>();
+            for (Event event : events.values()) {
+                if (event.getCompanyId() == companyId) {
+                    result.add(event);
+                }
+            }
+            return result;
+        }
+
+        @Override
+        public List<Event> getAllEvents() {
+            return new ArrayList<>(events.values());
         }
     }
 

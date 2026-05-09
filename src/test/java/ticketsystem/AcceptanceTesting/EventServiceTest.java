@@ -15,6 +15,7 @@ import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.MembershipDomainService;
 
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class EventServiceTest {
@@ -67,9 +69,11 @@ public class EventServiceTest {
             "Test Event",
             validCompanyId,
             futureDate,
-            "Test Location",
+            EventLocation.NEW_YORK,
             100L,
             EventCategory.CONCERT,
+            "Test Artist",
+            BigDecimal.valueOf(50.0),
             10, 10));
         verify(mockEventRepository, times(1)).addEvent(any());
     }
@@ -86,9 +90,11 @@ public class EventServiceTest {
                 "Test Event",
                 validCompanyId,
                 LocalDateTime.now().plusDays(1),
-                "Test Location",
+                EventLocation.NEW_YORK,
                 100L,
                 EventCategory.CONCERT,
+                "Test Artist",
+                BigDecimal.valueOf(50.0),
                 10, 10));
         assertEquals("Invalid session ID", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
@@ -107,9 +113,11 @@ public class EventServiceTest {
                 "Test Event",
                 validCompanyId,
                 LocalDateTime.now().plusDays(1),
-                "Test Location",
+                EventLocation.NEW_YORK,
                 100L,
                 EventCategory.CONCERT,
+                "Test Artist",
+                BigDecimal.valueOf(50.0),
                 10, 10));
         assertEquals("User does not have permission to create an event", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
@@ -123,9 +131,11 @@ public class EventServiceTest {
                 "",
                 validCompanyId,
                 LocalDateTime.now().plusDays(1),
-                "Test Location",
+                EventLocation.NEW_YORK,
                 100L,
                 EventCategory.CONCERT,
+                "Test Artist",
+                BigDecimal.valueOf(50.0),
                 10, 10));
         assertNotNull(exception);
         assertEquals("Event name cannot be null or empty", exception.getMessage());
@@ -140,9 +150,11 @@ public class EventServiceTest {
                 "Test Event",
                 validCompanyId,
                 LocalDateTime.now().minusDays(1),
-                "Test Location",
+                EventLocation.NEW_YORK,
                 100L,
                 EventCategory.CONCERT,
+                "Test Artist",
+                BigDecimal.valueOf(50.0),
                 10, 10));
         assertEquals("Event date must be in the future", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
@@ -156,9 +168,11 @@ public class EventServiceTest {
                 "Test Event",
                 validCompanyId,
                 LocalDateTime.now().plusDays(1),
-                "",
+                null,
                 100L,
                 EventCategory.CONCERT,
+                "Test Artist",
+                BigDecimal.valueOf(50.0),
                 10, 10));
         assertEquals("Event location cannot be null or empty", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
@@ -172,9 +186,11 @@ public class EventServiceTest {
                 "Test Event",
                 validCompanyId,
                 LocalDateTime.now().plusDays(1),
-                "Test Location",
+                EventLocation.NEW_YORK,
                 -1L,
                 EventCategory.CONCERT,
+                "Test Artist",
+                BigDecimal.valueOf(50.0),
                 10, 10));
         assertEquals("Traffic threshold must be a positive number", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
@@ -188,9 +204,11 @@ public class EventServiceTest {
                 "Test Event",
                 validCompanyId,
                 LocalDateTime.now().plusDays(1),
-                "Test Location",
+                EventLocation.NEW_YORK,
                 100L,
                 null,
+                "Test Artist",
+                BigDecimal.valueOf(50.0),
                 10, 10));
         assertEquals("Event category cannot be null", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
@@ -204,9 +222,11 @@ public class EventServiceTest {
                 "Test Event",
                 validCompanyId,
                 LocalDateTime.now().plusDays(1),
-                "Test Location",
+                EventLocation.NEW_YORK,
                 100L,
                 EventCategory.CONCERT,
+                "Test Artist",
+                BigDecimal.valueOf(50.0),
                 -1, -1));
         assertEquals("Map size must be positive", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
