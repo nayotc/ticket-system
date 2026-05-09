@@ -10,7 +10,7 @@ public class SystemAdminService {
     private final ISystemAdminRepository adminRepository;
     private final IPaymentService paymentService;
     private final ISecureBarcode barcodeService;
-    private final ITokenService tokenService = new TokenService();
+    private final ITokenService tokenService = new TokenService("manual_test_secret_32_chars_long", new TokenRepository());
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
     private final IOrderRepository orderRepository;
