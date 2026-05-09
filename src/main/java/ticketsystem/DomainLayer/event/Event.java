@@ -19,9 +19,10 @@ public class Event {
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
     private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
+    // waiting queue
     private int version = 0;
 
-    public Event(long id, String name, LocalDateTime date, String location, long trafficThreshold, EventCategory category, EventMap map, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
+    public Event(Long id, LocalDateTime date, String name, Long companyId, Long openedBy, String location, Long trafficThreshold, EventCategory category, Pair<Integer, Integer> mapSize) {
         this.id = id;
         this.name = name;
         this.Date = date;
