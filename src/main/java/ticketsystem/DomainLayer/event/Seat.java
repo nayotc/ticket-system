@@ -5,12 +5,10 @@ import java.time.LocalDateTime;
 public class Seat {
     private final SeatPosition position;
     private SeatStatus status;
-    private LocalDateTime reservedUntil;
 
     public Seat(SeatPosition position) {
         this.position = position;
         this.status = SeatStatus.AVAILABLE;
-        this.reservedUntil = null;
     }
 
     public SeatPosition getPosition() {
@@ -25,17 +23,30 @@ public class Seat {
         this.status = status;
     }
 
-    public LocalDateTime getReservedUntil() {
-        return reservedUntil;
-    }
-
-    public void setReservedUntil(LocalDateTime reservedUntil) {
-        this.reservedUntil = reservedUntil;
-    }
-
     public enum SeatStatus {
     AVAILABLE,
     RESERVED,
     SOLD
-}
+    }
+
+    public void reserve() {
+        if (this.status != SeatStatus.AVAILABLE) {
+            throw new IllegalStateException("Seat is not available");
+        }
+        this.status = SeatStatus.RESERVED;
+    }
+
+    public void release() {
+        if (this.status != SeatStatus.RESERVED) {
+            throw new IllegalStateException("Seat is not reserved");
+        }
+        this.status = SeatStatus.AVAILABLE;
+    }
+
+    public void sell() {
+        if (this.status == SeatStatus.SOLD) {
+            throw new IllegalStateException("Seat is already sold");
+        }
+        this.status = SeatStatus.SOLD;
+    }
 }
