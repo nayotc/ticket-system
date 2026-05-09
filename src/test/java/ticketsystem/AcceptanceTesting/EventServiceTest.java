@@ -1,4 +1,4 @@
-package ticketsystem.UnitTesting;
+package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -70,7 +70,7 @@ public class EventServiceTest {
             "Test Location",
             100L,
             EventCategory.CONCERT,
-            new Pair<>(10, 10)));
+            10, 10));
         verify(mockEventRepository, times(1)).addEvent(any());
     }
 
@@ -89,7 +89,7 @@ public class EventServiceTest {
                 "Test Location",
                 100L,
                 EventCategory.CONCERT,
-                new Pair<>(10, 10)));
+                10, 10));
         assertEquals("Invalid session ID", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
     }
@@ -110,7 +110,7 @@ public class EventServiceTest {
                 "Test Location",
                 100L,
                 EventCategory.CONCERT,
-                new Pair<>(10, 10)));
+                10, 10));
         assertEquals("User does not have permission to create an event", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
     }
@@ -126,7 +126,7 @@ public class EventServiceTest {
                 "Test Location",
                 100L,
                 EventCategory.CONCERT,
-                new Pair<>(10, 10)));
+                10, 10));
         assertNotNull(exception);
         assertEquals("Event name cannot be null or empty", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
@@ -143,7 +143,7 @@ public class EventServiceTest {
                 "Test Location",
                 100L,
                 EventCategory.CONCERT,
-                new Pair<>(10, 10)));
+                10, 10));
         assertEquals("Event date must be in the future", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
     }
@@ -159,7 +159,7 @@ public class EventServiceTest {
                 "",
                 100L,
                 EventCategory.CONCERT,
-                new Pair<>(10, 10)));
+                10, 10));
         assertEquals("Event location cannot be null or empty", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
     }
@@ -175,7 +175,7 @@ public class EventServiceTest {
                 "Test Location",
                 -1L,
                 EventCategory.CONCERT,
-                new Pair<>(10, 10)));
+                10, 10));
         assertEquals("Traffic threshold must be a positive number", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
     }
@@ -191,7 +191,7 @@ public class EventServiceTest {
                 "Test Location",
                 100L,
                 null,
-                new Pair<>(10, 10)));
+                10, 10));
         assertEquals("Event category cannot be null", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
     }
@@ -207,7 +207,7 @@ public class EventServiceTest {
                 "Test Location",
                 100L,
                 EventCategory.CONCERT,
-                new Pair<>(-1, -1)));
+                -1, -1));
         assertEquals("Map size must be positive", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
     }

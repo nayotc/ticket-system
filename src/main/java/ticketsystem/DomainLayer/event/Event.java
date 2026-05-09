@@ -9,6 +9,9 @@ import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.event.DiscountPolicy;
 
 public class Event {
+
+    public enum eventStatus {DRAFT,ACTIVE, INACTIVE, CANCELLED};
+
     private final Long id;
     private String name;
     private Long companyId;
@@ -16,7 +19,6 @@ public class Event {
     private LocalDateTime Date;
     private String location;
     private Long trafficThreshold;
-    private enum eventStatus {DRAFT,ACTIVE, INACTIVE, CANCELLED};
     private eventStatus status;
     private EventCategory category;
     private EventMap map;

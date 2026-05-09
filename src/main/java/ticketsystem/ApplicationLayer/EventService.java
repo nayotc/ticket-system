@@ -54,10 +54,10 @@ public class EventService {
                 throw new IllegalArgumentException("Event category cannot be null");
             }
             if (mapHigh == null || mapHigh <= 0) {
-                throw new IllegalArgumentException("Map height must be a positive number");
+                throw new IllegalArgumentException("Map size must be positive");
             }
             if (mapWidth == null || mapWidth <= 0) {
-                throw new IllegalArgumentException("Map width must be a positive number");
+                throw new IllegalArgumentException("Map size must be positive");
             }
             // main scenario: create and add event
             Long userId = tokenService.extractUserId(sessionId);  // TODO: remove casting
