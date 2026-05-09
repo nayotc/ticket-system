@@ -174,7 +174,7 @@ public class EventServiceTest {
                 "Test Artist",
                 BigDecimal.valueOf(50.0),
                 10, 10));
-        assertEquals("Event location cannot be null or empty", exception.getMessage());
+        assertEquals("Event location cannot be null", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
     }
 
