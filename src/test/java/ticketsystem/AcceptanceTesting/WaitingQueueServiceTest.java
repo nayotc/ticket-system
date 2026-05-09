@@ -18,15 +18,21 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.PurchasePolicy;
+import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.InfrastructureLayer.TokenRepository;
 
 public class WaitingQueueServiceTest {
 
     private FakeEventRepository fakeEventRepo;
     private WaitingQueueRepository realQueueRepo;
     private FakeNotificationsService fakeNotifications;
-    private TokenService TokenService;
+    private ITokenService tokenService;
+    private ITokenRepository tokenRepository;
     private WaitingQueueService waitingQueueService;
 
     @BeforeEach
@@ -34,16 +40,17 @@ public class WaitingQueueServiceTest {
         fakeEventRepo = new FakeEventRepository();
         realQueueRepo = new WaitingQueueRepository();
         fakeNotifications = new FakeNotificationsService();
-        TokenService = new TokenService();
-        waitingQueueService = new WaitingQueueService(fakeEventRepo, realQueueRepo, fakeNotifications, TokenService);
-    }
+        tokenRepository = new TokenRepository();
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        waitingQueueService = new WaitingQueueService(fakeEventRepo, realQueueRepo, fakeNotifications, tokenService);
+        }
 
     @Test
     public void givenEventHasCapacity_whenTryReserve_thenUserIsApproved() {
         // Arrange
-        Event event = new Event(1L, "Music Festival", LocalDateTime.now(), "Central Park", 100L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(1L,LocalDateTime.now().plusDays(1),"Music Festival", 1L,1L,"Central Park", 100L, EventCategory.CONCERT,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
-        String validToken = TokenService.generateNewGuestToken();
+        String validToken = tokenService.addActiveSession(new Guest());
 
         // Act
         String result = waitingQueueService.tryReserve(1, validToken);
@@ -57,9 +64,9 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEventIsFull_whenTryReserve_thenUserIsQueued() {
         // Arrange
-        Event event = new Event(2L, "Art Expo", LocalDateTime.now(), "Central Park", 1L, EventCategory.EXHIBITION, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(2L,LocalDateTime.now().plusDays(1),"Art Expo", 1L,1L,"Central Park", 1L, EventCategory.EXHIBITION,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
-        String validToken = TokenService.generateNewGuestToken();
+        String validToken = tokenService.addActiveSession(new Guest());
 
         waitingQueueService.tryReserve(2, validToken);
 
@@ -75,13 +82,17 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenUserInQueue_whenSpotReleased_thenNextUserIsProcessedAndNotified() {
         // Arrange 
-        Event event = new Event(3L, "Rock Concert", LocalDateTime.now(), "Central Park", 1L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(3L,LocalDateTime.now().plusDays(1),"Rock Concert", 1L,1L,"Central Park", 1L, EventCategory.CONCERT,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
-        String validToken1 = TokenService.generateNewGuestToken();
-        String validToken2 = TokenService.generateNewGuestToken();
 
-        waitingQueueService.tryReserve(3, validToken1);
-        waitingQueueService.tryReserve(3, validToken2);
+        String validToken1 = tokenService.addActiveSession(new Guest());
+        String validToken2 = tokenService.addActiveSession(new Guest());
+
+        String result1 = waitingQueueService.tryReserve(3, validToken1);
+        String result2 = waitingQueueService.tryReserve(3, validToken2);
+
+        assertEquals("APPROVED", result1);
+        assertEquals("QUEUED", result2);
 
         // Act 
         waitingQueueService.releaseSpot(3, validToken1);
@@ -95,14 +106,17 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEmptyQueue_whenSpotReleased_thenCapacityDrops() {
         // Arrange
-        Event event = new Event(4L, "Jazz Night", LocalDateTime.now(), "Central Park", 2L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(4L,LocalDateTime.now().plusDays(1),"Jazz Night", 1L,1L,"Central Park", 2L, EventCategory.CONCERT,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
-        String validToken1 = TokenService.generateNewGuestToken();
-        String validToken2 = TokenService.generateNewGuestToken();
+        String validToken1 = tokenService.addActiveSession(new Guest());
+        String validToken2 = tokenService.addActiveSession(new Guest());
 
-        waitingQueueService.tryReserve(4, validToken1);
-        waitingQueueService.tryReserve(4, validToken2);
+        String result1 = waitingQueueService.tryReserve(4, validToken1);
+        String result2 = waitingQueueService.tryReserve(4, validToken2);
+
+        assertEquals("APPROVED", result1);
+        assertEquals("APPROVED", result2);
 
         // Act 
         waitingQueueService.releaseSpot(4, validToken2);
@@ -115,7 +129,7 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenInvalidToken_whenTryReserve_thenUserIsRejected() {
         // Arrange
-        Event event = new Event(5L, "Secret Show", LocalDateTime.now(), "Central Park", 100L, EventCategory.CONCERT, null, new PurchasePolicy("Default"), new DiscountPolicy());
+        Event event = new Event(5L,LocalDateTime.now().plusDays(1),"Secret Show", 1L,1L,"Central Park", 100L, EventCategory.CONCERT,new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
         // Act
@@ -150,6 +164,11 @@ public class WaitingQueueServiceTest {
         @Override
         public void updateEvent(Event event) {
             events.put(event.getId(), event);
+        }
+
+        @Override
+        public long getNextId() {
+            return events.size() + 1L;
         }
     }
 

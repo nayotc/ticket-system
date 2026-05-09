@@ -4,8 +4,8 @@ import java.util.List;
 
 public abstract class Order {
 
-    private int orderId;
-    private List<Ticket> tickets;
+    protected int orderId;
+    protected List<Ticket> tickets;
 
     public Order(int orderId) {
         this.orderId = orderId;
