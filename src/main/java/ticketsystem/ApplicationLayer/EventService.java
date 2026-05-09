@@ -26,7 +26,7 @@ public class EventService {
         this.membershipDomain = membershipDomain;
     }
 
-    public void insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date, String location, Long trafficThreshold, EventCategory category, Pair<Integer, Integer> mapSize) {
+    public void insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date, String location, Long trafficThreshold, EventCategory category, Integer mapHigh, Integer mapWidth) {
         try {
             // precondition: user logged in
             if (!tokenService.validateToken(sessionId)) {
@@ -53,13 +53,17 @@ public class EventService {
             if (category == null) {
                 throw new IllegalArgumentException("Event category cannot be null");
             }
-            if (mapSize == null || mapSize.getFirst() <= 0 || mapSize.getSecond() <= 0) {
-                throw new IllegalArgumentException("Map size must be positive");
+            if (mapHigh == null || mapHigh <= 0) {
+                throw new IllegalArgumentException("Map height must be a positive number");
+            }
+            if (mapWidth == null || mapWidth <= 0) {
+                throw new IllegalArgumentException("Map width must be a positive number");
             }
             // main scenario: create and add event
             Long userId = tokenService.extractUserId(sessionId);  // TODO: remove casting
             Long eventId = eventRepository.getNextId();
-            Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category, mapSize);
+
+            Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,new Pair<>(mapHigh, mapWidth));
             eventRepository.addEvent(event);
             // logger.servere("Event created successfully: " + event.getName());
         } catch (Exception e) {

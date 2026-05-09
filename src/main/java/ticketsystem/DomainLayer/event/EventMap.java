@@ -9,6 +9,7 @@ public class EventMap {
 
     public EventMap(Pair<Integer, Integer> size) {
         this.size = size;
+        this.elements = new java.util.ArrayList<>();
     }
 
     public Pair<Integer, Integer> getSize() {
@@ -47,7 +48,7 @@ public class EventMap {
 
     public void releaseSeat(Long areaId, SeatPosition position) {
         for (Element element : elements) {
-            if (element instanceof Area && element.getId() == areaId) {
+            if (element instanceof SeatingArea && element.getId() == areaId) {
                 ((SeatingArea) element).releaseSeat(position);
                 return;
             }
@@ -57,7 +58,7 @@ public class EventMap {
 
     public void sellSeat(Long areaId, SeatPosition position) {
         for (Element element : elements) {
-            if (element instanceof Area && element.getId() == areaId) {
+            if (element instanceof SeatingArea && element.getId() == areaId) {
                 ((SeatingArea) element).sellSeat(position);
                 return;
             }
@@ -67,7 +68,7 @@ public class EventMap {
 
     public void reserveSpot(Long areaId) {
         for (Element element : elements) {
-            if (element instanceof Area && element.getId() == areaId) {
+            if (element instanceof StandingArea && element.getId() == areaId) {
                 ((StandingArea) element).reserveSpot();
                 return;
             }
@@ -77,7 +78,7 @@ public class EventMap {
 
     public void releaseSpot(Long areaId) {
         for (Element element : elements) {
-            if (element instanceof Area && element.getId() == areaId) {
+            if (element instanceof StandingArea && element.getId() == areaId) {
                 ((StandingArea) element).releaseSpot();
                 return;
             }
@@ -87,7 +88,7 @@ public class EventMap {
 
     public void sellSpot(Long areaId) {
         for (Element element : elements) {
-            if (element instanceof Area && element.getId() == areaId) {
+            if (element instanceof StandingArea && element.getId() == areaId) {
                 ((StandingArea) element).sellSpot();
                 return;
             }

@@ -35,7 +35,7 @@ public class StandingArea extends Area {
     }
 
     public void reserveSpot() {
-        if (reserved >= capacity) {
+        if (reserved + sold >= capacity) {
             throw new IllegalStateException("No more spots available");
         }
         reserved++;
@@ -52,6 +52,7 @@ public class StandingArea extends Area {
         if (sold >= capacity) {
             throw new IllegalStateException("No more spots available");
         }
+        reserved--; // Assuming selling a spot that was reserved
         sold++;
     }
 
