@@ -3,14 +3,11 @@ package ticketsystem.DomainLayer.event;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import ticketsystem.DomainLayer.event.EventCategory;
-import ticketsystem.DomainLayer.event.EventMap;
-import ticketsystem.DomainLayer.event.PurchasePolicy;
-import ticketsystem.DomainLayer.event.DiscountPolicy;
-
 public class Event {
 
-    public enum eventStatus {DRAFT,ACTIVE, INACTIVE, CANCELLED};
+    public enum eventStatus {
+        DRAFT, ACTIVE, INACTIVE, CANCELLED
+    };
 
     private final Long id;
     private String name;
@@ -25,9 +22,10 @@ public class Event {
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
     private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
+    private int version = 0;
     // waiting queue
-    
-    public Event(Long id,LocalDateTime date,String name, Long companyId, Long openedBy, String location, Long trafficThreshold, EventCategory category, Pair<Integer, Integer> mapSize) {
+
+    public Event(Long id, LocalDateTime date, String name, Long companyId, Long openedBy, String location, Long trafficThreshold, EventCategory category, Pair<Integer, Integer> mapSize) {
         this.id = id;
         this.name = name;
         this.Date = date;
@@ -37,11 +35,11 @@ public class Event {
         this.trafficThreshold = trafficThreshold;
         this.status = eventStatus.DRAFT; // Default status until the map is set and the event is activated
         this.category = category;
-        this.map = new EventMap(mapSize); 
+        this.map = new EventMap(mapSize);
         this.purchasePolicy = new PurchasePolicy("Default purchase policy");
         this.discountPolicy = new DiscountPolicy();
     }
-  
+
     public Long getId() {
         return id;
     }
@@ -73,7 +71,7 @@ public class Event {
     public Long getOpenedBy() {
         return openedBy;
     }
-    
+
     public String getLocation() {
         return location;
     }
@@ -133,7 +131,7 @@ public class Event {
     public boolean isSoldOut() {
         return map.isSoldOut();
     }
-  
+
     // use case: ticket reservation 
     public void reserveSeat(Long areaId, SeatPosition position) {
         this.map.reserveSeat(areaId, position);
@@ -158,7 +156,7 @@ public class Event {
     public void sellSpot(Long areaId) {
         this.map.sellSpot(areaId);
     }
-  
+
     // use case: virtual queue and load management
     public boolean isOverloaded() {
         return this.activeReservationsCount.get() >= this.trafficThreshold;
