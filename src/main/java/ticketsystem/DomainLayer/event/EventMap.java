@@ -38,7 +38,7 @@ public class EventMap {
 
     public void reserveSeat(Long areaId, SeatPosition position) {
         for (Element element : elements) {
-            if (element instanceof Area && element.getId() == areaId) {
+            if (element instanceof SeatingArea && element.getId() == areaId) {
                 ((SeatingArea) element).reserveSeat(position);
                 return;
             }
