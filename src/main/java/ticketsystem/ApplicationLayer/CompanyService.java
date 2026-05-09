@@ -15,22 +15,22 @@ public class CompanyService {
         this.tokenService = tokenService;
     }
 
-    private long getRegisteredMemberId(String token) throws Exception { // gets a token and returns user name
+    private long getRegisteredMemberId(String token) throws Exception {
         if (!tokenService.validateToken(token)) {
             throw new Exception("Error: Invalid or expired session token.");
         }
         
-        String subject = tokenService.extractSubject(token);
-        
-        if (subject != null && subject.startsWith("GUEST_")) {
+        if (tokenService.isGuestToken(token)) {
             throw new Exception("Error: Member must be logged in. Guests are not allowed.");
         }
         
-        try {
-            return Long.parseLong(subject);
-        } catch (NumberFormatException e) {
-            throw new Exception("Error: Invalid member ID format in token.");
+        Long userId = tokenService.extractUserId(token);
+        
+        if (userId == null) {
+            throw new Exception("Error: Member ID not found in token.");
         }
+        
+        return userId; 
     }
 
     /**
