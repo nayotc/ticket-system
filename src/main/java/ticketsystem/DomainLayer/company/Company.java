@@ -18,6 +18,9 @@ public class Company {
     private PurchasePolicy purchasePolicy; 
     private DiscountPolicy discountPolicy; 
 
+    //Version field for Optimistic Locking
+    private long version;
+
     public Company(String name, long founderId, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
         this.id = idCounter++; 
         
@@ -33,6 +36,26 @@ public class Company {
         this.discountPolicy = discountPolicy;
         
         this.rolesTree = new CompanyTree(founderId);
+
+        this.version = 0; // Initialize version
+    }
+
+    // Copy Constructor
+    public Company(Company other) {
+        this.id = other.id;
+        this.name = other.name;
+        this.founderId = other.founderId;
+        this.isActive = other.isActive;
+        this.version = other.version;
+        
+        // Deep copy of the lists to prevent external modifications
+        this.owners = new ArrayList<>(other.owners);
+        this.managers = new ArrayList<>(other.managers);
+        
+        // Shallow copy for other objects (sufficient for this level of locking)
+        this.rolesTree = other.rolesTree;
+        this.purchasePolicy = other.purchasePolicy;
+        this.discountPolicy = other.discountPolicy;
     }
     // --- Getters & Setters ---
 
@@ -94,6 +117,14 @@ public class Company {
 
     public void setDiscountPolicy(DiscountPolicy discountPolicy) {
         this.discountPolicy = discountPolicy;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
+    public void setVersion(long version) {
+        this.version = version;
     }
 
     private boolean isFounder(long memberId) {

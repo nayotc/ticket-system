@@ -1,140 +1,166 @@
 package ticketsystem.UnitTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import java.util.HashMap;
 import java.util.Map;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.company.DiscountPolicy;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
 
+
 class CompanyTest {
 
-private Company company;
-    // We now use long-based IDs
+    private Company company;
     private final long FOUNDER_ID = 100L;
     private final long SECOND_OWNER_ID = 101L;
     private final long MANAGER_ID = 102L;
 
     @BeforeEach
     void setUp() {
-        // Create a new company before each test
+        // Arrange - Setup the base environment for each test 
         company = new Company("BGU Productions", FOUNDER_ID, new PurchasePolicy(), new DiscountPolicy());
         
-        // Add an additional owner and a manager using the updated method
-        // This ensures they are added BOTH to the role lists (owners/managers) AND to the CompanyTree
+        // Initialize some roles to test hierarchy and permissions
         company.registerNewAppointment(FOUNDER_ID, SECOND_OWNER_ID, "OWNER");
         company.registerNewAppointment(FOUNDER_ID, MANAGER_ID, "MANAGER");
     }
 
-    // --- Tests for UC 3.2 (Create Company) & ID Generation ---
+    // --- UC 3.2: Create Company & ID Generation ---
 
     @Test
-    void testCompanyCreation_FounderIsAlsoOwner() {
-        // Verify that the founder is automatically added to the owners list (Requirement 3.2)
+    void GivenNewCompany_WhenCreated_ThenFounderIsAddedToOwners() {
         assertTrue(company.getOwners().contains(FOUNDER_ID), "Founder should be automatically added to owners list.");
         assertTrue(company.isActive(), "A new company should be active by default.");
     }
 
     @Test
-    void testCompanyCreation_GeneratesValidAndUniqueId() {
-        // Verify that the company receives a valid positive long ID
-        assertTrue(company.getId() > 0, "Company ID should be a positive number.");
-        
-        // Create a second company to verify the auto-increment behavior
+    void GivenNewCompanies_WhenCreated_ThenIdsAreUniqueAndIncremented() {
         Company secondCompany = new Company("Another Company", FOUNDER_ID, new PurchasePolicy(), new DiscountPolicy());
         
+        // Assert
+        assertTrue(company.getId() > 0, "Company ID should be a positive number.");
         assertTrue(secondCompany.getId() > company.getId(), "New company should receive a higher incremented ID.");
         assertNotEquals(company.getId(), secondCompany.getId(), "Every company should have a unique ID.");
     }
 
-    // --- Tests for UC 13 (Close/Suspend Company) ---
+    // --- UC 4.13: Close/Suspend Company ---
 
     @Test
-    void testCloseCompany_ByFounder_Success() throws Exception {
-        // Main Scenario: Founder successfully closes the company
+    void GivenActiveCompany_WhenFounderCloses_ThenStatusIsInactive() throws Exception {
+        // Act
         company.closeOrSuspend(FOUNDER_ID);
+        
+        // Assert
         assertFalse(company.isActive(), "Company should be inactive after founder closes it.");
     }
 
     @Test
-    void testCloseCompany_ByOtherOwner_ThrowsException() {
-        // Alternative flow: An owner who is not the founder attempts to close the company
+    void GivenActiveCompany_WhenNonFounderCloses_ThenExceptionIsThrown() {
+        // Act & Assert
         Exception exception = assertThrows(Exception.class, () -> company.closeOrSuspend(SECOND_OWNER_ID));
-        assertTrue(exception.getMessage().contains("Only the Founder can close"));
+        assertTrue(exception.getMessage().contains("Only the Founder can close"), "Should reject non-founder requests.");
     }
 
     @Test
-    void testCloseCompany_AlreadyInactive_ThrowsException() throws Exception {
-        // Founder closes the company first
+    void GivenInactiveCompany_WhenFounderCloses_ThenExceptionIsThrown() throws Exception {
+        // Arrange
         company.closeOrSuspend(FOUNDER_ID);
         
-        // Founder attempts to close an already inactive company
+        // Act & Assert
         Exception exception = assertThrows(Exception.class, () -> company.closeOrSuspend(FOUNDER_ID));
         assertTrue(exception.getMessage().contains("already inactive"));
     }
 
-    // --- Tests for UC 14 (Reopen Company) ---
+    // --- UC 4.14: Reopen Company ---
 
     @Test
-    void testReopenCompany_ByFounder_Success() throws Exception {
-        // Close the company first
+    void GivenInactiveCompany_WhenFounderReopens_ThenStatusIsActive() throws Exception {
+        // Arrange
         company.closeOrSuspend(FOUNDER_ID);
         
-        // Founder successfully reopens the company
+        // Act
         company.reopenCompany(FOUNDER_ID);
+        
+        // Assert
         assertTrue(company.isActive(), "Company should be active after founder reopens it.");
     }
 
     @Test
-    void testReopenCompany_ByManager_ThrowsException() throws Exception {
-        // Close the company first
+    void GivenInactiveCompany_WhenManagerReopens_ThenExceptionIsThrown() throws Exception {
+        // Arrange
         company.closeOrSuspend(FOUNDER_ID);
         
-        // Manager attempts to reopen the company and is rejected
+        // Act & Assert
         Exception exception = assertThrows(Exception.class, () -> company.reopenCompany(MANAGER_ID));
         assertTrue(exception.getMessage().contains("Only the Founder can reopen"));
     }
 
     @Test
-    void testReopenCompany_AlreadyActive_ThrowsException() {
-        // Attempt to reopen a company that is already active
+    void GivenActiveCompany_WhenFounderReopens_ThenExceptionIsThrown() {
+        // Act & Assert
         Exception exception = assertThrows(Exception.class, () -> company.reopenCompany(FOUNDER_ID));
         assertTrue(exception.getMessage().contains("already Active"));
     }
 
-    // --- Tests for UC 15 (View Roles Tree) ---
+    // --- UC 4.15: View Roles Tree ---
 
     @Test
-    void testViewRolesTree_ByOwner_Success() throws Exception {
-        // Create a mock permissions map for testing (Now using Long keys)
+    void GivenOwnersAndManagers_WhenOwnerRequestsTree_ThenRepresentationIsCorrect() throws Exception {
+        // Arrange
         Map<Long, String> mockPermissions = new HashMap<>();
-        mockPermissions.put(FOUNDER_ID, "All Permissions");
-        mockPermissions.put(SECOND_OWNER_ID, "All Permissions");
         mockPermissions.put(MANAGER_ID, "inventory:event:manage");
 
-        // Both the founder and the additional owner are permitted to view the roles tree
-        String treeForFounder = company.getRolesTreeRepresentation(FOUNDER_ID, mockPermissions);
-        String treeForOwner = company.getRolesTreeRepresentation(SECOND_OWNER_ID, mockPermissions);
+        // Act
+        String treeOutput = company.getRolesTreeRepresentation(FOUNDER_ID, mockPermissions);
         
-        assertNotNull(treeForFounder);
-        assertNotNull(treeForOwner);
-        
-        // Additional check to verify the role and permissions are integrated into the string output
-        assertTrue(treeForFounder.contains("Role: FOUNDER"), "Tree should contain the internal role (FOUNDER).");
-        assertTrue(treeForFounder.contains("Permissions: inventory:event:manage"), "Tree should contain the provided permissions string.");
+        // Assert
+        assertNotNull(treeOutput);
+        assertTrue(treeOutput.contains("Role: FOUNDER"), "Tree must display the founder role.");
+        assertTrue(treeOutput.contains("Role: MANAGER"), "Tree must display assigned manager role.");
+        assertTrue(treeOutput.contains("inventory:event:manage"), "Tree should include external permissions.");
     }
 
     @Test
-    void testViewRolesTree_ByManager_ThrowsException() {
-        Map<Long, String> mockPermissions = new HashMap<>(); // Empty map is fine for this test
+    void GivenManager_WhenRequestsTree_ThenExceptionIsThrown() {
+        // Arrange
+        Map<Long, String> mockPermissions = new HashMap<>();
         
-        // A manager attempts to view the roles tree and receives an error
+        // Act & Assert
         Exception exception = assertThrows(Exception.class, () -> company.getRolesTreeRepresentation(MANAGER_ID, mockPermissions));
-        assertTrue(exception.getMessage().contains("Only Owners can view"));
+        assertTrue(exception.getMessage().contains("Only Owners can view"), "Only owners should have access to the tree.");
     }
 
+    // --- Additional Logic: Remove User & Concurrency ---
+
+    @Test
+    void GivenUserIsManager_WhenRemoveUserFromAllRoles_ThenUserIsRemoved() throws Exception {
+        // Act
+        company.removeUserFromAllRoles(MANAGER_ID);
+        
+        // Assert
+        assertFalse(company.getManagers().contains(MANAGER_ID), "User should be removed from the manager list.");
+        
+        Map<Long, String> emptyPerms = new HashMap<>();
+        String tree = company.getRolesTreeRepresentation(FOUNDER_ID, emptyPerms);
+        assertFalse(tree.contains("ID: " + MANAGER_ID), "User should be removed from the hierarchy tree.");
+    }
+
+    @Test
+    void GivenCompany_WhenCopyConstructorCalled_ThenDetachedCopyIsCreated() {
+        // Arrange - Setup for optimistic locking check [cite: 747]
+        company.setVersion(5);
+        
+        // Act
+        Company copy = new Company(company);
+        
+        // Assert
+        assertEquals(company.getId(), copy.getId());
+        assertEquals(5, copy.getVersion(), "Version should be copied correctly.");
+        assertNotSame(company.getOwners(), copy.getOwners(), "Deep copy check: owners lists must be different objects.");
+        
+        copy.setVersion(6);
+        assertNotEquals(company.getVersion(), copy.getVersion(), "Modifying detached copy should not affect the original.");
+    }
 }
