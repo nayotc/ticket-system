@@ -9,6 +9,15 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DomainLayer.event.Event;
 
+import java.util.List;
+
+import ticketsystem.DomainLayer.EventCatalogDomainService;
+import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.DomainLayer.event.Event;
+
 public class EventCatalogService {
 
     private final EventCatalogDomainService domainService;

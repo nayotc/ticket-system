@@ -320,8 +320,6 @@ public class Event {
                 .replaceAll("[^a-z0-9]", "");          // removes space, _, -, /, ., comma, etc.
     }
 
-
-<<<<<<< HEAD
     public int getVersion() {
         return version;
     }
@@ -329,7 +327,5 @@ public class Event {
     public void incrementVersion() {
         this.version++;
     }
-=======
->>>>>>> f4fd19f (fix comments)
 
 }
