@@ -7,17 +7,6 @@ import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Manager;
 
 public class MembershipDomainService {
-<<<<<<< HEAD
-    
-    public CompanyRole assignManagerToCompany(long companyId, Member appointer, Member appointee, Set<Permission> permissions) throws Exception {
-        if (!(appointer.getRole(companyId) instanceof Owner)) {
-            throw new Exception("Only owners can assign managers.");
-=======
-=======
-import ticketsystem.DomainLayer.user.Manager;
-
-public class MembershipDomainService {
->>>>>>> 5c34fef (implementation of use-case 4.7)
 
     public boolean validatePermission(CompanyRole role, Permission permission) {
         
@@ -35,34 +24,32 @@ public class MembershipDomainService {
         return role.hasPermission(permission); 
     }
 
-    public void validateManagerAssignmentRequest(CompanyRole appointerRole, CompanyRole targetRole) throws Exception {
+    public void validateAssignmentRequest(CompanyRole appointerRole, CompanyRole targetRole) throws Exception {
         
         // 1. Validate the appointer exists
         if (appointerRole == null) {
             throw new Exception("You do not have a role in this company.");
-<<<<<<< HEAD
->>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
-=======
->>>>>>> 5c34fef (implementation of use-case 4.7)
         }
         
         // 2. Validate the appointer's role status
         if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
-            throw new Exception("Your role is not active yet. You cannot appoint managers.");
+            throw new Exception("Your role is not active yet. You cannot appoint others.");
         }
 
         // 3. Validate the appointer's role type
         if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
-            throw new Exception("Only Owners and Founders can appoint managers.");
+            throw new Exception("Only Owners and Founders can appoint others.");
         }
 
         // 4. Validate the target is free
         if (targetRole != null) {
             throw new Exception("This user already has an active or pending role in this company.");
         }
+
+        // If all validations pass, the service will handle the creation of the pending role
     }
 
-    public void validateAndApproveAssignment(CompanyRole approvedRole, CompanyRole appointerRole, Long appointeeId) throws Exception {
+    public void validateApproveAssignment(CompanyRole approvedRole, CompanyRole appointerRole, Long appointeeId) throws Exception {
         
         // 1. Validate the approved role
         if (approvedRole == null) {
@@ -94,8 +81,7 @@ public class MembershipDomainService {
             throw new Exception("Managers cannot appoint others.");
         }
 
-        // 6. Finally, set the approved role to ACTIVE
-        approvedRole.setStatus(RoleStatus.ACTIVE);
+        // 6. If validation passes, the service will handle the activation of the pending role
     }
 
     public void validateRejectAssignment(CompanyRole rejectedRole) throws Exception {

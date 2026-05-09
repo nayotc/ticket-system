@@ -1,4 +1,5 @@
 package ticketsystem.ApplicationLayer;
+import java.util.Optional;
 import java.util.Set;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -7,7 +8,7 @@ import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Permission;
->>>>>>> 5c34fef (implementation of use-case 4.7)
+import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Manager;
@@ -15,35 +16,8 @@ import ticketsystem.DomainLayer.user.Manager;
 public class MembershipService {
 
     private final ITokenService tokenService;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
-<<<<<<< HEAD
-    private final MembershipDomainService domainService;
-    private final NotificationsService notificationsService;
-
-    public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService domainService, NotificationsService notificationsService) {
-        this.tokenService = tokenService;
-        this.userRepository = userRepository;
-        this.companyRepository = companyRepository;
-        this.domainService = domainService;
-        this.notificationsService = notificationsService;
-=======
-    //private final IUserRepository userRepository;
-    //private final ICompanyRepository companyRepository;
-=======
-    private final IUserRepository userRepository;
-    private final ICompanyRepository companyRepository;
->>>>>>> 1d842e6 (Add uc 4.15 View roles and permissions tree)
-    private final IMembershipRepository membershipRepository;
-=======
->>>>>>> 8105adc (Deleting Membership Repository and updating Member to save his list of roles in each company)
-=======
-    private final IUserRepository userRepository;
-    private final ICompanyRepository companyRepository;
->>>>>>> 5c34fef (implementation of use-case 4.7)
     private final MembershipDomainService domainService;
     private final NotificationsService notificationsService;
 
@@ -68,7 +42,6 @@ public class MembershipService {
         
         // 2. Extract user ID from token and retrieve member information
         Long memberId = tokenService.extractUserId(sessionToken);
->>>>>>> 5c34fef (implementation of use-case 4.7)
         Member member = userRepository.getMemberById(memberId);
 
         // 3. Retrieve the member's role in the specified company and validate the required permission
@@ -79,7 +52,7 @@ public class MembershipService {
     /**
      * Use Case 4.7: Request to assign a manager to a company
      */
-    public String requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) throws Exception {
+    public boolean requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) throws Exception {
         
         // 1. Authenticate session
         if (!tokenService.validateToken(sessionToken)) {
@@ -89,7 +62,6 @@ public class MembershipService {
         // 2. Extract user ID from token and retrieve member information
         Long appointerId = tokenService.extractUserId(sessionToken);
         Member appointer = userRepository.getMemberById(appointerId);
->>>>>>> 5c34fef (implementation of use-case 4.7)
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
         // 3. Retrieve target member information
@@ -97,22 +69,22 @@ public class MembershipService {
         CompanyRole targetRole = targetMember.getRoleInCompany(companyId);
 
         // 4. Validate the assignment request using the domain service
-        domainService.validateManagerAssignmentRequest(appointerRole, targetRole);
+        domainService.validateAssignmentRequest(appointerRole, targetRole);
         
         // 5. If validation passes, add a pending Manager role to the target member and notify them
         targetMember.addManagerRole(companyId, appointerId, permissions);
         userRepository.updateMember(targetMember);
         // TODO: Consider what information to include in the notification (e.g., company name, permissions assigned) and implement the notification content accordingly.
-        // notificationsService.send(targetMemberId, "You have been assigned to become a manager at " + companyRepository.findById(companyId).getName() + ". Please review and approve or reject this assignment.");
+        // notificationsService.notifyUser(targetMemberId, "You have been assigned to become a manager at " + companyRepository.findById(companyId).getName() + ". Please review and approve or reject this assignment.");
         
         // 6. Return a success message or status
-        return "Manager assignment request sent successfully.";
+        return true;
     }
 
     /**
      * Approve a pending assignment (Manager or Owner)
      */
-    public String approveAssignment(String sessionToken, Long companyId) throws Exception {
+    public boolean approveAssignment(String sessionToken, Long companyId) throws Exception {
         
         // 1. Authenticate session
         if (!tokenService.validateToken(sessionToken)) {
@@ -121,7 +93,6 @@ public class MembershipService {
         
         // 2. Extract user ID from token and retrieve member information
         Long appointeeId = tokenService.extractUserId(sessionToken);
->>>>>>> 5c34fef (implementation of use-case 4.7)
         Member appointee = userRepository.getMemberById(appointeeId);
         CompanyRole approvedRole = appointee.getRoleInCompany(companyId);
         
@@ -145,25 +116,26 @@ public class MembershipService {
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
         
         // 4. Validate the approval action using the domain service
-        domainService.validateAndApproveAssignment(approvedRole, appointerRole, appointeeId);
+        domainService.validateApproveAssignment(approvedRole, appointerRole, appointeeId);
         
         // 5. If validation passes, update the repository with the changes to both the appointee and appointer
+        approvedRole.setStatus(RoleStatus.ACTIVE);
         userRepository.updateMember(appointee);
         userRepository.updateMember(appointer);
->>>>>>> 5c34fef (implementation of use-case 4.7)
         
         // 6. Update the company's tree
-        Company company = companyRepository.findById(companyId);
-        company.registerNewAppointment(appointerId, appointeeId);
+        Optional<Company> company = companyRepository.findById(companyId.longValue());
+        company.ifPresent(c -> c.registerNewAppointment(appointerId.longValue(), appointeeId.longValue(), 
+                                                        approvedRole instanceof Manager ? "Manager" : "Owner"));
 
         // 7. Return a success message or status
-        return "Assignment approved successfully.";
+        return true;
     }
 
     /**
      * Reject a pending assignment (Manager or Owner)
      */
-    public String rejectAssignment(String sessionToken, Long companyId) throws Exception {
+    public boolean rejectAssignment(String sessionToken, Long companyId) throws Exception {
         
         // 1. Authenticate session
         if (!tokenService.validateToken(sessionToken)) {
@@ -210,7 +182,9 @@ public class MembershipService {
         userRepository.updateMember(member);
         
         // 6. Return a success message or status
-        return "Assignment rejected successfully.";
+        return true;
     }
+
+    
 
 }
