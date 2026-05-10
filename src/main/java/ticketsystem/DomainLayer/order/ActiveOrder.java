@@ -47,6 +47,7 @@ public class ActiveOrder {
     }
 
     public void cancelOrder() {
+        //in the respitory, if an order is cancelled or completed, it will be removed from the active orders repository, so it won't be possible to add or remove tickets from it, but we can still change its status to reflect the cancellation
         this.status = OrderStatus.CANCELLED;
     }
 
