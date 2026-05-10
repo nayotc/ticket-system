@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 public class DiscountTypes {
 
     public DiscountTypes(String name, LocalDateTime startTime, LocalDateTime endTime) {
-        //TODO Auto-generated constructor stub
     }
     
 }
