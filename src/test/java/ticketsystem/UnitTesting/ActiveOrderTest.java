@@ -154,12 +154,6 @@ public class ActiveOrderTest {
         assertEquals(10, order.getTickets().size());
     }
 
-    @Test
-    void givenGuestOrder_whenValidateCanBeSubmittedBy_thenThrowException() {
-        ActiveOrder guestOrder = new ActiveOrder(2L, "guest-session", null, eventId);
-
-        assertThrows(IllegalArgumentException.class, () -> guestOrder.validateCanBeSubmittedBy());
-    }
 
     @Test
     void givenOrderWithoutTickets_whenValidateCanBeSubmittedBy_thenThrowException() {

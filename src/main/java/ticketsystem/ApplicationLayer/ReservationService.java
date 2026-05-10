@@ -96,11 +96,13 @@ public class ReservationService {
     public boolean submitActiveOrderForCheckout(String token, Long eventId) {
         try {
             validateToken(token);
+           
             ActiveOrder order = getExistingOrder(token, eventId);
             Event event = getEvent(eventId);
             reservation.submitActiveOrderForCheckout(order, event);
 
             saveAll(order, event);
+            
             return true;
            
         } catch (Exception e) {
@@ -110,6 +112,12 @@ public class ReservationService {
         }
     }
 
+    public boolean enterUserDetails(String name, String Email){
+        return true;
+    }
+
+
+    //
     public boolean checkout(String token, Long eventId, PaymentDetails details) {
         try {
             validateToken(token);

@@ -94,12 +94,7 @@ public class ActiveOrder {
     }
 
     public void validateCanBeSubmittedBy() {
-        if (userId == null) {
-                throw new IllegalArgumentException(
-                        "Guest users must provide personal details before checkout"
-                );
-            }
-
+      
             validateHasTickets();
             validateTicketLimit();
 

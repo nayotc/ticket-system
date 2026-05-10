@@ -1,7 +1,8 @@
 package ticketsystem.DTO;
 
 public class PaymentDetails {
-
+    private String name;
+    
     private final String paymentMethodId; // Stripe / Fake
     private final String payerName;
 
