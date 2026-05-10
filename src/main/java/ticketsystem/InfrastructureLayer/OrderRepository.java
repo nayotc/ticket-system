@@ -75,7 +75,10 @@ public class OrderRepository implements IOrderRepository {
         if (order == null) {
             throw new IllegalArgumentException("Order cannot be null");
         }
-
+        if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE ||order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT) {
+            deleteOrder(order.getOrderId());
+            return;
+        }
         //if order doesn't exist,it will be added to the repository
         orders.put(order.getOrderId(), order);
     }
@@ -88,9 +91,5 @@ public class OrderRepository implements IOrderRepository {
         }
         return null;
     }
-
-    
-
-
 
 }

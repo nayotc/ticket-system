@@ -52,7 +52,7 @@ public class ReservationService {
             return true;
 
         } catch (Exception e) {
-            logError("selectSeatTicket failed: " + e.getMessage());
+            logWarning("selectSeatTicket failed: " + e.getMessage());
             return false;
         }
     }
@@ -69,7 +69,7 @@ public class ReservationService {
             saveAll(order, event);
             return true;
         } catch (Exception e) {
-            logError("selectStandingTicket failed: " + e.getMessage());
+            logWarning("selectStandingTicket failed: " + e.getMessage());
             return false;
         }
     }
@@ -87,7 +87,7 @@ public class ReservationService {
             return true;
 
         } catch (Exception e) {
-            logError("removeTicketFromActiveOrder failed: " + e.getMessage());
+            logWarning("removeTicketFromActiveOrder failed: " + e.getMessage());
             return false;
         }
     }
@@ -105,7 +105,7 @@ public class ReservationService {
            
         } catch (Exception e) {
 
-            logError("submitActiveOrderForCheckout failed: " + e.getMessage());
+            logWarning("submitActiveOrderForCheckout failed: " + e.getMessage());
             return false;
         }
     }
@@ -131,7 +131,7 @@ public class ReservationService {
             return true;
 
         } catch (Exception e) {
-            logError("checkout failed: " + e.getMessage());
+            logWarning("checkout failed: " + e.getMessage());
             return false;
         }
     }
