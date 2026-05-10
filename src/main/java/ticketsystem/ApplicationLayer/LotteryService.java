@@ -12,13 +12,13 @@ public class LotteryService {
     
     private final ILotteryRepository lotteryRepository;
     private final ITokenService tokenService;
-    private final NotificationsService notificationsService;
+    //private final NotificationsService notificationsService;
 
 
-    public LotteryService(ILotteryRepository lotteryRepository, ITokenService tokenService, NotificationsService notificationsService) {
+    public LotteryService(ILotteryRepository lotteryRepository, ITokenService tokenService) {
         this.lotteryRepository = lotteryRepository;  
         this.tokenService = tokenService; 
-        this.notificationsService = notificationsService;
+        //this.notificationsService = notificationsService;
     }
 
     // Method to create a new lottery
@@ -43,7 +43,7 @@ public class LotteryService {
             Lottery lottery =lotteryRepository.findById(lotteryId);
             lottery.registerMember(memberId);
             lotteryRepository.update(lottery);
-            notificationsService.notifyUser(token, "You have successfully registered for the lottery!");
+            //notificationsService.notifyUser(token, "You have successfully registered for the lottery!");
             return true; 
         } catch(IllegalArgumentException e){
             throw(e);
