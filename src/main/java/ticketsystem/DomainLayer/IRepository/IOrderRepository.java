@@ -6,12 +6,12 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 public interface IOrderRepository {
 
     void addOrder(ActiveOrder order);
+    ActiveOrder findOrderById(Long orderId);
     void updateOrder(ActiveOrder order);
-    void deleteOrder(int orderId);
+    void deleteOrder(Long orderId);
     List<ActiveOrder> getAll();
-    ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, int eventId);
-    int getNextId();
-    ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, int eventId);
-    ActiveOrder getActiveOrderById(int orderId);
+    ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, Long eventId);
+    Long getNextId();
+    ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, Long eventId);
     
 }

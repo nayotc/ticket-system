@@ -9,10 +9,10 @@ import ticketsystem.DTO.TicketDTO;
 
 public class ActiveOrder {
 
-    private int orderId;
+    private Long orderId;
     private Long userId;
-    private String sessionToken;
-    private int eventId;
+    private String sessionToken;    
+    private Long eventId;
     private List<Ticket> tickets;
     private OrderStatus status;
     private final LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
@@ -20,7 +20,7 @@ public class ActiveOrder {
     
 
 
-    public ActiveOrder(int orderId,String sessionToken, Long userId, int eventId) {
+    public ActiveOrder(Long orderId, String sessionToken, Long userId, Long eventId) {
         this.orderId = orderId;
         this.userId = userId;
         this.sessionToken = sessionToken;
@@ -35,7 +35,7 @@ public class ActiveOrder {
 
     }
 
-    public Ticket deleteTicket(int ticketId) {
+    public Ticket deleteTicket(Long ticketId) {
 
         Ticket ticketToRemove = tickets.stream()
                 .filter(ticket -> ticket.getTicketId() == ticketId)
@@ -43,26 +43,31 @@ public class ActiveOrder {
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
         tickets.remove(ticketToRemove);
         return ticketToRemove;
-    
+
+    }
+
+    public void cancelOrder() {
+        this.status = OrderStatus.CANCELLED;
     }
 
     public List<Ticket> getTickets() {
         return this.tickets;
     }
 
-    public int getOrderId() {
+    public Long getOrderId() {
         return this.orderId;
     }
 
     public void completeOrder() {
         this.status = OrderStatus.COMPLETED;
     }
+
     
     public Long getUserId() {
         return this.userId;
     }
 
-    public int getEventId() {
+    public Long getEventId() {
         return this.eventId;
     }
 
@@ -116,9 +121,6 @@ public class ActiveOrder {
         }
         return total;
     }
-    public void cancelOrder() {
-        this.status = OrderStatus.CANCELLED;
-    }
 
     public void paymentFailed() {
 
@@ -131,6 +133,12 @@ public class ActiveOrder {
     public boolean isStopped() {
         return timerStopped;
     }
+
+    public String getSessionToken() {
+        return this.sessionToken;
+
+    }
+ 
 
      public boolean isExpired() {
         return LocalDateTime.now().isAfter(expiresAt);

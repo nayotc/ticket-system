@@ -1,7 +1,5 @@
 package ticketsystem.ApplicationLayer;
 
-import com.stripe.model.climate.Order;
-
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;

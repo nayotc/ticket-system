@@ -5,7 +5,7 @@ import java.util.List;
 
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.OrderDTO;
-import ticketsystem.DTO.PaymentDetails;
+import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
@@ -23,30 +23,27 @@ public class ReservationService {
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
 
 
+
+
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
-            TokenService tokenService,
-            IPaymentService paymentService
-            //ISecureBarcode secureBarcode
-           
-    ) {
+            TokenService tokenService) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.reservation=new Reservation();
         this.tokenService = tokenService;
-        this.paymentService = paymentService;
-       // this.secureBarcode = secureBarcode;
 
     }
+
 //UC 2.5,2.4
-     public void selectSeatTicket(String token, int eventId, int row, int chair) {
+     public void selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position) {
         try {
             validateToken(token);
             ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = getEvent(eventId);
 
-            reservation.selectSeatTicket(order, event, row, chair);
+            reservation.selectSeatTicket(order, event, areaId, position);
             saveAll(order, event);
 
         } catch (Exception e) {
@@ -54,13 +51,16 @@ public class ReservationService {
             throw e;
         }
     }
-    public void selectStandingTicket(String token, int eventId, int quantity) {
+    public void selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
         try {
-            
+            if (quantity <= 0) {
+                throw new IllegalArgumentException("Quantity must be greater than zero");
+            }
+
             validateToken(token);
             ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = getEvent(eventId);
-            reservation.selectStandingTicket(order, event, quantity);
+            reservation.selectStandingTicket(order, event, areaId, quantity);
             saveAll(order, event);
 
         } catch (Exception e) {
@@ -69,8 +69,9 @@ public class ReservationService {
         }
     }
 
+
     //UC 2.7
-    public void removeTicketFromActiveOrder(String token, int eventId, int ticketId) {
+    public void removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
         try {
             validateToken(token);
             ActiveOrder order = getExistingOrder(token, eventId);
@@ -137,9 +138,8 @@ public class ReservationService {
         }
     }
 
-    // Helper methods
-   
-    private Event getEvent(int eventId) {
+    //Helper methods
+    private Event getEvent(Long eventId) {
         Event event = eventRepository.getEventById(eventId);
 
         if (event == null) {
@@ -150,7 +150,7 @@ public class ReservationService {
         return event;
     }
 
-    private ActiveOrder getOrCreateOrder(String token, int eventId) {
+    private ActiveOrder getOrCreateOrder(String token, Long eventId) {
          ActiveOrder order = findActiveOrder(token, eventId);
 
     if (order == null) {
@@ -170,7 +170,7 @@ public class ReservationService {
         return order;
     }
     
-    private ActiveOrder getExistingOrder(String token, int eventId) {
+        private ActiveOrder getExistingOrder(String token, Long eventId) {
         ActiveOrder order = findActiveOrder(token, eventId);
 
         if (order == null) {
@@ -180,7 +180,7 @@ public class ReservationService {
         return order;
     }
 
-    private ActiveOrder findActiveOrder(String token, int eventId) {
+    private ActiveOrder findActiveOrder(String token, Long eventId) {
         if (tokenService.isGuestToken(token)) {
             return orderRepository.getActiveOrderBySessionTokenAndEventId(
                     token,
@@ -200,7 +200,6 @@ public class ReservationService {
     private void saveAll( ActiveOrder order, Event event) {
 
         orderRepository.updateOrder(order);
-        eventRepository.updateEvent(event);
     }
 
   private void validateToken(String token) {
