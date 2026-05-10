@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -24,8 +25,10 @@ import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.event.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.SearchCriteria;
 
 public class EventTest {
+
     private Event event;
 
     private final Long eventId = 1L;
@@ -59,9 +62,11 @@ public class EventTest {
         assertEquals(openedBy, event.getOpenedBy());
         assertEquals(EventLocation.NEW_YORK, event.getLocation());
         assertEquals(3L, event.getTrafficThreshold());
+        assertEquals(Event.eventStatus.DRAFT, event.getStatus());
         assertEquals(EventCategory.CONCERT, event.getCategory());
         assertEquals("Famous Artist", event.getArtistName());
         assertEquals(new BigDecimal("99.99"), event.getTicketPrice());
+        assertEquals(0.0, event.getRate(), 0.0001);
 
         assertNotNull(event.getMap());
         assertNotNull(event.getPurchasePolicy());
@@ -107,10 +112,24 @@ public class EventTest {
     }
 
     @Test
+    void givenEvent_whenSetStatus_thenStatusIsUpdated() {
+        event.setStatus(Event.eventStatus.ACTIVE);
+
+        assertEquals(Event.eventStatus.ACTIVE, event.getStatus());
+    }
+
+    @Test
     void givenEvent_whenSetCategory_thenCategoryIsUpdated() {
         event.setCategory(EventCategory.SPORTS);
 
         assertEquals(EventCategory.SPORTS, event.getCategory());
+    }
+
+    @Test
+    void givenEvent_whenSetArtistName_thenArtistNameIsUpdated() {
+        event.setArtistName("New Artist");
+
+        assertEquals("New Artist", event.getArtistName());
     }
 
     @Test
@@ -120,6 +139,30 @@ public class EventTest {
         event.setMap(mockMap);
 
         assertSame(mockMap, event.getMap());
+    }
+
+    @Test
+    void givenEvent_whenSetTicketPrice_thenTicketPriceIsUpdated() {
+        BigDecimal newPrice = new BigDecimal("149.90");
+
+        event.setTicketPrice(newPrice);
+
+        assertEquals(newPrice, event.getTicketPrice());
+    }
+
+    @Test
+    void givenEvent_whenSetRateOnce_thenRateIsUpdatedToGivenRate() {
+        event.setRate(4.0);
+
+        assertEquals(4.0, event.getRate(), 0.0001);
+    }
+
+    @Test
+    void givenEvent_whenSetRateMultipleTimes_thenRateIsAverage() {
+        event.setRate(4.0);
+        event.setRate(2.0);
+
+        assertEquals(3.0, event.getRate(), 0.0001);
     }
 
     @Test
@@ -267,5 +310,421 @@ public class EventTest {
 
         verify(mockMap, times(1)).sellSpot(2L);
     }
-}
 
+    @Test
+    void givenNullSearchCriteria_WhenMatchesSearchCriteria_ThenThrowException() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> event.matchesSearchCriteria(null)
+        );
+    }
+
+    @Test
+    void givenSearchCriteriaWithNoFilters_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenSearchTermMatchingEventName_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                "music-festival",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenSearchTermMatchingArtistName_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                "famous/artist",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenSearchTermMatchingLocation_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                "new_york",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenSearchTermMatchingCategory_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                "con-cert",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenSearchTermNotMatchingEvent_WhenMatchesSearchCriteria_ThenReturnFalse() {
+        SearchCriteria criteria = mockCriteria(
+                "basketball",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertFalse(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenMatchingCategory_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                EventCategory.CONCERT,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenDifferentCategory_WhenMatchesSearchCriteria_ThenReturnFalse() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                EventCategory.SPORTS,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertFalse(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenEventInsideDateRange_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                eventDate.minusDays(1),
+                eventDate.plusDays(1),
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenEventBeforeStartDate_WhenMatchesSearchCriteria_ThenReturnFalse() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                eventDate.plusDays(1),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertFalse(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenEventAfterEndDate_WhenMatchesSearchCriteria_ThenReturnFalse() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                eventDate.minusDays(1),
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertFalse(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenMatchingLocation_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                EventLocation.NEW_YORK,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenDifferentLocation_WhenMatchesSearchCriteria_ThenReturnFalse() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                EventLocation.TEL_AVIV,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertFalse(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenPriceInsideRange_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                new BigDecimal("50.00"),
+                new BigDecimal("150.00"),
+                null,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenPriceBelowMinimum_WhenMatchesSearchCriteria_ThenReturnFalse() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                new BigDecimal("100.00"),
+                null,
+                null,
+                null
+        );
+
+        assertFalse(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenPriceAboveMaximum_WhenMatchesSearchCriteria_ThenReturnFalse() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new BigDecimal("50.00"),
+                null,
+                null
+        );
+
+        assertFalse(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenMinimumPriceGreaterThanMaximumPrice_WhenMatchesSearchCriteria_ThenThrowException() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                new BigDecimal("150.00"),
+                new BigDecimal("50.00"),
+                null,
+                null
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> event.matchesSearchCriteria(criteria)
+        );
+    }
+
+    @Test
+    void givenEventRateEqualRequestedRate_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        event.setRate(4.0);
+
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                4.0,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenEventRateHigherThanRequestedRate_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        event.setRate(4.0);
+
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                3.0,
+                null
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenEventRateLowerThanRequestedRate_WhenMatchesSearchCriteria_ThenReturnFalse() {
+        event.setRate(2.0);
+
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                3.0,
+                null
+        );
+
+        assertFalse(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenMatchingArtistFilter_WhenMatchesSearchCriteria_ThenReturnTrue() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "famous-artist"
+        );
+
+        assertTrue(event.matchesSearchCriteria(criteria));
+    }
+
+    @Test
+    void givenDifferentArtistFilter_WhenMatchesSearchCriteria_ThenReturnFalse() {
+        SearchCriteria criteria = mockCriteria(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "unknown artist"
+        );
+
+        assertFalse(event.matchesSearchCriteria(criteria));
+    }
+
+    private SearchCriteria mockCriteria(
+            String searchTerm,
+            EventCategory category,
+            LocalDateTime fromDate,
+            LocalDateTime toDate,
+            EventLocation location,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Double eventRate,
+            String artist
+    ) {
+        SearchCriteria criteria = mock(SearchCriteria.class);
+
+        when(criteria.getSearchTerm()).thenReturn(searchTerm);
+        when(criteria.getCategory()).thenReturn(category);
+        when(criteria.getFromDate()).thenReturn(fromDate);
+        when(criteria.getToDate()).thenReturn(toDate);
+        when(criteria.getLocation()).thenReturn(location);
+        when(criteria.getMinPrice()).thenReturn(minPrice);
+        when(criteria.getMaxPrice()).thenReturn(maxPrice);
+        when(criteria.getEventRate()).thenReturn(eventRate);
+        when(criteria.getArtist()).thenReturn(artist);
+
+        return criteria;
+    }
+}

@@ -3,6 +3,7 @@ package ticketsystem.DomainLayer.event;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.text.Normalizer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -29,7 +30,9 @@ public class Event {
     private String artistName; 
     private EventMap map;
     private BigDecimal TicketPrice;
-    private Double rate; // for search and filtering
+    private Double rate = 0.0; // for search and filtering
+    private Double totalRating = 0.0; // for calculating average rating
+    private Integer ratingCount = 0; // for calculating average rating
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
     private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
@@ -146,7 +149,9 @@ public class Event {
     }
 
     public void setRate(Double rate) {
-        this.rate = rate;
+        this.totalRating += rate;
+        this.ratingCount++;
+        this.rate = this.totalRating / this.ratingCount;
     }
 
     public PurchasePolicy getPurchasePolicy() {
@@ -231,10 +236,12 @@ public class Event {
     }
 
     private boolean matchesSearchTerm(String searchTerm) {
-        if (searchTerm == null || searchTerm.isEmpty()) {
+        if (searchTerm == null || searchTerm.isBlank()) {
             return true;
         }
+
         String term = normalize(searchTerm);
+
         return containsNormalized(name, term)
                 || containsNormalized(location.name(), term)
                 || containsNormalized(category.name(), term)
@@ -270,9 +277,16 @@ public class Event {
         if (minPrice == null && maxPrice == null) {
             return true;  // event matches any price if no specific price range is requested
         }
-        return this.TicketPrice != null &&
-               (this.TicketPrice.compareTo(minPrice) >= 0) &&
-               ( this.TicketPrice.compareTo(maxPrice) <= 0);
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException("Minimum price cannot be greater than maximum price");
+        }
+        if (minPrice != null && this.TicketPrice.compareTo(minPrice) < 0) {  // event price is less than the minimum price
+            return false;
+        }
+        if (maxPrice != null && this.TicketPrice.compareTo(maxPrice) > 0) {  // event price is greater than the maximum price
+            return false;
+        }
+        return true; // the event price is within the specified range
     }
 
     private boolean matchesRate(Double requestedRate){
@@ -297,10 +311,17 @@ public class Event {
     }
 
     private String normalize(String value) {
-        return value.toLowerCase(Locale.ROOT).trim();
+        if (value == null) {
+            return "";
+        }
+        return Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")              // removes accents
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");          // removes space, _, -, /, ., comma, etc.
     }
 
 
+<<<<<<< HEAD
     public int getVersion() {
         return version;
     }
@@ -308,5 +329,7 @@ public class Event {
     public void incrementVersion() {
         this.version++;
     }
+=======
+>>>>>>> f4fd19f (fix comments)
 
 }

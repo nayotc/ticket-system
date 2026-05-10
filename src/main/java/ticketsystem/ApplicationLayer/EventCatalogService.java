@@ -37,9 +37,14 @@ public class EventCatalogService {
 
             return domainService.globalSearch(events, companiesIds, criteria);
         }
-        catch (Exception e){
-            // Log the exception (not implemented here)
-            throw new RuntimeException("An error occurred while performing global search: " + e.getMessage(), e);
+        catch (IllegalArgumentException e) {
+            // Expected validation / use-case errors
+            throw e;
+        } 
+        catch (Exception e) {
+            // Unexpected system errors
+            throw new RuntimeException(
+                "An error occurred while performing global search: " + e.getMessage(),e);
         }
     }
 
@@ -54,9 +59,14 @@ public class EventCatalogService {
             List<Event> events = eventRepository.getEventsByCompanyId(companyId);
             return domainService.searchByCompany(events, criteria);
         }
-        catch (Exception e){
-            // Log the exception (not implemented here)
-            throw new RuntimeException("An error occurred while performing company search: " + e.getMessage(), e);
+        catch (IllegalArgumentException e) {
+            // Expected validation / use-case errors
+            throw e;
+        } 
+        catch (Exception e) {
+            // Unexpected system errors
+            throw new RuntimeException(
+                "An error occurred while performing company search: " + e.getMessage(),e);
         }
     }
 

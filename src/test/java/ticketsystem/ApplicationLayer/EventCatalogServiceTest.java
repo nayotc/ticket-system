@@ -1,4 +1,4 @@
-package ticketsystem.AcceptanceTesting;
+package ticketsystem.ApplicationLayer;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
