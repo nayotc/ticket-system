@@ -31,7 +31,7 @@ public class Reservation {
 
     public void selectStandingTicket(ActiveOrder order, Event event,Long areaId, int quantity) {
       validateActive(order,  event);
-      event.reserveStanding(areaId, quantity);
+      event.reserveSpot(areaId, quantity);
         for(int i=0; i<quantity; i++) {
             Ticket ticket = new Ticket(generateTicketId(),event.getId(), areaId, 0, 0, event.getTicktPrice());
             order.addTicket(ticket);

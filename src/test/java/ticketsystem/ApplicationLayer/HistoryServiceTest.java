@@ -130,8 +130,8 @@ public class HistoryServiceTest {
     void GivenOrderDTO_WhenOnOrderCompleted_ThenPurchaseIsAdded() {
         // --- Arrange ---
         List<TicketDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new TicketDTO(10, 20, 1, 1, 150.0, "ACTIVE"));
-        OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", user1Id, 5);
+        ticketDTOs.add(new TicketDTO(10L, 20L   , 1, 1, 150.0, "ACTIVE"));
+        OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", user1Id, 5L);
         when(historyRepository.generateNextId()).thenReturn(999);
 
         // --- Act ---

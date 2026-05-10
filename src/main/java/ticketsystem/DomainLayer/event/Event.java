@@ -147,7 +147,7 @@ public class Event {
         this.map.sellSeat(areaId, position);
     }
 
-    public void reserveSpot(Long areaId) {
+    public void reserveSpot(Long areaId, int quantity) {
         this.map.reserveSpot(areaId);
     }
 
@@ -176,6 +176,10 @@ public class Event {
 
     public int getActiveReservationsCount() {
         return activeReservationsCount.get();
+    }
+
+    public double getTicktPrice(){
+        return 0.0;
     }
 
 }
