@@ -1,32 +1,38 @@
 package ticketsystem.DomainLayer.order;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.TicketDTO;
 
 public class ActiveOrder {
 
     private int orderId;
-    private Integer userId;
+    private Long userId;
     private String sessionToken;
     private int eventId;
     private List<Ticket> tickets;
+    private OrderStatus status;
+    private final LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
+    private boolean timerStopped= false;
+    
 
-    public ActiveOrder(int orderId, int userId,String sessionToken, int eventId) {
+
+    public ActiveOrder(int orderId,String sessionToken, Long userId, int eventId) {
         this.orderId = orderId;
         this.userId = userId;
         this.sessionToken = sessionToken;
         this.eventId = eventId;
         this.tickets = new ArrayList<>();
+        this.status = OrderStatus.ACTIVE;
     }
 
 
     public void addTicket(Ticket ticket) {
         this.tickets.add(ticket);
 
-    }
-
-    public void deleteTicket(int ticketId) {
-        this.tickets.removeIf(ticket -> ticket.getTicketId() == ticketId);
     }
 
     public List<Ticket> getTickets() {
@@ -37,11 +43,8 @@ public class ActiveOrder {
         return this.orderId;
     }
 
-    public void completeOrder() {
-        
-    }
     
-    public int getUserId() {
+    public Long getUserId() {
         return this.userId;
     }
 
@@ -49,7 +52,47 @@ public class ActiveOrder {
         return this.eventId;
     }
 
+    public OrderStatus getStatus() {
+        return this.status;
+    }
+
     public String getSessionToken() {
         return this.sessionToken;
+    }
+ 
+  
+    public void stopTimer() {
+        this.timerStopped = true;
+    }
+
+    public boolean isStopped() {
+        return timerStopped;
+    }
+
+     public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiresAt);
+    }
+
+    public enum OrderStatus {
+    ACTIVE,
+    PENDING_CHECKOUT,
+    PAYMENT_FAILED,
+    COMPLETED,
+    CANCELLED
+}
+
+
+public OrderDTO toDTO() {
+    List<TicketDTO> ticketDTOs = new ArrayList<>();
+
+    for (Ticket ticket : tickets) {
+        ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(), ""));
+    }
+    String nameEvent=""; //TODO get event name
+    String location=""; //TODO get event location
+    int companyId=0; //TODO get company id
+
+    return new OrderDTO(0,ticketDTOs,nameEvent,location ,userId,companyId);
+
     }
 }

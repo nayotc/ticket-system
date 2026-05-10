@@ -10,7 +10,7 @@ public interface IOrderRepository {
     void updateOrder(ActiveOrder order);
     void deleteOrder(int orderId);
     List<ActiveOrder> getAll();
-    ActiveOrder getActiveOrderByUserIdAndEventId(Integer userId, int eventId);
+    ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, int eventId);
     int getNextId();
     ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, int eventId);
     

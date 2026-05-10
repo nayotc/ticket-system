@@ -44,7 +44,7 @@ public class OrderRepository implements IOrderRepository {
 
     }
 
-    public ActiveOrder getActiveOrderByUserIdAndEventId(Integer userId, int eventId) {
+    public ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, int eventId) {
         for (ActiveOrder order : orders.values()) {
             if (order.getUserId() == userId && order.getEventId() == eventId) {
                 return order;
