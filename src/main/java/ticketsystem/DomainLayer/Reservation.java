@@ -39,7 +39,6 @@ public class Reservation {
     }
 
     //UC 2.7
-  
     public void removeTicketFromActiveOrder(ActiveOrder order, Event event,Long ticketId) {
         validateActive(order,  event);
         Ticket ticket= order.deleteTicket(ticketId);

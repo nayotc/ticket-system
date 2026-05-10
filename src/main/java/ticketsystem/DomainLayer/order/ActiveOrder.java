@@ -43,7 +43,7 @@ public class ActiveOrder {
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
         tickets.remove(ticketToRemove);
         return ticketToRemove;
-    
+
     }
 
     public void cancelOrder() {
