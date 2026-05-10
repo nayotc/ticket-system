@@ -4,30 +4,30 @@ import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.User;
-import ticketsystem.InfrastructureLayer.TokenRepository;
 
 public class SystemAdminService {
 
     private final ISystemAdminRepository adminRepository;
     private final IPaymentService paymentService;
     private final ISecureBarcode barcodeService;
-    private final ITokenService tokenService = new TokenService("manual_test_secret_32_chars_long", new TokenRepository());
-    private final IUserRepository userRepository;
+    private final ITokenService tokenService;
     private final CompanyService companyService;
     private final IOrderRepository orderRepository;
+    private final IUserRepository userRepository;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
             ISecureBarcode barcodeService,
             IUserRepository userRepository,
             CompanyService companyService,
-            IOrderRepository orderRepository) {
+            IOrderRepository orderRepository, ITokenService tokenService) {
         this.adminRepository = adminRepository;
         this.paymentService = paymentService;
         this.barcodeService = barcodeService;
         this.userRepository = userRepository;
         this.companyService = companyService;
         this.orderRepository = orderRepository;
+        this.tokenService = tokenService;
 
     }
 

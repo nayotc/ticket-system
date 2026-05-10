@@ -11,6 +11,9 @@ import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
+import ticketsystem.DomainLayer.user.Guest;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
@@ -23,6 +26,10 @@ public class SystemAdminServiceTest {
 
     private SystemAdminService systemAdminService;
     private SystemAdminRepository realAdminRepo;
+    private TokenService tokenService;
+    private UserRepository userRepo = new UserRepository();
+    private CompanyService companyService;
+    private SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
 
     @BeforeEach
     public void setUp() {
@@ -32,11 +39,11 @@ public class SystemAdminServiceTest {
         PaymentServiceProxy.isConnectionSuccessful = true;
         PaymentServiceProxy.wasConnectCalled = false;
         SecureBarcodeProxy.isConnectionSuccessful = true;
-        UserRepository userRepo = new UserRepository();
+        userRepo = new UserRepository();
         ICompanyRepository companyRepo = new CompanyRepository();
         TokenRepository tokenRepository = new TokenRepository();
-        TokenService tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
-        CompanyService companyService = new CompanyService(companyRepo, tokenService);
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        companyService = new CompanyService(companyRepo, tokenService);
         OrderRepository orderRepo = OrderRepository.getInstance();
 
         systemAdminService = new SystemAdminService(
@@ -45,13 +52,15 @@ public class SystemAdminServiceTest {
                 barcodeProxy,
                 userRepo,
                 companyService,
-                orderRepo
+                orderRepo,
+                tokenService
         );
     }
 
+    // Use Case: System Initialization
     @Test
     public void givenSystemAdminExists_whenInitSystem_thenSystemInitializesWithProxies() {
-        SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
+
         realAdminRepo.addAdmin(admin);
         PaymentServiceProxy.isConnectionSuccessful = true;
         SecureBarcodeProxy.isConnectionSuccessful = true;
@@ -76,7 +85,6 @@ public class SystemAdminServiceTest {
     @Test
     public void givenPaymentServiceIsDown_whenInitSystem_thenInitializationFails() {
         // Arrange
-        SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
         realAdminRepo.addAdmin(admin);
 
         PaymentServiceProxy.isConnectionSuccessful = false;
@@ -92,7 +100,6 @@ public class SystemAdminServiceTest {
     @Test
     public void givenBarcodeServiceIsDown_whenInitSystem_thenInitializationFails() {
         // Arrange
-        SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
         realAdminRepo.addAdmin(admin);
 
         PaymentServiceProxy.isConnectionSuccessful = true;
@@ -104,4 +111,49 @@ public class SystemAdminServiceTest {
         // Assert
         assertFalse(result, "Acceptance Test Failed: System should fail to initialize if barcode service is down.");
     }
+
+    // Use case: delete member by admin
+    @Test
+    public void givenInvalidToken_whenDeleteMember_thenReturnsUnauthorizedError() {
+        // Act
+        String result = systemAdminService.deleteMemberByAdmin("invalid-token-string", 1L);
+
+        // Assert
+        assertTrue(result.startsWith("ERROR: Unauthorized access"), "Should reject invalid token.");
+    }
+
+    @Test
+    public void givenNonExistentMember_whenDeleteMember_thenReturnsNotFoundError() {
+        // Arrange
+        String validSession = tokenService.addActiveSession(new Guest());
+        long nonExistentMemberId = 99L;
+
+        // Act
+        String result = systemAdminService.deleteMemberByAdmin(validSession, nonExistentMemberId);
+
+        // Assert
+        assertEquals("ERROR: Member with ID 99 was not found.", result, "Should return not found error.");
+    }
+
+    @Test
+    public void givenValidRequest_whenDeleteMember_thenMemberIsDeletedAndCleanupPerformed() {
+        // Arrange
+        String validSession = tokenService.addActiveSession(new Guest());
+
+        long memberId = 1L;
+
+        Member member = new Member(-1L, "TestUser");
+
+        userRepo.addRegisteredMember(memberId, member, "hashedPassword123");
+
+        // Act
+        String result = systemAdminService.deleteMemberByAdmin(validSession, memberId);
+
+        // Assert
+        assertEquals("SUCCESS: Member deactivated and associated records cleaned up.", result);
+
+        User deletedUser = userRepo.getMemberById(memberId);
+        assertTrue(deletedUser == null, "Member should be removed from UserRepository.");
+    }
+
 }
