@@ -12,11 +12,13 @@ public class LotteryService {
     
     private final ILotteryRepository lotteryRepository;
     private final ITokenService tokenService;
+    private final NotificationsService notificationsService;
 
 
-    public LotteryService(ILotteryRepository lotteryRepository, ITokenService tokenService) {
+    public LotteryService(ILotteryRepository lotteryRepository, ITokenService tokenService, NotificationsService notificationsService) {
         this.lotteryRepository = lotteryRepository;  
         this.tokenService = tokenService; 
+        this.notificationsService = notificationsService;
     }
 
     // Method to create a new lottery
@@ -41,6 +43,7 @@ public class LotteryService {
             Lottery lottery =lotteryRepository.findById(lotteryId);
             lottery.registerMember(memberId);
             lotteryRepository.update(lottery);
+            notificationsService.notifyUser(token, "You have successfully registered for the lottery!");
             return true; 
         } catch(IllegalArgumentException e){
             throw(e);
@@ -64,14 +67,19 @@ public class LotteryService {
     public void conductLotteryDraw(long lotteryId, int numberOfWinners) {
         try{
             Lottery lottery = lotteryRepository.findById(lotteryId);
-            List<Long> winningMemberIds = selectRandomWinners(lottery.getRegisteredMemberIds(), numberOfWinners);
+            List<Long> allParticipants = lottery.getRegisteredMemberIds();
+            List<Long> winningMemberIds = selectRandomWinners(allParticipants, numberOfWinners);
 
-            for (long memberId : winningMemberIds) {
-                // Generate a unique authentication code for the winner
-                String uniqueCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-
-                lottery.setWinner(memberId, uniqueCode);
-                
+        for (long memberId : allParticipants) {
+                if (winningMemberIds.contains(memberId)) {
+                    //winning member
+                    String uniqueCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                    lottery.setWinner(memberId, uniqueCode);
+                    //notificationsService.notify(memberId, "Congratulations! You won. Your code is: " + uniqueCode);
+                } else {
+                //non-winning member
+                    //notificationService.sendMessage(memberId, "We are sorry, you were not selected in the lottery.");
+                }
             }
             lottery.setStatus(LotteryStatus.COMPLETED);
             lotteryRepository.update(lottery);

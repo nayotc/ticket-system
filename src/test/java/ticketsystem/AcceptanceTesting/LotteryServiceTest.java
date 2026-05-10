@@ -10,6 +10,7 @@ import org.mockito.MockitoAnnotations;
 
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.LotteryService;
+import ticketsystem.ApplicationLayer.NotificationsService;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.lottery.Lottery;
 
@@ -21,12 +22,15 @@ public class LotteryServiceTest {
     @Mock
     private ITokenService tokenService;
 
+    @Mock
+    private NotificationsService notificationsService;
+
     private LotteryService lotteryService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        lotteryService = new LotteryService(lotteryRepository, tokenService);
+        lotteryService = new LotteryService(lotteryRepository, tokenService, notificationsService);
     }
 
     @Test
