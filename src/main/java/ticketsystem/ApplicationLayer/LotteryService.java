@@ -25,7 +25,7 @@ public class LotteryService {
             if (winnersNumber <= 0) {
                 throw new IllegalArgumentException("Number of winners must be greater than zero.");
             }
-            long lotteryId = lotteryRepository.findMaxLotteryId();
+            long lotteryId = lotteryRepository.generateNextLotteryId();
             lotteryRepository.addLottery(new Lottery(lotteryId, eventId, winnersNumber));
 
         } catch (IllegalArgumentException e) {
