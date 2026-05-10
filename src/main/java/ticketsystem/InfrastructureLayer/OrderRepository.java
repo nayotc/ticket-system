@@ -9,13 +9,13 @@ import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 
 public class OrderRepository implements IOrderRepository {
 
-    private int counter;
+    private Long counter;
     private OrderRepository instance;
-    private ConcurrentHashMap<Integer, ActiveOrder> orders;
+    private ConcurrentHashMap<Long, ActiveOrder> orders;
 
     private OrderRepository() {
-        this.counter =0;
-        this.orders = new ConcurrentHashMap<Integer, ActiveOrder>();
+        this.counter =0L;
+        this.orders = new ConcurrentHashMap<Long, ActiveOrder>();
     }
 
     public OrderRepository getInstance() {
@@ -29,13 +29,12 @@ public class OrderRepository implements IOrderRepository {
         this.orders.put(order.getOrderId(), order);
     }
 
-    public ActiveOrder findOrderById(int orderId) {
-        return null;
-
+    public ActiveOrder findOrderById(Long orderId) {
+        return this.orders.get(orderId);
     }
 
 
-    public synchronized void deleteOrder(int orderId) {
+    public synchronized void deleteOrder(Long orderId) {
 
     }
 
@@ -44,7 +43,7 @@ public class OrderRepository implements IOrderRepository {
 
     }
 
-    public ActiveOrder getActiveOrderByUserIdAndEventId(Integer userId, int eventId) {
+    public ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, Long eventId) {
         for (ActiveOrder order : orders.values()) {
             if (order.getUserId() == userId && order.getEventId() == eventId) {
                 return order;
@@ -53,7 +52,7 @@ public class OrderRepository implements IOrderRepository {
         return null;
     }
 
-    public int getNextId() {
+    public Long getNextId() {
         return counter++;
     }
 
@@ -68,9 +67,9 @@ public class OrderRepository implements IOrderRepository {
         orders.put(order.getOrderId(), order);
     }
 
-    public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, int eventId) {
+    public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, Long eventId) {
         for (ActiveOrder order : orders.values()) {
-            if (sessionToken.equals(order.getSessionToken()) && order.getEventId() == eventId) {
+            if (sessionToken.equals(order.getSessionToken()) && order.getEventId().equals(eventId)) {
                 return order;
             }
         }

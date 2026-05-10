@@ -6,6 +6,10 @@ public class PurchasePolicy {
     {
         this.description=description;
     }
+    public PurchasePolicy()
+    {
+        
+    }
     public String getDescription() {
         return description;
     }

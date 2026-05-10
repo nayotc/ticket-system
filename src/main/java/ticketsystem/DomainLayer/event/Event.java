@@ -3,36 +3,46 @@ package ticketsystem.DomainLayer.event;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventMap;
+import ticketsystem.DomainLayer.event.PurchasePolicy;
+import ticketsystem.DomainLayer.event.DiscountPolicy;
+
 public class Event {
 
-    private final long id;
+    public enum eventStatus {DRAFT,ACTIVE, INACTIVE, CANCELLED};
+
+    private final Long id;
     private String name;
+    private Long companyId;
+    private Long openedBy; // userId of the creator
     private LocalDateTime Date;
     private String location;
-    private long trafficThreshold;
-
-    private enum status {
-        ACTIVE, INACTIVE, CANCELLED
-    };
+    private Long trafficThreshold;
+    private eventStatus status;
     private EventCategory category;
     private EventMap map;
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
     private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
-
-    public Event(long id, String name, LocalDateTime date, String location, long trafficThreshold, EventCategory category, EventMap map, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
+    // waiting queue
+    
+    public Event(Long id,LocalDateTime date,String name, Long companyId, Long openedBy, String location, Long trafficThreshold, EventCategory category, Pair<Integer, Integer> mapSize) {
         this.id = id;
         this.name = name;
         this.Date = date;
+        this.companyId = companyId;
+        this.openedBy = openedBy;
         this.location = location;
         this.trafficThreshold = trafficThreshold;
+        this.status = eventStatus.DRAFT; // Default status until the map is set and the event is activated
         this.category = category;
-        this.map = map;
-        this.purchasePolicy = purchasePolicy;
-        this.discountPolicy = discountPolicy;
+        this.map = new EventMap(mapSize); 
+        this.purchasePolicy = new PurchasePolicy("Default purchase policy");
+        this.discountPolicy = new DiscountPolicy();
     }
-
-    public long getId() {
+  
+    public Long getId() {
         return id;
     }
 
@@ -52,6 +62,18 @@ public class Event {
         Date = date;
     }
 
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
+    }
+
+    public Long getOpenedBy() {
+        return openedBy;
+    }
+    
     public String getLocation() {
         return location;
     }
@@ -60,8 +82,20 @@ public class Event {
         this.location = location;
     }
 
-    public void setTrafficThreshold(long trafficThreshold) {
+    public Long getTrafficThreshold() {
+        return trafficThreshold;
+    }
+
+    public void setTrafficThreshold(Long trafficThreshold) {
         this.trafficThreshold = trafficThreshold;
+    }
+
+    public eventStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(eventStatus status) {
+        this.status = status;
     }
 
     public EventCategory getCategory() {
@@ -96,6 +130,35 @@ public class Event {
         this.discountPolicy = discountPolicy;
     }
 
+    public boolean isSoldOut() {
+        return map.isSoldOut();
+    }
+  
+    // use case: ticket reservation 
+    public void reserveSeat(Long areaId, SeatPosition position) {
+        this.map.reserveSeat(areaId, position);
+    }
+
+    public void releaseSeat(Long areaId, SeatPosition position) {
+        this.map.releaseSeat(areaId, position);
+    }
+
+    public void sellSeat(Long areaId, SeatPosition position) {
+        this.map.sellSeat(areaId, position);
+    }
+
+    public void reserveSpot(Long areaId) {
+        this.map.reserveSpot(areaId);
+    }
+
+    public void releaseSpot(Long areaId) {
+        this.map.releaseSpot(areaId);
+    }
+
+    public void sellSpot(Long areaId) {
+        this.map.sellSpot(areaId);
+    }
+  
     // use case: virtual queue and load management
     public boolean isOverloaded() {
         return this.activeReservationsCount.get() >= this.trafficThreshold;
@@ -109,10 +172,6 @@ public class Event {
         if (this.activeReservationsCount.get() > 0) {
             this.activeReservationsCount.decrementAndGet();
         }
-    }
-
-    public long getTrafficThreshold() {
-        return trafficThreshold;
     }
 
     public int getActiveReservationsCount() {

@@ -1,10 +1,15 @@
 package ticketsystem.ApplicationLayer;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
+import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.DomainLayer.event.Seat;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
 public class ReservationService {
@@ -14,25 +19,28 @@ public class ReservationService {
     private final Reservation reservation;
     private final TokenService tokenService;
 
+
+
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
-            TokenService tokenService
-           
-    ) {
+            TokenService tokenService) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.reservation=new Reservation();
         this.tokenService = tokenService;
+
+
     }
+
 //UC 2.5,2.4
-     public void selectSeatTicket(String token, int eventId, int row, int chair) {
+     public void selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position) {
         try {
             validateToken(token);
             ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = getEvent(eventId);
 
-            reservation.selectSeatTicket(order, event, row, chair);
+            reservation.selectSeatTicket(order, event, areaId, position);
             saveAll(order, event);
 
         } catch (Exception e) {
@@ -40,13 +48,13 @@ public class ReservationService {
             throw e;
         }
     }
-    public void selectStandingTicket(String token, int eventId, int quantity) {
+    public void selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
         try {
             
             validateToken(token);
             ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = getEvent(eventId);
-            reservation.selectStandingTicket(order, event, quantity);
+            reservation.selectStandingTicket(order, event, areaId, quantity);
             saveAll(order, event);
 
         } catch (Exception e) {
@@ -55,40 +63,10 @@ public class ReservationService {
         }
     }
 
-    //UC 2.7
-    public String viewActiveOrder(String token, int eventId) {
-        try {
-            validateToken(token);
-            ActiveOrder order = getExistingOrder(token, eventId);
-
-            reservation.viewActiveOrder(order);
-
-            return order.toString();
-
-        } catch (Exception e) {
-            logError("viewActiveOrder failed: " + e.getMessage());
-            throw e;
-        }
-    }
-
-    public void removeTicketFromActiveOrder(String token, int eventId, int ticketId) {
-        try {
-            validateToken(token);
-            ActiveOrder order = getExistingOrder(token, eventId);
-            Event event = getEvent(eventId);
-            reservation.removeTicketFromActiveOrder(order, event, ticketId);
-
-            saveAll(order, event);
-
-        } catch (Exception e) {
-            logError("removeTicketFromActiveOrder failed: " + e.getMessage());
-            throw e;
-        }
-    }
 
 
-    // Helper methods
-    private Event getEvent(int eventId) {
+    //Helper methods
+    private Event getEvent(Long eventId) {
         Event event = eventRepository.getEventById(eventId);
 
         if (event == null) {
@@ -99,7 +77,7 @@ public class ReservationService {
         return event;
     }
 
-    private ActiveOrder getOrCreateOrder(String token, int eventId) {
+    private ActiveOrder getOrCreateOrder(String token, Long eventId) {
          ActiveOrder order = findActiveOrder(token, eventId);
 
     if (order == null) {
@@ -108,9 +86,8 @@ public class ReservationService {
                 : null;
 
         order = new ActiveOrder(
-                orderRepository.getNextId(),
+                orderRepository.getNextId(),token,
                 userId,
-                token,
                 eventId
         );
 
@@ -120,17 +97,8 @@ public class ReservationService {
         return order;
     }
     
-    private ActiveOrder getExistingOrder(String token, int eventId) {
-        ActiveOrder order = findActiveOrder(token, eventId);
 
-        if (order == null) {
-            throw new IllegalArgumentException("Active order not found");
-        }
-
-        return order;
-    }
-
-    private ActiveOrder findActiveOrder(String token, int eventId) {
+    private ActiveOrder findActiveOrder(String token, Long eventId) {
         if (tokenService.isGuestToken(token)) {
             return orderRepository.getActiveOrderBySessionTokenAndEventId(
                     token,
@@ -146,12 +114,12 @@ public class ReservationService {
         );
     }
 
+
     private void saveAll( ActiveOrder order, Event event) {
+
         orderRepository.updateOrder(order);
-        eventRepository.updateEvent(event);
     }
 
-   
   private void validateToken(String token) {
     if (!tokenService.validateToken(token)) {
         throw new IllegalArgumentException("Invalid or expired token");

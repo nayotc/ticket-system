@@ -1,15 +1,34 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
 
-public interface EventRepository {
+public class EventRepository implements IEventRepository {
+    private AtomicLong currentId = new AtomicLong(1L);
+    private final ConcurrentHashMap<Long, Event> eventStorage = new ConcurrentHashMap<>();
 
-    public void addEvent(Event event);
+    public void addEvent(Event event) {
+        // Implementation for adding an event
+        eventStorage.put(event.getId(), event);
+    }
 
-    Event getEventById(long eventId);
+    public long getNextId() {
+        return currentId.getAndIncrement();
+    }
 
-    void updateEvent(Event event);
-
-    void deleteEvent(long eventId);
+    public Event getEventById(long eventId){
+        return eventStorage.get(eventId);
+    }
+    public void updateEvent(Event event) {
+        eventStorage.put(event.getId(), event);
+    }
+    public void deleteEvent(long eventId) {
+        eventStorage.remove(eventId);
+    }
 
 }
+
