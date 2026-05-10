@@ -37,7 +37,26 @@ public class Reservation {
       }
     }
   
-   
+    public void removeTicketFromActiveOrder(ActiveOrder order, Event event,Long ticketId) {
+        validateActive(order,  event);
+        Ticket ticket= order.deleteTicket(ticketId);
+        releaseTicket(ticket, event);
+    }
+    public void changeQuantityOfStandingTickets(ActiveOrder order, Event event,Long areaId, int newQuantity) {
+        validateActive(order,  event);
+        int currentQuantity = order.getTickets().size();
+        if (newQuantity > currentQuantity) {
+            int toAdd = newQuantity - currentQuantity;
+            selectStandingTicket(order, event, areaId, toAdd);
+        } else if (newQuantity < currentQuantity) {
+            int toRemove = currentQuantity - newQuantity;
+            List<Ticket> tickets = order.getTickets();
+            for (int i = 0; i < toRemove; i++) {
+                Ticket ticket = tickets.get(tickets.size() - 1);
+                removeTicketFromActiveOrder(order, event, ticket.getTicketId());
+            }
+        }
+    }
     public void expire(Event event , ActiveOrder order) {
         //todo: release seats in event
     }

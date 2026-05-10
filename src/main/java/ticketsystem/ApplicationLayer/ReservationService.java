@@ -64,9 +64,49 @@ public class ReservationService {
     }
 
 
+    //UC 2.7
+    public void removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
+        try {
+            validateToken(token);
+            ActiveOrder order = getExistingOrder(token, eventId);
+            Event event = getEvent(eventId);
+            reservation.removeTicketFromActiveOrder(order, event, ticketId);
+
+            saveAll(order, event);
+
+        } catch (Exception e) {
+            logError("removeTicketFromActiveOrder failed: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    public void changeQuantityOfStandingTickets(String token, Long eventId, Long areaId, int newQuantity) {
+        try {
+            validateToken(token);
+            ActiveOrder order = getExistingOrder(token, eventId);
+            Event event = getEvent(eventId);
+            reservation.changeQuantityOfStandingTickets(order, event, areaId, newQuantity);
+
+            saveAll(order, event);
+
+        } catch (Exception e) {
+            logError("changeQuantityOfStandingTickets failed: " + e.getMessage());
+            throw e;
+        }
+    }
 
     //Helper methods
     private Event getEvent(Long eventId) {
+        Event event = eventRepository.getEventById(eventId);
+
+        if (event == null) {
+            logWarning("Event not found. eventId=" + eventId);
+            throw new IllegalArgumentException("Event not found");
+        }
+
+        return event;
+    }
+        private Event getEvent(int eventId) {
         Event event = eventRepository.getEventById(eventId);
 
         if (event == null) {
@@ -97,6 +137,15 @@ public class ReservationService {
         return order;
     }
     
+        private ActiveOrder getExistingOrder(String token, Long eventId) {
+        ActiveOrder order = findActiveOrder(token, eventId);
+
+        if (order == null) {
+            throw new IllegalArgumentException("Active order not found");
+        }
+
+        return order;
+    }
 
     private ActiveOrder findActiveOrder(String token, Long eventId) {
         if (tokenService.isGuestToken(token)) {
