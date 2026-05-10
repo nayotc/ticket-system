@@ -1,54 +1,44 @@
 package ticketsystem.InfrastructureLayer;
 
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.lottery.Lottery;
 
 public class LotteryRepository implements ILotteryRepository {
-    private int counter;
-    private static LotteryRepository instance;
-    private Map<Integer, Lottery> allLotteries;
+    
+    private final AtomicLong counter = new AtomicLong(1);
+    private static final LotteryRepository instance = new LotteryRepository();
+    private final Map<Long, Lottery> allLotteries = new ConcurrentHashMap<>();
 
-    public LotteryRepository() {
-        this.counter = 1;
-        this.allLotteries = new java.util.HashMap<>();
-    }
+    private LotteryRepository() { }
     
     public static LotteryRepository getInstance() {
-        if (instance == null) {
-            instance = new LotteryRepository();
-        }
         return instance;
+    }
+    
+    @Override
+    public Lottery findById(long lotteryId) {   
+        return allLotteries.get(lotteryId);
     }
     
     @Override
     public void addLottery(Lottery lottery) {
         allLotteries.put(lottery.getLotteryId(), lottery);
-        counter++;
     }
 
     @Override
-    public int findMaxLotteryId() {
-        return counter; 
+    public long generateNextLotteryId() {
+        return counter.getAndIncrement(); 
     }
 
     @Override
-    public boolean isMemberRegistered(int memberId, int lotteryId) {
-        return false; // Placeholder return value
+    public void update(Lottery lottery) {
+        if (!allLotteries.containsKey(lottery.getLotteryId())) {
+            throw new IllegalArgumentException("Lottery with ID " + lottery.getLotteryId() + " does not exist.");
+        }
+        allLotteries.put(lottery.getLotteryId(), lottery);
     }
-
-    @Override
-    public void addRegistration(int memberId, int lotteryId) {
-        // Implementation to add a registration for the member in the lottery
-    }
-
-    @Override
-    public List<Integer> getAllRegisteredMembers(int lotteryId) {
-        // Implementation to retrieve all registered members for the lottery
-        return null; // Placeholder return value
-    }
-
-    
 }

@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Lottery {
-    private int lotteryId;
-    private int eventId;
+    private long lotteryId;
+    private long eventId;
     private int winnersNumber;
     private LotteryStatus status;
     private List<LotteryRegistration> registrations;
     
-    public Lottery(int lotteryId, int eventId, int winnersNumber) {
+    public Lottery(long lotteryId, long eventId, int winnersNumber) {
         this.lotteryId = lotteryId;
         this.eventId = eventId;
         this.winnersNumber = winnersNumber;
@@ -18,19 +18,19 @@ public class Lottery {
         registrations = new ArrayList<>();
     }
 
-    public int getLotteryId() {
+    public long getLotteryId() {
         return lotteryId;
     }
 
-    public void setLotteryId(int lotteryId) {
+    public void setLotteryId(long lotteryId) {
         this.lotteryId = lotteryId;
     }
 
-    public int getEventId() {
+    public long getEventId() {
         return eventId;
     }
 
-    public void setEventId(int eventId) {
+    public void setEventId(long eventId) {
         this.eventId = eventId;
     }
 
@@ -50,7 +50,12 @@ public class Lottery {
         this.status = status;
     }
 
-    public void registerMember(int memberId) {
+    public List<LotteryRegistration> getRegistrations() {
+        return registrations;
+    }
+
+    // Method to register a member for the lottery
+    public synchronized void registerMember(long memberId) {
         if (this.status != LotteryStatus.OPEN) {
             throw new IllegalStateException("Registration is closed for this lottery.");
         }
@@ -61,6 +66,25 @@ public class Lottery {
         }
         LotteryRegistration newRegistration = new LotteryRegistration(memberId);
         this.registrations.add(newRegistration);
+    }
+
+    public List<Long> getRegisteredMemberIds() {
+        List<Long> memberIds = new ArrayList<>();
+        for (LotteryRegistration registration : registrations) {
+            memberIds.add(registration.getMemberId());
+        }
+        return memberIds;
+    }
+
+    // Method to mark a member as a winner and generate an authentication codev
+    public synchronized void setWinner(long memberId, String authCode) {
+        for (LotteryRegistration registration : registrations) {
+            if (registration.getMemberId() == memberId) {
+                registration.markAsWinner(authCode);
+                return;
+            }
+        }
+        throw new IllegalArgumentException("Member ID not found in registrations.");
     }
 
     

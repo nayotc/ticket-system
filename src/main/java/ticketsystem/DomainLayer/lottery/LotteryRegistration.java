@@ -2,31 +2,34 @@ package ticketsystem.DomainLayer.lottery;
 
 //@Entity
 public class LotteryRegistration {
-   // @Id
-   // @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private long memberId;
+    private boolean isWinner; 
+    private String authCode; 
 
-    private int memberId;
-
-    public LotteryRegistration(int memberId) {
+    public LotteryRegistration(long memberId) {
         this.memberId = memberId;
-        this.id   = 0 ; // need to write more code logic here
+        this.isWinner = false;
+        this.authCode = null;
     }
 
-    public int getMemberId() {
+    public long getMemberId() {
         return memberId;
     }
 
-    public void setMemberId(int memberId) {
+    public void setMemberId(long memberId) {
         this.memberId = memberId;
     }
-
-    public int getLotteryId() {
-        return id;
+    public boolean isWinner() {
+        return isWinner;
     }
-
-    public void setLotteryId(int lotteryId) {
-        this.id = lotteryId;
+    public String getAuthCode() {
+        return authCode;
     }
+    // Method to mark this registration as a winner and generate an authentication code
+    public void markAsWinner(String generatedCode) {
+        this.isWinner = true;
+        this.authCode = generatedCode;
+    }
+    
 
 }
