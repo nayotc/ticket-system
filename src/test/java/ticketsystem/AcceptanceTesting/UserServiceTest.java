@@ -307,4 +307,56 @@ public class UserServiceTest {
         assertFalse(tokenService.validateToken(loginToken), "Login token should not be valid after exit");
         assertFalse(tokenService.validateToken(sessionToken), "Session token should not be valid after exit");
     }
+    @Test
+    void TestExitWithInvalidToken_Acceptance() {
+        // Arrange: simulate a guest visiting the system
+        String sessionToken = userService.visitSystem();
+        userService.signUp(sessionToken, "newUser", "password123");
+        userService.login(sessionToken, "newUser", "password123");
+
+        // Act: exit with an invalid token
+        boolean answer=userService.exit("invalid-token");
+
+        // Assert: check that the valid session token is still active and the invalid token is not active
+        assertFalse(answer, "Exit should fail with an invalid token");
+    }
+
+    @Test
+    void TestExitWithInactiveToken_Acceptance() {
+        // Arrange: simulate a guest visiting the system
+        String sessionToken = userService.visitSystem();
+        userService.signUp(sessionToken, "newUser", "password123");
+        String loginToken = userService.login(sessionToken, "newUser", "password123");
+        userService.exit(loginToken);
+
+        // Act: exit with an invalid token
+        boolean answer=userService.exit(loginToken);
+
+        // Assert: check that the valid session token is still active and the invalid token is not active
+        assertFalse(answer, "Exit should fail with an inactive token");
+    }
+    @Test
+    void TestMemberExitSuccessful_Acceptance() {
+        // Arrange: simulate a guest visiting the system
+        String sessionToken = userService.visitSystem();
+        userService.signUp(sessionToken, "newUser", "password123");
+        String loginToken = userService.login(sessionToken, "newUser", "password123");
+
+        // Act: attempt to sign up with an invalid token
+        boolean answer=userService.exit(loginToken); // Exit the member session to make the token invalid
+
+        // Assert: check that the sign-up attempt fails due to invalid token and no new member is added
+        assertTrue(answer, "Sign up should succeed with a valid guest token");
+    }
+    @Test
+    void TestGuestExitSuccessful_Acceptance() {
+        // Arrange: simulate a guest visiting the system
+        String sessionToken = userService.visitSystem();
+
+        // Act: attempt to sign up with an invalid token
+        boolean answer=userService.exit(sessionToken); // Exit the member session to make the token invalid
+
+        // Assert: check that the sign-up attempt fails due to invalid token and no new member is added
+        assertTrue(answer, "Sign up should succeed with a valid guest token");
+    }
 }

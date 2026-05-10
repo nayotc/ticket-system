@@ -101,12 +101,17 @@ public class UserService {
         }
     }
 
-    public void exit(String sessionToken) {
+    public boolean exit(String sessionToken) {
         if (!tokenService.validateToken(sessionToken)) {
             System.out.println("Invalid session token");
-            return;
+            return false;
+        }
+        if(!tokenService.isActiveSession(sessionToken)) {
+            System.out.println("Session token is not active");
+            return false;
         }
         tokenService.removeActiveSession(sessionToken);
+        return true;
     }
 
     // 4. Update Member Username: Allows a member to update their username by providing their current username, password, and new username.
