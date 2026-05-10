@@ -7,5 +7,6 @@ public interface ILotteryRepository {
     void addLottery(Lottery lottery);
     long generateNextLotteryId();
     void update(Lottery lottery);
+    Lottery findByEventId(long eventId);
 
 }

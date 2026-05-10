@@ -105,4 +105,14 @@ public class LotteryService {
         
         return new ArrayList<>(winnersPool.subList(0, numberOfWinners));
     }
+
+    // Method to validate a winner's authentication code for a specific event
+    public boolean validateCodeForEvent(long eventId, long memberId, String authCode) {
+        Lottery lottery = lotteryRepository.findByEventId(eventId);
+        
+        if (lottery == null) {
+            throw new IllegalArgumentException("No lottery exists for event ID: " + eventId);
+        }
+        return lottery.validateWinnerCode(memberId, authCode);
+}
 }

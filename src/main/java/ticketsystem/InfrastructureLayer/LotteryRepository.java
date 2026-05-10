@@ -41,4 +41,12 @@ public class LotteryRepository implements ILotteryRepository {
         }
         allLotteries.put(lottery.getLotteryId(), lottery);
     }
+
+    @Override
+    public Lottery findByEventId(long eventId) {
+        return allLotteries.values().stream()
+                .filter(lottery -> lottery.getEventId() == eventId)
+                .findFirst()
+                .orElse(null);
+    }
 }

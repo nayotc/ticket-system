@@ -1,21 +1,23 @@
 package ticketsystem.DomainLayer.lottery;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Lottery {
     private long lotteryId;
     private long eventId;
     private int winnersNumber;
     private LotteryStatus status;
-    private List<LotteryRegistration> registrations;
+    private Map<Long, LotteryRegistration> registrations = new HashMap<>();
     
     public Lottery(long lotteryId, long eventId, int winnersNumber) {
         this.lotteryId = lotteryId;
         this.eventId = eventId;
         this.winnersNumber = winnersNumber;
         this.status = LotteryStatus.OPEN;
-        registrations = new ArrayList<>();
+        registrations = new HashMap<>();
     }
 
     public long getLotteryId() {
@@ -51,7 +53,7 @@ public class Lottery {
     }
 
     public List<LotteryRegistration> getRegistrations() {
-        return registrations;
+        return new ArrayList<>(registrations.values());
     }
 
     // Method to register a member for the lottery
@@ -59,32 +61,38 @@ public class Lottery {
         if (this.status != LotteryStatus.OPEN) {
             throw new IllegalStateException("Registration is closed for this lottery.");
         }
-        boolean alreadyRegistered = registrations.stream()
+        boolean alreadyRegistered = registrations.values().stream()
                 .anyMatch(reg -> reg.getMemberId() == memberId);
         if (alreadyRegistered) {
             throw new IllegalStateException("Member is already registered for this lottery.");
         }
         LotteryRegistration newRegistration = new LotteryRegistration(memberId);
-        this.registrations.add(newRegistration);
+        this.registrations.put(memberId, newRegistration);
     }
 
     public List<Long> getRegisteredMemberIds() {
-        List<Long> memberIds = new ArrayList<>();
-        for (LotteryRegistration registration : registrations) {
-            memberIds.add(registration.getMemberId());
-        }
-        return memberIds;
+        return new ArrayList<>(registrations.keySet());
     }
 
     // Method to mark a member as a winner and generate an authentication codev
     public synchronized void setWinner(long memberId, String authCode) {
-        for (LotteryRegistration registration : registrations) {
-            if (registration.getMemberId() == memberId) {
-                registration.markAsWinner(authCode);
-                return;
-            }
+        LotteryRegistration registration = registrations.get(memberId);
+        if (registration != null) {
+            registration.markAsWinner(authCode);
+        } else {
+            throw new IllegalArgumentException("Member ID not found in registrations.");
         }
-        throw new IllegalArgumentException("Member ID not found in registrations.");
+    }
+
+    // Method to validate a winner's authentication code
+    public synchronized boolean validateWinnerCode(long memberId, String inputCode) {
+        LotteryRegistration reg = registrations.get(memberId);
+        // If the member is not registered or not a winner, return false
+        if (reg == null || !reg.isWinner()) {
+            return false;
+        }
+        
+        return inputCode.equals(reg.getAuthCode());
     }
 
     
