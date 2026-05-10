@@ -19,7 +19,7 @@ public class Member extends User {
     public String getUserName() {
         return userName;
     }
-    protected void setUserName(String userName) {
+    public void setUserName(String userName) {
         this.userName = userName;
     }
 

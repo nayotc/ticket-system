@@ -16,12 +16,16 @@ public class UserService {
         this.tokenService = tokenService;
         this.passwordService = new PasswordService();
     }
-    // 1. System Visit: Allows a guest to visit the system and receive a session token.
+
+    // 1. System Visit: Allows a guest to visit the system and receive a session
+    // token.
     public String visitSystem() {
         Guest guest = new Guest();
         return tokenService.addActiveSession(guest);
     }
-    // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe username and password.
+
+    // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
+    // username and password.
     public boolean signUp(String sessionToken, String username, String password) {
         if (!tokenService.validateToken(sessionToken)) {
             return false;
@@ -64,6 +68,29 @@ public class UserService {
 
     public void exit(String sessionToken) {
         
+    }
+
+    public boolean UpdateMemberDetails(String sessionToken, String password, String username, String newUsername,
+            String newPassword) {
+        if (!tokenService.validateToken(sessionToken)||!tokenService.isMemberToken(sessionToken)) {
+            return false;
+        }
+        if (tokenService.extractUserId(sessionToken) != userRepository.getMemberByUsername(username).getId()) {
+            return false;
+        }
+        String hashedPassword = userRepository.getHashedPasswordByUsername(username); // Get the hashed password for the
+                                                                                      // given username from the
+                                                                                      // repository, null if the
+                                                                                      // username does not exist
+        if (hashedPassword == null) {
+            return false;
+        }
+        if (!passwordService.verifyPassword(password, hashedPassword)) {
+            System.out.println("User Details are incorrect");
+            return false;
+        }
+        String newHashedPassword = passwordService.hashPassword(newPassword);
+        return userRepository.updateRegisteredMember(username, newUsername, newHashedPassword);
     }
 
 }
