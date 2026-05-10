@@ -113,6 +113,22 @@ public class UserService {
         tokenService.removeActiveSession(sessionToken);
         return true;
     }
+    public String logOut(String sessionToken) {
+        if (!tokenService.validateToken(sessionToken)) {
+            System.out.println("Invalid session token");
+            return null;
+        }
+        if(!tokenService.isActiveSession(sessionToken)) {
+            System.out.println("Session token is not active");
+            return null;
+        }
+        if (tokenService.isGuestToken(sessionToken)) {
+            System.out.println("Cannot log out a guest session");
+            return null;
+        }
+        tokenService.removeActiveSession(sessionToken);
+        return visitSystem();
+    }
 
     // 4. Update Member Username: Allows a member to update their username by providing their current username, password, and new username.
     public boolean updateMemberUsername(String sessionToken, String password, String username, String newUsername) {
