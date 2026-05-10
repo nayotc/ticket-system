@@ -50,7 +50,10 @@ public class ReservationService {
     }
     public void selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
         try {
-            
+            if (quantity <= 0) {
+                throw new IllegalArgumentException("Quantity must be greater than zero");
+            }
+
             validateToken(token);
             ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = getEvent(eventId);
@@ -80,33 +83,9 @@ public class ReservationService {
         }
     }
 
-    public void changeQuantityOfStandingTickets(String token, Long eventId, Long areaId, int newQuantity) {
-        try {
-            validateToken(token);
-            ActiveOrder order = getExistingOrder(token, eventId);
-            Event event = getEvent(eventId);
-            reservation.changeQuantityOfStandingTickets(order, event, areaId, newQuantity);
-
-            saveAll(order, event);
-
-        } catch (Exception e) {
-            logError("changeQuantityOfStandingTickets failed: " + e.getMessage());
-            throw e;
-        }
-    }
 
     //Helper methods
     private Event getEvent(Long eventId) {
-        Event event = eventRepository.getEventById(eventId);
-
-        if (event == null) {
-            logWarning("Event not found. eventId=" + eventId);
-            throw new IllegalArgumentException("Event not found");
-        }
-
-        return event;
-    }
-        private Event getEvent(int eventId) {
         Event event = eventRepository.getEventById(eventId);
 
         if (event == null) {

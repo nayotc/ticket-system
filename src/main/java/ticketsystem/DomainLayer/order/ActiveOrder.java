@@ -35,6 +35,21 @@ public class ActiveOrder {
 
     }
 
+    public Ticket deleteTicket(Long ticketId) {
+
+        Ticket ticketToRemove = tickets.stream()
+                .filter(ticket -> ticket.getTicketId() == ticketId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
+        tickets.remove(ticketToRemove);
+        return ticketToRemove;
+    
+    }
+
+    public void cancelOrder() {
+        this.status = OrderStatus.CANCELLED;
+    }
+
     public List<Ticket> getTickets() {
         return this.tickets;
     }
