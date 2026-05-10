@@ -6,13 +6,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.SystemAdminService;
+import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
+import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.InfrastructureLayer.UserRepository;
 
-public class SystemInitializationTest {
+public class SystemAdminServiceTest {
 
     private SystemAdminService systemAdminService;
     private SystemAdminRepository realAdminRepo;
@@ -25,7 +32,21 @@ public class SystemInitializationTest {
         PaymentServiceProxy.isConnectionSuccessful = true;
         PaymentServiceProxy.wasConnectCalled = false;
         SecureBarcodeProxy.isConnectionSuccessful = true;
-        systemAdminService = new SystemAdminService(realAdminRepo, paymentProxy, barcodeProxy);
+        UserRepository userRepo = new UserRepository();
+        ICompanyRepository companyRepo = new CompanyRepository();
+        TokenRepository tokenRepository = new TokenRepository();
+        TokenService tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        CompanyService companyService = new CompanyService(companyRepo, tokenService);
+        OrderRepository orderRepo = OrderRepository.getInstance();
+
+        systemAdminService = new SystemAdminService(
+                realAdminRepo,
+                paymentProxy,
+                barcodeProxy,
+                userRepo,
+                companyService,
+                orderRepo
+        );
     }
 
     @Test

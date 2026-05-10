@@ -8,7 +8,7 @@ import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 public class OrderRepository implements IOrderRepository {
 
     private int counter;
-    private OrderRepository instance;
+    private static OrderRepository instance;
     private ConcurrentHashMap<Integer, Order> orders;
 
     private OrderRepository() {
@@ -16,13 +16,13 @@ public class OrderRepository implements IOrderRepository {
         this.orders = new ConcurrentHashMap<Integer, Order>();
     }
 
-    public OrderRepository getInstance() {
+    public static OrderRepository getInstance() {
         if (instance == null) {
             instance = new OrderRepository();
         }
         return instance;
     }
-    
+
     public synchronized void addOrder() {
 
     }

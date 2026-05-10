@@ -1,9 +1,9 @@
 package ticketsystem.ApplicationLayer;
 
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
 public class SystemAdminService {
@@ -13,20 +13,20 @@ public class SystemAdminService {
     private final ISecureBarcode barcodeService;
     private final ITokenService tokenService = new TokenService("manual_test_secret_32_chars_long", new TokenRepository());
     private final IUserRepository userRepository;
-    private final ICompanyRepository companyRepository;
+    private final CompanyService companyService;
     private final IOrderRepository orderRepository;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
             ISecureBarcode barcodeService,
             IUserRepository userRepository,
-            ICompanyRepository companyRepository,
+            CompanyService companyService,
             IOrderRepository orderRepository) {
         this.adminRepository = adminRepository;
         this.paymentService = paymentService;
         this.barcodeService = barcodeService;
         this.userRepository = userRepository;
-        this.companyRepository = companyRepository;
+        this.companyService = companyService;
         this.orderRepository = orderRepository;
 
     }
@@ -35,21 +35,21 @@ public class SystemAdminService {
     public boolean initSystem() {
         try {
             if (adminRepository.countAdmins() == 0) {
-                System.out.println("No system admins found. Please create an admin account to initialize the system.");
+                //System.out.println("No system admins found. Please create an admin account to initialize the system.");
                 return false;
             }
 
             boolean paymentConnected = paymentService.connect();
             if (!paymentConnected) {
                 // Alternative Flow: Connection failure
-                System.out.println("Failed to connect to payment services. Please check your configuration.");
+                // System.out.println("Failed to connect to payment services. Please check your configuration.");
                 return false;
             }
 
             boolean barcodeConnected = barcodeService.connect();
             if (!barcodeConnected) {
                 // Alternative Flow: Connection failure
-                System.out.println("Failed to connect to secure barcode services.");
+                //System.out.println("Failed to connect to secure barcode services.");
                 return false;
             }
 
@@ -57,7 +57,7 @@ public class SystemAdminService {
             return true;
 
         } catch (Exception e) {
-            System.out.println("Unexpected error during initialization: " + e.getMessage());
+            //System.out.println("Unexpected error during initialization: " + e.getMessage());
             return false;
         }
     }
@@ -69,14 +69,14 @@ public class SystemAdminService {
             return "ERROR: Unauthorized access. Admin is not logged in or lacks permissions.";
         }
 
-        // Member member = userRepository.getMemberById(memberId);
-        // if (member == null) {
-        //     return "ERROR: Member with ID " + memberId + " was not found.";
-        // }
+        User member = userRepository.getMemberById(memberId);
+        if (member == null) {
+            return "ERROR: Member with ID " + memberId + " was not found.";
+        }
         try {
-            //companyRepository.removeRolesForMember(memberId);
+            companyService.removeUserFromAllCompanies(memberId);
             // orderRepository.cancelPendingOrdersForMember(memberId);
-            // userRepository.removeRegisteredMember(member););
+            userRepository.removeRegisteredMember(memberId);
             return "SUCCESS: Member deactivated and associated records cleaned up.";
 
         } catch (Exception e) {
