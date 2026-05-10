@@ -1,5 +1,10 @@
 package ticketsystem.ApplicationLayer;
 
+import java.util.List;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
@@ -16,25 +21,29 @@ public class OrderService {
 
     //uc 2.7
 
-    public OrderDTO viewActiveOrder(String token, Long orderId) {
+    public ActiveOrderDTO viewActiveOrder(String token, Long orderId) {
         try {
             validateToken(token);
             ActiveOrder order = orderRepository.findOrderById(orderId);
             if (order == null) {
                 throw new IllegalStateException("No active order found for this event");
             }
-            OrderDTO orderDTO = order.toDTO();
-            return orderDTO;
+            ObjectMapper objectMapper = new ObjectMapper();
+           ActiveOrderDTO activeOrderDTO = objectMapper.convertValue(
+                order, 
+                ActiveOrderDTO.class
+            );
+            return activeOrderDTO;
         } 
         catch (Exception e) {
-            logError("viewActiveOrder failed: " + e.getMessage());
+            logWarning("viewActiveOrder failed: " + e.getMessage());
             throw e;
         }
     }
 
-    private void logError(String string) {
+    private void logWarning(String msg) {
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'logError'");
+        throw new UnsupportedOperationException("Unimplemented method 'logWarning'");
     }
 
     private void validateToken(String token) {

@@ -1,6 +1,8 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import ticketsystem.DomainLayer.order.ActiveOrder;
@@ -52,17 +54,18 @@ public class OrderRepository implements IOrderRepository {
     }
 
     public List<ActiveOrder> getAll() {
-        return null;
-
+        List<ActiveOrder> activeOrders=new ArrayList<>();
+        for(Map.Entry<Long,ActiveOrder> entry: orders.entrySet()){
+            activeOrders.add(entry.getValue());
+        }
+        return activeOrders;
     }
 
     public ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, Long eventId) {
-        for (ActiveOrder order : orders.values()) {
-            if (order.getUserId() == userId && order.getEventId() == eventId) {
-                return order;
-            }
-        }
-        return null;
+        return orders.values().stream()
+                .filter(order -> order.getUserId().equals(userId) && order.getEventId().equals(eventId))
+                .findFirst()
+                .orElse(null);
     }
 
     public Long getNextId() {
@@ -75,21 +78,15 @@ public class OrderRepository implements IOrderRepository {
         if (order == null) {
             throw new IllegalArgumentException("Order cannot be null");
         }
-        if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE ||order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT) {
-            deleteOrder(order.getOrderId());
-            return;
-        }
-        //if order doesn't exist,it will be added to the repository
         orders.put(order.getOrderId(), order);
     }
 
     public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, Long eventId) {
-        for (ActiveOrder order : orders.values()) {
-            if (sessionToken.equals(order.getSessionToken()) && order.getEventId().equals(eventId)) {
-                return order;
-            }
-        }
-        return null;
+         return orders.values().stream()
+                .filter(order -> order.getSessionToken().equals(sessionToken) && order.getEventId() == eventId)
+                .findFirst()
+                .orElse(null);
+
     }
 
 }

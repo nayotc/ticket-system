@@ -14,7 +14,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import ticketsystem.DTO.OrderDTO;
-import ticketsystem.DTO.TicketDTO;
+import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.history.PurchasedTicket;
@@ -129,8 +129,8 @@ public class HistoryServiceTest {
  @Test
     void GivenOrderDTO_WhenOnOrderCompleted_ThenPurchaseIsAdded() {
         // --- Arrange ---
-        List<TicketDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new TicketDTO(10L, 20L   , 1, 1, 150.0, "ACTIVE"));
+        List<PurchaseDTO> ticketDTOs = new ArrayList<>();
+        ticketDTOs.add(new PurchaseDTO(10L, 20L   , 1, 1, 150.0, "ACTIVE"));
         OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", user1Id, 5L);
         when(historyRepository.generateNextId()).thenReturn(999);
 

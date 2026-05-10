@@ -1,22 +1,23 @@
 package ticketsystem.DTO;
 
-public class TicketDTO {
+public class PurchaseDTO {
     private Long ticketId;
     private Long eventId;
     private int row;
     private int chair;
     private double price;
-  
+    private String status;
 
     //for json
-    public TicketDTO() {}
+    public PurchaseDTO() {}
 
-    public TicketDTO(Long ticketId, Long eventId, int row, int chair, double price) {
+    public PurchaseDTO(Long ticketId, Long eventId, int row, int chair, double price, String status) {
         this.ticketId = ticketId;
         this.eventId = eventId;
         this.row = row;
         this.chair = chair;
         this.price = price;
+        this.status = status;
     }
 
     public Long getTicketId() { return ticketId; }
@@ -33,5 +34,7 @@ public class TicketDTO {
     
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }
-   
+    
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

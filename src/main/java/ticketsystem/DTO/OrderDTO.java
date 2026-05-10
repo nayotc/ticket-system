@@ -5,7 +5,7 @@ import java.util.List;
 public class OrderDTO {
     
     private int purchaseId;
-    private List<TicketDTO> tickets;
+    private List<PurchaseDTO> tickets;
     private String eventName;
     private String location;
     private long memberId;
@@ -15,7 +15,7 @@ public class OrderDTO {
     public OrderDTO() {
     }
 
-    public OrderDTO(int purchaseId, List<TicketDTO> tickets, String eventName, 
+    public OrderDTO(int purchaseId, List<PurchaseDTO> tickets, String eventName, 
                     String location, long memberId, Long companyId) {
         this.purchaseId = purchaseId;
         this.tickets = tickets;
@@ -33,11 +33,11 @@ public class OrderDTO {
         this.purchaseId = purchaseId;
     }
 
-    public List<TicketDTO> getTickets() {
+    public List<PurchaseDTO> getTickets() {
         return tickets;
     }
 
-    public void setTickets(List<TicketDTO> tickets) {
+    public void setTickets(List<PurchaseDTO> tickets) {
         this.tickets = tickets;
     }
 

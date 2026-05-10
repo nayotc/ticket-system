@@ -4,7 +4,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.TicketDTO;
 
 public class ActiveOrder {
@@ -148,22 +150,22 @@ public class ActiveOrder {
     }
 
     public OrderDTO toDTO(String eventName,String location, Long companyId ) {
-        List<TicketDTO> ticketDTOs = new ArrayList<>();
+        List<PurchaseDTO> ticketDTOs = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
-            ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(), ""));
+            ticketDTOs.add(new PurchaseDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(),"" ));
         }
         return new OrderDTO(0,ticketDTOs,eventName,location ,userId,companyId);
 
         }
 
-    public OrderDTO toDTO(){
+     public ActiveOrderDTO toDTO() {
         List<TicketDTO> ticketDTOs = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
-            ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(), ""));
+            ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice()));
         }
-        return new OrderDTO(0,ticketDTOs,"","" ,userId,null);
+        return new ActiveOrderDTO(orderId, userId, eventId, ticketDTOs);
+        }
 
-    }
     }
