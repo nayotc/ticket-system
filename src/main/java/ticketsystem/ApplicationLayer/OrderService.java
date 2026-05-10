@@ -16,10 +16,10 @@ public class OrderService {
 
     //uc 2.7
 
-    public OrderDTO viewActiveOrder(String token, int orderId) {
+    public OrderDTO viewActiveOrder(String token, Long orderId) {
         try {
             validateToken(token);
-            ActiveOrder order = orderRepository.getActiveOrderById(orderId);
+            ActiveOrder order = orderRepository.findOrderById(orderId);
             if (order == null) {
                 throw new IllegalStateException("No active order found for this event");
             }

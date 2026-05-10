@@ -53,8 +53,27 @@ public class Reservation {
         order.submitForCheckout();
         
     }
-   
-   
+
+    
+    public void completeCheckout(ActiveOrder order, Event event) {
+        order.completeOrder();       
+        for (Ticket ticket : new ArrayList<>(order.getTickets())) {
+
+            if(ticket.getRow()==0 && ticket.getChair()==0) {
+                event.sellSpot(ticket.getAreaId());
+            } else {
+                event.sellSeat(ticket.getAreaId(),new SeatPosition(ticket.getRow(), ticket.getChair()));
+            }
+        }
+
+    }
+    
+    public double calculateTotalPrice(ActiveOrder order, Event event) {
+        int total = order.calculateTotalPrice();
+        //EVENT?
+        return total;
+    }
+
     public void expire(Event event , ActiveOrder order) {
     for (Ticket ticket : new ArrayList<>(order.getTickets())) {
         releaseTicket(ticket, event);
@@ -62,26 +81,6 @@ public class Reservation {
         order.cancelOrder();
         }
     }
-
-    
-    public void completeCheckout(ActiveOrder order, Event event) {
-        order.completeOrder();
-        int countStandingTickets = 0;
-        List<Pair<Integer,Integer>> SeatTickets = new ArrayList<>();
-        
-        for (Ticket ticket : new ArrayList<>(order.getTickets())) {
-            if(ticket.getRow()==0 && ticket.getChair()==0) {
-                countStandingTickets++;
-            } else {
-                SeatTickets.add(new Pair<>(ticket.getRow(), ticket.getChair()));
-            }
-        }
-
-        //event.sellStandingTickets(countStandingTickets);
-        //event.sellSeatTickets(SeatTickets);
-
-    }
-    
 
     public void validateActive(ActiveOrder order, Event event) {
         if (order.isExpired()) {

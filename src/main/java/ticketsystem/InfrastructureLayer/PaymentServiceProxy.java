@@ -16,7 +16,7 @@ public class PaymentServiceProxy implements IPaymentService {
     }
 
     @Override
-    public boolean pay(OrderDTO order, PaymentDetails details) {
+    public boolean pay(double amount, PaymentDetails details) {
       //  System.out.println("Payment Proxy: Processing payment for Order ID: " + order.getOrderId() + " with amount: $" + details.getAmount());
         // Simulate payment processing logic here   
         return true; // Simulate successful payment    

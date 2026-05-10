@@ -26,6 +26,12 @@ public class OrderRepository implements IOrderRepository {
     }
     
     public synchronized void addOrder(ActiveOrder order) {
+        //
+        for (ActiveOrder existingOrder : orders.values()) {
+            if (existingOrder.getSessionToken().equals(order.getSessionToken()) || existingOrder.getUserId().equals(order.getUserId())) {
+                throw new IllegalArgumentException("An active order already exists for this user to another event");
+            }
+        }
         this.orders.put(order.getOrderId(), order);
     }
 
@@ -35,7 +41,14 @@ public class OrderRepository implements IOrderRepository {
 
 
     public synchronized void deleteOrder(Long orderId) {
+        if (!orders.containsKey(orderId)) {
+            throw new IllegalArgumentException("Order with ID " + orderId + " does not exist");
+        }
+        orders.remove(orderId);
+    }
 
+    public synchronized void deleteOrderBySessionToken(String sessionToken) {
+        orders.values().removeIf(order -> order.getSessionToken().equals(sessionToken));
     }
 
     public List<ActiveOrder> getAll() {

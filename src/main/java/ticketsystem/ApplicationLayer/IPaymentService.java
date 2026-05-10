@@ -6,6 +6,6 @@ import ticketsystem.DTO.PaymentDetails;
 public interface IPaymentService {
 
     boolean connect();
-    boolean pay(OrderDTO order, PaymentDetails details);
+    boolean pay(double amount, PaymentDetails details);
     
 }

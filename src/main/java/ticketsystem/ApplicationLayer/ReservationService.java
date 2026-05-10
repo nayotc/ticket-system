@@ -5,6 +5,7 @@ import java.util.List;
 
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
@@ -16,10 +17,10 @@ public class ReservationService {
 
     private final IOrderRepository orderRepository;
     private final IEventRepository eventRepository;
-    private final IPaymentService paymentService;
-  //  private final ISecureBarcode secureBarcode;
-    private final Reservation reservation;
     private final TokenService tokenService;
+    private final IPaymentService paymentService;
+  // private final ISecureBarcode secureBarcode;
+    private final Reservation reservation;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
 
 
@@ -28,30 +29,34 @@ public class ReservationService {
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
-            TokenService tokenService) {
+            TokenService tokenService,IPaymentService paymentService) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
-        this.reservation=new Reservation();
         this.tokenService = tokenService;
+        this.paymentService=paymentService;
+        this.reservation=new Reservation();
+        
 
     }
 
 //UC 2.5,2.4
-     public void selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position) {
+     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position) {
         try {
             validateToken(token);
             ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = getEvent(eventId);
 
             reservation.selectSeatTicket(order, event, areaId, position);
+
             saveAll(order, event);
+            return true;
 
         } catch (Exception e) {
             logError("selectSeatTicket failed: " + e.getMessage());
-            throw e;
+            return false;
         }
     }
-    public void selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
+    public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
         try {
             if (quantity <= 0) {
                 throw new IllegalArgumentException("Quantity must be greater than zero");
@@ -62,16 +67,16 @@ public class ReservationService {
             Event event = getEvent(eventId);
             reservation.selectStandingTicket(order, event, areaId, quantity);
             saveAll(order, event);
-
+            return true;
         } catch (Exception e) {
             logError("selectStandingTicket failed: " + e.getMessage());
-            throw e;
+            return false;
         }
     }
 
 
     //UC 2.7
-    public void removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
+    public boolean removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
         try {
             validateToken(token);
             ActiveOrder order = getExistingOrder(token, eventId);
@@ -79,15 +84,16 @@ public class ReservationService {
             reservation.removeTicketFromActiveOrder(order, event, ticketId);
 
             saveAll(order, event);
+            return true;
 
         } catch (Exception e) {
             logError("removeTicketFromActiveOrder failed: " + e.getMessage());
-            throw e;
+            return false;
         }
     }
 
     // UC 2.8
-    public void submitActiveOrderForCheckout(String token, int eventId) {
+    public boolean submitActiveOrderForCheckout(String token, Long eventId) {
         try {
             validateToken(token);
             ActiveOrder order = getExistingOrder(token, eventId);
@@ -95,25 +101,26 @@ public class ReservationService {
             reservation.submitActiveOrderForCheckout(order, event);
 
             saveAll(order, event);
+            return true;
            
         } catch (Exception e) {
 
             logError("submitActiveOrderForCheckout failed: " + e.getMessage());
-            throw e;
+            return false;
         }
     }
 
-    public void checkout(String token, int eventId, PaymentDetails details) {
+    public boolean checkout(String token, Long eventId, PaymentDetails details) {
         try {
             validateToken(token);
             ActiveOrder order = getExistingOrder(token, eventId);
             Event event = getEvent(eventId);
-
-            double amount = order.calculateTotalPrice();
-            OrderDTO orderDTO = order.toDTO();
+            double amount = reservation.calculateTotalPrice(order, event);
+            OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation(), event.getCompanyId() );
+            
 
             //pay
-            boolean paymentResult=paymentService.pay(orderDTO,details );
+            boolean paymentResult=paymentService.pay(amount,details);
             if (!paymentResult) {
                 throw new IllegalStateException("Payment failed");
             }
@@ -121,10 +128,11 @@ public class ReservationService {
             reservation.completeCheckout(order, event);
             saveAll(order, event);
             notifyListeners(orderDTO);
+            return true;
 
         } catch (Exception e) {
             logError("checkout failed: " + e.getMessage());
-            throw e;
+            return false;
         }
     }
     //listener
@@ -187,19 +195,26 @@ public class ReservationService {
                     eventId
             );
         }
-
+        
         Long userId = tokenService.extractUserId(token);
 
         return orderRepository.getActiveOrderByUserIdAndEventId(
                 userId,
                 eventId
         );
-    }
+     }
+    
 
 
     private void saveAll( ActiveOrder order, Event event) {
-
-        orderRepository.updateOrder(order);
+        if(order.getStatus()==ActiveOrder.OrderStatus.CANCELLED) {
+            orderRepository.deleteOrder(order.getOrderId());
+        }
+        else{
+            orderRepository.updateOrder(order);
+        }
+        eventRepository.updateEvent(event);
+        
     }
 
   private void validateToken(String token) {

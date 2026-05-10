@@ -96,7 +96,7 @@ public class ActiveOrder {
     public void validateCanBeSubmittedBy() {
         if (userId == null) {
                 throw new IllegalArgumentException(
-                        "Guests cannot submit orders for checkout, please log in or register"
+                        "Guest users must provide personal details before checkout"
                 );
             }
 
@@ -150,19 +150,25 @@ public class ActiveOrder {
     PAYMENT_FAILED,
     COMPLETED,
     CANCELLED
-}
-
-public OrderDTO toDTO() {
-    List<TicketDTO> ticketDTOs = new ArrayList<>();
-
-    for (Ticket ticket : tickets) {
-        ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(), ""));
     }
-    String nameEvent=""; //TODO get event name
-    String location=""; //TODO get event location
-    int companyId=0; //TODO get company id
 
-    return new OrderDTO(0,ticketDTOs,nameEvent,location ,userId,companyId);
+    public OrderDTO toDTO(String eventName,String location, Long companyId ) {
+        List<TicketDTO> ticketDTOs = new ArrayList<>();
+
+        for (Ticket ticket : tickets) {
+            ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(), ""));
+        }
+        return new OrderDTO(0,ticketDTOs,eventName,location ,userId,companyId);
+
+        }
+
+    public OrderDTO toDTO(){
+        List<TicketDTO> ticketDTOs = new ArrayList<>();
+
+        for (Ticket ticket : tickets) {
+            ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(), ""));
+        }
+        return new OrderDTO(0,ticketDTOs,"","" ,userId,null);
 
     }
-}
+    }
