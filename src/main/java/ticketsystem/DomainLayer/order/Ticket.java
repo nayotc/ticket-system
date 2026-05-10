@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 public class Ticket {
 
     private int ticketId;
-    private int eventId;
+    private Long eventId;
     private int row;
     private int chair;
     private double price;
@@ -14,7 +14,7 @@ public class Ticket {
 
     //location 0,0 is standing
 
-    public Ticket(int ticketId, int eventId, int row, int chair, double price) {
+    public Ticket(int ticketId, Long eventId, int row, int chair, double price) {
         this.ticketId = ticketId;
         this.eventId = eventId;
         this.row = row;
@@ -31,13 +31,10 @@ public class Ticket {
         this.ticketId = ticketId;
     }
 
-    public int getEventId() {
+    public Long getEventId() {
         return this.eventId;
     }
 
-    public void setEventId(int eventId) {
-        this.eventId = eventId;
-    }
 
     public int getRow() {
         return this.row;

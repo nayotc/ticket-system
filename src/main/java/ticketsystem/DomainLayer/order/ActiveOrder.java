@@ -9,10 +9,10 @@ import ticketsystem.DTO.TicketDTO;
 
 public class ActiveOrder {
 
-    private int orderId;
+    private Long orderId;
     private Long userId;
-    private String sessionToken;
-    private int eventId;
+    private String sessionToken;    
+    private Long eventId;
     private List<Ticket> tickets;
     private OrderStatus status;
     private final LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
@@ -20,7 +20,7 @@ public class ActiveOrder {
     
 
 
-    public ActiveOrder(int orderId,String sessionToken, Long userId, int eventId) {
+    public ActiveOrder(Long orderId, String sessionToken, Long userId, Long eventId) {
         this.orderId = orderId;
         this.userId = userId;
         this.sessionToken = sessionToken;
@@ -39,7 +39,7 @@ public class ActiveOrder {
         return this.tickets;
     }
 
-    public int getOrderId() {
+    public Long getOrderId() {
         return this.orderId;
     }
 
@@ -48,7 +48,7 @@ public class ActiveOrder {
         return this.userId;
     }
 
-    public int getEventId() {
+    public Long getEventId() {
         return this.eventId;
     }
 

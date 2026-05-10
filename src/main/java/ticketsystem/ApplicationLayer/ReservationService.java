@@ -34,7 +34,7 @@ public class ReservationService {
     }
 
 //UC 2.5,2.4
-     public void selectSeatTicket(String token, int eventId, Long areaId, seatPositionDTO position) {
+     public void selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position) {
         try {
             validateToken(token);
             ActiveOrder order = getOrCreateOrder(token, eventId);
@@ -48,7 +48,7 @@ public class ReservationService {
             throw e;
         }
     }
-    public void selectStandingTicket(String token, int eventId, Long areaId, int quantity) {
+    public void selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
         try {
             
             validateToken(token);
@@ -66,7 +66,7 @@ public class ReservationService {
 
 
     //Helper methods
-    private Event getEvent(int eventId) {
+    private Event getEvent(Long eventId) {
         Event event = eventRepository.getEventById(eventId);
 
         if (event == null) {
@@ -77,7 +77,7 @@ public class ReservationService {
         return event;
     }
 
-    private ActiveOrder getOrCreateOrder(String token, int eventId) {
+    private ActiveOrder getOrCreateOrder(String token, Long eventId) {
          ActiveOrder order = findActiveOrder(token, eventId);
 
     if (order == null) {
@@ -98,7 +98,7 @@ public class ReservationService {
     }
     
 
-    private ActiveOrder findActiveOrder(String token, int eventId) {
+    private ActiveOrder findActiveOrder(String token, Long eventId) {
         if (tokenService.isGuestToken(token)) {
             return orderRepository.getActiveOrderBySessionTokenAndEventId(
                     token,

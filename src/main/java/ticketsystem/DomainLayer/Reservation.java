@@ -14,7 +14,7 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
 public class Reservation {
-    private static int ticketIdCounter = 0;
+    private static Long ticketIdCounter = 0L;
 
     public Reservation() {
 
@@ -24,17 +24,15 @@ public class Reservation {
        validateActive(order,  event);
       SeatPosition seatPosition = new SeatPosition(position.getRow(), position.getChair());
        event.reserveSeat(areaId, seatPosition);
-       Long eventId = event.getId();
-       Ticket ticket = new Ticket(generateTicketId(), eventId.intValue(), position.getRow(), position.getChair(), /* event.getPrice() */0.0);
+       Ticket ticket = new Ticket(generateTicketId(), event.getId(), position.getRow(), position.getChair(), event.getTicktPrice());
         order.addTicket(ticket);
     } 
 
     public void selectStandingTicket(ActiveOrder order, Event event,Long areaId, int quantity) {
       validateActive(order,  event);
-      //event.reserveStanding(areaId, quantity);
+      event.reserveStanding(areaId, quantity);
         for(int i=0; i<quantity; i++) {
-            Long eventId = event.getId();
-            Ticket ticket = new Ticket(generateTicketId(), eventId.intValue(), 0, 0, /* event.getPrice() */0.0);
+            Ticket ticket = new Ticket(generateTicketId(),event.getId(), 0, 0, event.getTicktPrice());
             order.addTicket(ticket);
       }
     }
@@ -53,7 +51,7 @@ public class Reservation {
         }
     }
 
-    public int generateTicketId() {
+    public Long generateTicketId() {
         return ++ticketIdCounter;
     }
 
