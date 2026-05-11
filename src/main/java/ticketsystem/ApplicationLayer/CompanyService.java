@@ -139,6 +139,7 @@ try {
         }
     }
 
+
 private boolean canViewCompanyDetails(String sessionToken, Company company) throws Exception {
     if (company.isActive()) {
         return true;
@@ -170,5 +171,6 @@ private boolean canViewCompanyDetails(String sessionToken, Company company) thro
     }
         return new CompanyDTO(company);
 }
+
 
 }
