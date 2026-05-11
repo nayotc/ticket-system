@@ -8,6 +8,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
 
 public class EventRepository implements IEventRepository {
+
     private AtomicLong currentId = new AtomicLong(1L);
     private final ConcurrentHashMap<Long, Event> eventStorage = new ConcurrentHashMap<>();
 
@@ -23,13 +24,24 @@ public class EventRepository implements IEventRepository {
     }
 
     @Override
-    public Event getEventById(long eventId){
+    public Event getEventById(long eventId) {
         return eventStorage.get(eventId);
     }
-    
+
     @Override
     public void updateEvent(Event event) {
-        eventStorage.put(event.getId(), event);
+        long id = event.getId();
+        eventStorage.compute(id, (key, existingEvent) -> {
+            if (existingEvent == null) {
+                throw new RuntimeException("Event not found in Database");
+            }
+
+            if (event.getVersion() != existingEvent.getVersion()) {
+                throw new RuntimeException("Version mismatch - possible concurrent modification");
+            }
+            event.incrementVersion();
+            return event;
+        });
     }
 
     @Override
@@ -49,7 +61,4 @@ public class EventRepository implements IEventRepository {
         return eventStorage.values().stream().toList();
     }
 
-
-
 }
-

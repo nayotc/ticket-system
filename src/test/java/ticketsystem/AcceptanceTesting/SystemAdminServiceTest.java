@@ -2,7 +2,6 @@ package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +13,6 @@ import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
-import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
@@ -48,7 +46,7 @@ public class SystemAdminServiceTest {
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         companyService = new CompanyService(companyRepo, tokenService);
-        OrderRepository orderRepo = OrderRepository.getInstance();
+        OrderRepository orderRepo = new OrderRepository();
 
         systemAdminService = new SystemAdminService(
                 realAdminRepo,
@@ -118,8 +116,8 @@ public class SystemAdminServiceTest {
 
     // Use case: delete member by admin
     @Test
-    public void givenInvalidToken_whenDeleteMember_thenReturnsUnauthorizedError() {
-        String result = systemAdminService.deleteMemberByAdmin("invalid-token-string", 1L);
+    public void givenInvalidAdminId_whenDeleteMember_thenReturnsUnauthorizedError() {
+        String result = systemAdminService.deleteMemberByAdmin(-5L, 1L);
         assertTrue(result.startsWith("ERROR: Unauthorized access"), "Should reject invalid token.");
     }
 
@@ -127,11 +125,11 @@ public class SystemAdminServiceTest {
     public void givenNonExistentMember_whenDeleteMember_thenReturnsNotFoundError() {
         // Arrange
         SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
-        String adminSession = tokenService.addActiveSession(new Member(1L, "admin"));
+        realAdminRepo.addAdmin(admin);
         long nonExistentMemberId = 99L;
 
         // Act
-        String result = systemAdminService.deleteMemberByAdmin(adminSession, nonExistentMemberId);
+        String result = systemAdminService.deleteMemberByAdmin(1L, nonExistentMemberId);
 
         // Assert
         assertEquals("ERROR: Member with ID 99 was not found.", result, "Should return not found error.");
@@ -141,14 +139,14 @@ public class SystemAdminServiceTest {
     public void givenValidRequest_whenDeleteMember_thenMemberIsDeletedAndCleanupPerformed() {
         // Arrange
         SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
-        String adminSession = tokenService.addActiveSession(new Member(1L, "admin"));
+        realAdminRepo.addAdmin(admin);
         long memberId = 1L;
 
         Member member = new Member(memberId, "TestUser");
         userRepo.addRegisteredMember(memberId, member, "hashedPassword123");
 
         // Act
-        String result = systemAdminService.deleteMemberByAdmin(adminSession, memberId);
+        String result = systemAdminService.deleteMemberByAdmin(1L, memberId);
 
         // Assert
         assertEquals("SUCCESS: Member deactivated and associated records cleaned up.", result);
@@ -198,28 +196,4 @@ public class SystemAdminServiceTest {
         // assertTrue(savedCompany.getManagers().isEmpty());
     }
 
-    @Test
-    public void givenGuestSession_whenDeleteMember_thenReturnsUnauthorizedError() {
-        // Arrange
-        String guestSession = tokenService.addActiveSession(new Guest());
-
-        // Act
-        String result = systemAdminService.deleteMemberByAdmin(guestSession, 1L);
-
-        // Assert
-        assertTrue(result.startsWith("ERROR: Unauthorized access"), "Security: Should reject guest session.");
-    }
-
-    @Test
-    public void givenRegularMemberSession_whenDeleteMember_thenReturnsUnauthorizedError() {
-        // Arrange 
-        Member regularMember = new Member(2L, "RegularUser");
-        String memberSession = tokenService.addActiveSession(regularMember);
-
-        // Act
-        String result = systemAdminService.deleteMemberByAdmin(memberSession, 1L);
-
-        // Assert
-        assertTrue(result.startsWith("ERROR: Unauthorized access"), "Security: Should reject regular member session.");
-    }
 }

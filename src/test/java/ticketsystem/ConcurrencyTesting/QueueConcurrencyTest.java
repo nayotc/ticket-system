@@ -78,6 +78,8 @@ public class QueueConcurrencyTest {
                         approvedCount.incrementAndGet();
                     } else if ("QUEUED".equals(result)) {
                         queuedCount.incrementAndGet();
+                    } else {
+                        System.err.println("UNEXPECTED RESULT: " + result); // <--- יראה לנו לאן המשתמש נעלם
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();

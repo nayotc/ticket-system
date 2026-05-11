@@ -1,9 +1,9 @@
 package ticketsystem.DomainLayer.event;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 public class EventMap {
+
     private Pair<Integer, Integer> size;
     private List<Element> elements;
 
@@ -97,16 +97,30 @@ public class EventMap {
     }
 
     public boolean isSoldOut() {
+        if (elements == null || elements.isEmpty()) {
+            return false;
+        }
+
+        boolean foundAnyArea = false;
+
         for (Element element : elements) {
             if (element instanceof Area) {
+                foundAnyArea = true;
                 if (!((Area) element).isSoldOut()) {
                     return false;
                 }
             }
         }
-        return true;
+        return foundAnyArea;
     }
-
-
+    //     for (Element element : elements) {
+    //         if (element instanceof Area) {
+    //             if (!((Area) element).isSoldOut()) {
+    //                 return false;
+    //             }
+    //         }
+    //     }
+    //     return true;
+    // }
 
 }

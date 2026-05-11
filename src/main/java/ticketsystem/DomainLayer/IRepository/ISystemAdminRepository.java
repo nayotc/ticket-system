@@ -18,4 +18,6 @@ public interface ISystemAdminRepository {
     void deleteById(String adminId);
 
     int countAdmins();
+
+    SystemAdmin getAdminById(String adminId);
 }

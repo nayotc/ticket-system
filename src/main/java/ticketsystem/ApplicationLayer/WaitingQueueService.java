@@ -41,12 +41,13 @@ public class WaitingQueueService {
                 if (event == null) {
                     return "ERROR: Event not found";
                 }
-                // if (event.isSoldOut()) { //      will add when we have event logic pushed!
-                //     return new QueueResponse("ERROR: Sold Out");
-                // }
+                if (event.isSoldOut()) {
+                    return "ERROR: Sold Out";
+                }
 
                 if (!event.isOverloaded()) { //if event is not overloaded, approve the user immediately
                     event.incrementActiveReservations();
+                    eventRepository.updateEvent(event);
                     System.out.println("User with session id" + tokenString + " APPROVED to enter checkout for Event " + eventId);
                     return "APPROVED";
                 } else { //enqueue the user and return their position in the queue
@@ -56,6 +57,8 @@ public class WaitingQueueService {
                     return "QUEUED";
                 }
             } catch (Exception e) { //optimistic locking failure or other concurrency issue, retry the operation a few times before giving up
+                System.err.println("EXCEPTION CAUGHT: " + e.getMessage()); // <--- מדליקים את האור!
+                e.printStackTrace();
                 continue;
             }
         }

@@ -4,6 +4,7 @@ import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.User;
 
 public class SystemAdminService {
@@ -64,18 +65,10 @@ public class SystemAdminService {
     }
 
     // Use-case: Delete Member by Admin
-    public String deleteMemberByAdmin(String sessionId, long memberId) {
-
-        if (!tokenService.validateToken(sessionId)) {
-            return "ERROR: Unauthorized access. Admin is not logged in or lacks permissions.";
-        }
-        try {
-            Long adminId = getSystemAdminId(sessionId);
-            if (adminId == null || adminId <= 0) {
-                return "ERROR: Unauthorized access. Admin is not logged in or lacks permissions.";
-            }
-        } catch (Exception e) {
-            return "ERROR: Unauthorized access. Admin is not logged in or lacks permissions.";
+    public String deleteMemberByAdmin(long adminId, long memberId) {
+        SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+        if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+            return "ERROR: Unauthorized access. Invalid admin credentials.";
         }
         User member = userRepository.getMemberById(memberId);
         if (member == null) {
@@ -96,31 +89,15 @@ public class SystemAdminService {
     }
 
     // Use Case: Close Production Company by System Admin
-    public CompanyDTO closeProductionCompanyByAdmin(String sessionId, long companyId) throws Exception {
-        long adminId = getSystemAdminId(sessionId);
+    public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) throws Exception {
         //return companyService.closeProductionCompanyBySystemAdmin(companyId, adminId);
         return null;
     }
 
-    private long getSystemAdminId(String sessionId) throws Exception {
-        if (!tokenService.validateToken(sessionId)) {
-            throw new Exception("Invalid or expired session token.");
-        }
-
-        if (tokenService.isGuestToken(sessionId)) {
-            throw new Exception("Only logged-in members can perform system admin actions.");
-        }
-
-        Long adminId = tokenService.extractUserId(sessionId);
-
-        if (adminId == null) {
-            throw new Exception("Member ID was not found in the session token.");
-        }
-
+    private long getSystemAdminId(long adminId) throws Exception {
         if (!adminRepository.isSystemAdmin(String.valueOf(adminId))) {
             throw new Exception("Member is not an active system admin.");
         }
-
         return adminId;
     }
 }

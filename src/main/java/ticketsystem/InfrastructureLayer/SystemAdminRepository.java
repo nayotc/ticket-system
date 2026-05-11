@@ -43,4 +43,9 @@ public class SystemAdminRepository implements ISystemAdminRepository {
         SystemAdmin admin = storage.get(adminId);
         return admin != null && admin.isActive();
     }
+
+    @Override
+    public SystemAdmin getAdminById(String adminId) {
+        return storage.get(adminId);
+    }
 }
