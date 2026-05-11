@@ -22,7 +22,6 @@ public class Reservation {
 
     // UC 2.4, 2.5
     public void selectSeatTicket(ActiveOrder order, Event event,Long areaId, seatPositionDTO position) {
-       validateActive(order,  event);
       SeatPosition seatPosition = new SeatPosition(position.getRow(), position.getChair());
        event.reserveSeat(areaId, seatPosition);
        Ticket ticket = new Ticket(generateTicketId(), event.getId(), areaId, position.getRow(), position.getChair(), event.getTicktPrice());
@@ -30,7 +29,6 @@ public class Reservation {
     } 
 
     public void selectStandingTicket(ActiveOrder order, Event event,Long areaId, int quantity) {
-      validateActive(order,  event);
       event.reserveSpot(areaId, quantity);
         for(int i=0; i<quantity; i++) {
             Ticket ticket = new Ticket(generateTicketId(),event.getId(), areaId, 0, 0, event.getTicktPrice());
@@ -40,7 +38,6 @@ public class Reservation {
 
     //UC 2.7
     public void removeTicketFromActiveOrder(ActiveOrder order, Event event,Long ticketId) {
-        validateActive(order,  event);
         Ticket ticket= order.deleteTicket(ticketId);
         releaseTicket(ticket, event);
         
@@ -48,7 +45,6 @@ public class Reservation {
 
 
     public void submitActiveOrderForCheckout(ActiveOrder order, Event event) {
-        validateActive(order,  event);
         order.validateCanBeSubmittedBy();
         order.submitForCheckout();
         
@@ -82,12 +78,12 @@ public class Reservation {
         }
     }
 
-    public void validateActive(ActiveOrder order, Event event) {
-        if (order.isExpired()) {
-            expire(event, order);
-            throw new IllegalStateException("Reservation expired");
-        }
-    }
+    // public void validateActive(ActiveOrder order, Event event) {
+    //     if (order.isExpired()) {
+    //         expire(event, order);
+    //         throw new IllegalStateException("Reservation expired");
+    //     }
+    // }
 
     public void releaseTicket(Ticket ticket, Event event) {
      if(ticket.getRow()==0 && ticket.getChair()==0) {

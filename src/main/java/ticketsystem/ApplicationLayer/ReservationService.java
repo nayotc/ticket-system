@@ -44,9 +44,10 @@ public class ReservationService {
 
 //UC 2.5,2.4
      public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position) {
-        ActiveOrder order = getOrCreateOrder(token, eventId);
+        expireOldOrders();
         try {
-            validateToken(token);
+            tokenService.validateToken(token);
+            ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
             reservation.selectSeatTicket(order, event, areaId, position);
 
@@ -55,30 +56,23 @@ public class ReservationService {
 
         } catch (Exception e) {
             logWarning("selectSeatTicket failed: " + e.getMessage());
-            if(order.getStatus()==ActiveOrder.OrderStatus.CANCELLED) {
-                orderRepository.deleteOrder(order.getOrderId());
-            }
             return false;
         }
     }
     public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
-        ActiveOrder order = getOrCreateOrder(token, eventId);
+        expireOldOrders();
         try {
+            tokenService.validateToken(token);
+            ActiveOrder order = getOrCreateOrder(token, eventId);
             if (quantity <= 0) {
                 throw new IllegalArgumentException("Quantity must be greater than zero");
             }
-
-            validateToken(token);
-            
             Event event = eventRepository.getEventById(eventId);
             reservation.selectStandingTicket(order, event, areaId, quantity);
             saveAll(order, event);
             return true;
         } catch (Exception e) {
             logWarning("selectStandingTicket failed: " + e.getMessage());
-            if(order.getStatus()==ActiveOrder.OrderStatus.CANCELLED) {
-                orderRepository.deleteOrder(order.getOrderId());
-            }
             return false;
         }
     }
@@ -86,10 +80,10 @@ public class ReservationService {
 
     //UC 2.7
     public boolean removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
-        ActiveOrder order = findActiveOrder(token, eventId);
-     
+        expireOldOrders();
         try {
-            validateToken(token); 
+            tokenService.validateToken(token);
+            ActiveOrder order = findActiveOrder(token, eventId);
             if (order==null) {
                 throw new IllegalStateException("No active order found for this event");
             }
@@ -100,9 +94,6 @@ public class ReservationService {
             return true;
 
         } catch (Exception e) {
-            if(order!=null&& order.getStatus()==ActiveOrder.OrderStatus.CANCELLED) {
-                orderRepository.deleteOrder(order.getOrderId());
-            }
 
             logWarning("removeTicketFromActiveOrder failed: " + e.getMessage());
             return false;
@@ -112,7 +103,7 @@ public class ReservationService {
     // UC 2.8
     private boolean submitActiveOrderForCheckout(String token, Long eventId) {
         try {
-            validateToken(token);
+            tokenService.validateToken(token);
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
             reservation.submitActiveOrderForCheckout(order, event);
@@ -138,6 +129,7 @@ public class ReservationService {
     //
     public boolean checkout(String token, Long eventId, PaymentDetails details) {
         try {
+            expireOldOrders();
             submitActiveOrderForCheckout(token, eventId);
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
@@ -223,29 +215,8 @@ public class ReservationService {
         
     }
 
-  private void validateToken(String token) {
-    if (!tokenService.validateToken(token)) {
-        throw new IllegalArgumentException("Invalid or expired token");
-        }
-    }
 
-    public void start() {
-        ScheduledExecutorService scheduler =
-                Executors.newSingleThreadScheduledExecutor();
-
-        scheduler.scheduleAtFixedRate(
-                () ->expireOldOrders(),
-                0,
-                1,
-                TimeUnit.MINUTES
-        );
-    }
-
-    public void stop() {
-        // Implement if needed to gracefully shut down the scheduler
-    }
-
-    public void expireOldOrders() {
+    private void expireOldOrders() {
         List<ActiveOrder> allOrders = orderRepository.getAll();
         for (ActiveOrder order : allOrders) {
             if (order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT && order.isExpired()) {
