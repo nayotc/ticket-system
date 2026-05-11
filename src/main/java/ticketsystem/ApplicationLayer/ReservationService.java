@@ -176,8 +176,8 @@ public class ReservationService {
             try {
                 
                 reservation.completeCheckout(order, event);
-            OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId() );
-            for(PurchaseDTO purchesDTO : orderDTO.getTickets()) {
+                 OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId() );
+                 for(PurchaseDTO purchesDTO : orderDTO.getTickets()) {
                 String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(),order.getEventId(),order.getUserId());
                 purchesDTO.setSecureBarcode(barcode);
             }
