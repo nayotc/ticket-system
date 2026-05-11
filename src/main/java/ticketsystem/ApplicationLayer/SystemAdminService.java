@@ -16,6 +16,10 @@ import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import java.util.Map;
+
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
+import ticketsystem.DomainLayer.history.Purchase;
 
 public class SystemAdminService {
 
@@ -27,6 +31,7 @@ public class SystemAdminService {
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
     private final ISystemLogger logger;
+    private final IHistoryRepository historyRepository;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
@@ -35,7 +40,7 @@ public class SystemAdminService {
             IOrderRepository orderRepository,
             ITokenService tokenService,
             ICompanyRepository companyRepository,
-            ISystemLogger logger) {
+            ISystemLogger logger, IHistoryRepository historyRepository) {
 
         this.adminRepository = adminRepository;
         this.paymentService = paymentService;
@@ -45,6 +50,7 @@ public class SystemAdminService {
         this.tokenService = tokenService;
         this.companyRepository = companyRepository;
         this.logger = logger;
+        this.historyRepository = historyRepository;
     }
 
 //Use Case: Ticket System Initialization
@@ -163,6 +169,57 @@ public class SystemAdminService {
         logger.logEvent("Production company closed by System Admin.", LogbackSystemLogger.LogLevel.INFO);
         companyRepository.save(company);
         return new CompanyDTO(company);
+    }
+    // Use Case: View Purchase History by Buyer 6.4
+    public Map<Long, List<Purchase>> getPurchaseHistoryByBuyer(String adminToken) {
+        try{
+            tokenService.validateToken(adminToken);
+            long adminId = tokenService.extractUserId(adminToken);
+            SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+            if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
+            }
+            List<Purchase> allOrders = historyRepository.getAllPurchases();
+            checkIfHistoryIsEmpty(allOrders); 
+            return allOrders.stream()
+                .collect(Collectors.groupingBy(Purchase::getMemberId));
+        } catch (Exception e) {
+            logger.logEvent("Unauthorized access attempt with token: " + adminToken, ISystemLogger.LogLevel.WARN);
+            throw e;
+        }     
+
+    }
+
+
+    public Map<Long, Map<String, List<Purchase>>> getPurchaseHistoryByCompanyAndEvent(String adminToken) {
+        try{
+            tokenService.validateToken(adminToken);
+            long adminId = tokenService.extractUserId(adminToken);
+            SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+            if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
+            }
+            List<Purchase> allPurchases = historyRepository.getAllPurchases();
+            checkIfHistoryIsEmpty(allPurchases);
+            
+            return allPurchases.stream()
+                                .collect(Collectors.groupingBy(
+                                        Purchase::getCompanyId,
+                                        Collectors.groupingBy(Purchase::getEventName) 
+                                ));
+        }
+        catch (Exception e) {
+            logger.logEvent("Unauthorized access attempt with token: " + adminToken, ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
+    }
+
+
+
+    private void checkIfHistoryIsEmpty(List<Purchase> orders) {
+        if (orders == null || orders.isEmpty()) {
+            throw new IllegalStateException("No purchase history is available.");
+        }
     }
 
     // logs documentation of the system admin service
