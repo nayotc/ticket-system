@@ -21,6 +21,7 @@ public class HistoryService implements OrderCompletedListener {
     }
     
     @Override
+    // This method is called when an order is completed. It takes the order details, converts them into a Purchase object, and stores it in the history repository.
     public void onOrderCompleted(OrderDTO order) {
         try{
             //we don't need to validate the token here because this method is called after the order is completed, and we assume that the order completion process has already validated the token. However, if you want to add an extra layer of security, you can validate the token here as well before processing the order details.
