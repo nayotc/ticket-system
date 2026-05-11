@@ -1,5 +1,6 @@
 package ticketsystem.ConcurrencyTesting;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.InfrastructureLayer.TokenRepository;
@@ -40,8 +42,8 @@ public class QueueConcurrencyTest {
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService);
-        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, "Central Park", 100L, EventCategory.CONCERT, new Pair<>(10, 10));
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService);
+        var event = new Event(1L,LocalDateTime.now().plusDays(1),"Music Festival", 1L,1L,EventLocation.NEW_YORK, 100L, EventCategory.CONCERT,"Artist Name",BigDecimal.valueOf(100),new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
         int numberOfUsers = 1000;
@@ -122,7 +124,7 @@ public class QueueConcurrencyTest {
         WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService);
 
         // create an event that is already at full capacity
-        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival2", 1L, 1L, "Central Park", 100L, EventCategory.CONCERT, new Pair<>(10, 10));
+        var event = new Event(1L,LocalDateTime.now().plusDays(1),"Music Festival2", 1L,1L,EventLocation.NEW_YORK, 100L, EventCategory.CONCERT,"Artist Name",BigDecimal.valueOf(100),new Pair<>(10, 10));
         for (int i = 0; i < 100; i++) {
             event.incrementActiveReservations();
         }
@@ -181,7 +183,8 @@ public class QueueConcurrencyTest {
         WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService);
 
         // full event with 100 active reservations and 200 people in the queue
-        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival3", 1L, 1L, "Central Park", 100L, EventCategory.CONCERT, new Pair<>(10, 10));
+        //var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival3", 1L, 1L, "Central Park", 100L, EventCategory.CONCERT, new Pair<>(10, 10));
+        var event = new Event(1L,LocalDateTime.now().plusDays(1),"Music Festival summer", 1L,1L,EventLocation.NEW_YORK, 100L, EventCategory.CONCERT,"Artist Name",BigDecimal.valueOf(100),new Pair<>(10, 10));
         for (int i = 0; i < 100; i++) {
             event.incrementActiveReservations();
         }
@@ -266,6 +269,14 @@ public class QueueConcurrencyTest {
 
             public long getNextId() {
                 return 1L;
+            }
+
+            public List<Event> getEventsByCompanyId(long companyId) {
+                return List.of(savedEvent);
+            }
+
+            public List<Event> getAllEvents() {
+                return List.of(savedEvent);
             }
         };
     }

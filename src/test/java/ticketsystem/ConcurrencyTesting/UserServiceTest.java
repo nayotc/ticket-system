@@ -121,4 +121,48 @@ public class UserServiceTest {
         }
 
     }
+
+    @Test
+    public void testLogin_ConcurrentAccess() throws InterruptedException {
+        // Arrange: simulate 100 login attempts for the same user concurrently
+        int numberOfThreads = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(numberOfThreads);
+        List<String> generatedTokens = synchronizedList(new ArrayList<>());
+        List<Throwable> exceptions = synchronizedList(new ArrayList<>());
+        String InitialSessionToken = userService.visitSystem();
+        userService.signUp(InitialSessionToken, "username", "password");
+        // Act: simulate 100 login attempts for the same user concurrently
+        for (int i = 0; i < numberOfThreads; i++) {
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    String sessionToken = userService.visitSystem();
+                    sessionToken=userService.login(sessionToken, "username", "password");
+                    generatedTokens.add(sessionToken);
+                } catch (Throwable t) {
+                    exceptions.add(t);
+                    if (t instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                    }
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+        startLatch.countDown();
+        boolean completed = doneLatch.await(50, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        assertTrue(completed, "Test timed out!");
+        assertTrue(exceptions.isEmpty(), "Tasks failed with exceptions: " + exceptions);
+        assertEquals(numberOfThreads, generatedTokens.size(), "Should generate a token for each login attempt");
+        for (String token : generatedTokens) {
+            assertNotNull(token, "Login token should not be null");
+            assertTrue(tokenService.isActiveSession(token), "Login token should be active");
+            assertTrue(tokenService.validateToken(token), "Login token should be valid");
+        }
+
+    }
 }

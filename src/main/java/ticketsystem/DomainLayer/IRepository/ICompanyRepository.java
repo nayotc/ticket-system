@@ -2,6 +2,8 @@ package ticketsystem.DomainLayer.IRepository;
 
 import java.util.List;
 import java.util.Optional;
+
+import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.company.Company;
 
 public interface ICompanyRepository {
@@ -17,4 +19,6 @@ public interface ICompanyRepository {
     boolean existsByFounderId(long founderId);
     // Fetches ONLY the companies where the user is listed in the owners OR managers lists
     List<Company> findByOwnersContainingOrManagersContaining(long ownerId, long managerId);
+
+    List<Long> getCompanyIdsByCriteria(SearchCriteria criteria);
 }
