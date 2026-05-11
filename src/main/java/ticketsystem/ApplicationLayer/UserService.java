@@ -12,9 +12,9 @@ public class UserService {
     private final IUserRepository userRepository;
     private final ITokenService tokenService;
     private final IPasswordService passwordService;
-    private final LogbackSystemLogger logger;
+    private final ISystemLogger logger;
 
-    public UserService(IUserRepository userRepository, ITokenService tokenService, LogbackSystemLogger logger) {
+    public UserService(IUserRepository userRepository, ITokenService tokenService, ISystemLogger logger) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
         this.passwordService = new PasswordService();
