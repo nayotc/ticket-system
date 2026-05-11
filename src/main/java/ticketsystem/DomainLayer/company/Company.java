@@ -17,6 +17,9 @@ public class Company {
     private final CompanyTree rolesTree;
     private PurchasePolicy purchasePolicy; 
     private DiscountPolicy discountPolicy; 
+    private Double rate = 0.0; // for search and filtering
+    private Double totalRating = 0.0; // for calculating average rating
+    private Integer ratingCount = 0; // for calculating average rating
 
     //Version field for Optimistic Locking
     private long version;
@@ -47,7 +50,9 @@ public class Company {
         this.founderId = other.founderId;
         this.isActive = other.isActive;
         this.version = other.version;
-        
+        this.rate = other.rate;
+        this.totalRating = other.totalRating;
+        this.ratingCount = other.ratingCount;
         // Deep copy of the lists to prevent external modifications
         this.owners = new ArrayList<>(other.owners);
         this.managers = new ArrayList<>(other.managers);
@@ -138,6 +143,20 @@ public class Company {
     public long getFounderId()
     {
         return this.founderId;
+    }
+
+    public Double getRate() {
+        return this.rate;
+    }
+
+    public void setRate(Double rate) {
+        this.totalRating += rate;
+        this.ratingCount++;
+        this.rate = this.totalRating / this.ratingCount;
+    }
+
+    public void inactivate() {
+        this.isActive = false;
     }
 
     // --- Use Cases Logic ---
