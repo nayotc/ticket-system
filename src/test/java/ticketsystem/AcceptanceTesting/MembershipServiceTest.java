@@ -1,4 +1,7 @@
-package ticketsystem.ApplicationLayer;
+package ticketsystem.AcceptanceTesting;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.MembershipService;
+import ticketsystem.ApplicationLayer.NotificationsService;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
