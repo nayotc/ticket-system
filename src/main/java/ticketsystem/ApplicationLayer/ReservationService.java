@@ -7,7 +7,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
+import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
@@ -104,6 +107,29 @@ public class ReservationService {
 
         } catch (Exception e) {
             logWarning("removeTicketFromActiveOrder failed: " + e.getMessage());
+            throw e;
+        }
+    }
+
+       //uc 2.7
+
+    public ActiveOrderDTO viewActiveOrder(String token, Long orderId) {
+        expireOldOrders();
+        try {
+            tokenService.validateToken(token);
+            ActiveOrder order = orderRepository.findOrderById(orderId);
+            if (order == null) {
+                throw new IllegalStateException("No active order found for this event");
+            }
+            ObjectMapper objectMapper = new ObjectMapper();
+           ActiveOrderDTO activeOrderDTO = objectMapper.convertValue(
+                order, 
+                ActiveOrderDTO.class
+            );
+            return activeOrderDTO;
+        } 
+        catch (Exception e) {
+            logWarning("viewActiveOrder failed: " + e.getMessage());
             throw e;
         }
     }
