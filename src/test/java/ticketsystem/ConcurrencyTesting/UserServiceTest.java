@@ -1,8 +1,8 @@
 package ticketsystem.ConcurrencyTesting;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import static java.util.Collections.synchronizedList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +21,7 @@ import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
@@ -29,13 +30,14 @@ public class UserServiceTest {
     private static UserRepository userRepository;
     private static TokenService tokenService;
     private static ITokenRepository tokenRepository;
-
+    private static LogbackSystemLogger logger;
     @BeforeEach
     public void setup() {
+        logger = new LogbackSystemLogger();
         userRepository = new UserRepository();
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
-        userService = new UserService(userRepository, tokenService);
+        userService = new UserService(userRepository, tokenService, logger);
     }
 
     @Test

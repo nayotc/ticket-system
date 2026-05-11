@@ -13,6 +13,7 @@ import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
@@ -21,13 +22,14 @@ public class UserServiceTest {
     private UserService userService;
     private ITokenService tokenService;
     private ITokenRepository tokenRepository;
-
+    private LogbackSystemLogger logger;
     @BeforeEach
     public void setup() {
+        logger = new LogbackSystemLogger();
         userRepository = new UserRepository();
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
-        userService = new UserService(userRepository, tokenService);
+        userService = new UserService(userRepository, tokenService, logger);
     }
 
     @Test

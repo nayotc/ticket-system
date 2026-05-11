@@ -2,31 +2,41 @@ package ticketsystem.ApplicationLayer;
 
 import java.security.SecureRandom;
 
+import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
 public class UserService {
     private final IUserRepository userRepository;
     private final ITokenService tokenService;
     private final IPasswordService passwordService;
+    private final LogbackSystemLogger logger;
 
-    public UserService(IUserRepository userRepository, ITokenService tokenService) {
+    public UserService(IUserRepository userRepository, ITokenService tokenService, LogbackSystemLogger logger) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
         this.passwordService = new PasswordService();
+        this.logger = logger;
     }
 
     // 1. System Visit: Allows a guest to visit the system and receive a session
     // token.
     public String visitSystem() {
+        try {
         Guest guest = new Guest();
-        return tokenService.addActiveSession(guest);
+            return tokenService.addActiveSession(guest);
+        } catch (Exception e) {
+            logger.logEvent("Error adding active session: " + e.getMessage(), LogLevel.INFO);
+            throw e;
+        }
     }
 
     // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
     // username and password.
     public boolean signUp(String sessionToken, String username, String password) {
+        try {
         if (username == null || username.isBlank() || password == null || password.isBlank()) {
             return false;
         }
@@ -46,11 +56,16 @@ public class UserService {
         String hashedPassword = passwordService.hashPassword(password);
         userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
         return true;
+        } catch (Exception e) {
+            logger.logEvent("Error signing up: " + e.getMessage(), LogLevel.INFO);
+            throw e;
+        }
     }
 
     // 3. Login: Allows a guest to log in as a member by providing their username
     // and password, and receive a new session token.
     public String login(String sessionToken, String username, String password) {
+        try {
         if (!tokenService.validateToken(sessionToken) || !tokenService.isGuestToken(sessionToken)) { // Only guests can
                                                                                                      // log in, if the
                                                                                                      // token is not a
@@ -81,6 +96,10 @@ public class UserService {
                                                         // in as a member, and we will create a new session token for
                                                         // the member
         return tokenService.addActiveSession(member);
+        } catch (Exception e) {
+            logger.logEvent("Error logging in: " + e.getMessage(), LogLevel.INFO);
+            throw e;
+        }
     }
 
     public void exit(String sessionToken) {
@@ -89,6 +108,7 @@ public class UserService {
 
     public boolean UpdateMemberDetails(String sessionToken, String password, String username, String newUsername,
             String newPassword) {
+        try {
         if (password == null || password.isBlank() || username == null || username.isBlank() || newUsername == null
                 || newUsername.isBlank() || newPassword == null || newPassword.isBlank()) {
             return false;
@@ -116,6 +136,10 @@ public class UserService {
         }
         String newHashedPassword = passwordService.hashPassword(newPassword);
         return userRepository.updateRegisteredMember(username, newUsername, newHashedPassword);
+        } catch (Exception e) {
+            logger.logEvent("Error updating member details: " + e.getMessage(), LogLevel.INFO);
+            throw e;
+        }
     }
 
 }
