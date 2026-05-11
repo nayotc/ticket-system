@@ -82,7 +82,7 @@ public class SystemAdminService {
             return "ERROR: Member with ID " + memberId + " was not found.";
         }
         try {
-            //orderRepository.deleteActiveOrdersByUserId(memberId);
+            orderRepository.deleteActiveOrdersByUserId(memberId);
             companyService.removeUserFromAllCompanies(memberId);
             boolean userRemoved = userRepository.removeRegisteredMember(memberId);
             if (!userRemoved) {

@@ -127,7 +127,7 @@ public class SystemAdminServiceTest {
     public void givenNonExistentMember_whenDeleteMember_thenReturnsNotFoundError() {
         // Arrange
         SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
-        String adminSession = tokenService.addActiveSession(admin);
+        String adminSession = tokenService.addActiveSession(new Member(1L, "admin"));
         long nonExistentMemberId = 99L;
 
         // Act
@@ -141,7 +141,7 @@ public class SystemAdminServiceTest {
     public void givenValidRequest_whenDeleteMember_thenMemberIsDeletedAndCleanupPerformed() {
         // Arrange
         SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
-        String adminSession = tokenService.addActiveSession(admin);
+        String adminSession = tokenService.addActiveSession(new Member(1L, "admin"));
         long memberId = 1L;
 
         Member member = new Member(memberId, "TestUser");
