@@ -87,7 +87,6 @@ public class UserService {
             return null;
         }
         if (!passwordService.verifyPassword(password, hashedPassword)) {
-            System.out.println("User Details are incorrect");
             return null;
         }
         Member member = userRepository.getMemberByUsername(username);
@@ -159,7 +158,6 @@ public class UserService {
             return null;
         }
         if (!passwordService.verifyPassword(password, hashedPassword)) {
-            System.out.println("User Details are incorrect");
             return null;
         }
         return member;
