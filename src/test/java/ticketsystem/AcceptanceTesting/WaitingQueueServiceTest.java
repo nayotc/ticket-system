@@ -7,24 +7,23 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.NotificationsService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.event.DiscountPolicy;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Guest;
-import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
-import ticketsystem.ApplicationLayer.ITokenService;
-import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 
 public class WaitingQueueServiceTest {
 
@@ -133,10 +132,9 @@ public class WaitingQueueServiceTest {
         fakeEventRepo.addEvent(event);
 
         // Act
-        String result = waitingQueueService.tryReserve(5, "invalid-session");
+        assertThrows(IllegalArgumentException.class, () -> waitingQueueService.tryReserve(5, "invalid-token"), "An invalid token should throw an exception.");
 
         // Assert
-        assertEquals("ERROR: Invalid token", result, "User with invalid token should be rejected.");
         assertEquals(0, event.getActiveReservationsCount(), "Active reservations should remain 0.");
         assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
     }
