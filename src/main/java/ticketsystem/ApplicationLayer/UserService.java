@@ -106,40 +106,64 @@ public class UserService {
 
     }
 
-    public boolean UpdateMemberDetails(String sessionToken, String password, String username, String newUsername,
-            String newPassword) {
+    // 4. Update Member Username: Allows a member to update their username by providing their current username, password, and new username.
+    public boolean updateMemberUsername(String sessionToken, String password, String username, String newUsername) {
         try {
-        if (password == null || password.isBlank() || username == null || username.isBlank() || newUsername == null
-                || newUsername.isBlank() || newPassword == null || newPassword.isBlank()) {
-            return false;
+            if (newUsername == null || newUsername.isBlank()) {
+                return false;
+            }
+            if (authenticateMemberForUpdate(sessionToken, password, username) == null) {
+                return false;
+            }
+            String hashedPassword = userRepository.getHashedPasswordByUsername(username);
+            return userRepository.updateRegisteredMember(username, newUsername, hashedPassword);
+        } catch (Exception e) {
+            logger.logEvent("Error updating member username: " + e.getMessage(), LogLevel.INFO);
+            throw e;
+        }
+    }
+
+    // 5. Update Member Password: Allows a member to update their password by providing their current username, password, and new password.
+    public boolean updateMemberPassword(String sessionToken, String password, String username, String newPassword) {
+        try {
+            if (newPassword == null || newPassword.isBlank()) {
+                return false;
+            }
+            if (authenticateMemberForUpdate(sessionToken, password, username) == null) {
+                return false;
+            }
+            String newHashedPassword = passwordService.hashPassword(newPassword);
+            return userRepository.updateRegisteredMember(username, username, newHashedPassword);
+        } catch (Exception e) {
+            logger.logEvent("Error updating member password: " + e.getMessage(), LogLevel.INFO);
+            throw e;
+        }
+    }
+
+    // 6. Authenticate Member for Update: Authenticates a member by validating their session token, password, and username.
+    private Member authenticateMemberForUpdate(String sessionToken, String password, String username) {
+        if (password == null || password.isBlank() || username == null || username.isBlank()) {
+            return null;
         }
         if (!tokenService.validateToken(sessionToken) || !tokenService.isMemberToken(sessionToken)) {
-            return false;
+            return null;
         }
         Member member = userRepository.getMemberByUsername(username);
         if (member == null) {
-            return false;
+            return null;
         }
         if (!tokenService.extractUserId(sessionToken).equals(member.getId())) {
-            return false;
+            return null;
         }
-        String hashedPassword = userRepository.getHashedPasswordByUsername(username); // Get the hashed password for the
-                                                                                      // given username from the
-                                                                                      // repository, null if the
-                                                                                      // username does not exist
+        String hashedPassword = userRepository.getHashedPasswordByUsername(username);
         if (hashedPassword == null) {
-            return false;
+            return null;
         }
         if (!passwordService.verifyPassword(password, hashedPassword)) {
             System.out.println("User Details are incorrect");
-            return false;
+            return null;
         }
-        String newHashedPassword = passwordService.hashPassword(newPassword);
-        return userRepository.updateRegisteredMember(username, newUsername, newHashedPassword);
-        } catch (Exception e) {
-            logger.logEvent("Error updating member details: " + e.getMessage(), LogLevel.INFO);
-            throw e;
-        }
+        return member;
     }
 
 }

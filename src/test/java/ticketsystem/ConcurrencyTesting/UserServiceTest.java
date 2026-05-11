@@ -195,8 +195,8 @@ public class UserServiceTest {
             executor.submit(() -> {
                 try {
                     startLatch.await();
-                    userService.UpdateMemberDetails(memberTokens[userIndex], "password" + userIndex,
-                            "user" + userIndex, collisionUsername, "newPassword" + userIndex);
+                    userService.updateMemberUsername(memberTokens[userIndex], "password" + userIndex,
+                            "user" + userIndex, collisionUsername);
                 } catch (Throwable t) {
                     exceptions.add(t);
                     if (t instanceof InterruptedException) {
