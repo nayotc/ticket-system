@@ -146,9 +146,12 @@ public class ActiveOrder {
         for (Ticket ticket : tickets) {
             ticketDTOs.add(new PurchaseDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(),"","" ));
         }
-        return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId);
 
-        }
+        if(userId!=null)
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId);
+        else
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,0L,companyId);
+    }
 
      public ActiveOrderDTO toDTO() {
         List<TicketDTO> ticketDTOs = new ArrayList<>();
