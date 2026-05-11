@@ -115,8 +115,7 @@ public class UserService {
             if (authenticateMemberForUpdate(sessionToken, password, username) == null) {
                 return false;
             }
-            String hashedPassword = userRepository.getHashedPasswordByUsername(username);
-            return userRepository.updateRegisteredMember(username, newUsername, hashedPassword);
+            return userRepository.updateRegisteredMemberUsername(username, newUsername);
         } catch (Exception e) {
             logger.logEvent("Error updating member username: " + e.getMessage(), LogLevel.INFO);
             throw e;
@@ -133,7 +132,7 @@ public class UserService {
                 return false;
             }
             String newHashedPassword = passwordService.hashPassword(newPassword);
-            return userRepository.updateRegisteredMember(username, username, newHashedPassword);
+            return userRepository.updateRegisteredMemberPassword(username, newHashedPassword);
         } catch (Exception e) {
             logger.logEvent("Error updating member password: " + e.getMessage(), LogLevel.INFO);
             throw e;

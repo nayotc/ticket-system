@@ -73,25 +73,44 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
     }
 
     @Override
-    public synchronized boolean updateRegisteredMember(String username, String newUsername, String newHashedPassword) {
+    public synchronized boolean updateRegisteredMemberUsername(String username, String newUsername) {
         if (!usernameToIdMap.containsKey(username)) {
-            return false; // No member with the given username exists
+            return false;
+        }
+        if (newUsername == null || newUsername.isBlank()) {
+            return false;
         }
         if (!username.equals(newUsername) && usernameToIdMap.containsKey(newUsername)) {
-            return false; // New username already exists, cannot update
+            return false;
         }
         long id = usernameToIdMap.get(username);
         Member member = registeredMembersMap.get(id);
         if (member == null) {
-            return false; // No member with the given ID exists, this should not happen if the data is
-                          // consistent
+            return false;
         }
+        if (username.equals(newUsername)) {
+            return true;
+        }
+        String hashedPassword = hashedPasswordsMap.remove(username);
         member.setUserName(newUsername);
         usernameToIdMap.remove(username);
         usernameToIdMap.put(newUsername, id);
-        hashedPasswordsMap.put(newUsername, newHashedPassword);
-        hashedPasswordsMap.remove(username);
+        hashedPasswordsMap.put(newUsername, hashedPassword);
+        return true;
+    }
 
+    @Override
+    public synchronized boolean updateRegisteredMemberPassword(String username, String newHashedPassword) {
+        if (!usernameToIdMap.containsKey(username)) {
+            return false;
+        }
+        if (newHashedPassword == null || newHashedPassword.isBlank()) {
+            return false;
+        }
+        if (!hashedPasswordsMap.containsKey(username)) {
+            return false;
+        }
+        hashedPasswordsMap.put(username, newHashedPassword);
         return true;
     }
 
