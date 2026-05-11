@@ -42,7 +42,7 @@ public class QueueConcurrencyTest {
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, fakeTokenService);
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService);
         var event = new Event(1L,LocalDateTime.now().plusDays(1),"Music Festival", 1L,1L,EventLocation.NEW_YORK, 100L, EventCategory.CONCERT,"Artist Name",BigDecimal.valueOf(100),new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
