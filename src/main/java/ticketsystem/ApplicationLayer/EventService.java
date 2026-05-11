@@ -10,7 +10,9 @@ import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.PurchasePolicy;
+import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.DiscountPolicy;
+import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 
 
@@ -82,5 +84,32 @@ public class EventService {
         
     }
 
-    
+    public Boolean defineEventMap(String sessionId, Long eventId, EventMapDTO mapDTO) {
+        try {
+            // precondition: user logged in
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+            // precondition: user has permission to define event map
+            Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+            if (!membershipDomain.validatePermission(sessionId, event.getCompanyId(), "event:defineMap")) {
+                throw new IllegalArgumentException("User does not have permission to define event map");
+            }
+
+            // main scenario: create map
+            if (mapDTO == null) {
+                throw new IllegalArgumentException("Map data cannot be null");
+            }
+            EventMap map = EventMapper.toDomain(mapDTO);
+            event.setMap(map);
+            event.setStatus(eventStatus.ACTIVE);
+            eventRepository.updateEvent(event);
+            return true;
+        } catch (Exception e) {
+            throw e;
+        }
+    }
 }

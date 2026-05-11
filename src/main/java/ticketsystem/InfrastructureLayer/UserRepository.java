@@ -1,7 +1,7 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import ticketsystem.DomainLayer.user.Member;
 
@@ -12,30 +12,24 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
     private Map<String, Long> usernameToIdMap;
 
     public UserRepository() {
-        this.registeredMembersMap = new ConcurrentHashMap<>();
-        this.usernameToIdMap = new ConcurrentHashMap<>();
-        this.hashedPasswordsMap = new ConcurrentHashMap<>();
+        this.registeredMembersMap = new HashMap<>();
+        this.usernameToIdMap = new HashMap<>();
+        this.hashedPasswordsMap = new HashMap<>();
     }
 
     @Override
-    public boolean addRegisteredMember(long id, Member member, String hashedPassword) {
-        if (usernameToIdMap.putIfAbsent(member.getUserName(), id) != null) {
-            return false; // Username already exists, cannot add member
+    public synchronized boolean addRegisteredMember(long id, Member member, String hashedPassword) {
+        if (registeredMembersMap.containsKey(id) || usernameToIdMap.containsKey(member.getUserName())) {
+            return false; // ID or username already exists, cannot add member
         }
-        if (registeredMembersMap.putIfAbsent(id, member) != null) {
-            // Rollback: Remove the username mapping if the ID is already taken
-            usernameToIdMap.remove(member.getUserName());
-            return false;
-        }
-
-        // Store the hashed password
+        registeredMembersMap.put(id, member);
+        usernameToIdMap.put(member.getUserName(), id);
         hashedPasswordsMap.put(member.getUserName(), hashedPassword);
-
         return true;
     }
 
     @Override
-    public boolean removeRegisteredMember(long id) {
+    public synchronized boolean removeRegisteredMember(long id) {
         Member removedMember = registeredMembersMap.remove(id);
 
         if (removedMember == null) {
@@ -49,33 +43,75 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
     }
 
     @Override
-    public boolean isIDTaken(long id) {
+    public synchronized boolean isIDTaken(long id) {
         return registeredMembersMap.containsKey(id);
     }
 
     @Override
-    public boolean isUsernameTaken(String username) {
+    public synchronized boolean isUsernameTaken(String username) {
         return usernameToIdMap.containsKey(username);
     }
 
     @Override
-    public int getAllRegisteredMembersCount() {
+    public synchronized int getAllRegisteredMembersCount() {
         return registeredMembersMap.size();
     }
 
     @Override
-    public Member getMemberByUsername(String username) {
+    public synchronized Member getMemberByUsername(String username) {
         return registeredMembersMap.get(usernameToIdMap.get(username));
     }
 
     @Override
-    public Member getMemberById(long id) {
+    public synchronized Member getMemberById(long id) {
         return registeredMembersMap.get(id);
     }
 
     @Override
-    public String getHashedPasswordByUsername(String username) {
+    public synchronized String getHashedPasswordByUsername(String username) {
         return hashedPasswordsMap.get(username);
+    }
+
+    @Override
+    public synchronized boolean updateRegisteredMemberUsername(String username, String newUsername) {
+        if (!usernameToIdMap.containsKey(username)) {
+            return false;
+        }
+        if (newUsername == null || newUsername.isBlank()) {
+            return false;
+        }
+        if (!username.equals(newUsername) && usernameToIdMap.containsKey(newUsername)) {
+            return false;
+        }
+        long id = usernameToIdMap.get(username);
+        Member member = registeredMembersMap.get(id);
+        if (member == null) {
+            return false;
+        }
+        if (username.equals(newUsername)) {
+            return true;
+        }
+        String hashedPassword = hashedPasswordsMap.remove(username);
+        member.setUserName(newUsername);
+        usernameToIdMap.remove(username);
+        usernameToIdMap.put(newUsername, id);
+        hashedPasswordsMap.put(newUsername, hashedPassword);
+        return true;
+    }
+
+    @Override
+    public synchronized boolean updateRegisteredMemberPassword(String username, String newHashedPassword) {
+        if (!usernameToIdMap.containsKey(username)) {
+            return false;
+        }
+        if (newHashedPassword == null || newHashedPassword.isBlank()) {
+            return false;
+        }
+        if (!hashedPasswordsMap.containsKey(username)) {
+            return false;
+        }
+        hashedPasswordsMap.put(username, newHashedPassword);
+        return true;
     }
 
 }

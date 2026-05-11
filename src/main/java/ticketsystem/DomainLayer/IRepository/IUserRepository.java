@@ -19,4 +19,8 @@ public interface IUserRepository {
     Member getMemberById(long id);
 
     String getHashedPasswordByUsername(String username);
+
+    boolean updateRegisteredMemberUsername(String username, String newUsername);
+
+    boolean updateRegisteredMemberPassword(String username, String newHashedPassword);
 }

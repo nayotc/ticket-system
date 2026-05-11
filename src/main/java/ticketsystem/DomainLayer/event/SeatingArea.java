@@ -6,28 +6,40 @@ import java.util.Map;
 
 public class SeatingArea extends Area {
     private final Map<SeatPosition, Seat> seats = new HashMap();
+    private int rows;
+    private int columns;
 
 
-    public SeatingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, String description, int rows, int columns) {
+    public SeatingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, int rows, int columns) {
         super(id, name, location, size);
-        // this.rows = rows;
-        // this.columns = columns;
+        this.rows = rows;
+        this.columns = columns;
+        for (int row = 1; row <= rows; row++) {
+            for (int col = 1; col <= columns; col++) {
+                SeatPosition position = new SeatPosition(row, col);
+                seats.put(position, new Seat(position));
+            }
+        }
     }
 
     public int getRows() {
-        return 0;
+        return this.rows;
     }
 
     public void setRows(int rows) {
-        //this.rows = rows;
+        this.rows = rows;
     }
 
     public int getColumns() {
-        return 0;
+        return this.columns;
     }
 
     public void setColumns(int columns) {
-        //this.columns = columns;
+        this.columns = columns;
+    }
+
+    public Map<SeatPosition, Seat> getSeats() {
+        return this.seats;
     }
 
     public void reserveSeat(SeatPosition position) {

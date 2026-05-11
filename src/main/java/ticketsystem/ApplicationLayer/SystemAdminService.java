@@ -69,7 +69,14 @@ public class SystemAdminService {
         if (!tokenService.validateToken(sessionId)) {
             return "ERROR: Unauthorized access. Admin is not logged in or lacks permissions.";
         }
-
+        try {
+            Long adminId = getSystemAdminId(sessionId);
+            if (adminId == null || adminId <= 0) {
+                return "ERROR: Unauthorized access. Admin is not logged in or lacks permissions.";
+            }
+        } catch (Exception e) {
+            return "ERROR: Unauthorized access. Admin is not logged in or lacks permissions.";
+        }
         User member = userRepository.getMemberById(memberId);
         if (member == null) {
             return "ERROR: Member with ID " + memberId + " was not found.";

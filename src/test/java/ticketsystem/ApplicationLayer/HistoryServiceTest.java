@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +15,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import ticketsystem.DTO.OrderDTO;
-import ticketsystem.DTO.TicketDTO;
+import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.history.PurchasedTicket;
@@ -129,9 +130,9 @@ public class HistoryServiceTest {
  @Test
     void GivenOrderDTO_WhenOnOrderCompleted_ThenPurchaseIsAdded() {
         // --- Arrange ---
-        List<TicketDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new TicketDTO(10, 20, 1, 1, 150.0, "ACTIVE"));
-        OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", user1Id, 5);
+        List<PurchaseDTO> ticketDTOs = new ArrayList<>();
+        ticketDTOs.add(new PurchaseDTO(10L, 20L   , 1, 1, new BigDecimal(150), "ACTIVE"));
+        OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", user1Id, 5L);
         when(historyRepository.generateNextId()).thenReturn(999);
 
         // --- Act ---

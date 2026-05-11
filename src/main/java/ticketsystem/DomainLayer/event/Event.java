@@ -187,7 +187,7 @@ public class Event {
         this.map.sellSeat(areaId, position);
     }
 
-    public void reserveSpot(Long areaId) {
+    public void reserveSpot(Long areaId, int quantity) {
         this.map.reserveSpot(areaId);
     }
 
@@ -216,6 +216,11 @@ public class Event {
 
     public int getActiveReservationsCount() {
         return activeReservationsCount.get();
+    }
+
+
+    public BigDecimal getTicktPrice(){
+        return this.TicketPrice;
     }
 
     // use case: search and filtering 
@@ -327,6 +332,5 @@ public class Event {
     public void incrementVersion() {
         this.version++;
     }
-
 
 }

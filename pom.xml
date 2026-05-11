@@ -67,13 +67,20 @@
             <version>5.12.0</version>
             <scope>test</scope>
         </dependency>
+
         <!-- Spring Security Crypto -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
             <version>5.8.11</version>
         </dependency>
+        
 
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>24.16.0</version>
+        </dependency>
         <!-- Logging -->
         <dependency>
             <groupId>ch.qos.logback</groupId>

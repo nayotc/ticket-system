@@ -5,7 +5,7 @@ public class StandingArea extends Area {
     private long reserved;
     private long sold;
 
-    public StandingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, String description, long capacity) {
+    public StandingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size,long capacity) {
         super(id, name, location, size);
         this.capacity = capacity;
     }

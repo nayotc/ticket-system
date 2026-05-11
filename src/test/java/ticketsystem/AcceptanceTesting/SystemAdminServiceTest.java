@@ -119,19 +119,19 @@ public class SystemAdminServiceTest {
     // Use case: delete member by admin
     @Test
     public void givenInvalidToken_whenDeleteMember_thenReturnsUnauthorizedError() {
-        assertThrows(IllegalArgumentException.class,
-                () -> systemAdminService.deleteMemberByAdmin("invalid-token-string", 1L),
-                "Should reject completely invalid token format by throwing an exception.");
+        String result = systemAdminService.deleteMemberByAdmin("invalid-token-string", 1L);
+        assertTrue(result.startsWith("ERROR: Unauthorized access"), "Should reject invalid token.");
     }
 
     @Test
     public void givenNonExistentMember_whenDeleteMember_thenReturnsNotFoundError() {
         // Arrange
-        String validSession = tokenService.addActiveSession(new Guest());
+        SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
+        String adminSession = tokenService.addActiveSession(admin);
         long nonExistentMemberId = 99L;
 
         // Act
-        String result = systemAdminService.deleteMemberByAdmin(validSession, nonExistentMemberId);
+        String result = systemAdminService.deleteMemberByAdmin(adminSession, nonExistentMemberId);
 
         // Assert
         assertEquals("ERROR: Member with ID 99 was not found.", result, "Should return not found error.");
@@ -140,15 +140,15 @@ public class SystemAdminServiceTest {
     @Test
     public void givenValidRequest_whenDeleteMember_thenMemberIsDeletedAndCleanupPerformed() {
         // Arrange
-        String validSession = tokenService.addActiveSession(new Guest());
-
+        SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
+        String adminSession = tokenService.addActiveSession(admin);
         long memberId = 1L;
 
         Member member = new Member(memberId, "TestUser");
         userRepo.addRegisteredMember(memberId, member, "hashedPassword123");
 
         // Act
-        String result = systemAdminService.deleteMemberByAdmin(validSession, memberId);
+        String result = systemAdminService.deleteMemberByAdmin(adminSession, memberId);
 
         // Assert
         assertEquals("SUCCESS: Member deactivated and associated records cleaned up.", result);
@@ -198,4 +198,28 @@ public class SystemAdminServiceTest {
         // assertTrue(savedCompany.getManagers().isEmpty());
     }
 
+    @Test
+    public void givenGuestSession_whenDeleteMember_thenReturnsUnauthorizedError() {
+        // Arrange
+        String guestSession = tokenService.addActiveSession(new Guest());
+
+        // Act
+        String result = systemAdminService.deleteMemberByAdmin(guestSession, 1L);
+
+        // Assert
+        assertTrue(result.startsWith("ERROR: Unauthorized access"), "Security: Should reject guest session.");
+    }
+
+    @Test
+    public void givenRegularMemberSession_whenDeleteMember_thenReturnsUnauthorizedError() {
+        // Arrange 
+        Member regularMember = new Member(2L, "RegularUser");
+        String memberSession = tokenService.addActiveSession(regularMember);
+
+        // Act
+        String result = systemAdminService.deleteMemberByAdmin(memberSession, 1L);
+
+        // Assert
+        assertTrue(result.startsWith("ERROR: Unauthorized access"), "Security: Should reject regular member session.");
+    }
 }
