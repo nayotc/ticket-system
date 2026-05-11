@@ -2,6 +2,7 @@ package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -115,11 +116,9 @@ public class SystemAdminServiceTest {
     // Use case: delete member by admin
     @Test
     public void givenInvalidToken_whenDeleteMember_thenReturnsUnauthorizedError() {
-        // Act
-        String result = systemAdminService.deleteMemberByAdmin("invalid-token-string", 1L);
-
-        // Assert
-        assertTrue(result.startsWith("ERROR: Unauthorized access"), "Should reject invalid token.");
+        assertThrows(IllegalArgumentException.class,
+                () -> systemAdminService.deleteMemberByAdmin("invalid-token-string", 1L),
+                "Should reject completely invalid token format by throwing an exception.");
     }
 
     @Test
@@ -142,8 +141,7 @@ public class SystemAdminServiceTest {
 
         long memberId = 1L;
 
-        Member member = new Member(-1L, "TestUser");
-
+        Member member = new Member(memberId, "TestUser");
         userRepo.addRegisteredMember(memberId, member, "hashedPassword123");
 
         // Act
