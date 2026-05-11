@@ -21,7 +21,7 @@ import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.User;
 
-@Service 
+@Service
 public class TokenService implements ITokenService {
     private final SecretKey key;
     private final long expirationTime = 1000 * 60 * 60; // 1 hour in milliseconds
@@ -31,7 +31,7 @@ public class TokenService implements ITokenService {
     public TokenService(
             @Value("${jwt.secret:default_secret_key_for_development_purposes_only_32_chars}") String secret,
             ITokenRepository tokenRepository) {
-        
+
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
         this.tokenRepository = tokenRepository;
     }
@@ -57,7 +57,8 @@ public class TokenService implements ITokenService {
 
     @Override
     public boolean isActiveSession(String sessionToken) {
-        if (sessionToken == null) return false;
+        if (sessionToken == null)
+            return false;
         return tokenRepository.isActiveSession(sessionToken);
     }
 
@@ -68,7 +69,8 @@ public class TokenService implements ITokenService {
 
     @Override
     public void removeActiveSession(String sessionToken) {
-        if (sessionToken == null) return;
+        if (sessionToken == null)
+            return;
         tokenRepository.removeActiveSession(sessionToken);
     }
 
@@ -100,55 +102,68 @@ public class TokenService implements ITokenService {
 
     @Override
     public boolean validateToken(String token) {
-        if (token == null) return false;
+        if (token == null || token.isEmpty()) {
+            throw new IllegalArgumentException("Token is missing or null");
+        }
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
-            return isActiveSession(token);
-        } catch (JwtException e) {
-            return false;
+            if (!isActiveSession(token)) {
+                throw new IllegalArgumentException("Session is no longer active");
+            }
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid or expired security token");
         }
+        return true;
     }
 
     @Override
     public String extractRole(String token) {
-        if (token == null) return null;
+        if (token == null)
+            return null;
         return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
     @Override
     public boolean isGuestToken(String token) {
-        if (token == null) return false;
+        if (token == null)
+            return false;
         return "GUEST".equals(extractRole(token));
     }
 
     @Override
     public boolean isMemberToken(String token) {
-        if (token == null) return false;
+        if (token == null)
+            return false;
         return "MEMBER".equals(extractRole(token));
     }
 
     @Override
     public Long extractUserId(String token) {
-        if (token == null) return null;
+        if (token == null)
+            return null;
         String subject = extractSubject(token);
         if (subject == null || subject.isBlank()) {
             return null;
         }
         return Long.valueOf(subject);
     }
+
     private String extractSubject(String token) {
-        if (token == null) return null;
+        if (token == null)
+            return null;
         return extractClaim(token, Claims::getSubject);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        if (token == null) return null;
+        if (token == null)
+            return null;
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
     private Claims extractAllClaims(String token) {
-        if (token == null) return null;
+        if (token == null)
+            return null;
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
