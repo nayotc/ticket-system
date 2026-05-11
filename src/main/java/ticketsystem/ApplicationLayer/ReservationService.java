@@ -1,5 +1,6 @@
 package ticketsystem.ApplicationLayer;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -47,6 +48,11 @@ public class ReservationService {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
+
+            if(eventRepository.getEventById(eventId)==null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+
             ActiveOrder order = getOrCreateOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
             reservation.selectSeatTicket(order, event, areaId, position);
@@ -63,6 +69,9 @@ public class ReservationService {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
+            if(eventRepository.getEventById(eventId)==null) {
+                    throw new IllegalArgumentException("Event not found");
+                }
             ActiveOrder order = getOrCreateOrder(token, eventId);
             if (quantity <= 0) {
                 throw new IllegalArgumentException("Quantity must be greater than zero");
@@ -121,8 +130,8 @@ public class ReservationService {
             submitActiveOrderForCheckout(token, eventId);
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
-            double amount = reservation.calculateTotalPrice(order, event);
-            OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation(), event.getCompanyId() );
+            BigDecimal amount = reservation.calculateTotalPrice(order, event);
+            OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId() );
             
 
             //pay

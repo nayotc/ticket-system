@@ -1,7 +1,5 @@
 package ticketsystem.DomainLayer.order;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 public class Ticket {
 
@@ -10,11 +8,11 @@ public class Ticket {
     private Long areaId;
     private int row;
     private int chair;
-    private double price;
+    private BigDecimal price;
 
     //location 0,0 is standing
 
-    public Ticket(Long ticketId, Long eventId, Long areaId, int row, int chair, double price) {
+    public Ticket(Long ticketId, Long eventId, Long areaId, int row, int chair, BigDecimal price) {
         this.ticketId = ticketId;
         this.eventId = eventId;
         this.areaId = areaId;
@@ -28,10 +26,6 @@ public class Ticket {
         return this.ticketId;
     }
 
-    public void setTicketId(Long ticketId) {
-        this.ticketId = ticketId;
-    }
-
     public Long getEventId() {
         return this.eventId;
     }
@@ -41,34 +35,18 @@ public class Ticket {
         return this.areaId;
     }
 
-    public void setAreaId(Long areaId) {
-        this.areaId = areaId;
-    }
-
     public int getRow() {
         return this.row;
-    }
-
-    public void setRow(int row) {
-        this.row = row;
     }
 
     public int getChair() {
         return this.chair;
     }
 
-    public void setChair(int chair) {
-        this.chair = chair;
-    }
 
-    public double getPrice() {
+    public BigDecimal getPrice() {
         return this.price;
-    }
-
-    public void setPrice(double price) {
-        this.price = price;
-    }
-    
+    }  
 
 
 

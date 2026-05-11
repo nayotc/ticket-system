@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -130,7 +131,7 @@ public class HistoryServiceTest {
     void GivenOrderDTO_WhenOnOrderCompleted_ThenPurchaseIsAdded() {
         // --- Arrange ---
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new PurchaseDTO(10L, 20L   , 1, 1, 150.0, "ACTIVE"));
+        ticketDTOs.add(new PurchaseDTO(10L, 20L   , 1, 1, new BigDecimal(150), "ACTIVE"));
         OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", user1Id, 5L);
         when(historyRepository.generateNextId()).thenReturn(999);
 

@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +32,7 @@ public class ActiveOrderTest {
         order = new ActiveOrder(orderId, sessionToken, userId, eventId);
     }
 
-    private Ticket createMockTicket(Long ticketId, double price) {
+    private Ticket createMockTicket(Long ticketId, BigDecimal price) {
         Ticket ticket = mock(Ticket.class);
 
         when(ticket.getTicketId()).thenReturn(ticketId);
@@ -56,7 +58,7 @@ public class ActiveOrderTest {
 
     @Test
     void givenTicket_whenAddTicket_thenTicketIsAddedToOrder() {
-        Ticket ticket = createMockTicket(1L, 50);
+        Ticket ticket = createMockTicket(1L, new BigDecimal(50));
 
         order.addTicket(ticket);
 
@@ -66,7 +68,7 @@ public class ActiveOrderTest {
 
     @Test
     void givenExistingTicket_whenDeleteTicket_thenTicketIsRemovedAndReturned() {
-        Ticket ticket = createMockTicket(1L, 50);
+        Ticket ticket = createMockTicket(1L, new BigDecimal(50));
         order.addTicket(ticket);
 
         Ticket removedTicket = order.deleteTicket(1L);
@@ -77,7 +79,7 @@ public class ActiveOrderTest {
 
     @Test
     void givenNonExistingTicket_whenDeleteTicket_thenThrowException() {
-        Ticket ticket = createMockTicket(1L, 50);
+        Ticket ticket = createMockTicket(1L, new BigDecimal(50));
         order.addTicket(ticket);
 
         assertThrows(IllegalArgumentException.class, () -> order.deleteTicket(2L));
@@ -121,7 +123,7 @@ public class ActiveOrderTest {
 
     @Test
     void givenOrderWithTickets_whenValidateHasTickets_thenDoesNotThrowException() {
-        order.addTicket(createMockTicket(1L, 50));
+        order.addTicket(createMockTicket(1L, new BigDecimal(50)));
 
         order.validateHasTickets();
 
@@ -131,7 +133,7 @@ public class ActiveOrderTest {
     @Test
     void givenOrderWithMoreThanTenTickets_whenValidateTicketLimit_thenThrowException() {
         for (long i = 1; i <= 11; i++) {
-            order.addTicket(createMockTicket(i, 50));
+            order.addTicket(createMockTicket(i, new BigDecimal(50)));
         }
 
         assertThrows(IllegalStateException.class, () -> order.validateTicketLimit());
@@ -140,7 +142,7 @@ public class ActiveOrderTest {
     @Test
     void givenOrderWithTenTickets_whenValidateTicketLimit_thenDoesNotThrowException() {
         for (long i = 1; i <= 10; i++) {
-            order.addTicket(createMockTicket(i, 50));
+            order.addTicket(createMockTicket(i, new BigDecimal(50)));
         }
 
         order.validateTicketLimit();
@@ -156,7 +158,7 @@ public class ActiveOrderTest {
 
     @Test
     void givenCancelledOrder_whenValidateCanBeSubmittedBy_thenThrowException() {
-        order.addTicket(createMockTicket(1L, 50));
+        order.addTicket(createMockTicket(1L, new BigDecimal(50)));
         order.cancelOrder();
 
         assertThrows(IllegalStateException.class, () -> order.validateCanBeSubmittedBy());
@@ -164,7 +166,7 @@ public class ActiveOrderTest {
 
     @Test
     void givenValidActiveOrder_whenValidateCanBeSubmittedBy_thenDoesNotThrowException() {
-        order.addTicket(createMockTicket(1L, 50));
+        order.addTicket(createMockTicket(1L, new BigDecimal(50)));
 
         order.validateCanBeSubmittedBy();
 
@@ -173,20 +175,20 @@ public class ActiveOrderTest {
 
     @Test
     void givenTickets_whenCalculateTotalPrice_thenReturnSumOfTicketPrices() {
-        order.addTicket(createMockTicket(1L, 50));
-        order.addTicket(createMockTicket(2L, 70));
-        order.addTicket(createMockTicket(3L, 30));
+        order.addTicket(createMockTicket(1L, new BigDecimal(50)));
+        order.addTicket(createMockTicket(2L, new BigDecimal(70)));
+        order.addTicket(createMockTicket(3L, new BigDecimal(30)));
 
-        int total = order.calculateTotalPrice();
+        BigDecimal total = order.calculateTotalPrice();
 
-        assertEquals(150, total);
+        assertEquals(new BigDecimal(150), total);
     }
 
     @Test
     void givenOrderWithoutTickets_whenCalculateTotalPrice_thenReturnZero() {
-        int total = order.calculateTotalPrice();
+        BigDecimal total = order.calculateTotalPrice();
 
-        assertEquals(0, total);
+        assertEquals(new BigDecimal(0), total);
     }
 
     @Test

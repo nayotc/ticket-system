@@ -1,5 +1,7 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.math.BigDecimal;
+
 import ticketsystem.ApplicationLayer.IPaymentService;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
@@ -16,7 +18,7 @@ public class PaymentServiceProxy implements IPaymentService {
     }
 
     @Override
-    public boolean pay(double amount, PaymentDetails details) {
+    public boolean pay(BigDecimal amount, PaymentDetails details) {
       //  System.out.println("Payment Proxy: Processing payment for Order ID: " + order.getOrderId() + " with amount: $" + details.getAmount());
         // Simulate payment processing logic here   
         return true; // Simulate successful payment    

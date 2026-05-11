@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,8 +63,8 @@ public class Reservation {
 
     }
     
-    public double calculateTotalPrice(ActiveOrder order, Event event) {
-        int total = order.calculateTotalPrice();
+    public BigDecimal calculateTotalPrice(ActiveOrder order, Event event) {
+        BigDecimal total = order.calculateTotalPrice();
         //EVENT?
         return total;
     }
@@ -76,12 +77,6 @@ public class Reservation {
         }
     }
 
-    // public void validateActive(ActiveOrder order, Event event) {
-    //     if (order.isExpired()) {
-    //         expire(event, order);
-    //         throw new IllegalStateException("Reservation expired");
-    //     }
-    // }
 
     public void releaseTicket(Ticket ticket, Event event) {
      if(ticket.getRow()==0 && ticket.getChair()==0) {

@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer.order;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +39,7 @@ public class ActiveOrder {
     public Ticket deleteTicket(Long ticketId) {
 
         Ticket ticketToRemove = tickets.stream()
-                .filter(ticket -> ticket.getTicketId() == ticketId)
+                .filter(ticket -> ticket.getTicketId().equals(ticketId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
         tickets.remove(ticketToRemove);
@@ -109,10 +110,10 @@ public class ActiveOrder {
         }
     }
 
-    public int calculateTotalPrice() {
-        int total = 0;
+    public BigDecimal calculateTotalPrice() {
+        BigDecimal total = BigDecimal.ZERO;
         for (Ticket ticket : tickets) {
-            total += ticket.getPrice();
+            total = total.add(ticket.getPrice());
         }
         return total;
     }

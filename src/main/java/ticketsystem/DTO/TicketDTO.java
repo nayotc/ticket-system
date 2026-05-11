@@ -1,17 +1,19 @@
 package ticketsystem.DTO;
 
+import java.math.BigDecimal;
+
 public class TicketDTO {
     private Long ticketId;
     private Long eventId;
     private int row;
     private int chair;
-    private double price;
+    private BigDecimal price;
   
 
     //for json
     public TicketDTO() {}
 
-    public TicketDTO(Long ticketId, Long eventId, int row, int chair, double price) {
+    public TicketDTO(Long ticketId, Long eventId, int row, int chair, BigDecimal price) {
         this.ticketId = ticketId;
         this.eventId = eventId;
         this.row = row;
@@ -31,7 +33,7 @@ public class TicketDTO {
     public int getChair() { return chair; }
     public void setChair(int chair) { this.chair = chair; }
     
-    public double getPrice() { return price; }
-    public void setPrice(double price) { this.price = price; }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
    
 }
