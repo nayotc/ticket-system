@@ -3,6 +3,8 @@ package ticketsystem.AcceptanceTesting;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +26,7 @@ public class UserServiceTest {
     public void setup() {
         userRepository = new UserRepository();
         tokenRepository = new TokenRepository();
-        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository); 
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         userService = new UserService(userRepository, tokenService);
     }
 
@@ -47,7 +49,7 @@ public class UserServiceTest {
         String sessionToken = userService.visitSystem();
 
         // Act: sign up with a unique username
-        boolean answer=userService.signUp(sessionToken, "newUser", "password123");
+        boolean answer = userService.signUp(sessionToken, "newUser", "password123");
 
         // Assert: check that the new member is added to the repository
         assertTrue(answer, "Sign up should succeed with a unique username");
@@ -64,7 +66,7 @@ public class UserServiceTest {
 
         // Act: attempt to sign up with the same username
         String sessionToken2 = userService.visitSystem();
-        boolean answer=userService.signUp(sessionToken2, "existingUser", "password456");
+        boolean answer = userService.signUp(sessionToken2, "existingUser", "password456");
 
         // Assert: check that the second sign-up attempt fails due to username being
         // taken
@@ -72,5 +74,89 @@ public class UserServiceTest {
         assertTrue(userRepository.isUsernameTaken("existingUser"), "Username should be taken");
         assertEquals(userRepository.getAllRegisteredMembersCount(), 1,
                 "There should still be only one registered member");
+    }
+
+    @Test
+    void TestSignUpWithInvalidSessionToken_Acceptance() {
+        // arrange: simulate a guest visiting the system
+        String sessionToken = userService.visitSystem();
+        String invalidToken = "fake-token";
+
+        // Act & Assert: attempt to sign up with an invalid session token and expect an
+        // exception
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.signUp(invalidToken, "user", "password");
+        }, "Sign up should throw an exception for an invalid session token");
+
+    }
+
+    @Test
+    void TestLoginWithRightUsernameAndPassword() {
+        // Arange: visit and signup a new Member
+        String sessionToken1 = userService.visitSystem();
+        userService.signUp(sessionToken1, "newUser", "password123");
+        // Act: login with the correct username and password
+        String loginToken = userService.login(sessionToken1, "newUser", "password123");
+        // Assert: check that the login token is valid and the user is logged in
+        assertNotNull(loginToken, "Login token should not be null");
+        assertFalse(tokenService.isActiveSession(sessionToken1),
+                "Original session token should no longer be active after login");
+        assertFalse(loginToken.isEmpty(), "Login token should not be empty");
+        assertTrue(tokenService.isActiveSession(loginToken), "Login token should be active");
+        assertTrue(tokenService.validateToken(loginToken), "Login token should be valid");
+        assertTrue(tokenService.isMemberToken(loginToken), "Login token should be a member token");
+    }
+
+    @Test
+    void TestLoginWithWrongUsername() {
+        // Arange: visit and signup a new Member
+        String sessionToken1 = userService.visitSystem();
+        userService.signUp(sessionToken1, "newUser", "password123");
+        // Act: login with the wrong username
+        String loginToken = userService.login(sessionToken1, "wrongUser", "password123");
+        // Assert: check that the login attempt fails due to incorrect username
+        assertNull(loginToken, "Login token should be null for wrong username");
+        assertFalse(tokenService.isActiveSession(loginToken), "Login token should not be active for wrong username");
+        assertTrue(tokenService.isActiveSession(sessionToken1), "Original session token should still be active after failed login");
+    }
+
+    @Test
+    void TestLoginWithWrongPassword() {
+        // Arange: visit and signup a new Member
+        String sessionToken1 = userService.visitSystem();
+        userService.signUp(sessionToken1, "newUser", "password123");
+        // Act: login with the wrong password
+        String loginToken = userService.login(sessionToken1, "newUser", "password1234");
+        // Assert: check that the login attempt fails due to incorrect password
+        assertNull(loginToken, "Login token should be null for wrong password");
+        assertFalse(tokenService.isActiveSession(loginToken), "Login token should not be active for wrong password");
+    }
+
+    @Test
+    void TestLoginWithWrongToken() {
+        // arrange: simulate a guest visiting the system
+        String sessionToken = userService.visitSystem();
+        userService.signUp(sessionToken, "user", "password");
+
+        String invalidToken = "fake-token";
+
+        // Act & Assert: attempt to sign up with an invalid session token and expect an
+        // exception
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.login(invalidToken, "user", "password");
+        }, "Login should throw an exception for an invalid session token");
+    }
+
+    @Test
+    void TestLoginWith2Users() {
+        // Arange: visit and signup for 2 new Members
+        String sessionToken1 = userService.visitSystem();
+        userService.signUp(sessionToken1, "newUser1", "password1");
+        String sessionToken2 = userService.visitSystem();
+        userService.signUp(sessionToken2, "newUser2", "password2");
+        // Act: login with the wrong password
+        String loginToken = userService.login(sessionToken1, "newUser1", "password2");
+        // Assert: check that the login attempt fails due to incorrect password
+        assertNull(loginToken, "Login token should be null for wrong password");
     }
 }
