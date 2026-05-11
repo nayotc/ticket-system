@@ -21,14 +21,12 @@ public class UserService {
         this.logger = logger;
     }
 
-    // 1. System Visit: Allows a guest to visit the system and receive a session
-    // token.
 
     // 1. System Visit: Allows a guest to visit the system and receive a session
     // token.
     public String visitSystem() {
         try {
-        Guest guest = new Guest();
+            Guest guest = new Guest();
             return tokenService.addActiveSession(guest);
         } catch (Exception e) {
             logger.logEvent("Error adding active session: " + e.getMessage(), LogLevel.INFO);
@@ -38,30 +36,27 @@ public class UserService {
 
     // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
     // username and password.
-
-    // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
-    // username and password.
     public boolean signUp(String sessionToken, String username, String password) {
         try {
-        if (username == null || username.isBlank() || password == null || password.isBlank()) {
-            return false;
-        }
-        if (!tokenService.validateToken(sessionToken)) {
-            return false;
-        }
-        if (!tokenService.isGuestToken(sessionToken)) {
-            return false;
-        }
-        if (userRepository.isUsernameTaken(username)) {
-            return false;
-        }
-        Long newId = new SecureRandom().nextLong();
-        while (userRepository.isIDTaken(newId)) {
-            newId = new SecureRandom().nextLong();
-        }
-        String hashedPassword = passwordService.hashPassword(password);
-        userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
-        return true;
+            if (username == null || username.isBlank() || password == null || password.isBlank()) {
+                return false;
+            }
+            if (!tokenService.validateToken(sessionToken)) {
+                return false;
+            }
+            if (!tokenService.isGuestToken(sessionToken)) {
+                return false;
+            }
+            if (userRepository.isUsernameTaken(username)) {
+                return false;
+            }
+            Long newId = new SecureRandom().nextLong();
+            while (userRepository.isIDTaken(newId)) {
+                newId = new SecureRandom().nextLong();
+            }
+            String hashedPassword = passwordService.hashPassword(password);
+            userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
+            return true;
         } catch (Exception e) {
             logger.logEvent("Error signing up: " + e.getMessage(), LogLevel.INFO);
             throw e;
@@ -72,35 +67,44 @@ public class UserService {
     // and password, and receive a new session token.
     public String login(String sessionToken, String username, String password) {
         try {
-        if (!tokenService.validateToken(sessionToken) || !tokenService.isGuestToken(sessionToken)) { // Only guests can
-                                                                                                     // log in, if the
-                                                                                                     // token is not a
-                                                                                                     // guest token, it
-                                                                                                     // means the user
-                                                                                                     // is already
-                                                                                                     // logged in as a
-                                                                                                     // member
-            return null;
-        }
-        if (username == null || username.isBlank() || password == null || password.isBlank()) {
-            return null;
-        }
-        String hashedPassword = userRepository.getHashedPasswordByUsername(username); // Get the hashed password for the
-                                                                                      // given username from the
-                                                                                      // repository, null if the
-                                                                                      // username does not exist
-        if (hashedPassword == null) {
-            return null;
-        }
-        if (!passwordService.verifyPassword(password, hashedPassword)) {
-            return null;
-        }
-        Member member = userRepository.getMemberByUsername(username);
-        // TODO: implement add Guest's active order to Member's active order if exists
-        tokenService.removeActiveSession(sessionToken); // Remove the guest session token since the user is now logged
-                                                        // in as a member, and we will create a new session token for
-                                                        // the member
-        return tokenService.addActiveSession(member);
+            if (!tokenService.validateToken(sessionToken) || !tokenService.isGuestToken(sessionToken)) { // Only guests
+                                                                                                         // can
+                                                                                                         // log in, if
+                                                                                                         // the
+                                                                                                         // token is not
+                                                                                                         // a
+                                                                                                         // guest token,
+                                                                                                         // it
+                                                                                                         // means the
+                                                                                                         // user
+                                                                                                         // is already
+                                                                                                         // logged in as
+                                                                                                         // a
+                                                                                                         // member
+                return null;
+            }
+            if (username == null || username.isBlank() || password == null || password.isBlank()) {
+                return null;
+            }
+            String hashedPassword = userRepository.getHashedPasswordByUsername(username); // Get the hashed password for
+                                                                                          // the
+                                                                                          // given username from the
+                                                                                          // repository, null if the
+                                                                                          // username does not exist
+            if (hashedPassword == null) {
+                return null;
+            }
+            if (!passwordService.verifyPassword(password, hashedPassword)) {
+                return null;
+            }
+            Member member = userRepository.getMemberByUsername(username);
+            // TODO: implement add Guest's active order to Member's active order if exists
+            tokenService.removeActiveSession(sessionToken); // Remove the guest session token since the user is now
+                                                            // logged
+                                                            // in as a member, and we will create a new session token
+                                                            // for
+                                                            // the member
+            return tokenService.addActiveSession(member);
         } catch (Exception e) {
             logger.logEvent("Error logging in: " + e.getMessage(), LogLevel.INFO);
             throw e;
@@ -109,37 +113,44 @@ public class UserService {
 
     // 4. Exit: Allows a user to exit the system entirely.
     public boolean exit(String sessionToken) {
-        if (!tokenService.validateToken(sessionToken)) {
-            System.out.println("Invalid session token");
-            return false;
+        try {
+            if (!tokenService.validateToken(sessionToken)) {
+                return false;
+            }
+            if (!tokenService.isActiveSession(sessionToken)) {
+                return false;
+            }
+            tokenService.removeActiveSession(sessionToken);
+            return true;
+        } catch (Exception e) {
+            logger.logEvent("Error exiting system: " + e.getMessage(), LogLevel.INFO);
+            throw e;
         }
-        if (!tokenService.isActiveSession(sessionToken)) {
-            System.out.println("Session token is not active");
-            return false;
-        }
-        tokenService.removeActiveSession(sessionToken);
-        return true;
     }
 
     // 5. Log Out: Allows a member to log out and receive a new guest session token.
     public String logOut(String sessionToken) {
-        if (!tokenService.validateToken(sessionToken)) {
-            System.out.println("Invalid session token");
-            return null;
+        try {
+            if (!tokenService.validateToken(sessionToken)) {
+                return null;
+            }
+            if (!tokenService.isActiveSession(sessionToken)) {
+                return null;
+            }
+            if (tokenService.isGuestToken(sessionToken)) {
+                return null;
+            }
+            tokenService.removeActiveSession(sessionToken);
+            return visitSystem();
+        } catch (Exception e) {
+            logger.logEvent("Error exiting system: " + e.getMessage(), LogLevel.INFO);
+            throw e;
         }
-        if (!tokenService.isActiveSession(sessionToken)) {
-            System.out.println("Session token is not active");
-            return null;
-        }
-        if (tokenService.isGuestToken(sessionToken)) {
-            System.out.println("Cannot log out a guest session");
-            return null;
-        }
-        tokenService.removeActiveSession(sessionToken);
-        return visitSystem();
+
     }
 
-    // 4. Update Member Username: Allows a member to update their username by providing their current username, password, and new username.
+    // 6. Update Member Username: Allows a member to update their username by
+    // providing their current username, password, and new username.
     public boolean updateMemberUsername(String sessionToken, String password, String username, String newUsername) {
         try {
             if (newUsername == null || newUsername.isBlank()) {
@@ -155,7 +166,8 @@ public class UserService {
         }
     }
 
-    // 5. Update Member Password: Allows a member to update their password by providing their current username, password, and new password.
+    // 7. Update Member Password: Allows a member to update their password by
+    // providing their current username, password, and new password.
     public boolean updateMemberPassword(String sessionToken, String password, String username, String newPassword) {
         try {
             if (newPassword == null || newPassword.isBlank()) {
@@ -172,7 +184,6 @@ public class UserService {
         }
     }
 
-    // 6. Authenticate Member for Update: Authenticates a member by validating their session token, password, and username.
     private Member authenticateMemberForUpdate(String sessionToken, String password, String username) {
         if (password == null || password.isBlank() || username == null || username.isBlank()) {
             return null;

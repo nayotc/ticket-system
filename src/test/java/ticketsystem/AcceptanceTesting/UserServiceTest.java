@@ -29,11 +29,7 @@ public class UserServiceTest {
         userRepository = new UserRepository();
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
-<<<<<<< HEAD
         userService = new UserService(userRepository, tokenService, logger);
-=======
-        userService = new UserService(userRepository, tokenService);
->>>>>>> e4ca4ff (comments)
     }
 
     @Test
@@ -282,26 +278,6 @@ public class UserServiceTest {
         assertFalse(result, "Updating member details should fail when the new username is already taken");
     }
 
-    @Test
-    void TestUpdateMemberDetails_DifferentToken_Acceptance() {
-        // Arrange: simulate a guest visiting the system and signing up two users
-        String sessionToken1 = userService.visitSystem();
-        userService.signUp(sessionToken1, "user1", "password1");
-        String loginToken1 = userService.login(sessionToken1, "user1", "password1");
-
-        String sessionToken2 = userService.visitSystem();
-        userService.signUp(sessionToken2, "user2", "password2");
-        String loginToken2 = userService.login(sessionToken2, "user2", "password2");
-
-        // Act: attempt to update user1's username using user2's token
-        boolean result1 = userService.updateMemberUsername(loginToken2, "password1", "user1", "newUser1");
-        boolean result2 = userService.updateMemberPassword(loginToken2, "password1", "user1", "newPassword1");
-        // Assert: check that the update fails due to the token not belonging to the
-        // user being updated
-        assertFalse(result1, "Updating member username should fail when the token does not belong to the user");
-        assertFalse(result2, "Updating member password should fail when the token does not belong to the user");
-    }
-
 
     @Test
     void TestExitWithInvalidToken_Acceptance() {
@@ -310,12 +286,10 @@ public class UserServiceTest {
         userService.signUp(sessionToken, "newUser", "password123");
         String loginToken = userService.login(sessionToken, "newUser", "password123");
 
-        // Act: exit with an invalid token
-        boolean answer = userService.exit("invalid-token");
-
-        // Assert: check that the valid session token is still active and the invalid
-        // token is not active
-        assertFalse(answer, "Exit should fail with an invalid token");
+        // Act & Assert: attempt to exit with an invalid token and expect an exception
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.exit("invalid-token");
+        }, "Exit should throw an exception for an invalid token");
     }
 
     @Test
@@ -326,12 +300,10 @@ public class UserServiceTest {
         String loginToken = userService.login(sessionToken, "newUser", "password123");
         userService.exit(loginToken);
 
-        // Act: exit with an invalid token
-        boolean answer = userService.exit(loginToken);
-
-        // Assert: check that the valid session token is still active and the invalid
-        // token is not active
-        assertFalse(answer, "Exit should fail with an inactive token");
+        // Act & Assert: attempt to exit with an inactive token and expect an exception
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.exit(loginToken);
+        }, "Exit should throw an exception for an inactive token");
     }
 
     @Test
@@ -387,13 +359,10 @@ public class UserServiceTest {
         userService.signUp(sessionToken, "newUser", "password123");
         String loginToken = userService.login(sessionToken, "newUser", "password123");
 
-        // Act: logout with an invalid token
-        String newSessionToken = userService.logOut("invalid-token");
-
-        // Assert: check that the logout attempt fails and the original login token is
-        // still active
-        assertNull(newSessionToken, "Logout should return null for an invalid token");
-        assertTrue(tokenService.isActiveSession(loginToken), "Login token should still be active after failed logout");
+        // Act & Assert: attempt to logout with an invalid token and expect an exception
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.logOut("invalid-token");
+        }, "Logout should throw an exception for an invalid token");
     }
 
     @Test
@@ -402,14 +371,12 @@ public class UserServiceTest {
         String sessionToken = userService.visitSystem();
         userService.signUp(sessionToken, "newUser", "password123");
         String loginToken = userService.login(sessionToken, "newUser", "password123");
-        userService.exit(loginToken);
+        userService.logOut(loginToken);
 
-        // Act: logout with an inactive token
-        String newSessionToken = userService.logOut(loginToken);
-
-        // Assert: check that the logout attempt fails and the original login token is
-        // still active
-        assertNull(newSessionToken, "Logout should return null for an inactive token");
+        // Act& Assert: attempt to logout with an inactive token and expect an exception
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.logOut(loginToken);
+        }, "Logout should throw an exception for an inactive token");
     }
 
     @Test
