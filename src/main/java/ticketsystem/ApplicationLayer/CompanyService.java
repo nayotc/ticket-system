@@ -1,6 +1,7 @@
 package ticketsystem.ApplicationLayer;
 
 import java.util.List;
+import java.util.Optional;
 
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -136,5 +137,18 @@ try {
             // Propagate the exception so the calling layer can return an appropriate message
             throw new Exception("Failed to remove user from companies: " + e.getMessage());
         }
+    }
+
+    public CompanyDTO getCompanyDetails(String sessionToken, long companyId) throws Exception {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Invalid session token.");
+        }
+
+        Optional<Company> companyOpt = companyRepository.findById(companyId);
+        if (!companyOpt.isPresent()) {
+            throw new Exception("Company not found.");
+        }
+
+        return new CompanyDTO(companyOpt.get());
     }
 }
