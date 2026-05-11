@@ -1,5 +1,4 @@
 package ticketsystem.ApplicationLayer;
-import java.util.Optional;
 import java.util.Set;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -40,12 +39,11 @@ public class MembershipService {
             throw new Exception("Session authentication failed.");
         }
         
-        // Extract user ID from token and retrieve member information
+        // Extract user ID from token
         Long memberId = tokenService.extractUserId(sessionToken);
-        Member member = userRepository.getMemberById(memberId);
         
         // Use the domain service to validate the permission based on the member's role
-        return domainService.validatePermission(member, companyId, requiredPermission);
+        return domainService.validatePermission(memberId, companyId, requiredPermission);
     }
 
     /**
@@ -66,12 +64,12 @@ public class MembershipService {
         Member targetMember = userRepository.getMemberById(targetMemberId);
 
         // Call the domain service to handle the business logic of creating the manager role
-        domainService.ManagerAssignmentRequest(companyId, appointer, targetMember, permissions);
+        domainService.ManagerAssignmentRequest(appointer, targetMember, companyId, permissions);
 
         // Update the repository with the changes to the target member
         userRepository.updateMember(targetMember);
         
-        // TODO: will be implemented in the future when the notifications service is ready
+        // TODO: add notification to the target member about the pending assignment
         
         // Return true if the request was successfully processed
         return true;
@@ -82,40 +80,30 @@ public class MembershipService {
      */
     public boolean approveAssignment(String sessionToken, Long companyId) throws Exception {
         
-        // 1. Authenticate session
+        // Authenticate session
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
         
-        // 2. Extract user ID from token and retrieve member information
+        // Extract user ID from token and retrieve member information
         Long appointeeId = tokenService.extractUserId(sessionToken);
         Member appointee = userRepository.getMemberById(appointeeId);
-        CompanyRole approvedRole = appointee.getRoleInCompany(companyId);
         
-        // 3. Extract the appointer's ID from the pending role and retrieve their information
-        // TODO: check appointerId is not null, if null throw exception
-        Long appointerId = domainService.getAppointerId(approvedRole);
+        Long appointerId = domainService.getAppointerId(appointee, companyId);
         if (appointerId == null) {
             throw new Exception("The appointer ID could not be determined.");
         }
+
         Member appointer = userRepository.getMemberById(appointerId);
-        CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
-        
-        Optional<Company> company = companyRepository.findById(companyId.longValue());
+        Company company = companyRepository.findById(companyId).orElseThrow(() -> new Exception("Company not found."));
+        domainService.ApproveAssignment(appointer, appointee, company);
 
-        // TODO: move logic buisness to domain service
-        // 4. Validate the approval action using the domain service
-        domainService.validateApproveAssignment(approvedRole, appointerRole, appointeeId, company);
-        approvedRole.setStatus(RoleStatus.ACTIVE);
-        company.ifPresent(c -> c.registerNewAppointment(appointerId.longValue(), appointeeId.longValue(), 
-                                                        approvedRole instanceof Manager ? "Manager" : "Owner"));
-        // TODO
-
-        // 5. Update the repository with the changes to both the appointee and appointer        
+        // Update the repository with the changes to both the appointee, appointer and company        
         userRepository.updateMember(appointee);
         userRepository.updateMember(appointer);
+        companyRepository.save(company);
 
-        // 7. Return a success message or status
+        // Return a success message or status
         return true;
     }
 
@@ -124,48 +112,29 @@ public class MembershipService {
      */
     public boolean rejectAssignment(String sessionToken, Long companyId) throws Exception {
         
-        // 1. Authenticate session
+        //  Authenticate session
         if (!tokenService.validateToken(sessionToken)) {
             throw new Exception("Session authentication failed.");
         }
         
-        // 2. Extract user ID from token and retrieve member information
+        // Extract user ID from token and retrieve member information
         Long memberId = tokenService.extractUserId(sessionToken);
-        Member member = userRepository.getMemberById(memberId);
-        CompanyRole rejectedRole = member.getRoleInCompany(companyId);
+        Member appointee = userRepository.getMemberById(memberId);
         
-        // 3. Extract the appointer's ID from the pending role and retrieve their information
-        // TODO: check appointerId is not null, if null throw exception
-        Long appointerId = domainService.getAppointerId(rejectedRole);
+        // Extract user ID from token and retrieve member information
+        Long appointerId = domainService.getAppointerId(appointee, companyId);
         if (appointerId == null) {
             throw new Exception("The appointer ID could not be determined.");
         }
         
         Member appointer = userRepository.getMemberById(appointerId);
-        CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
-        // TODO: move logic buisness to domain service
-        // 3. Validate the rejection action using the domain service
-        domainService.validateRejectAssignment(rejectedRole);
-        // 4. Update the appointer's list of appointees to remove the rejected member and update the repository
-        if (appointerRole instanceof Owner) {
-            ((Owner) appointerRole).deleteAppointee(memberId);
-            userRepository.updateMember(appointer);
-        }
-        else if (appointerRole instanceof Founder) {
-            ((Founder) appointerRole).deleteAppointee(memberId);
-            userRepository.updateMember(appointer);
-        }
-        else {
-            throw new Exception("Appointer's role is not valid for this operation.");
-        }
-        // 5. Remove the pending role from the member and update the repository
-        member.deleteRoleInCompany(companyId);
-        // TODO
+        domainService.RejectAssignment(appointer, appointee, companyId);
 
-        // Update the repository with the changes to the member
-        userRepository.updateMember(member);
-        
+        // Update the repository with the changes to the appointee, appointer
+        userRepository.updateMember(appointee);
+        userRepository.updateMember(appointer);
+
         // 6. Return a success message or status
         return true;
     }

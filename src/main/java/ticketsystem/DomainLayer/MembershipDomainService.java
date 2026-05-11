@@ -1,10 +1,10 @@
 package ticketsystem.DomainLayer;
+import java.util.Set;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-
-import java.util.Set;
-
-import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Manager;
@@ -12,7 +12,14 @@ import ticketsystem.DomainLayer.user.Member;
 
 public class MembershipDomainService {
 
-    public boolean validatePermission(Member member, Long companyId, Permission permission) {
+    private final IUserRepository userRepository;
+
+    public MembershipDomainService(IUserRepository userRepository) {
+            this.userRepository = userRepository;
+    }
+
+    public boolean validatePermission(Long memberId, Long companyId, Permission permission) {
+        Member member = userRepository.getMemberById(memberId);
         CompanyRole memberRole = member.getRoleInCompany(companyId);
 
         // 1. Check existence
@@ -27,6 +34,29 @@ public class MembershipDomainService {
         
         // 3. Polymorphic permission evaluation
         return memberRole.hasPermission(permission); 
+    }
+
+    // This method abstracts the logic of determining the appointer ID based on the role type  
+    public Long getAppointerId(Member appointee, Long companyId) {
+        CompanyRole role = appointee.getRoleInCompany(companyId);
+
+        if (role == null) {
+            return null; // No role found, cannot determine appointer
+        }
+
+        if (role instanceof Manager) {
+            return ((Manager) role).getAppointedByMemberId();
+        }
+
+        else if (role instanceof Owner) {
+            return ((Owner) role).getAppointedByMemberId();
+        }
+
+        else if (role instanceof Founder) {
+            return null; // Founders not have an appointer
+        }
+
+        return null; // Default case
     }
 
     public void ManagerAssignmentRequest(Member appointer, Member targetMember, Long companyId, Set<Permission> permissions) throws Exception {
@@ -57,7 +87,23 @@ public class MembershipDomainService {
         targetMember.addManagerRole(companyId, appointer.getId(), permissions);
     }
 
-    public void ApproveAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
+    public void addNewAppointeeToAppointer(CompanyRole appointerRole, Long appointeeId) throws Exception {
+        if (appointerRole instanceof Owner) {
+            ((Owner) appointerRole).addAppointee(appointeeId);
+        }
+
+        else if (appointerRole instanceof Founder) {
+            ((Founder) appointerRole).addAppointee(appointeeId);
+        }
+
+        else {
+            // This prevents data corruption if a Manager somehow tries to approve
+            throw new Exception("Managers cannot appoint others.");
+        }
+    }
+
+    public void ApproveAssignment(Member appointer, Member appointee, Company company) throws Exception {
+        Long companyId = company.getId();
         CompanyRole approvedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
@@ -81,30 +127,29 @@ public class MembershipDomainService {
             throw new Exception("The user who appointed you is no longer active. Invitation is void.");
         }
         
-        // 5. Update the appointer's list of appointees if applicable
+        // 5. If all validations pass, activate the pending role and update the appointer's list of appointees and the company's records
+        approvedRole.setStatus(RoleStatus.ACTIVE);
         addNewAppointeeToAppointer(appointerRole, appointee.getId());
-
-        // 6. If validation passes, the service will handle the activation of the pending role
+        company.registerNewAppointment(appointer.getId(), appointee.getId(), approvedRole instanceof Manager ? "Manager" : "Owner");
     }
 
-    private void addNewAppointeeToAppointer(CompanyRole appointerRole, Long appointeeId) throws Exception {
-        
+    public void deleteAppointeeFromAppointer(CompanyRole appointerRole, Long appointeeId) throws Exception {
         if (appointerRole instanceof Owner) {
-            ((Owner) appointerRole).addAppointee(appointeeId);
+            ((Owner) appointerRole).deleteAppointee(appointeeId);
         }
 
         else if (appointerRole instanceof Founder) {
-            ((Founder) appointerRole).addAppointee(appointeeId);
+            ((Founder) appointerRole).deleteAppointee(appointeeId);
         }
 
         else {
-            // This prevents data corruption if a Manager somehow tries to approve
-            throw new Exception("Managers cannot appoint others.");
+            throw new Exception("Appointer's role is not valid for this operation.");
         }
     }
 
-    public void RejectAssignment(Long companyId, Member member) throws Exception {
-        CompanyRole rejectedRole = member.getRoleInCompany(companyId);
+    public void RejectAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
+        CompanyRole rejectedRole = appointee.getRoleInCompany(companyId);
+        CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
         // 1. Validate the rejected role
         if (rejectedRole == null) {
@@ -116,26 +161,9 @@ public class MembershipDomainService {
             throw new Exception("This role is already active and cannot be rejected.");
         }
 
-        // 3. If validation passes, the service will handle the removal of the pending role
+        // 3. If validation passes, remove the pending role and update the appointer's list of appointees
+        deleteAppointeeFromAppointer(appointerRole, appointee.getId());
+        appointee.deleteRoleInCompany(companyId);
     }
-
-    // This method abstracts the logic of determining the appointer ID based on the role type  
-    public Long getAppointerId(CompanyRole role) {
-
-        if (role instanceof Manager) {
-            return ((Manager) role).getAppointedByMemberId();
-        }
-
-        else if (role instanceof Owner) {
-            return ((Owner) role).getAppointedByMemberId();
-        }
-
-        else if (role instanceof Founder) {
-            return null; // Founders not have an appointer
-        }
-
-        return null; // Default case
-    }
-
 
 }
