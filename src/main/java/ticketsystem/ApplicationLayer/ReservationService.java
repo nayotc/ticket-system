@@ -109,12 +109,11 @@ public class ReservationService {
     }
 
     // UC 2.8
-    private boolean submitActiveOrderForCheckout(String token, Long eventId) {
+    private void submitActiveOrderForCheckout(String token, Long eventId) {
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
             reservation.submitActiveOrderForCheckout(order, event);
             saveAll(order, event);
-            return true;
     }
 
     public boolean enterUserDetails(String name, String Email){
