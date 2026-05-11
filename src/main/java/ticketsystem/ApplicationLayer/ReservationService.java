@@ -13,11 +13,13 @@ import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
+import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
 public class ReservationService {
@@ -26,7 +28,7 @@ public class ReservationService {
     private final IEventRepository eventRepository;
     private final TokenService tokenService;
     private final IPaymentService paymentService;
-  // private final ISecureBarcode secureBarcode;
+    private final ISecureBarcode secureBarcode;
     private final Reservation reservation;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
 
@@ -36,13 +38,13 @@ public class ReservationService {
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
-            TokenService tokenService,IPaymentService paymentService) {
+            TokenService tokenService,IPaymentService paymentService, ISecureBarcode secureBarcode) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.paymentService=paymentService;
+        this.secureBarcode=secureBarcode;
         this.reservation=new Reservation();
-        
 
     }
 
@@ -150,13 +152,11 @@ public class ReservationService {
             reservation.submitActiveOrderForCheckout(order, event);
             saveAll(order, event);
     }
-
+    //for testing purposes
     public boolean enterUserDetails(String name, String Email){
         return true;
     }
-
-
-    //
+   
     public boolean checkout(String token, Long eventId, PaymentDetails details) {
         expireOldOrders();
         try {    
@@ -164,17 +164,20 @@ public class ReservationService {
             submitActiveOrderForCheckout(token, eventId);
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
-            BigDecimal amount = reservation.calculateTotalPrice(order, event);
-            OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId() );
-            
+            BigDecimal amount = reservation.calculateTotalPrice(order, event);           
 
             //pay
             boolean paymentResult=paymentService.pay(amount,details);
             if (!paymentResult) {
+                order.paymentFailed();
                 throw new IllegalStateException("Payment failed");
             }
-            
             reservation.completeCheckout(order, event);
+            OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId() );
+            for(PurchaseDTO purchesDTO : orderDTO.getTickets()) {
+                String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(),order.getEventId(),order.getUserId());
+                purchesDTO.setSecureBarcode(barcode);
+            }
             saveAll(order, event);
             notifyListeners(orderDTO);
             return true;

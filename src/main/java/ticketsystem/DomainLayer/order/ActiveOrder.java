@@ -51,7 +51,7 @@ public class ActiveOrder {
     }
 
     public List<Ticket> getTickets() {
-        return this.tickets;
+        return List.copyOf(tickets);
     }
 
     public Long getOrderId() {
@@ -144,7 +144,7 @@ public class ActiveOrder {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
-            ticketDTOs.add(new PurchaseDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(),"" ));
+            ticketDTOs.add(new PurchaseDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(),"","" ));
         }
         return new OrderDTO(0,ticketDTOs,eventName,location ,userId,companyId);
 

@@ -8,15 +8,17 @@ public class PurchasedTicket {
     private int chair;
     private double price;
     private TicketStatus status;
+    private String secureBarcode;
 
     public PurchasedTicket() {
     }
-    public PurchasedTicket(int ticketId, int eventId, int row, int chair, double price) {
+    public PurchasedTicket(int ticketId, int eventId, int row, int chair, double price, String secureBarcode) {
         this.ticketId = ticketId;
         this.eventId = eventId;
         this.row = row;
         this.chair = chair;
         this.price = price;
+        this.secureBarcode = secureBarcode;
         this.status = TicketStatus.ACTIVE;
     }
 
@@ -66,4 +68,9 @@ public class PurchasedTicket {
     public void setStatus(TicketStatus status) {
         this.status = status;
     }
+    
+    public String getSecureBarcode() {
+        return this.secureBarcode;
+    }
+    
 }
