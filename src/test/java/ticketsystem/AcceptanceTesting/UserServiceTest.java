@@ -3,6 +3,8 @@ package ticketsystem.AcceptanceTesting;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -115,7 +117,8 @@ public class UserServiceTest {
         // Assert: check that the login attempt fails due to incorrect username
         assertNull(loginToken, "Login token should be null for wrong username");
         assertFalse(tokenService.isActiveSession(loginToken), "Login token should not be active for wrong username");
-        assertTrue(tokenService.isActiveSession(sessionToken1), "Original session token should still be active after failed login");
+        assertTrue(tokenService.isActiveSession(sessionToken1),
+                "Original session token should still be active after failed login");
     }
 
     @Test
@@ -157,40 +160,45 @@ public class UserServiceTest {
         // Assert: check that the login attempt fails due to incorrect password
         assertNull(loginToken, "Login token should be null for wrong password");
     }
+
     @Test
     void TestUpdateMemberDetails_Successful_Acceptance() {
         // Arrange: simulate a guest visiting the system and signing up
         String sessionToken = userService.visitSystem();
         userService.signUp(sessionToken, "userToUpdate", "oldPassword");
-        String loginToken= userService.logIn(sessionToken, "userToUpdate", "oldPassword");
+        String loginToken = userService.login(sessionToken, "userToUpdate", "oldPassword");
 
         // Act: update member details with correct current password
         boolean result = userService.UpdateMemberDetails(loginToken, "oldPassword", "userToUpdate", "updatedUser",
                 "newPassword");
 
-        // Assert: check that the update was successful and the member details were updated
+        // Assert: check that the update was successful and the member details were
+        // updated
         assertTrue(result, "Updating member details should succeed with correct current password");
     }
+
     @Test
     void TestUpdateMemberDetails_WrongUsername_Acceptance() {
         // Arrange: simulate a guest visiting the system and signing up
         String sessionToken = userService.visitSystem();
         userService.signUp(sessionToken, "userToUpdate", "oldPassword");
-        String loginToken= userService.logIn(sessionToken, "userToUpdate", "oldPassword");
+        String loginToken = userService.login(sessionToken, "userToUpdate", "oldPassword");
 
         // Act: attempt to update member details with incorrect current username
         boolean result = userService.UpdateMemberDetails(loginToken, "oldPassword", "WrongUserToUpdate", "updatedUser",
                 "newPassword");
 
-        // Assert: check that the update was unsuccessful due to incorrect current username
+        // Assert: check that the update was unsuccessful due to incorrect current
+        // username
         assertFalse(result, "Updating member details should fail with incorrect current username");
     }
+
     @Test
     void TestUpdateMemberDetails_WrongPassword_Acceptance() {
         // Arrange: simulate a guest visiting the system and signing up
         String sessionToken = userService.visitSystem();
         userService.signUp(sessionToken, "userToUpdate", "oldPassword");
-        String loginToken= userService.logIn(sessionToken, "userToUpdate", "oldPassword");
+        String loginToken = userService.login(sessionToken, "userToUpdate", "oldPassword");
 
         // Act: attempt to update member details with incorrect current password
         boolean result = userService.UpdateMemberDetails(loginToken, "wrongPassword", "userToUpdate", "updatedUser",
@@ -199,30 +207,32 @@ public class UserServiceTest {
         // Assert: check that the update fails due to incorrect current password
         assertFalse(result, "Updating member details should fail with incorrect current password");
     }
+
     @Test
     void TestUpdateMemberDetails_invalidToken_Acceptance() {
         // Arrange: simulate a guest visiting the system and signing up
         String sessionToken = userService.visitSystem();
         userService.signUp(sessionToken, "userToUpdate", "oldPassword");
-        String loginToken= userService.logIn(sessionToken, "userToUpdate", "oldPassword");
+        String loginToken = userService.login(sessionToken, "userToUpdate", "oldPassword");
 
-        // Act: attempt to update member details with a token that does not belong to the user
-        boolean result = userService.UpdateMemberDetails(sessionToken, "oldPassword", "userToUpdate", "updatedUser",
-                "newPassword");
-
-        // Assert: check that the update fails due to unauthorized token
-        assertFalse(result, "Updating member details should fail with an unauthorized token");
+        // Act: attempt to update member details with a token that does not belong to
+        // the user
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.UpdateMemberDetails("invalid-token", "oldPassword", "userToUpdate", "updatedUser",
+                    "newPassword");
+        }, "Updating member details should throw an exception for an invalid token");
     }
+
     @Test
     void TestUpdateMembersDetails_UsernameTaken_Acceptance() {
         // Arrange: simulate a guest visiting the system and signing up two users
         String sessionToken1 = userService.visitSystem();
         userService.signUp(sessionToken1, "user1", "password1");
-        String loginToken1= userService.logIn(sessionToken1, "user1", "password1");
+        String loginToken1 = userService.login(sessionToken1, "user1", "password1");
 
         String sessionToken2 = userService.visitSystem();
         userService.signUp(sessionToken2, "user2", "password2");
-        String loginToken2= userService.logIn(sessionToken2, "user2", "password2");
+        String loginToken2 = userService.login(sessionToken2, "user2", "password2");
 
         // Act: attempt to update user1's username to user2's username
         boolean result = userService.UpdateMemberDetails(loginToken1, "password1", "user1", "user2",
@@ -231,24 +241,25 @@ public class UserServiceTest {
         // Assert: check that the update fails due to the new username being taken
         assertFalse(result, "Updating member details should fail when the new username is already taken");
     }
+
     @Test
     void TestUpdateMemberDetails_DifferentToken_Acceptance() {
         // Arrange: simulate a guest visiting the system and signing up two users
         String sessionToken1 = userService.visitSystem();
         userService.signUp(sessionToken1, "user1", "password1");
-        String loginToken1= userService.logIn(sessionToken1, "user1", "password1");
+        String loginToken1 = userService.login(sessionToken1, "user1", "password1");
 
         String sessionToken2 = userService.visitSystem();
         userService.signUp(sessionToken2, "user2", "password2");
-        String loginToken2= userService.logIn(sessionToken2, "user2", "password2");
+        String loginToken2 = userService.login(sessionToken2, "user2", "password2");
 
         // Act: attempt to update user1's username using user2's token
         boolean result = userService.UpdateMemberDetails(loginToken2, "password1", "user1", "newUser1",
                 "newPassword1");
 
-        // Assert: check that the update fails due to the token not belonging to the user being updated
+        // Assert: check that the update fails due to the token not belonging to the
+        // user being updated
         assertFalse(result, "Updating member details should fail when the token does not belong to the user");
     }
-
 
 }
