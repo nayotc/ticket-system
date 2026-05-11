@@ -110,7 +110,7 @@ public class ReservationService {
     }
 
     // UC 2.8
-    public boolean submitActiveOrderForCheckout(String token, Long eventId) {
+    private boolean submitActiveOrderForCheckout(String token, Long eventId) {
         try {
             validateToken(token);
             ActiveOrder order = findActiveOrder(token, eventId);
@@ -138,7 +138,7 @@ public class ReservationService {
     //
     public boolean checkout(String token, Long eventId, PaymentDetails details) {
         try {
-            validateToken(token);
+            submitActiveOrderForCheckout(token, eventId);
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
             double amount = reservation.calculateTotalPrice(order, event);
@@ -213,7 +213,7 @@ public class ReservationService {
     
 
     private void saveAll( ActiveOrder order, Event event) {
-        if(order.getStatus()==ActiveOrder.OrderStatus.CANCELLED) {
+        if(order.getStatus()==ActiveOrder.OrderStatus.CANCELLED|| order.getStatus()==ActiveOrder.OrderStatus.COMPLETED) {
             orderRepository.deleteOrder(order.getOrderId());
         }
         else{
