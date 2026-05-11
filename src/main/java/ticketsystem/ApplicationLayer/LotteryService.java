@@ -21,8 +21,10 @@ public class LotteryService {
     }
 
     // Method to create a new lottery
-    public long addLottery(long eventId, int winnersNumber) {
+    public long addLottery(String token, long eventId, int winnersNumber) {
         try {
+            //need to validate that this event id id exists in the system and premission of the member to create lottery for this event
+            tokenService.validateToken(token);
             if (winnersNumber <= 0) {
                 throw new IllegalArgumentException("Number of winners must be greater than zero.");
             }
@@ -39,8 +41,12 @@ public class LotteryService {
     // Method to register a member for a lottery
     public boolean registerMemberToLottery(String token, long lotteryId) {
         try{        
+            tokenService.validateToken(token);
             long memberId = tokenService.extractUserId(token);
             Lottery lottery =lotteryRepository.findById(lotteryId);
+            if (lottery == null) {
+                throw new IllegalArgumentException("Lottery with ID " + lotteryId + " not found.");
+            }
             lottery.registerMember(memberId);
             lotteryRepository.update(lottery);
             //notificationsService.notifyUser(token, "You have successfully registered for the lottery!");
@@ -52,9 +58,14 @@ public class LotteryService {
     }
 
     // Method to close lottery registration
-    public boolean closeLotteryRegistration(long lotteryId) {
+    public boolean closeLotteryRegistration(String token, long lotteryId) {
         try{
+            tokenService.validateToken(token);
+            //need to validate that the user has permission to close the lottery registration
             Lottery lottery = lotteryRepository.findById(lotteryId);
+            if (lottery == null) {
+                throw new IllegalArgumentException("Lottery with ID " + lotteryId + " not found.");
+            }
             lottery.setStatus(LotteryStatus.CLOSED);
             lotteryRepository.update(lottery);
             return true;
@@ -65,11 +76,19 @@ public class LotteryService {
     }
 
     // Method to conduct the lottery draw and select winners
-    public boolean conductLotteryDraw(long lotteryId, int numberOfWinners) {
+    public boolean conductLotteryDraw(String token, long lotteryId) {
         try{
+            tokenService.validateToken(token);
+            //need to validate that the user has permission to conduct the lottery draw 
             Lottery lottery = lotteryRepository.findById(lotteryId);
+            if (lottery == null) {
+                throw new IllegalArgumentException("Lottery with ID " + lotteryId + " not found.");
+            }
+            if(lottery.getStatus() != LotteryStatus.CLOSED) {
+                throw new IllegalArgumentException("Lottery with ID " + lotteryId + " is not closed yet. Please close the lottery registration before conducting the draw.");
+            }
             List<Long> allParticipants = lottery.getRegisteredMemberIds();
-            List<Long> winningMemberIds = selectRandomWinners(allParticipants, numberOfWinners);
+            List<Long> winningMemberIds = selectRandomWinners(allParticipants, lottery.getWinnersNumber());
 
         for (long memberId : allParticipants) {
                 if (winningMemberIds.contains(memberId)) {

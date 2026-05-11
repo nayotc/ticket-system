@@ -42,7 +42,7 @@ public class LotteryServiceTest {
         String user1Token = tokenService.generateNewMemberToken(user1Id);
 
         long eventId = 100L;
-        lotteryService.addLottery(eventId, 1); // הגרלה על מקום 1 בלבד
+        lotteryService.addLottery(user1Token, eventId, 1); // הגרלה על מקום 1 בלבד
         long lotteryId = 1L; 
 
         // --- 2. Action (requests to register) ---
@@ -55,7 +55,8 @@ public class LotteryServiceTest {
             "User1 should be in the participants list before the draw");
 
         // --- 4. Conduct Draw ---
-        lotteryService.conductLotteryDraw(lotteryId, 1);
+        lotteryService.closeLotteryRegistration(user1Token, lotteryId); 
+        lotteryService.conductLotteryDraw(user1Token, lotteryId);
 
         // --- 5. Verify Selection (user1 is selected) ---
         Lottery lotteryAfterDraw = lotteryRepository.findById(lotteryId);
@@ -74,7 +75,7 @@ public class LotteryServiceTest {
         String user2Token = tokenService.generateNewMemberToken(user2Id);
 
         long eventId = 200L;
-        lotteryService.addLottery(eventId, 1); // רק מקום אחד לזכייה
+        lotteryService.addLottery(user1Token, eventId, 1); // רק מקום אחד לזכייה
         long lotteryId = 1L;
 
         // --- 2. Action (both users register) ---
@@ -82,7 +83,8 @@ public class LotteryServiceTest {
         lotteryService.registerMemberToLottery(user2Token, lotteryId);
 
         // --- 3. Conduct Draw ---
-        lotteryService.conductLotteryDraw(lotteryId, 1);
+        lotteryService.closeLotteryRegistration(user1Token, lotteryId);
+        lotteryService.conductLotteryDraw(user1Token, lotteryId);
 
         // --- 4. Verify Not Selected status ---
         Lottery lotteryAfterDraw = lotteryRepository.findById(lotteryId);
@@ -102,7 +104,9 @@ public class LotteryServiceTest {
     void GivenValidEventAndWinners_WhenAddLottery_ThenRepositorySavesLottery() {
         long eventId = 100L;
         int winners = 5;
-        lotteryService.addLottery(eventId, winners);
+         long user1Id = 1L;
+        String user1Token = tokenService.generateNewMemberToken(user1Id);
+        lotteryService.addLottery(user1Token, eventId, winners);
 
         Lottery savedLottery = lotteryRepository.findById(1L);
         assertNotNull(savedLottery, "Lottery should be saved in the repository");
@@ -112,11 +116,13 @@ public class LotteryServiceTest {
 
     @Test
     void GivenInvalidWinnersCount_WhenAddLottery_ThenThrowsException() {
+        long user1Id = 1L;
+        String user1Token = tokenService.generateNewMemberToken(user1Id);
         assertThrows(IllegalArgumentException.class, () -> {
-            lotteryService.addLottery(100L, 0);
+            lotteryService.addLottery(user1Token, 100L, 0);
         });
         
-        // כיוון שהריפוסיטורי אופס, ID 1 באמת לא אמור להיות קיים
+        
         Lottery notSavedLottery = lotteryRepository.findById(1L);
         assertNull(notSavedLottery, "Lottery should not be saved due to exception");
     }
