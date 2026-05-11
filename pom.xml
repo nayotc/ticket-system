@@ -81,6 +81,12 @@
             <artifactId>stripe-java</artifactId>
             <version>24.16.0</version>
         </dependency>
+        <!-- Logging -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.4.14</version> 
+        </dependency>
     </dependencies>
 
     <build>

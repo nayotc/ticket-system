@@ -40,13 +40,30 @@ public class UserService {
         userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
         return true;
     }
-
-    public void logIn(String sessionToken, String username, String password) {
-
+    // 3. Login: Allows a guest to log in as a member by providing their username and password, and receive a new session token.
+    public String login(String sessionToken, String username, String password) {
+        if (!tokenService.validateToken(sessionToken)||!tokenService.isGuestToken(sessionToken)) { // Only guests can log in, if the token is not a guest token, it means the user is already logged in as a member
+            return null;
+        }
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            return null;
+        }
+        String hashedPassword = userRepository.getHashedPasswordByUsername(username); // Get the hashed password for the given username from the repository, null if the username does not exist
+        if (hashedPassword == null) {
+            return null;
+        }
+        if (!passwordService.verifyPassword(password, hashedPassword)) {
+            System.out.println("User Details are incorrect");
+            return null;
+        }
+        Member member = userRepository.getMemberByUsername(username);
+        //TODO: implement add Guest's active order to Member's active order if exists
+        tokenService.removeActiveSession(sessionToken); // Remove the guest session token since the user is now logged in as a member, and we will create a new session token for the member
+        return tokenService.addActiveSession(member);
     }
 
     public void exit(String sessionToken) {
-
+        
     }
 
 }

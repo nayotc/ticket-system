@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 
@@ -78,5 +79,27 @@ public class CompanyRepository implements ICompanyRepository {
                 .filter(c -> c.getOwners().contains(ownerId) || c.getManagers().contains(managerId))
                 .map(Company::new) 
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Long> getCompanyIdsByCriteria(SearchCriteria criteria) {
+        if (criteria == null) {
+            throw new IllegalArgumentException("Search criteria cannot be null");
+        }
+        Double requestedRate = criteria.getCompanyRate();
+        return companies.values().stream()
+                .filter(company -> company != null)
+                .filter(company -> company.isActive())
+                .filter(company -> matchesCompanyRate(company, requestedRate))
+                .map(Company::getId)
+                .collect(Collectors.toList());
+    }
+
+    private boolean matchesCompanyRate(Company company, Double requestedRate) {
+        if (requestedRate == null) {
+            return true; 
+        }
+
+        return company.getRate() >= requestedRate;
     }
 }
