@@ -17,7 +17,14 @@ public class CompanyTree {
         this.roles = new HashMap<>();
         this.roles.put(founderId, "FOUNDER"); 
     }
-
+    public CompanyTree(CompanyTree other) {
+    this.founderId = other.founderId;
+    this.hierarchy = new HashMap<>();
+    for (Map.Entry<Long, List<Long>> entry : other.hierarchy.entrySet()) {
+        this.hierarchy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+    }
+    this.roles = new HashMap<>(other.roles);
+}
     public void addAppointment(long appointerId, long appointeeId, String role) {
         hierarchy.computeIfAbsent(appointerId, k -> new ArrayList<>()).add(appointeeId);
         hierarchy.putIfAbsent(appointeeId, new ArrayList<>());
@@ -91,4 +98,8 @@ public class CompanyTree {
             }
         }
     }
+    public void clearAllAppointments() {
+    hierarchy.clear();
+    roles.clear();
+}
 }

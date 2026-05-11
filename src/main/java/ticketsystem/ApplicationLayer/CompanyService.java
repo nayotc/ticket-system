@@ -168,7 +168,17 @@ private boolean canViewCompanyDetails(String sessionToken, Company company) thro
     if (!canViewCompanyDetails(sessionToken, company)) {
         throw new Exception("Error: User does not have permission to view this company.");
     }
+        return new CompanyDTO(company);
+}
 
+//UC 6.1 close Production Company By System Admin
+    public CompanyDTO closeProductionCompanyBySystemAdmin(long companyId, long adminId) throws Exception {
+    Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new Exception("Company not found."));
+
+    company.closeBySystemAdmin(adminId);
+
+    companyRepository.save(company);
     return new CompanyDTO(company);
 }
 }
