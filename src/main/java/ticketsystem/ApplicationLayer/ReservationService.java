@@ -176,7 +176,7 @@ public class ReservationService {
                 eventId
         );
 
-        orderRepository.updateOrder(order);
+        orderRepository.addOrder(order);
     }
 
         return order;
@@ -200,11 +200,7 @@ public class ReservationService {
                     eventId
             );
         }
-        if (order == null) {
-            throw new IllegalArgumentException(
-                    "Active order was expired or does not exist for this event"
-            );
-        }
+
         return order;
     }
     

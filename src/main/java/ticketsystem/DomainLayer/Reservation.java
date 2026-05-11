@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
@@ -13,8 +14,7 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
 public class Reservation {
-    private static Long ticketIdCounter = 0L;
-
+    private final AtomicLong ticketIdCounter = new AtomicLong(0);
     public Reservation() {
 
     }
@@ -73,8 +73,8 @@ public class Reservation {
     for (Ticket ticket : new ArrayList<>(order.getTickets())) {
         releaseTicket(ticket, event);
         order.deleteTicket(ticket.getTicketId());
-        order.cancelOrder();
         }
+        order.cancelOrder();
     }
 
 
@@ -89,7 +89,7 @@ public class Reservation {
 }
 
     public Long generateTicketId() {
-        return ++ticketIdCounter;
+        return ticketIdCounter.incrementAndGet();
     }
 
 }
