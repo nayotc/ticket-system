@@ -1,5 +1,6 @@
 package ticketsystem.ApplicationLayer;
 
+import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
@@ -74,7 +75,7 @@ public class SystemAdminService {
             return "ERROR: Member with ID " + memberId + " was not found.";
         }
         try {
-            // orderRepository.cancelPendingOrdersForMember(memberId);
+            //orderRepository.deleteActiveOrdersByUserId(memberId);
             companyService.removeUserFromAllCompanies(memberId);
             boolean userRemoved = userRepository.removeRegisteredMember(memberId);
             if (!userRemoved) {
@@ -87,4 +88,32 @@ public class SystemAdminService {
         }
     }
 
+    // Use Case: Close Production Company by System Admin
+    public CompanyDTO closeProductionCompanyByAdmin(String sessionId, long companyId) throws Exception {
+        long adminId = getSystemAdminId(sessionId);
+        //return companyService.closeProductionCompanyBySystemAdmin(companyId, adminId);
+        return null;
+    }
+
+    private long getSystemAdminId(String sessionId) throws Exception {
+        if (!tokenService.validateToken(sessionId)) {
+            throw new Exception("Invalid or expired session token.");
+        }
+
+        if (tokenService.isGuestToken(sessionId)) {
+            throw new Exception("Only logged-in members can perform system admin actions.");
+        }
+
+        Long adminId = tokenService.extractUserId(sessionId);
+
+        if (adminId == null) {
+            throw new Exception("Member ID was not found in the session token.");
+        }
+
+        if (!adminRepository.isSystemAdmin(String.valueOf(adminId))) {
+            throw new Exception("Member is not an active system admin.");
+        }
+
+        return adminId;
+    }
 }

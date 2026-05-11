@@ -11,4 +11,6 @@ public interface IEventRepository {
     Event getEventById(long eventId);
     void updateEvent(Event event);
     void deleteEvent(long eventId);
+    List<Event> getEventsByCompanyId(long companyId);
+    List<Event> getAllEvents();
 }
