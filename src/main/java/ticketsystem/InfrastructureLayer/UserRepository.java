@@ -77,7 +77,7 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
         if (!usernameToIdMap.containsKey(username)) {
             return false; // No member with the given username exists
         }
-        if (usernameToIdMap.containsKey(newUsername)) {
+        if (!username.equals(newUsername) && usernameToIdMap.containsKey(newUsername)) {
             return false; // New username already exists, cannot update
         }
         long id = usernameToIdMap.get(username);
