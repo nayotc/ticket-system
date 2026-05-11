@@ -1,6 +1,5 @@
 package ticketsystem.ApplicationLayer;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
@@ -25,7 +24,7 @@ public class HistoryService implements OrderCompletedListener {
     public void onOrderCompleted(OrderDTO order) {
         try{
             //we don't need to validate the token here because this method is called after the order is completed, and we assume that the order completion process has already validated the token. However, if you want to add an extra layer of security, you can validate the token here as well before processing the order details.
-            int newPurchaseId = historyRepository.generateNextId();
+            long newPurchaseId = historyRepository.generateNextId();
             order.setPurchaseId(newPurchaseId);
             ObjectMapper objectMapper = new ObjectMapper();
             Purchase purchase = objectMapper.convertValue(order, Purchase.class);

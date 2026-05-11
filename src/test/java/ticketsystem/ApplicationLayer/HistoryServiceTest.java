@@ -67,7 +67,7 @@ public class HistoryServiceTest {
         
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 20L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L);
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L);
         
         historyService.onOrderCompleted(orderDto);
 
@@ -123,7 +123,7 @@ public class HistoryServiceTest {
         
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 20L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", userId, 5L);
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L);
 
         // --- Act ---
         historyService.onOrderCompleted(orderDto);

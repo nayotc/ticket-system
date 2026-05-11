@@ -5,20 +5,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 
 public class HistoryRepository implements IHistoryRepository {
-    private AtomicInteger counter;
+    private AtomicLong counter;
     private static HistoryRepository instance;
-    private Map<Integer, Purchase> allPurchases;
+    private Map<Long, Purchase> allPurchases;
     private Map<Long, List<Purchase>> purchasesByMemberId;
-    private Map<Integer, List<Purchase>> purchasesByCompanyId;
+    private Map<Long, List<Purchase>> purchasesByCompanyId;
 
     private HistoryRepository() {
-        this.counter = new AtomicInteger(1);
+        this.counter = new AtomicLong(1);
         this.allPurchases = new ConcurrentHashMap<>();
         this.purchasesByMemberId = new ConcurrentHashMap<>();
         this.purchasesByCompanyId = new ConcurrentHashMap<>();
@@ -41,7 +41,7 @@ public class HistoryRepository implements IHistoryRepository {
     }
 
     @Override
-    public Purchase findPurchaseById(int purchaseId) {
+    public Purchase findPurchaseById(long purchaseId) {
         return allPurchases.get(purchaseId);
     }
 
@@ -52,7 +52,7 @@ public class HistoryRepository implements IHistoryRepository {
     }
 
     @Override
-    public List<Purchase> getPurchasesByCompanyId(int companyId) {
+    public List<Purchase> getPurchasesByCompanyId(long companyId) {
         List<Purchase> purchases = purchasesByCompanyId.getOrDefault(companyId, new ArrayList<>());
         return new ArrayList<>(purchases);
     }
@@ -63,7 +63,7 @@ public class HistoryRepository implements IHistoryRepository {
     }
     
     @Override
-    public int generateNextId() {
+    public long generateNextId() {
         return counter.getAndIncrement(); 
     }
 }

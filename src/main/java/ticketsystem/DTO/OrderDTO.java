@@ -4,19 +4,19 @@ import java.util.List;
 
 public class OrderDTO {
     
-    private int purchaseId;
+    private Long purchaseId;
     private List<PurchaseDTO> tickets;
     private String eventName;
     private String location;
-    private long memberId;
+    private Long memberId;
     private Long companyId;
 
     //for json 
     public OrderDTO() {
     }
 
-    public OrderDTO(int purchaseId, List<PurchaseDTO> tickets, String eventName, 
-                    String location, long memberId, Long companyId) {
+    public OrderDTO(Long purchaseId, List<PurchaseDTO> tickets, String eventName, 
+                    String location, Long memberId, Long companyId) {
         this.purchaseId = purchaseId;
         this.tickets = tickets;
         this.eventName = eventName;
@@ -25,11 +25,11 @@ public class OrderDTO {
         this.companyId = companyId;
     }
 
-    public int getPurchaseId() {
+    public Long getPurchaseId() {
         return purchaseId;
     }
 
-    public void setPurchaseId(int purchaseId) {
+    public void setPurchaseId(Long purchaseId) {
         this.purchaseId = purchaseId;
     }
 
@@ -57,11 +57,11 @@ public class OrderDTO {
         this.location = location;
     }
 
-    public long getMemberId() {
+    public Long getMemberId() {
         return memberId;
     }
 
-    public void setMemberId(long memberId) {
+    public void setMemberId(Long memberId) {
         this.memberId = memberId;
     }
 
