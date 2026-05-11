@@ -19,7 +19,7 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
 
     @Override
     public synchronized boolean addRegisteredMember(long id, Member member, String hashedPassword) {
-        if(registeredMembersMap.containsKey(id) || usernameToIdMap.containsKey(member.getUserName())) {
+        if (registeredMembersMap.containsKey(id) || usernameToIdMap.containsKey(member.getUserName())) {
             return false; // ID or username already exists, cannot add member
         }
         registeredMembersMap.put(id, member);
@@ -71,15 +71,20 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
     public synchronized String getHashedPasswordByUsername(String username) {
         return hashedPasswordsMap.get(username);
     }
+
     @Override
     public synchronized boolean updateRegisteredMember(String username, String newUsername, String newHashedPassword) {
         if (!usernameToIdMap.containsKey(username)) {
             return false; // No member with the given username exists
         }
+        if (usernameToIdMap.containsKey(newUsername)) {
+            return false; // New username already exists, cannot update
+        }
         long id = usernameToIdMap.get(username);
         Member member = registeredMembersMap.get(id);
         if (member == null) {
-            return false; // No member with the given ID exists, this should not happen if the data is consistent
+            return false; // No member with the given ID exists, this should not happen if the data is
+                          // consistent
         }
         member.setUserName(newUsername);
         usernameToIdMap.remove(username);
@@ -89,6 +94,5 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
 
         return true;
     }
-        
 
 }
