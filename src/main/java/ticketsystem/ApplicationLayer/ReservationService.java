@@ -56,7 +56,7 @@ public class ReservationService {
 
         } catch (Exception e) {
             logWarning("selectSeatTicket failed: " + e.getMessage());
-            return false;
+            throw e;
         }
     }
     public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
@@ -73,7 +73,7 @@ public class ReservationService {
             return true;
         } catch (Exception e) {
             logWarning("selectStandingTicket failed: " + e.getMessage());
-            return false;
+            throw e;
         }
     }
 
@@ -94,31 +94,18 @@ public class ReservationService {
             return true;
 
         } catch (Exception e) {
-
             logWarning("removeTicketFromActiveOrder failed: " + e.getMessage());
-            return false;
+            throw e;
         }
     }
 
     // UC 2.8
     private boolean submitActiveOrderForCheckout(String token, Long eventId) {
-        try {
-            tokenService.validateToken(token);
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
             reservation.submitActiveOrderForCheckout(order, event);
             saveAll(order, event);
-            
             return true;
-           
-        } catch (Exception e) {
-            ActiveOrder order = findActiveOrder(token, eventId);
-                if(order != null && order.getStatus()==ActiveOrder.OrderStatus.CANCELLED) {
-                    orderRepository.deleteOrder(order.getOrderId());
-                }
-            logWarning("submitActiveOrderForCheckout failed: " + e.getMessage());
-            return false;
-        }
     }
 
     public boolean enterUserDetails(String name, String Email){
@@ -128,8 +115,9 @@ public class ReservationService {
 
     //
     public boolean checkout(String token, Long eventId, PaymentDetails details) {
-        try {
-            expireOldOrders();
+        expireOldOrders();
+        try {    
+            tokenService.validateToken(token);
             submitActiveOrderForCheckout(token, eventId);
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
@@ -232,6 +220,4 @@ public class ReservationService {
     private void logWarning(String msg) {
         /* ... */ }
 
-    private void logError(String msg) {
-        /* ... */ }
 }
