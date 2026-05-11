@@ -25,7 +25,7 @@ public class Member extends User {
         return this.userName;
     }
 
-    protected void setUserName(String userName) {
+    public void setUserName(String userName) {
         this.userName = userName;
     }
 
