@@ -2,6 +2,7 @@ package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,7 +11,9 @@ import org.junit.jupiter.api.Test;
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
@@ -31,6 +34,7 @@ public class SystemAdminServiceTest {
     private UserRepository userRepo = new UserRepository();
     private CompanyService companyService;
     private SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
+    ICompanyRepository companyRepo;
 
     @BeforeEach
     public void setUp() {
@@ -41,7 +45,7 @@ public class SystemAdminServiceTest {
         PaymentServiceProxy.wasConnectCalled = false;
         SecureBarcodeProxy.isConnectionSuccessful = true;
         userRepo = new UserRepository();
-        ICompanyRepository companyRepo = new CompanyRepository();
+        companyRepo = new CompanyRepository();
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         companyService = new CompanyService(companyRepo, tokenService);
@@ -152,6 +156,50 @@ public class SystemAdminServiceTest {
 
         User deletedUser = userRepo.getMemberById(memberId);
         assertTrue(deletedUser == null, "Member should be removed from UserRepository.");
+    }
+
+    // Use case: close production company by admin
+    @Test
+    void GivenActiveSystemAdminAndActiveCompany_WhenCloseProductionCompanyByAdmin_ThenCompanyIsClosedAndAppointmentsAreCancelled() throws Exception {
+        // Arrange
+        long adminId = 1L;
+        long founderId = 2L;
+        long ownerId = 3L;
+        long managerId = 4L;
+
+        // Create active admin session
+        String adminSessionId = tokenService.addActiveSession(new Member(adminId, "admin"));
+
+        // Add active system admin to admin repository
+        realAdminRepo.addAdmin(new SystemAdmin(String.valueOf(adminId), "admin", true));
+
+        // Create active company by founder
+        String founderSessionId = tokenService.addActiveSession(new Member(founderId, "founder"));
+        CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
+
+        // Add owner and manager appointments to the company
+        Company company = companyRepo.findById(createdCompany.getId())
+                .orElseThrow(() -> new Exception("Company was not created"));
+
+        company.registerNewAppointment(founderId, ownerId, "OWNER");
+        company.registerNewAppointment(founderId, managerId, "MANAGER");
+        companyRepo.save(company);
+
+        // Act
+        CompanyDTO closedCompany = systemAdminService.closeProductionCompanyByAdmin(
+                adminSessionId,
+                createdCompany.getId()
+        );
+
+        // Assert
+        assertNotNull(closedCompany);
+
+        Company savedCompany = companyRepo.findById(createdCompany.getId())
+                .orElseThrow(() -> new Exception("Company was not found after closing"));
+
+        assertFalse(savedCompany.isActive());
+        assertTrue(savedCompany.getOwners().isEmpty());
+        assertTrue(savedCompany.getManagers().isEmpty());
     }
 
 }

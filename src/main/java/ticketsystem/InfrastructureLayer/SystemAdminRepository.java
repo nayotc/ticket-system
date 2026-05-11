@@ -37,4 +37,10 @@ public class SystemAdminRepository implements ISystemAdminRepository {
     public int countAdmins() {
         return storage.size();
     }
+
+    @Override
+    public boolean isSystemAdmin(String adminId) {
+        SystemAdmin admin = storage.get(adminId);
+        return admin != null && admin.isActive();
+    }
 }
