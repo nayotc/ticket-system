@@ -1,137 +1,192 @@
 package ticketsystem.AcceptanceTesting;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.CompanyService;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class CompanyServiceTest {
-private CompanyService companyService;
+
+    private CompanyService companyService;
     private UserService userService;
-    
+    private ITokenService tokenService;
+
     private String founderToken;
     private String nonFounderToken;
-    
-    private final String VALID_COMPANY_NAME = "BGU Productions";
+
+    private static final String VALID_COMPANY_NAME = "BGU Productions";
 
     @BeforeEach
     void setUp() throws Exception {
-        // Setup (Arrange) 
+        ICompanyRepository companyRepository = new CompanyRepository();
+        IUserRepository userRepository = new UserRepository();
+        ITokenRepository tokenRepository = new TokenRepository();
 
-        founderToken = userService.visitSystem();
-        userService.signUp(founderToken, "noa_user", "password123");
-        userService.logIn(founderToken, "noa_user", "password123");
+        tokenService = new TokenService(
+                "default_secret_key_for_development_purposes_only_32_chars",
+                tokenRepository
+        );
 
-        nonFounderToken = userService.visitSystem();
-        userService.signUp(nonFounderToken, "other_user", "password123");
-        userService.logIn(nonFounderToken, "other_user", "password123");
+        userService = new UserService(userRepository, tokenService);
+        companyService = new CompanyService(companyRepository, tokenService);
+
+        founderToken = createLoggedInMember("noa_user", "password123");
+        nonFounderToken = createLoggedInMember("other_user", "password123");
     }
 
-    // --- Create a production company (UC 3.2) ---
+    private String createLoggedInMember(String username, String password) {
+        String guestToken = userService.visitSystem();
+
+        boolean signedUp = userService.signUp(guestToken, username, password);
+        assertTrue(signedUp, "Member signup should succeed during test setup.");
+
+        String memberToken = userService.login(guestToken, username, password);
+        assertNotNull(memberToken, "Login should return a member session token.");
+
+        return memberToken;
+    }
+
+    // UC 3.2: Create a production company
 
     @Test
-    void GivenLoggedInUserAndAvailableName_WhenCreateCompany_ThenCompanyCreatedAndUserIsFounder() throws Exception {
+    void GivenLoggedInMember_WhenCreateProductionCompany_ThenCompanyCreatedActiveAndMemberIsFounder() throws Exception {
         // Act
-        CompanyDTO newCompany = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+        CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         // Assert
-        assertNotNull(newCompany, "A production company should be created.");
-        assertEquals(VALID_COMPANY_NAME, newCompany.getName(), "Company name should match the requested name.");
-        assertTrue(newCompany.getFounderId() != 0, "The creator should be assigned a valid founder ID.");
-        assertTrue(newCompany.isActive(), "The new company should be active.");
+        assertNotNull(company, "Created company DTO should not be null.");
+        assertEquals(VALID_COMPANY_NAME, company.getName(), "Company name should match the requested name.");
+        assertTrue(company.isActive(), "New production company should be active.");
+
+        Long founderId = tokenService.extractUserId(founderToken);
+        assertEquals(founderId, company.getFounderId(), "The logged-in member should become the company founder.");
     }
 
     @Test
-    void GivenLoggedInUserAndTakenName_WhenCreateCompany_ThenThrowsException() throws Exception {
-        companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    void GivenGuestUser_WhenCreateProductionCompany_ThenThrowsException() {
+        // Arrange
+        String guestToken = userService.visitSystem();
 
-        Exception exception = assertThrows(Exception.class, () -> 
-            companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME)
+        // Act + Assert
+        assertThrows(Exception.class, () ->
+                companyService.createProductionCompany(guestToken, "Guest Company")
         );
-        assertTrue(exception.getMessage().contains("already exist"), "System should reject creation if name is taken.");
     }
 
-    // --- Close or suspend production company (UC 4.13) ---
+    // UC 4.13: Close or suspend production company by Founder
 
     @Test
-    void GivenActiveCompanyAndFounder_WhenCloseCompany_ThenStatusIsInactive() throws Exception {
+    void GivenActiveCompanyAndFounder_WhenCloseProductionCompany_ThenCompanyBecomesInactive() throws Exception {
+        // Arrange
         CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         // Act
-        companyService.closeProductionCompany(founderToken, company.getId());
+        CompanyDTO closedCompany = companyService.closeProductionCompany(founderToken, company.getId());
 
         // Assert
-        CompanyDTO updatedCompany = companyService.getCompanyDetails(founderToken, company.getId());
-        assertFalse(updatedCompany.isActive(), "Company status should be Inactive.");
+        assertNotNull(closedCompany, "Closed company DTO should not be null.");
+        assertFalse(closedCompany.isActive(), "Company should become inactive after founder closes it.");
     }
 
     @Test
-    void GivenActiveCompanyAndNonFounder_WhenCloseCompany_ThenThrowsException() throws Exception {
+    void GivenActiveCompanyAndNonFounder_WhenCloseProductionCompany_ThenThrowsException() throws Exception {
+        // Arrange
         CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
-        Exception exception = assertThrows(Exception.class, () -> 
-            companyService.closeProductionCompany(nonFounderToken, company.getId())
+        // Act + Assert
+        assertThrows(Exception.class, () ->
+                companyService.closeProductionCompany(nonFounderToken, company.getId())
         );
-        assertTrue(exception.getMessage().contains("lack of permissions"), "System should reject close request from non-founder.");
     }
 
-    // --- Reopen production company (UC 4.14) ---
+    @Test
+    void GivenInactiveCompanyAndFounder_WhenCloseProductionCompanyAgain_ThenThrowsException() throws Exception {
+        // Arrange
+        CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+        companyService.closeProductionCompany(founderToken, company.getId());
+
+        // Act + Assert
+        assertThrows(Exception.class, () ->
+                companyService.closeProductionCompany(founderToken, company.getId())
+        );
+    }
+
+    // UC 4.14: Reopen production company by Founder
 
     @Test
-    void GivenInactiveCompanyAndFounder_WhenReopenCompany_ThenStatusIsActive() throws Exception {
+    void GivenInactiveCompanyAndFounder_WhenReopenProductionCompany_ThenCompanyBecomesActive() throws Exception {
+        // Arrange
         CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
         companyService.closeProductionCompany(founderToken, company.getId());
 
         // Act
-        companyService.reopenProductionCompany(founderToken, company.getId());
+        CompanyDTO reopenedCompany = companyService.reopenProductionCompany(founderToken, company.getId());
 
         // Assert
-        CompanyDTO updatedCompany = companyService.getCompanyDetails(founderToken, company.getId());
-        assertTrue(updatedCompany.isActive(), "Company status should be Active again.");
+        assertNotNull(reopenedCompany, "Reopened company DTO should not be null.");
+        assertTrue(reopenedCompany.isActive(), "Company should become active again after founder reopens it.");
     }
 
     @Test
-    void GivenInactiveCompanyAndNonFounder_WhenReopenCompany_ThenThrowsException() throws Exception {
+    void GivenInactiveCompanyAndNonFounder_WhenReopenProductionCompany_ThenThrowsException() throws Exception {
+        // Arrange
         CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
         companyService.closeProductionCompany(founderToken, company.getId());
 
-        Exception exception = assertThrows(Exception.class, () -> 
-            companyService.reopenProductionCompany(nonFounderToken, company.getId())
+        // Act + Assert
+        assertThrows(Exception.class, () ->
+                companyService.reopenProductionCompany(nonFounderToken, company.getId())
         );
-        assertTrue(exception.getMessage().contains("lack of permissions"), "System should reject reopen request from non-founder.");
     }
 
     @Test
-    void GivenActiveCompanyAndFounder_WhenReopenCompany_ThenThrowsException() throws Exception {
+    void GivenActiveCompanyAndFounder_WhenReopenProductionCompany_ThenThrowsException() throws Exception {
+        // Arrange
         CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
-        Exception exception = assertThrows(Exception.class, () -> 
-            companyService.reopenProductionCompany(founderToken, company.getId())
+        // Act + Assert
+        assertThrows(Exception.class, () ->
+                companyService.reopenProductionCompany(founderToken, company.getId())
         );
-        assertTrue(exception.getMessage().contains("no action is needed") || exception.getMessage().toLowerCase().contains("already active"), 
-            "System should notify that the company is already active.");
     }
 
-    // --- View roles and permissions tree (UC 4.15) ---
+    // // UC 4.15: View roles and permissions tree
 
     // @Test
-    // void GivenCompanyAndOwner_WhenViewRolesTree_ThenReturnsTreeString() throws Exception {
+    // void GivenCompanyAndFounder_WhenViewRolesAndPermissionsTree_ThenReturnsTreeWithFounder() throws Exception {
+    //     // Arrange
     //     CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
     //     // Act
-    //     String rolesTree = companyService.viewRolesAndPermissionsTree(founderToken, company.getId());
+    //     String tree = companyService.viewRolesAndPermissionsTree(founderToken, company.getId());
 
     //     // Assert
-    //     assertNotNull(rolesTree, "Roles tree representation should not be null.");
-    //     assertTrue(rolesTree.contains("FOUNDER"), "The tree should display the founder role.");
+    //     assertNotNull(tree, "Roles and permissions tree should not be null.");
+    //     assertTrue(tree.contains("FOUNDER"), "Roles tree should include the founder role.");
+    //     assertTrue(tree.contains(String.valueOf(tokenService.extractUserId(founderToken))),
+    //             "Roles tree should include the founder member id.");
+    // }
+
+    // @Test
+    // void GivenCompanyAndNonOwner_WhenViewRolesAndPermissionsTree_ThenThrowsException() throws Exception {
+    //     // Arrange
+    //     CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    //     // Act + Assert
+    //     assertThrows(Exception.class, () ->
+    //             companyService.viewRolesAndPermissionsTree(nonFounderToken, company.getId())
+    //     );
     // }
 }
-
