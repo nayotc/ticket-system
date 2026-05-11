@@ -57,6 +57,9 @@ public class ReservationService {
             }
 
             ActiveOrder order = getOrCreateOrder(token, eventId);
+            if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+                throw new IllegalStateException("No active order found for this event");
+            }
             Event event = eventRepository.getEventById(eventId);
             reservation.selectSeatTicket(order, event, areaId, position);
 
@@ -76,6 +79,9 @@ public class ReservationService {
                     throw new IllegalArgumentException("Event not found");
                 }
             ActiveOrder order = getOrCreateOrder(token, eventId);
+            if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+                throw new IllegalStateException("No active order found for this event");
+            }
             if (quantity <= 0) {
                 throw new IllegalArgumentException("Quantity must be greater than zero");
             }
@@ -96,7 +102,7 @@ public class ReservationService {
         try {
             tokenService.validateToken(token);
             ActiveOrder order = findActiveOrder(token, eventId);
-            if (order==null) {
+            if (order==null|| order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
             Event event = eventRepository.getEventById(eventId);
@@ -118,7 +124,7 @@ public class ReservationService {
         try {
             tokenService.validateToken(token);
             ActiveOrder order = orderRepository.findOrderById(orderId);
-            if (order == null) {
+            if (order == null|| order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
             ObjectMapper objectMapper = new ObjectMapper();

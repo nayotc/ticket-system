@@ -21,7 +21,8 @@ public class Reservation {
 
     // UC 2.4, 2.5
     public void selectSeatTicket(ActiveOrder order, Event event,Long areaId, seatPositionDTO position) {
-      SeatPosition seatPosition = new SeatPosition(position.getRow(), position.getChair());
+      
+        SeatPosition seatPosition = new SeatPosition(position.getRow(), position.getChair());
        event.reserveSeat(areaId, seatPosition);
        Ticket ticket = new Ticket(generateTicketId(), event.getId(), areaId, position.getRow(), position.getChair(), event.getTicktPrice());
         order.addTicket(ticket);

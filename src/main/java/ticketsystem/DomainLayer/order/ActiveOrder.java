@@ -33,7 +33,6 @@ public class ActiveOrder {
 
     public void addTicket(Ticket ticket) {
         this.tickets.add(ticket);
-
     }
 
     public Ticket deleteTicket(Long ticketId) {
