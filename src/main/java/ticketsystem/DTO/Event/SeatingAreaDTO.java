@@ -15,7 +15,7 @@ public record SeatingAreaDTO(
         int rows,
         int columns,
         List<SeatDTO> seats
-) {
+) implements IMapElementDTO {
 
     public static SeatingAreaDTO from(SeatingArea area) {
         if (area == null) {

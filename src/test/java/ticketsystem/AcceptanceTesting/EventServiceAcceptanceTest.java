@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.ITokenService;
-import ticketsystem.DTO.Event.AreaDTO;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
+import ticketsystem.DTO.Event.IMapElementDTO;
 import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
@@ -554,7 +554,7 @@ public class EventServiceAcceptanceTest {
                 .anyMatch(element -> elementName(element).equals(name));
     }
 
-    private String elementName(Object element) {
+    private String elementName(IMapElementDTO element) {
         if (element instanceof ElementDTO elementDTO) {
             return elementDTO.name();
         }
@@ -565,10 +565,6 @@ public class EventServiceAcceptanceTest {
 
         if (element instanceof StandingAreaDTO standingAreaDTO) {
             return standingAreaDTO.name();
-        }
-
-        if (element instanceof AreaDTO areaDTO) {
-            return areaDTO.name();
         }
 
         return "";

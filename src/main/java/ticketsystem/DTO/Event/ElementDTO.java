@@ -8,7 +8,7 @@ public record ElementDTO(
         PairDTO<Integer, Integer> location,
         PairDTO<Integer, Integer> size,
         String type
-) {
+) implements IMapElementDTO {
 
     public static ElementDTO from(Element element) {
         if (element == null) {
