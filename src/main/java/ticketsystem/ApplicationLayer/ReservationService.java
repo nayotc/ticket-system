@@ -176,20 +176,29 @@ public class ReservationService {
     
 
     private ActiveOrder findActiveOrder(String token, Long eventId) {
+
+        ActiveOrder order;
+
         if (tokenService.isGuestToken(token)) {
-            return orderRepository.getActiveOrderBySessionTokenAndEventId(
+            order = orderRepository.getActiveOrderBySessionTokenAndEventId(
                     token,
                     eventId
             );
-        }
-        
-        Long userId = tokenService.extractUserId(token);
+        } else {
+            Long userId = tokenService.extractUserId(token);
 
-        return orderRepository.getActiveOrderByUserIdAndEventId(
-                userId,
-                eventId
-        );
-     }
+            order = orderRepository.getActiveOrderByUserIdAndEventId(
+                    userId,
+                    eventId
+            );
+        }
+        if (order == null) {
+            throw new IllegalArgumentException(
+                    "Active order was expired or does not exist for this event"
+            );
+        }
+        return order;
+    }
     
 
     private void saveAll( ActiveOrder order, Event event) {
