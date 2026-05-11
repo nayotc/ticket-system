@@ -58,7 +58,7 @@ public class HistoryServiceTest {
         // 2. Purchase history exists for user1
         List<Purchase> fakeHistory = new ArrayList<>();
         List<PurchasedTicket> tickets = new ArrayList<>(); 
-        tickets.add(new PurchasedTicket(10, 20, 1, 1, 150.0)); // adding a fake ticket
+        tickets.add(new PurchasedTicket(10, 20, 1, 1, 150.0, "SECURE-BARCODE-123")); // adding a fake ticket
         
         Purchase p = new Purchase(1, tickets, "Taylor Swift Tour", "HaYarkon Park", user1Id, 50);
         fakeHistory.add(p);
@@ -131,7 +131,7 @@ public class HistoryServiceTest {
     void GivenOrderDTO_WhenOnOrderCompleted_ThenPurchaseIsAdded() {
         // --- Arrange ---
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new PurchaseDTO(10L, 20L   , 1, 1, new BigDecimal(150), "ACTIVE"));
+        ticketDTOs.add(new PurchaseDTO(10L, 20L   , 1, 1, new BigDecimal(150), "ACTIVE","SECURE-BARCODE-123"));
         OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", user1Id, 5L);
         when(historyRepository.generateNextId()).thenReturn(999);
 

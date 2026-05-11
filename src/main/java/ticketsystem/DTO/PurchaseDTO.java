@@ -9,17 +9,19 @@ public class PurchaseDTO {
     private int chair;
     private BigDecimal price;
     private String status;
+    private String secureBarcode;
 
     //for json
     public PurchaseDTO() {}
 
-    public PurchaseDTO(Long ticketId, Long eventId, int row, int chair, BigDecimal price, String status) {
+    public PurchaseDTO(Long ticketId, Long eventId, int row, int chair, BigDecimal price, String status, String secureBarcode) {
         this.ticketId = ticketId;
         this.eventId = eventId;
         this.row = row;
         this.chair = chair;
         this.price = price;
         this.status = status;
+        this.secureBarcode = secureBarcode;
     }
 
     public Long getTicketId() { return ticketId; }
@@ -39,4 +41,8 @@ public class PurchaseDTO {
     
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getSecureBarcode() { return secureBarcode; }
+    public void setSecureBarcode(String secureBarcode) { this.secureBarcode = secureBarcode; }
+
 }
