@@ -89,4 +89,12 @@ public class OrderRepository implements IOrderRepository {
 
     }
 
+    public void clear() {
+        orders.clear();
+    }
+
+    public void deleteActiveOrdersByUserId(Long userId) {
+        orders.values().removeIf(order -> order.getUserId() != null && order.getUserId().equals(userId));
+    }
+
 }

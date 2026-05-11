@@ -18,9 +18,7 @@ public class ActiveOrder {
     private List<Ticket> tickets;
     private OrderStatus status;
     private final LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
-    private boolean timerStopped= false;
     
-
 
     public ActiveOrder(Long orderId, String sessionToken, Long userId, Long eventId) {
         this.orderId = orderId;
@@ -78,7 +76,7 @@ public class ActiveOrder {
     }
 
     public void submitForCheckout() {
-        stopTimer();
+        
         status = OrderStatus.PENDING_CHECKOUT;
     }
 
@@ -122,13 +120,6 @@ public class ActiveOrder {
     public void paymentFailed() {
 
         this.status = OrderStatus.PAYMENT_FAILED;
-    }
-    public void stopTimer() {
-        this.timerStopped = true;
-    }
-
-    public boolean isStopped() {
-        return timerStopped;
     }
 
     public String getSessionToken() {

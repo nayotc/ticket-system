@@ -7,8 +7,6 @@ import java.util.List;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.DomainLayer.event.Seat;
 import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;

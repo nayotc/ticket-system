@@ -51,7 +51,7 @@ public class ActiveOrderTest {
         assertEquals(OrderStatus.ACTIVE, order.getStatus());
         assertNotNull(order.getTickets());
         assertTrue(order.getTickets().isEmpty());
-        assertFalse(order.isStopped());
+        //assertFalse(order.isStopped());
     }
 
     @Test
@@ -103,7 +103,7 @@ public class ActiveOrderTest {
 
         assertEquals(OrderStatus.PENDING_CHECKOUT, order.getStatus());
         assertTrue(order.isPendingCheckout());
-        assertTrue(order.isStopped());
+       // assertTrue(order.isStopped());
     }
 
     @Test
@@ -113,12 +113,6 @@ public class ActiveOrderTest {
         assertEquals(OrderStatus.PAYMENT_FAILED, order.getStatus());
     }
 
-    @Test
-    void givenActiveOrder_whenStopTimer_thenTimerIsStopped() {
-        order.stopTimer();
-
-        assertTrue(order.isStopped());
-    }
 
     @Test
     void givenOrderWithNoTickets_whenValidateHasTickets_thenThrowException() {
