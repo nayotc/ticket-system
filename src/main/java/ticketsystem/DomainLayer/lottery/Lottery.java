@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Lottery {
     private long lotteryId;
@@ -54,6 +55,13 @@ public class Lottery {
 
     public List<LotteryRegistration> getRegistrations() {
         return new ArrayList<>(registrations.values());
+    }
+
+    public List<Long> getWinners() {
+    return registrations.values().stream()           
+            .filter(LotteryRegistration::isWinner)    
+            .map(LotteryRegistration::getMemberId)    
+            .collect(Collectors.toList());           
     }
 
     // Method to register a member for the lottery

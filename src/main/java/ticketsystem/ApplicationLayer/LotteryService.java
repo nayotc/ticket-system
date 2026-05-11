@@ -14,7 +14,6 @@ public class LotteryService {
     private final ITokenService tokenService;
     //private final NotificationsService notificationsService;
 
-
     public LotteryService(ILotteryRepository lotteryRepository, ITokenService tokenService) {
         this.lotteryRepository = lotteryRepository;  
         this.tokenService = tokenService; 
@@ -22,13 +21,14 @@ public class LotteryService {
     }
 
     // Method to create a new lottery
-    public void addLottery(long eventId, int winnersNumber) {
+    public long addLottery(long eventId, int winnersNumber) {
         try {
             if (winnersNumber <= 0) {
                 throw new IllegalArgumentException("Number of winners must be greater than zero.");
             }
             long lotteryId = lotteryRepository.generateNextLotteryId();
             lotteryRepository.addLottery(new Lottery(lotteryId, eventId, winnersNumber));
+            return lotteryId;
 
         } catch (IllegalArgumentException e) {
             throw(e);
@@ -52,11 +52,12 @@ public class LotteryService {
     }
 
     // Method to close lottery registration
-    public void closeLotteryRegistration(long lotteryId) {
+    public boolean closeLotteryRegistration(long lotteryId) {
         try{
             Lottery lottery = lotteryRepository.findById(lotteryId);
             lottery.setStatus(LotteryStatus.CLOSED);
             lotteryRepository.update(lottery);
+            return true;
         }
         catch(IllegalArgumentException e){
             throw(e);
@@ -64,7 +65,7 @@ public class LotteryService {
     }
 
     // Method to conduct the lottery draw and select winners
-    public void conductLotteryDraw(long lotteryId, int numberOfWinners) {
+    public boolean conductLotteryDraw(long lotteryId, int numberOfWinners) {
         try{
             Lottery lottery = lotteryRepository.findById(lotteryId);
             List<Long> allParticipants = lottery.getRegisteredMemberIds();
@@ -83,12 +84,21 @@ public class LotteryService {
             }
             lottery.setStatus(LotteryStatus.COMPLETED);
             lotteryRepository.update(lottery);
-            
+            return true;
         }
         catch(IllegalArgumentException e){
             throw(e);
         }
     }
+
+    //method for tests
+    public List<Long> getWinners(long lotteryId) {
+    Lottery lottery = lotteryRepository.findById(lotteryId);
+    if (lottery == null) {
+        throw new IllegalArgumentException("Lottery with ID " + lotteryId + " does not exist.");
+    }
+    return lottery.getWinners();
+}
 
     // Helper method to select random winners from the list of registered members
     private List<Long> selectRandomWinners(List<Long> allRegisteredMembers, int numberOfWinners) {
@@ -105,14 +115,4 @@ public class LotteryService {
         
         return new ArrayList<>(winnersPool.subList(0, numberOfWinners));
     }
-
-    // Method to validate a winner's authentication code for a specific event
-    public boolean validateCodeForEvent(long eventId, long memberId, String authCode) {
-        Lottery lottery = lotteryRepository.findByEventId(eventId);
-        
-        if (lottery == null) {
-            throw new IllegalArgumentException("No lottery exists for event ID: " + eventId);
-        }
-        return lottery.validateWinnerCode(memberId, authCode);
-}
 }

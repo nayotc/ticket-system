@@ -49,4 +49,9 @@ public class LotteryRepository implements ILotteryRepository {
                 .findFirst()
                 .orElse(null);
     }
+
+    public void clearForTests() {
+        allLotteries.clear(); 
+        counter.set(1);      
+    }
 }
