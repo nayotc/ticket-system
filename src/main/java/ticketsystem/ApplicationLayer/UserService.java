@@ -23,6 +23,9 @@ public class UserService {
 
     // 1. System Visit: Allows a guest to visit the system and receive a session
     // token.
+
+    // 1. System Visit: Allows a guest to visit the system and receive a session
+    // token.
     public String visitSystem() {
         try {
         Guest guest = new Guest();
@@ -32,6 +35,9 @@ public class UserService {
             throw e;
         }
     }
+
+    // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
+    // username and password.
 
     // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
     // username and password.
@@ -101,24 +107,27 @@ public class UserService {
         }
     }
 
+    // 4. Exit: Allows a user to exit the system entirely.
     public boolean exit(String sessionToken) {
         if (!tokenService.validateToken(sessionToken)) {
             System.out.println("Invalid session token");
             return false;
         }
-        if(!tokenService.isActiveSession(sessionToken)) {
+        if (!tokenService.isActiveSession(sessionToken)) {
             System.out.println("Session token is not active");
             return false;
         }
         tokenService.removeActiveSession(sessionToken);
         return true;
     }
+
+    // 5. Log Out: Allows a member to log out and receive a new guest session token.
     public String logOut(String sessionToken) {
         if (!tokenService.validateToken(sessionToken)) {
             System.out.println("Invalid session token");
             return null;
         }
-        if(!tokenService.isActiveSession(sessionToken)) {
+        if (!tokenService.isActiveSession(sessionToken)) {
             System.out.println("Session token is not active");
             return null;
         }
