@@ -137,6 +137,9 @@ public class ReservationService {
     // UC 2.8
     private void submitActiveOrderForCheckout(String token, Long eventId) {
             ActiveOrder order = findActiveOrder(token, eventId);
+            if(order==null) {
+                throw new IllegalStateException("No active order found for this event");
+            }
             Event event = eventRepository.getEventById(eventId);
             reservation.submitActiveOrderForCheckout(order, event);
             saveAll(order, event);
@@ -246,7 +249,7 @@ public class ReservationService {
     private void expireOldOrders() {
         List<ActiveOrder> allOrders = orderRepository.getAll();
         for (ActiveOrder order : allOrders) {
-            if (order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT && order.isExpired()) {
+            if ((order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT && order.isExpired())) {
                 Event event = eventRepository.getEventById(order.getEventId());
                 reservation.expire(event,order);
                 orderRepository.deleteOrder(order.getOrderId());
