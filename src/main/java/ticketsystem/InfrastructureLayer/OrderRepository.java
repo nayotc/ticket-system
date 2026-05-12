@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.stripe.model.tax.Settings.StatusDetails.Active;
+
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
@@ -102,6 +104,36 @@ public class OrderRepository implements IOrderRepository {
                 -> order.getUserId() != null
                 && order.getUserId().equals(userId)
         );
+    }
+
+    public ActiveOrder getActiveOrderBySessionToken(String sessionToken) {
+        return orders.values().stream()
+                .filter(order ->
+                        order.getSessionToken() != null
+                                && order.getSessionToken().equals(sessionToken)
+                )
+                .findFirst()
+                .orElse(null);
+            }
+
+    public ActiveOrder getActiveOrderByUserId(Long userId) {
+        return orders.values().stream()
+                .filter(order ->
+                        order.getUserId() != null
+                                && order.getUserId().equals(userId)
+                )
+                .findFirst()
+                .orElse(null);
+            }
+    
+    public List<ActiveOrder> getActiveOrdersByEventId(Long eventId) {
+        List<ActiveOrder> activeOrders = new ArrayList<>();
+        for (ActiveOrder order : orders.values()) {
+            if (order.getEventId() != null && order.getEventId().equals(eventId)) {
+                activeOrders.add(order);
+            }
+        }
+        return activeOrders;
     }
 
     public void clear() {

@@ -23,8 +23,9 @@ import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.Ticket;
 
-public class ReservationService {
+public class ReservationService{
 
     private final IOrderRepository orderRepository;
     private final IEventRepository eventRepository;
@@ -307,7 +308,6 @@ public class ReservationService {
     }
     }
 
-    
     //for logging - can be replaced with a proper logging framework
     private void logWarning(String msg) {
         /* ... */ }
