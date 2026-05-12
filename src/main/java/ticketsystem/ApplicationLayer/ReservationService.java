@@ -53,7 +53,7 @@ public class ReservationService {
     }
 
 //UC 2.5,2.4
-     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position) {
+     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position,String lotteryCode) {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
@@ -61,12 +61,18 @@ public class ReservationService {
             if(eventRepository.getEventById(eventId)==null) {
                 throw new IllegalArgumentException("Event not found");
             }
-            
+            Lottery lottery = lotteryRepository.findByEventId(eventId);
+
+            if (lottery != null) {
+                Long userId = tokenService.extractUserId(token);
+                reservation.checkLottery(lottery, userId, lotteryCode);
+            }
 
             ActiveOrder order = getOrCreateOrder(token, eventId);
             if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
+
             Event event = eventRepository.getEventById(eventId);
             reservation.selectSeatTicket(order, event, areaId, position);
 
@@ -78,13 +84,21 @@ public class ReservationService {
             throw e;
         }
     }
-    public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
+    public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity,String lotteryCode) {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
             if(eventRepository.getEventById(eventId)==null) {
                     throw new IllegalArgumentException("Event not found");
-                }
+            }
+
+            Lottery lottery = lotteryRepository.findByEventId(eventId);
+
+            if (lottery != null) {
+                Long userId = tokenService.extractUserId(token);
+                reservation.checkLottery(lottery, userId, lotteryCode);
+            }
+
             ActiveOrder order = getOrCreateOrder(token, eventId);
             if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
@@ -293,13 +307,6 @@ public class ReservationService {
     }
     }
 
-    private void chekLottery(Long eventId) {
-        Lottery lottery = lotteryRepository.findByEventId(eventId);
-        if (lottery != null) {
-            reservation.checkLottery(lottery);
-            
-        }
-    }
     
     //for logging - can be replaced with a proper logging framework
     private void logWarning(String msg) {
