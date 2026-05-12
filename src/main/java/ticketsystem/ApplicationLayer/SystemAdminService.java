@@ -1,5 +1,12 @@
 package ticketsystem.ApplicationLayer;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
@@ -20,7 +27,6 @@ public class SystemAdminService {
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
     private final ISystemLogger logger;
-    private final CompanyService companyService;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
@@ -39,7 +45,6 @@ public class SystemAdminService {
         this.tokenService = tokenService;
         this.companyRepository = companyRepository;
         this.logger = logger;
-        companyService = new CompanyService(companyRepository, tokenService);
     }
 
 //Use Case: Ticket System Initialization
@@ -88,7 +93,7 @@ public class SystemAdminService {
         }
         try {
             orderRepository.deleteActiveOrdersByUserId(memberId);
-            companyService.removeUserFromAllCompanies(memberId);
+            removeUserFromAllCompanies(memberId);
             boolean userRemoved = userRepository.removeRegisteredMember(memberId);
             if (!userRemoved) {
                 logger.logEvent("ERROR: Failed to remove member from the system.", LogbackSystemLogger.LogLevel.INFO);
@@ -99,6 +104,49 @@ public class SystemAdminService {
         } catch (Exception e) {
             logger.logEvent("ERROR: An unexpected error occurred while deleting the member: " + e.getMessage(), LogbackSystemLogger.LogLevel.INFO);
             return "ERROR: An unexpected error occurred while deleting the member: " + e.getMessage();
+        }
+    }
+
+    public void removeUserFromAllCompanies(long memberIdToDelete) throws Exception {
+        logger.logEvent("Company role cleanup started for memberId=" + memberIdToDelete,
+                LogbackSystemLogger.LogLevel.INFO);
+
+        try {
+            boolean isFounderAnywhere = companyRepository.existsByFounderId(memberIdToDelete);
+
+            if (isFounderAnywhere) {
+                throw new Exception("Cannot delete user: The user is a Founder of one or more companies.");
+            }
+
+            List<Company> relevantCompanies
+                    = companyRepository.findByOwnersContainingOrManagersContaining(memberIdToDelete, memberIdToDelete);
+
+            logger.logEvent("Company role cleanup found " + relevantCompanies.size()
+                    + " relevant companies for memberId=" + memberIdToDelete,
+                    LogbackSystemLogger.LogLevel.DEBUG);
+
+            for (Company company : relevantCompanies) {
+                company.removeUserFromAllRoles(memberIdToDelete);
+                companyRepository.save(company);
+
+                logger.logEvent("Member removed from company roles, memberId=" + memberIdToDelete
+                        + ", companyId=" + company.getId(),
+                        LogbackSystemLogger.LogLevel.INFO);
+            }
+
+            logger.logEvent("Company role cleanup completed for memberId=" + memberIdToDelete,
+                    LogbackSystemLogger.LogLevel.INFO);
+
+        } catch (RuntimeException e) {
+            logger.logError("Company role cleanup failed due to an unexpected system error, memberId="
+                    + memberIdToDelete, e);
+            throw e;
+
+        } catch (Exception e) {
+            logger.logEvent("Company role cleanup rejected, memberId=" + memberIdToDelete
+                    + ", reason=" + e.getMessage(),
+                    LogbackSystemLogger.LogLevel.WARN);
+            throw new Exception("Failed to remove user from companies: " + e.getMessage(), e);
         }
     }
 
@@ -117,4 +165,30 @@ public class SystemAdminService {
         return new CompanyDTO(company);
     }
 
+    // logs documentation of the system admin service
+    public List<String> viewEventLogs(long adminId) throws Exception {
+        SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+        if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+            logger.logError("Unauthorized access. Invalid admin credentials.", new Exception("Unauthorized access. Invalid admin credentials."));
+            throw new Exception("Unauthorized access. Invalid admin credentials.");
+        }
+        return readLastNLines(Paths.get("logs/events.log"), 100);
+    }
+
+    public List<String> viewErrorLogs(long adminId) throws Exception {
+        SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+        if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+            logger.logError("Unauthorized access. Invalid admin credentials.", new Exception("Unauthorized access. Invalid admin credentials."));
+            throw new Exception("Unauthorized access. Invalid admin credentials.");
+        }
+        return readLastNLines(Paths.get("logs/errors.log"), 100);
+    }
+
+    private List<String> readLastNLines(Path path, int maxLines) throws Exception {
+        try (Stream<String> lines = Files.lines(path)) {
+            List<String> allLines = lines.collect(Collectors.toList());
+            int start = Math.max(0, allLines.size() - maxLines);
+            return allLines.subList(start, allLines.size());
+        }
+    }
 }

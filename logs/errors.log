@@ -1,0 +1,12 @@
+2026-05-12 16:01:47 [ERROR] Unauthorized access. Invalid admin credentials. - java.lang.Exception: Unauthorized access. Invalid admin credentials.
+	at ticketsystem.ApplicationLayer.SystemAdminService.closeProductionCompanyByAdmin(SystemAdminService.java:159)
+
+2026-05-12 16:01:47 [ERROR] Failed to connect to payment services. Please check your configuration. - java.lang.Exception: Failed to connect to payment services.
+	at ticketsystem.ApplicationLayer.SystemAdminService.initSystem(SystemAdminService.java:63)
+
+2026-05-12 16:01:47 [ERROR] Failed to connect to secure barcode services. - java.lang.Exception: Failed to connect to secure barcode services.
+	at ticketsystem.ApplicationLayer.SystemAdminService.initSystem(SystemAdminService.java:70)
+
+2026-05-12 16:01:47 [ERROR] No system admins found. Please create an admin account to initialize the system. - java.lang.Exception: No system admins found.
+	at ticketsystem.ApplicationLayer.SystemAdminService.initSystem(SystemAdminService.java:56)
+
