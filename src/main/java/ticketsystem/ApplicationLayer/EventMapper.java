@@ -162,7 +162,7 @@ public class EventMapper {
         return new SeatPosition(dto.row(), dto.number());
     }
 
-    private static EventCategory toEventCategory(String category) {
+    public static EventCategory toEventCategory(String category) {
         if (category == null) {
             return null;
         }
@@ -170,7 +170,7 @@ public class EventMapper {
         return EventCategory.valueOf(category.trim().toUpperCase(Locale.ROOT));
     }
 
-    private static EventLocation toEventLocation(String location) {
+    public static EventLocation toEventLocation(String location) {
         if (location == null) {
             return null;
         }
@@ -178,7 +178,7 @@ public class EventMapper {
         return EventLocation.valueOf(location.trim().toUpperCase(Locale.ROOT));
     }
 
-     private static Seat.SeatStatus toSeatStatus(String status) {
+    public static Seat.SeatStatus toSeatStatus(String status) {
         return Seat.SeatStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
     }
 

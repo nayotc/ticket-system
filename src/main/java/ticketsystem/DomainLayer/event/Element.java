@@ -13,6 +13,17 @@ public class Element {
         this.size = size;
     }
 
+    public Element(Element other) {
+        this.id = other.id;
+        this.name = other.name;
+        this.location = other.location;
+        this.size = other.size;
+    }
+
+    public Element copy() {
+        return new Element(this);
+    }
+
     public long getId() {
         return id;
     }

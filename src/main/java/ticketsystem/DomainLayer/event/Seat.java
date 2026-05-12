@@ -11,6 +11,15 @@ public class Seat {
         this.status = SeatStatus.AVAILABLE;
     }
 
+    public Seat(Seat other) {
+        this.position = new SeatPosition(other.position.row(), other.position.number());
+        this.status = other.status;
+    }
+
+    public Seat copy() {
+        return new Seat(this);
+    }
+
     public SeatPosition getPosition() {
         return position;
     }

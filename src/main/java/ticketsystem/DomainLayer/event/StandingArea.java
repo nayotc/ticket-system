@@ -10,6 +10,17 @@ public class StandingArea extends Area {
         this.capacity = capacity;
     }
 
+    public StandingArea(StandingArea other) {
+        super(other);
+        this.capacity = other.capacity;
+        this.reserved = other.reserved;
+        this.sold = other.sold;
+    }
+
+    public StandingArea copy() {
+        return new StandingArea(this);
+    }
+
     public long getCapacity() {
         return capacity;
     }
