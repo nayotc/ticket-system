@@ -1,145 +1,310 @@
 package ticketsystem.ApplicationLayer;
 
 import java.util.List;
-import java.util.Optional;
 
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
-import ticketsystem.DomainLayer.company.*;
+import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.company.DiscountPolicy;
+import ticketsystem.DomainLayer.company.PurchasePolicy;
 
 public class CompanyService {
+
     private final ICompanyRepository companyRepository;
     private final ITokenService tokenService;
+    private final ISystemLogger logger;
 
+    /**
+     * Constructor without logger.
+     * Kept for backward compatibility with existing tests and code.
+     */
     public CompanyService(ICompanyRepository repo, ITokenService tokenService) {
-        this.companyRepository = repo;
-        this.tokenService = tokenService;
+        this(repo, tokenService, null);
     }
 
+    /**
+     * Constructor with logger injection.
+     *
+     * @param repo company repository
+     * @param tokenService token service used for session validation
+     * @param logger system logger for event and error logs
+     */
+    public CompanyService(ICompanyRepository repo, ITokenService tokenService, ISystemLogger logger) {
+        this.companyRepository = repo;
+        this.tokenService = tokenService;
+        this.logger = logger;
+    }
+
+    /**
+     * Extracts the logged-in member id from the session token.
+     * Guests are rejected because company-management actions require a registered member.
+     *
+     * Important: this method does not log the token itself, because session tokens are sensitive.
+     *
+     * @param token active session token
+     * @return logged-in member id
+     * @throws Exception if the token is invalid, belongs to a guest, or does not contain a member id
+     */
     private long getRegisteredMemberId(String token) throws Exception {
-        if (!tokenService.validateToken(token)) {
-            throw new Exception("Error: Invalid or expired session token.");
+        try {
+            if (!tokenService.validateToken(token)) {
+                throw new Exception("Error: Invalid or expired session token.");
+            }
+
+            if (tokenService.isGuestToken(token)) {
+                throw new Exception("Error: Member must be logged in. Guests are not allowed.");
+            }
+
+            Long userId = tokenService.extractUserId(token);
+
+            if (userId == null) {
+                throw new Exception("Error: Member ID not found in token.");
+            }
+
+            return userId;
+
+        } catch (IllegalArgumentException e) {
+            throw new Exception("Error: Invalid or expired session token.", e);
         }
-        
-        if (tokenService.isGuestToken(token)) {
-            throw new Exception("Error: Member must be logged in. Guests are not allowed.");
-        }
-        
-        Long userId = tokenService.extractUserId(token);
-        
-        if (userId == null) {
-            throw new Exception("Error: Member ID not found in token.");
-        }
-        
-        return userId; 
     }
 
     /**
      * Use Case 3.2: Create a production company.
+     * Allows a logged-in member to create a new production company.
+     * The creating member becomes the founder of the company.
+     *
+     * @param sessionId active session token of the logged-in member
+     * @param companyName requested production company name
+     * @return DTO of the created company
+     * @throws Exception if the session is invalid, belongs to a guest, or company creation fails
      */
     public CompanyDTO createProductionCompany(String sessionId, String companyName) throws Exception {
+        logEvent("UC 3.2 started: create production company, companyName=" + companyName,
+                ISystemLogger.LogLevel.INFO);
+
         try {
             long memberId = getRegisteredMemberId(sessionId);
 
+            logEvent("UC 3.2 validated member, memberId=" + memberId,
+                    ISystemLogger.LogLevel.DEBUG);
+
             Company newCompany = new Company(
-                companyName, 
-                memberId, 
-                new PurchasePolicy(), 
-                new DiscountPolicy()
+                    companyName,
+                    memberId,
+                    new PurchasePolicy(),
+                    new DiscountPolicy()
             );
 
-            companyRepository.save(newCompany); 
+            companyRepository.save(newCompany);
+
+            logEvent("UC 3.2 completed: company created, companyId=" + newCompany.getId()
+                            + ", founderId=" + memberId,
+                    ISystemLogger.LogLevel.INFO);
 
             return new CompanyDTO(newCompany);
+
+        } catch (RuntimeException e) {
+            logError("UC 3.2 failed due to an unexpected system error while creating companyName="
+                    + companyName, e);
+            throw e;
+
         } catch (Exception e) {
-            throw e; 
+            logEvent("UC 3.2 rejected: create production company failed, companyName=" + companyName
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
+            throw e;
         }
     }
 
     /**
-     * Use Case 4.13: Close or suspend production company
+     * Use Case 4.13: Close or suspend production company.
+     * Allows only the founder of the company to close or suspend it.
+     *
+     * @param sessionId active session token of the requesting member
+     * @param companyId id of the production company to close
+     * @return DTO of the closed company
+     * @throws Exception if the company does not exist, the requester is not founder,
+     *                   or the company is already inactive
      */
     public CompanyDTO closeProductionCompany(String sessionId, long companyId) throws Exception {
+        logEvent("UC 4.13 started: close production company, companyId=" + companyId,
+                ISystemLogger.LogLevel.INFO);
+
         try {
             long memberId = getRegisteredMemberId(sessionId);
 
-            Company company = companyRepository.findById(companyId) // gets the company from the CompanyRepository
+            Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
             company.closeOrSuspend(memberId);
             companyRepository.save(company);
+
+            logEvent("UC 4.13 completed: company closed, companyId=" + companyId
+                            + ", founderId=" + memberId,
+                    ISystemLogger.LogLevel.INFO);
+
             return new CompanyDTO(company);
+
+        } catch (RuntimeException e) {
+            logError("UC 4.13 failed due to an unexpected system error while closing companyId="
+                    + companyId, e);
+            throw e;
+
         } catch (Exception e) {
+            logEvent("UC 4.13 rejected: close production company failed, companyId=" + companyId
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
             throw e;
         }
     }
 
     /**
-     * Use Case 4.14: Reopen production company
+     * Use Case 4.14: Reopen production company.
+     * Allows only the founder to reopen a company that was previously closed.
+     *
+     * @param sessionId active session token of the requesting member
+     * @param companyId id of the production company to reopen
+     * @return DTO of the reopened company
+     * @throws Exception if the company does not exist, the requester is not founder,
+     *                   or the company is already active
      */
     public CompanyDTO reopenProductionCompany(String sessionId, long companyId) throws Exception {
+        logEvent("UC 4.14 started: reopen production company, companyId=" + companyId,
+                ISystemLogger.LogLevel.INFO);
+
         try {
             long memberId = getRegisteredMemberId(sessionId);
 
-            Company company = companyRepository.findById(companyId) // gets the company from the CompanyRepository
+            Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
             company.reopenCompany(memberId);
             companyRepository.save(company);
+
+            logEvent("UC 4.14 completed: company reopened, companyId=" + companyId
+                            + ", founderId=" + memberId,
+                    ISystemLogger.LogLevel.INFO);
+
             return new CompanyDTO(company);
 
+        } catch (RuntimeException e) {
+            logError("UC 4.14 failed due to an unexpected system error while reopening companyId="
+                    + companyId, e);
+            throw e;
+
         } catch (Exception e) {
+            logEvent("UC 4.14 rejected: reopen production company failed, companyId=" + companyId
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
             throw e;
         }
     }
 
-    // /**
-    //  * Use Case 4.15: View roles and permissions tree
-    //  */
-    // public String viewRolesAndPermissionsTree(String sessionId, long companyId) throws Exception {
-    //     try {
-    //         String userId = getRegisteredUserId(sessionId);
+    /**
+     * Use Case 4.15: View roles and permissions tree.
+     * Allows a company owner to view the roles and permissions tree of the company.
+     *
+     * @param sessionId active session token of the requesting member
+     * @param companyId id of the production company
+     * @return textual representation of the roles and permissions tree
+     * @throws Exception if the company does not exist or the requester is not an owner
+     */
+    public String viewRolesAndPermissionsTree(String sessionId, long companyId) throws Exception {
+        logEvent("UC 4.15 started: view roles and permissions tree, companyId=" + companyId,
+                ISystemLogger.LogLevel.INFO);
 
-    //         Company company = companyRepository.findById(companyId) // gets the company from the CompanyRepository
-    //                 .orElseThrow(() -> new Exception("Error: Company not found."));
+        try {
+            long memberId = getRegisteredMemberId(sessionId);
 
-    //         return company.getRolesTreeRepresentation(userId);
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new Exception("Error: Company not found."));
 
-    //     } catch (Exception e) {
-    //         throw e;
-    //     }
-    // }
+            String tree = company.getRolesTreeRepresentation(memberId, null);
 
-public void removeUserFromAllCompanies(long memberIdToDelete) throws Exception {
-try {
-            // Phase 1: Validation - Efficiently check if the user is a Founder anywhere directly in the DB
-            boolean isFounderAnywhere = companyRepository.existsByFounderId(memberIdToDelete);
-            
-            if (isFounderAnywhere) {
-                // If the user is a founder, throw an exception and completely stop the deletion process
-                throw new Exception("Cannot delete user: The user is a Founder of one or more companies.");
-            }
+            logEvent("UC 4.15 completed: roles and permissions tree returned, companyId=" + companyId
+                            + ", requesterId=" + memberId,
+                    ISystemLogger.LogLevel.INFO);
 
-            // Phase 2: Fetch ONLY the companies where the user is an owner or a manager
-            // We pass 'memberIdToDelete' twice because we check both the 'owners' and 'managers' lists
-            List<Company> relevantCompanies = companyRepository.findByOwnersContainingOrManagersContaining(memberIdToDelete, memberIdToDelete);
+            return tree;
 
-            // Phase 3: Remove from roles and save
-            for (Company company : relevantCompanies) {
-                // Remove the user and handle reassigning their appointees
-                company.removeUserFromAllRoles(memberIdToDelete);
-                
-                // We don't need a 'needsSaving' flag anymore, because we only fetched companies that actually need updating
-                companyRepository.save(company);
-            }
-            
+        } catch (RuntimeException e) {
+            logError("UC 4.15 failed due to an unexpected system error while viewing roles tree, companyId="
+                    + companyId, e);
+            throw e;
+
         } catch (Exception e) {
-            // Propagate the exception so the calling layer can return an appropriate message
-            throw new Exception("Failed to remove user from companies: " + e.getMessage());
+            logEvent("UC 4.15 rejected: view roles and permissions tree failed, companyId=" + companyId
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
+            throw e;
         }
     }
 
-private boolean canViewCompanyDetails(String sessionToken, Company company) throws Exception {
+    /**
+     * Removes a member from all company roles.
+     * Used as part of the system-admin member deletion flow.
+     *
+     * A founder cannot be removed through this flow, because founder removal affects
+     * company ownership and should be handled by a dedicated company use case.
+     *
+     * @param memberIdToDelete id of the member being removed from company roles
+     * @throws Exception if the member is a founder or role cleanup fails
+     */
+    public void removeUserFromAllCompanies(long memberIdToDelete) throws Exception {
+        logEvent("Company role cleanup started for memberId=" + memberIdToDelete,
+                ISystemLogger.LogLevel.INFO);
+
+        try {
+            boolean isFounderAnywhere = companyRepository.existsByFounderId(memberIdToDelete);
+
+            if (isFounderAnywhere) {
+                throw new Exception("Cannot delete user: The user is a Founder of one or more companies.");
+            }
+
+            List<Company> relevantCompanies =
+                    companyRepository.findByOwnersContainingOrManagersContaining(memberIdToDelete, memberIdToDelete);
+
+            logEvent("Company role cleanup found " + relevantCompanies.size()
+                            + " relevant companies for memberId=" + memberIdToDelete,
+                    ISystemLogger.LogLevel.DEBUG);
+
+            for (Company company : relevantCompanies) {
+                company.removeUserFromAllRoles(memberIdToDelete);
+                companyRepository.save(company);
+
+                logEvent("Member removed from company roles, memberId=" + memberIdToDelete
+                                + ", companyId=" + company.getId(),
+                        ISystemLogger.LogLevel.INFO);
+            }
+
+            logEvent("Company role cleanup completed for memberId=" + memberIdToDelete,
+                    ISystemLogger.LogLevel.INFO);
+
+        } catch (RuntimeException e) {
+            logError("Company role cleanup failed due to an unexpected system error, memberId="
+                    + memberIdToDelete, e);
+            throw e;
+
+        } catch (Exception e) {
+            logEvent("Company role cleanup rejected, memberId=" + memberIdToDelete
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
+            throw new Exception("Failed to remove user from companies: " + e.getMessage(), e);
+        }
+    }
+
+
+
+/**
+ * Checks whether the current session is allowed to view the given company details.
+ * Active companies can be viewed by any valid active session.
+ * Inactive companies can be viewed only by company role holders through CompanyService.
+ *
+ * @param sessionToken active session token
+ * @param company company to view
+ * @return true if the requester can view the company details, false otherwise
+ */
+private boolean canViewCompanyDetails(String sessionToken, Company company) {
     if (company.isActive()) {
         return true;
     }
@@ -157,18 +322,75 @@ private boolean canViewCompanyDetails(String sessionToken, Company company) thro
             || company.getOwners().contains(memberId)
             || company.getManagers().contains(memberId);
 }
-    public CompanyDTO getCompanyDetails(String sessionToken, long companyId) throws Exception {
-    if (!tokenService.validateToken(sessionToken)) {
-        throw new Exception("Error: Invalid or expired session token.");
-    }
 
-    Company company = companyRepository.findById(companyId)
-            .orElseThrow(() -> new Exception("Error: Company not found."));
+/**
+ * Returns company details according to viewing permissions.
+ * Active companies can be viewed by any valid active session.
+ * Inactive companies can be viewed only by company role holders.
+ *
+ * Important: this method does not log the session token, because session tokens are sensitive.
+ *
+ * @param sessionToken active session token
+ * @param companyId company id
+ * @return DTO of the requested company
+ * @throws Exception if the session is invalid, the company does not exist,
+ *                   or the requester does not have permission to view it
+ */
+public CompanyDTO getCompanyDetails(String sessionToken, long companyId) throws Exception {
+    logEvent("Get company details started, companyId=" + companyId,
+            ISystemLogger.LogLevel.INFO);
 
-    if (!canViewCompanyDetails(sessionToken, company)) {
-        throw new Exception("Error: User does not have permission to view this company.");
-    }
+    try {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Error: Invalid or expired session token.");
+        }
+
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new Exception("Error: Company not found."));
+
+        if (!canViewCompanyDetails(sessionToken, company)) {
+            throw new Exception("Error: User does not have permission to view this company.");
+        }
+
+        logEvent("Get company details completed, companyId=" + companyId,
+                ISystemLogger.LogLevel.INFO);
+
         return new CompanyDTO(company);
+
+    } catch (RuntimeException e) {
+        logError("Get company details failed due to an unexpected system error, companyId="
+                + companyId, e);
+        throw e;
+
+    } catch (Exception e) {
+        logEvent("Get company details rejected, companyId=" + companyId
+                        + ", reason=" + e.getMessage(),
+                ISystemLogger.LogLevel.WARN);
+        throw e;
+    }
 }
 
+    /**
+     * Writes an event log message if a logger was injected.
+     *
+     * @param message log message
+     * @param level event log level
+     */
+    private void logEvent(String message, ISystemLogger.LogLevel level) {
+        if (logger != null) {
+            logger.logEvent(message, level);
+        }
+    }
+
+    /**
+     * Writes an error log message if a logger was injected.
+     *
+     * @param message error message
+     * @param exception exception that caused the system error
+     */
+    private void logError(String message, Throwable exception) {
+        if (logger != null) {
+            logger.logError(message, exception);
+        }
+    }
 }
