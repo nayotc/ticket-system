@@ -41,34 +41,35 @@ public class WaitingQueueService {
         int maxRetries = 3;
         for (int i = 0; i < maxRetries; i++) {
             try {
-                Event event = (Event) eventRepository.getEventById(eventId);
-                if (event == null) {
-                    logger.logEvent("Attempt to reserve for non-existent event. Event ID: " + eventId,
-                            LogbackSystemLogger.LogLevel.INFO);
-                    return "ERROR: Event not found";
-                }
-                if (event.isSoldOut()) {
-                    logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId,
-                            LogbackSystemLogger.LogLevel.INFO);
-                    return "ERROR: Sold Out";
-                }
+                synchronized (getEventLock(eventId)) {
+                    Event event = eventRepository.getEventById(eventId);
+                    if (event == null) {
+                        logger.logEvent("Attempt to reserve for non-existent event. Event ID: " + eventId,
+                                LogbackSystemLogger.LogLevel.INFO);
+                        return "ERROR: Event not found";
+                    }
+                    if (event.isSoldOut()) {
+                        logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId,
+                                LogbackSystemLogger.LogLevel.INFO);
+                        return "ERROR: Sold Out";
+                    }
 
-                if (!event.isOverloaded()) { // if event is not overloaded, approve the user immediately
-                    event.incrementActiveReservations();
-                    eventRepository.updateEvent(event);
-                    logger.logEvent(
-                            "User with session id" + tokenString + " APPROVED to enter checkout for Event " + eventId,
-                            LogbackSystemLogger.LogLevel.INFO);
-                    return "APPROVED";
-                } else { // enqueue the user and return their position in the queue
+                    if (!event.isOverloaded()) {
+                        event.incrementActiveReservations();
+                        eventRepository.updateEvent(event);
+                        logger.logEvent(
+                                "User with session id" + tokenString + " APPROVED to enter checkout for Event "
+                                        + eventId,
+                                LogbackSystemLogger.LogLevel.INFO);
+                        return "APPROVED";
+                    }
                     queueRepository.enqueueUser(eventId, tokenString);
                     int position = queueRepository.getQueueSize(eventId);
                     logger.logEvent("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position,
                             LogbackSystemLogger.LogLevel.INFO);
                     return "QUEUED";
                 }
-            } catch (Exception e) { // optimistic locking failure or other concurrency issue, retry the operation a
-                                    // few times before giving up
+            } catch (Exception e) {
                 logger.logError("EXCEPTION CAUGHT: " + e.getMessage(), e);
                 e.printStackTrace();
                 continue;
