@@ -186,4 +186,87 @@ public class MembershipDomainServiceTest {
         assertNull(appointee.getRoleInCompany(companyId));
         assertFalse(founderRole.getAppointeesMemberIds().contains(200L));
     }
+
+    // --- Update Manager Permissions ---
+
+    @Test
+    public void GivenValidAppointer_WhenSetPermissions_ThenPermissionsAreUpdated() throws Exception {
+        appointer.addFounderRole(companyId); 
+        
+        Set<Permission> initialPerms = new HashSet<>();
+        appointee.addManagerRole(companyId, 100L, initialPerms); // Appointed by appointer (ID 100L)
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        
+        Set<Permission> newPerms = new HashSet<>();
+        newPerms.add(Permission.MANAGE_EVENT_INVENTORY);
+        
+        // Act
+        boolean result = domainService.setPermissionsToManager(appointer, appointee, companyId, newPerms);
+        
+        // Assert
+        assertTrue(result);
+        Manager managerRole = (Manager) appointee.getRoleInCompany(companyId);
+        assertTrue(managerRole.getPermissionKeys().contains(Permission.MANAGE_EVENT_INVENTORY.getKey()));
+    }
+
+    @Test
+    public void GivenAppointerHasNoRole_WhenSetPermissions_ThenThrowsException() {
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.setPermissionsToManager(appointer, appointee, companyId, new HashSet<>());
+        });
+        assertEquals("You do not have a role in this company.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointerIsNotActive_WhenSetPermissions_ThenThrowsException() {
+        // Arrange
+        appointer.addOwnerRole(companyId, 999L); // Owner starts as PENDING
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.setPermissionsToManager(appointer, appointee, companyId, new HashSet<>());
+        });
+        assertEquals("Your role is not active yet. You cannot update others permissions.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointerIsManager_WhenSetPermissions_ThenThrowsException() {
+        // Arrange
+        appointer.addManagerRole(companyId, 999L, new HashSet<>());
+        appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.setPermissionsToManager(appointer, appointee, companyId, new HashSet<>());
+        });
+        assertEquals("Only Owners and Founders can update manager's permissions.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenTargetIsNotManager_WhenSetPermissions_ThenThrowsException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+        appointee.addOwnerRole(companyId, 100L); // Target is Owner, not Manager
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.setPermissionsToManager(appointer, appointee, companyId, new HashSet<>());
+        });
+        assertEquals("The specified user does not hold a Manager role", exception.getMessage());
+    }
+
+    @Test
+    public void GivenActorIsNotTheAppointer_WhenSetPermissions_ThenThrowsException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+        appointee.addManagerRole(companyId, 999L, new HashSet<>()); // Appointed by 999L, not 100L
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.setPermissionsToManager(appointer, appointee, companyId, new HashSet<>());
+        });
+        assertEquals("You are not the appointer of the specified user", exception.getMessage());
+    }
 }

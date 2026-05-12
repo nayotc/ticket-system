@@ -77,6 +77,41 @@ public class MembershipService {
     }
 
     /**
+     * Use Case 4.11: Update manager permissions
+     */
+    public boolean updateManagerPermissions(String sessionToken, Long companyId, Long managerId, Set<Permission> permissions) throws Exception {
+        
+        // Authenticate session
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        // Extract user ID from token and retrieve member information
+        Long appointerId = tokenService.extractUserId(sessionToken);
+        Member appointer = userRepository.getMemberById(appointerId);
+        if (appointer == null) {
+            throw new Exception("Appointer not found.");
+        }
+
+        // Retrieve target member information
+        Member targetManager = userRepository.getMemberById(managerId);
+        if (targetManager == null) {
+            throw new Exception("Target Manager not found.");
+        }
+
+        // Call the domain service to handle the business logic of updating manager's permissions
+        membershipDomain.setPermissionsToManager(appointer, targetManager, companyId, permissions);
+
+        // Update the repository with the changes to the target member
+        userRepository.updateMember(targetManager);
+        
+        // TODO: add notification to the target member about the pending assignment
+        
+        // Return true if the request was successfully processed
+        return true;
+    }
+
+    /**
      * Approve a pending assignment (Manager or Owner)
      */
     public boolean approveAssignment(String sessionToken, Long companyId) throws Exception {

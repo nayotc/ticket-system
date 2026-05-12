@@ -171,4 +171,38 @@ public class MembershipDomainService {
         return appointee.deleteRoleInCompany(companyId) == true;
     }
 
+    public boolean setPermissionsToManager(Member appointer, Member targetManager, Long companyId, Set<Permission> permissions) throws Exception {
+        CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
+        CompanyRole managerRole = targetManager.getRoleInCompany(companyId);
+
+        // 1. Validate the appointer exists
+        if (appointerRole == null) {
+            throw new Exception("You do not have a role in this company.");
+        }
+        
+        // 2. Validate the appointer's role status
+        if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
+            throw new Exception("Your role is not active yet. You cannot update others permissions.");
+        }
+
+        // 3. Validate the appointer's role type
+        if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
+            throw new Exception("Only Owners and Founders can update manager's permissions.");
+        }
+
+        // 4. Validate the target has a Manager role
+        if (managerRole == null || !(managerRole instanceof Manager)) {
+            throw new Exception("The specified user does not hold a Manager role");
+        }
+
+        // 5. Validate the actor is the appointer of target user
+        if (!getAppointerId(targetManager, companyId).equals(appointer.getId())) {
+            throw new Exception("You are not the appointer of the specified user");
+        }
+
+        // 6. If all validations pass, update manager's permissions
+        ((Manager) managerRole).setPermissions(permissions);
+        return true;
+    }
+
 }

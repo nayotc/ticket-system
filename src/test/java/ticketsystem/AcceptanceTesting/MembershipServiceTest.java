@@ -211,4 +211,75 @@ public class MembershipServiceTest {
 
         assertEquals("This role is already active and cannot be rejected.", exception.getMessage());
     }
+
+    // =========================================================================================
+    // Use-case: Update Manager Permissions
+    // =========================================================================================
+
+    @Test
+    public void GivenValidOwnerAndManager_WhenUpdatePermissions_ThenPermissionsAreSavedSuccessfully() throws Exception {
+        // Arrange
+        Set<Permission> newPermissions = new HashSet<>();
+        newPermissions.add(Permission.MANAGE_INQUIRIES);
+        newPermissions.add(Permission.CONFIGURE_HALL_AND_MAP);
+
+        // Act - appointerToken belongs to founderId (100L) who appointed managerId (102L) in setUp()
+        boolean result = membershipService.updateManagerPermissions(appointerToken, companyId, managerId, newPermissions);
+
+        // Assert
+        assertTrue(result, "Service should return true on success.");
+        
+        Member updatedManager = userRepository.getMemberById(managerId);
+        Manager managerRole = (Manager) updatedManager.getRoleInCompany(companyId);
+        
+        assertTrue(managerRole.getPermissionKeys().contains(Permission.MANAGE_INQUIRIES.getKey()), "Permissions should be updated in the repository.");
+        assertTrue(managerRole.getPermissionKeys().contains(Permission.CONFIGURE_HALL_AND_MAP.getKey()), "Permissions should be updated in the repository.");
+    }
+
+    @Test
+    public void GivenInvalidSessionToken_WhenUpdatePermissions_ThenThrowsException() {
+        // Arrange
+        Set<Permission> newPermissions = new HashSet<>();
+        newPermissions.add(Permission.MANAGE_INQUIRIES);
+        String invalidToken = "invalid-session-token";
+
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.updateManagerPermissions(invalidToken, companyId, managerId, newPermissions);
+        });
+
+        // Handles both TokenService direct validation or custom exception messages
+        assertTrue(exception.getMessage().contains("Invalid") || exception.getMessage().contains("Session authentication failed."));
+    }
+
+    @Test
+    public void GivenManagerDoesNotExist_WhenUpdatePermissions_ThenThrowsException() {
+        // Arrange
+        Long nonExistentManagerId = 999L;
+        Set<Permission> newPermissions = new HashSet<>();
+
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.updateManagerPermissions(appointerToken, companyId, nonExistentManagerId, newPermissions);
+        });
+
+        assertEquals("Target Manager not found.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointerDidNotAppointManager_WhenUpdatePermissions_ThenThrowsDomainException() throws Exception {
+        // Arrange: Give 'member' (ID 103L) an active Manager role, appointed by someone else (e.g., 500L)
+        member.addManagerRole(companyId, 500L, new HashSet<>());
+        member.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepository.updateMember(member);
+
+        Set<Permission> newPermissions = new HashSet<>();
+
+        // Act & Assert: Founder (ID 100L) tries to update 'member' (who was appointed by 500L)
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.updateManagerPermissions(appointerToken, companyId, memberId, newPermissions);
+        });
+
+        assertEquals("You are not the appointer of the specified user", exception.getMessage());
+    }
 }
