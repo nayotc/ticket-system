@@ -88,8 +88,7 @@ public class SystemAdminService {
         }
         try {
             orderRepository.deleteActiveOrdersByUserId(memberId);
-            //companyService.removeUserFromAllCompanies(memberId);
-            //companyRepository.removeUserFromAllCompanies(memberId);
+            companyService.removeUserFromAllCompanies(memberId);
             boolean userRemoved = userRepository.removeRegisteredMember(memberId);
             if (!userRemoved) {
                 logger.logEvent("ERROR: Failed to remove member from the system.", LogbackSystemLogger.LogLevel.INFO);
