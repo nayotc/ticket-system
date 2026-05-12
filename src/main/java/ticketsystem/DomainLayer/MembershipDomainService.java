@@ -15,7 +15,11 @@ public class MembershipDomainService {
     private final IUserRepository userRepository;
 
     public MembershipDomainService(IUserRepository userRepository) {
-            this.userRepository = userRepository;
+        this.userRepository = userRepository;
+    }
+
+    public boolean validatePermission(String sessionId, Long companyId, String permission) {
+        return false;
     }
 
     public boolean validatePermission(Long memberId, Long companyId, Permission permission) {

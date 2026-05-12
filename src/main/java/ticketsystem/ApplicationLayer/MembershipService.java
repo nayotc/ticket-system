@@ -17,14 +17,14 @@ public class MembershipService {
     private final ITokenService tokenService;
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
-    private final MembershipDomainService domainService;
+    private final MembershipDomainService membershipDomain;
     private final NotificationsService notificationsService;
 
-    public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService domainService, NotificationsService notificationsService) {
+    public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService membershipDomain, NotificationsService notificationsService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
-        this.domainService = domainService;
+        this.membershipDomain = membershipDomain;
         this.notificationsService = notificationsService;
     }
 
@@ -43,7 +43,7 @@ public class MembershipService {
         Long memberId = tokenService.extractUserId(sessionToken);
         
         // Use the domain service to validate the permission based on the member's role
-        return domainService.validatePermission(memberId, companyId, requiredPermission);
+        return membershipDomain.validatePermission(memberId, companyId, requiredPermission);
     }
 
     /**
@@ -64,7 +64,7 @@ public class MembershipService {
         Member targetMember = userRepository.getMemberById(targetMemberId);
 
         // Call the domain service to handle the business logic of creating the manager role
-        domainService.ManagerAssignmentRequest(appointer, targetMember, companyId, permissions);
+        membershipDomain.ManagerAssignmentRequest(appointer, targetMember, companyId, permissions);
 
         // Update the repository with the changes to the target member
         userRepository.updateMember(targetMember);
@@ -89,14 +89,14 @@ public class MembershipService {
         Long appointeeId = tokenService.extractUserId(sessionToken);
         Member appointee = userRepository.getMemberById(appointeeId);
         
-        Long appointerId = domainService.getAppointerId(appointee, companyId);
+        Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
         if (appointerId == null) {
             throw new Exception("The appointer ID could not be determined.");
         }
 
         Member appointer = userRepository.getMemberById(appointerId);
         Company company = companyRepository.findById(companyId).orElseThrow(() -> new Exception("Company not found."));
-        domainService.ApproveAssignment(appointer, appointee, company);
+        membershipDomain.ApproveAssignment(appointer, appointee, company);
 
         // Update the repository with the changes to both the appointee, appointer and company        
         userRepository.updateMember(appointee);
@@ -122,14 +122,14 @@ public class MembershipService {
         Member appointee = userRepository.getMemberById(memberId);
         
         // Extract user ID from token and retrieve member information
-        Long appointerId = domainService.getAppointerId(appointee, companyId);
+        Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
         if (appointerId == null) {
             throw new Exception("The appointer ID could not be determined.");
         }
         
         Member appointer = userRepository.getMemberById(appointerId);
 
-        domainService.RejectAssignment(appointer, appointee, companyId);
+        membershipDomain.RejectAssignment(appointer, appointee, companyId);
 
         // Update the repository with the changes to the appointee, appointer
         userRepository.updateMember(appointee);

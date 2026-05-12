@@ -1,7 +1,6 @@
 package ticketsystem.ApplicationLayer;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -11,17 +10,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import ticketsystem.ApplicationLayer.EventService;
-import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.MembershipDomainService;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +35,7 @@ public class EventServiceTest {
 
     private EventService EventService;
     private final String validSessionId = "valid-session";
+    private final Long validUserId = 1L;
     private final Long validCompanyId = 1L;
 
     @BeforeEach
@@ -49,16 +45,19 @@ public class EventServiceTest {
             mockEventRepository,
             mockTokenService,
             mockMembershipDomainService);
+            
         when(mockTokenService.validateToken(validSessionId)).thenReturn(true);
+        // FIX: Extracting the user ID must be mocked in setUp so all validation tests know who the user is!
+        when(mockTokenService.extractUserId(validSessionId)).thenReturn(validUserId);
+        
         when(mockMembershipDomainService.validatePermission(
-            validSessionId,
+            validUserId,
             validCompanyId,
-            "event:create")).thenReturn(true);
+            Permission.MANAGE_EVENT_INVENTORY)).thenReturn(true);
     }
 
     @Test
     void GivenValidTokenAndPermission_WhenInsertEvent_ThenAddEventOnce() {
-        when(mockTokenService.extractUserId(validSessionId)).thenReturn(1L);
         when(mockEventRepository.getNextId()).thenReturn(1L);
 
         LocalDateTime futureDate = LocalDateTime.now().plusDays(1);
@@ -104,9 +103,9 @@ public class EventServiceTest {
     void GivenInvalidPermission_WhenInsertEvent_ThenThrowException() {
         // Arrange
         when(mockMembershipDomainService.validatePermission(
-            validSessionId,
+            validUserId,
             validCompanyId,
-            "event:create")).thenReturn(false);
+            Permission.MANAGE_EVENT_INVENTORY)).thenReturn(false);
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class, () -> EventService.insertEvent(
                 validSessionId,
@@ -231,14 +230,4 @@ public class EventServiceTest {
         assertEquals("Map size must be positive", exception.getMessage());
         verify(mockEventRepository, times(0)).addEvent(any());
     }
-
-
-
-
-
-
-
-
 }
-
-
