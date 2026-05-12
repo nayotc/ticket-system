@@ -17,9 +17,11 @@ import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.history.Purchase;
+import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
 public class ReservationService {
@@ -29,6 +31,7 @@ public class ReservationService {
     private final TokenService tokenService;
     private final IPaymentService paymentService;
     private final ISecureBarcode secureBarcode;
+    private final ILotteryRepository lotteryRepository;
     private final Reservation reservation;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
 
@@ -38,18 +41,19 @@ public class ReservationService {
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
-            TokenService tokenService,IPaymentService paymentService, ISecureBarcode secureBarcode) {
+            TokenService tokenService,IPaymentService paymentService, ISecureBarcode secureBarcode, ILotteryRepository lotteryRepository) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.paymentService=paymentService;
         this.secureBarcode=secureBarcode;
+        this.lotteryRepository=lotteryRepository;
         this.reservation=new Reservation();
 
     }
 
 //UC 2.5,2.4
-     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position) {
+     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position,String lotteryCode) {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
@@ -57,11 +61,18 @@ public class ReservationService {
             if(eventRepository.getEventById(eventId)==null) {
                 throw new IllegalArgumentException("Event not found");
             }
+            Lottery lottery = lotteryRepository.findByEventId(eventId);
+
+            if (lottery != null) {
+                Long userId = tokenService.extractUserId(token);
+                reservation.checkLottery(lottery, userId, lotteryCode);
+            }
 
             ActiveOrder order = getOrCreateOrder(token, eventId);
             if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
+
             Event event = eventRepository.getEventById(eventId);
             reservation.selectSeatTicket(order, event, areaId, position);
 
@@ -73,13 +84,21 @@ public class ReservationService {
             throw e;
         }
     }
-    public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity) {
+    public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity,String lotteryCode) {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
             if(eventRepository.getEventById(eventId)==null) {
                     throw new IllegalArgumentException("Event not found");
-                }
+            }
+
+            Lottery lottery = lotteryRepository.findByEventId(eventId);
+
+            if (lottery != null) {
+                Long userId = tokenService.extractUserId(token);
+                reservation.checkLottery(lottery, userId, lotteryCode);
+            }
+
             ActiveOrder order = getOrCreateOrder(token, eventId);
             if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
@@ -287,6 +306,7 @@ public class ReservationService {
          }
     }
     }
+
     
     //for logging - can be replaced with a proper logging framework
     private void logWarning(String msg) {

@@ -19,14 +19,18 @@ import ticketsystem.ApplicationLayer.ReservationService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
+import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.DomainLayer.event.StandingArea;
+import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
@@ -35,6 +39,7 @@ public class ReservationServiceTest {
     private ReservationService reservationService;
     private IOrderRepository orderRepository;
     private IEventRepository eventRepository;
+    private ILotteryRepository lotteryRepository;
     private FakePaymentService paymentService;
     private FakeSecureBarcode secureBarcode;
     private TokenService tokenService;
@@ -43,6 +48,7 @@ public class ReservationServiceTest {
     void setUp() {
         orderRepository = new OrderRepository();
         eventRepository = new FakeEventRepository();
+        lotteryRepository = new FakeLotteryRepository();
         paymentService = new FakePaymentService();
         secureBarcode = new FakeSecureBarcode();
 
@@ -77,9 +83,264 @@ public class ReservationServiceTest {
                 eventRepository,
                 tokenService,
                 paymentService,
-                secureBarcode
+                secureBarcode,lotteryRepository
         );
     }
+    @Test
+    void AcceptanceTest_SelectStandingTicket_WhenEventIsRegular_ThenTicketIsSelectedWithoutLotteryCode() {
+        Long eventId = 10L;
+        Long areaId = 1L;
+        String token = "member-token-1";
+
+        Event event = createActiveEvent(eventId);
+        eventRepository.addEvent(event);
+
+        boolean result = reservationService.selectStandingTicket(
+                token,
+                eventId,
+                areaId,
+                1,
+                null
+        );
+
+        assertTrue(result);
+    }
+
+    @Test
+    void AcceptanceTest_SelectStandingTicket_WhenLotteryEventAndValidCode_ThenTicketIsSelected() {
+        Long eventId = 11L;
+        Long areaId = 1L;
+        String token = "member-token-1";
+        String lotteryCode = "ABC12345";
+
+        Event event = createActiveEvent(eventId);
+        eventRepository.addEvent(event);
+
+        Lottery lottery = new Lottery(1L, eventId, 1);
+        lottery.registerMember(1L);
+        lottery.setWinner(1L, lotteryCode);
+        lotteryRepository.addLottery(lottery);
+
+        boolean result = reservationService.selectStandingTicket(
+                token,
+                eventId,
+                areaId,
+                1,
+                lotteryCode
+        );
+
+        assertTrue(result);
+    }
+
+    @Test
+void AcceptanceTest_SelectStandingTicket_WhenLotteryEventAndMissingCode_ThenSelectionFails() {
+    Long eventId = 12L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(1L);
+    lottery.setWinner(1L, "ABC12345");
+    lotteryRepository.addLottery(lottery);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectStandingTicket(
+                    token,
+                    eventId,
+                    areaId,
+                    1,
+                    null
+            )
+    );
+}
+
+@Test
+void AcceptanceTest_SelectStandingTicket_WhenLotteryEventAndWrongCode_ThenSelectionFails() {
+    Long eventId = 13L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(1L);
+    lottery.setWinner(1L, "ABC12345");
+    lotteryRepository.addLottery(lottery);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectStandingTicket(
+                    token,
+                    eventId,
+                    areaId,
+                    1,
+                    "WRONGCODE"
+            )
+    );
+}
+@Test
+void AcceptanceTest_SelectStandingTicket_WhenLotteryEventAndUserDidNotWin_ThenSelectionFails() {
+    Long eventId = 14L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(999L);
+    lottery.setWinner(999L, "ABC12345");
+    lotteryRepository.addLottery(lottery);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectStandingTicket(
+                    token,
+                    eventId,
+                    areaId,
+                    1,
+                    "ABC12345"
+            )
+    );
+}
+
+@Test
+void AcceptanceTest_SelectSeatTicket_WhenEventIsRegular_ThenTicketIsSelectedWithoutLotteryCode() {
+    Long eventId = 15L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    seatPositionDTO position = new seatPositionDTO(1, 1);
+
+    boolean result = reservationService.selectSeatTicket(
+            token,
+            eventId,
+            areaId,
+            position,
+            null
+    );
+
+    assertTrue(result);
+}
+@Test
+void AcceptanceTest_SelectSeatTicket_WhenLotteryEventAndValidCode_ThenTicketIsSelected() {
+    Long eventId = 16L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+    String lotteryCode = "ABC12345";
+
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(1L);
+    lottery.setWinner(1L, lotteryCode);
+    lotteryRepository.addLottery(lottery);
+
+    seatPositionDTO position = new seatPositionDTO(1, 1);
+
+    boolean result = reservationService.selectSeatTicket(
+            token,
+            eventId,
+            areaId,
+            position,
+            lotteryCode
+    );
+
+    assertTrue(result);
+}
+
+@Test
+void AcceptanceTest_SelectSeatTicket_WhenLotteryEventAndMissingCode_ThenSelectionFails() {
+    Long eventId = 17L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(1L);
+    lottery.setWinner(1L, "ABC12345");
+    lotteryRepository.addLottery(lottery);
+
+    seatPositionDTO position = new seatPositionDTO(1, 1);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectSeatTicket(
+                    token,
+                    eventId,
+                    areaId,
+                    position,
+                    null
+            )
+    );
+}
+
+@Test
+void AcceptanceTest_SelectSeatTicket_WhenLotteryEventAndWrongCode_ThenSelectionFails() {
+    Long eventId = 18L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(1L);
+    lottery.setWinner(1L, "ABC12345");
+    lotteryRepository.addLottery(lottery);
+
+    seatPositionDTO position = new seatPositionDTO(1, 1);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectSeatTicket(
+                    token,
+                    eventId,
+                    areaId,
+                    position,
+                    "WRONGCODE"
+            )
+    );
+}
+
+@Test
+void AcceptanceTest_SelectSeatTicket_WhenLotteryEventAndUserDidNotWin_ThenSelectionFails() {
+    Long eventId = 19L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(999L);
+    lottery.setWinner(999L, "ABC12345");
+    lotteryRepository.addLottery(lottery);
+
+    seatPositionDTO position = new seatPositionDTO(1, 1);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectSeatTicket(
+                    token,
+                    eventId,
+                    areaId,
+                    position,
+                    "ABC12345"
+            )
+    );
+}
 
     @Test
     void AcceptanceTest_Checkout_WhenPaymentAndTicketIssuingSucceed_ThenOrderIsCompletedAndBarcodeIssued() {
@@ -97,7 +358,7 @@ public class ReservationServiceTest {
                 token,
                 eventId,
                 areaId,
-                1
+                1,null
         );
 
         assertTrue(selected);
@@ -139,7 +400,7 @@ public class ReservationServiceTest {
                 token,
                 eventId,
                 areaId,
-                1
+                1,null
         );
 
         paymentService.shouldPaymentSucceed = false;
@@ -167,7 +428,7 @@ public class ReservationServiceTest {
                 token,
                 eventId,
                 areaId,
-                1
+                1,null
         );
 
         secureBarcode.shouldGenerateSucceed = false;
@@ -200,7 +461,7 @@ public class ReservationServiceTest {
                 token,
                 eventId,
                 areaId,
-                1
+                1,"null"
         );
 
         assertTrue(selected);
@@ -257,6 +518,40 @@ public class ReservationServiceTest {
     return event;
 }
 
+private Event createActiveEventWithSeatingArea(Long eventId) {
+    Event event = new Event(
+            eventId,
+            LocalDateTime.now().plusDays(10),
+            "Seat Test Event",
+            1L,
+            1L,
+            EventLocation.TEL_AVIV,
+            100L,
+            EventCategory.CONCERT,
+            "Test Artist",
+            new BigDecimal("100.00"),
+            new Pair<>(10, 10)
+    );
+
+    event.setStatus(Event.eventStatus.ACTIVE);
+
+    EventMap realMap = new EventMap(new Pair<>(10, 10));
+
+    SeatingArea seatingArea = new SeatingArea(
+            1L,
+            "Main Seating Area",
+            new Pair<>(0, 0),   // location
+            new Pair<>(5, 5),   // size
+            5,                  // rows
+            5                   // columns
+    );
+
+    realMap.addElement(seatingArea);
+
+    event.setMap(realMap);
+
+    return event;
+}
 
     private PaymentDetails createPaymentDetails() {
         return new PaymentDetails("VISA","Yosi");
@@ -360,6 +655,41 @@ public class ReservationServiceTest {
         }
     }
 
+    private static class FakeLotteryRepository implements ILotteryRepository {
+
+        private final ConcurrentHashMap<Long, Lottery> lotteries = new ConcurrentHashMap<>();
+
+        @Override
+        public void addLottery(Lottery lottery) {
+            lotteries.put(lottery.getLotteryId(), lottery);
+        }
+
+        @Override
+        public Lottery findById(long lotteryId) {
+            return lotteries.get(lotteryId);
+        }
+
+        @Override
+        public void update(Lottery lottery) {
+            lotteries.put(lottery.getLotteryId(), lottery);
+        }
+
+        @Override
+        public Lottery findByEventId(long eventId) {
+            for (Lottery lottery : lotteries.values()) {
+                if (lottery.getEventId() == eventId) {
+                    return lottery;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public long generateNextLotteryId() {
+            return lotteries.size() + 1L;
+        }
+    }
+
     private void useGuestTokenService() {
     tokenService = new TokenService(
             "manual_test_secret_32_chars_long",
@@ -391,7 +721,7 @@ public class ReservationServiceTest {
             eventRepository,
             tokenService,
             paymentService,
-            secureBarcode
+            secureBarcode,lotteryRepository
     );
 }
 }
