@@ -1,11 +1,6 @@
 package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -31,6 +26,7 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
@@ -226,34 +222,41 @@ public class ReservationServiceTest {
         assertNotNull(completedOrder.get().getTickets().get(0).getSecureBarcode());
     }
 
-    private Event createActiveEvent(Long eventId) {
-        Event event = new Event(
-                eventId,
-                LocalDateTime.now().plusDays(10),
-                "Checkout Test Event",
-                1L,
-                1L,
-                EventLocation.TEL_AVIV,
-                100L,
-                EventCategory.CONCERT,
-                "Test Artist",
-                new BigDecimal("100.00"),
-                new Pair<>(10, 10)
-        );
+   //create event
+   private Event createActiveEvent(Long eventId) {
+    Event event = new Event(
+            eventId,
+            LocalDateTime.now().plusDays(10),
+            "Checkout Test Event",
+            1L,
+            1L,
+            EventLocation.TEL_AVIV,
+            100L,
+            EventCategory.CONCERT,
+            "Test Artist",
+            new BigDecimal("100.00"),
+            new Pair<>(10, 10)
+    );
 
-        event.setStatus(Event.eventStatus.ACTIVE);
+    event.setStatus(Event.eventStatus.ACTIVE);
 
-        EventMap fakeMap = mock(EventMap.class);
+    EventMap realMap = new EventMap(new Pair<>(10, 10));
 
-        doNothing().when(fakeMap).reserveSpot(anyLong());
-        doNothing().when(fakeMap).releaseSpot(anyLong());
-        doNothing().when(fakeMap).sellSpot(anyLong());
-        when(fakeMap.isSoldOut()).thenReturn(false);
+    StandingArea standingArea = new StandingArea(
+            1L,
+            "Main Standing Area",
+            new Pair<>(0, 0),     // location
+            new Pair<>(5, 5),     // size
+            100                   // capacity
+    );
 
-        event.setMap(fakeMap);
+    realMap.addElement(standingArea);
 
-        return event;
-    }
+    event.setMap(realMap);
+
+    return event;
+}
+
 
     private PaymentDetails createPaymentDetails() {
         return new PaymentDetails("VISA","Yosi");
