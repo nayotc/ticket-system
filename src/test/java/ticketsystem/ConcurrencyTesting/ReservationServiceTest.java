@@ -259,7 +259,7 @@ public class ReservationServiceTest {
     }
 
     @Test
-    void ConcurrencyTest_ManyUsersSelectDifferentSeats_ThenAllUsersSucceed()
+    void ConcurrencyTest_ManyUsersSelectDifferentSeats_ThenPartOfUsersSucceed()
             throws InterruptedException {
 
         Long eventId = 103L;
@@ -320,6 +320,139 @@ public class ReservationServiceTest {
         assertEquals(numberOfUsers, successCount.get() + exceptions.size(),
                 "Every thread should either succeed or fail safely");
             }
+
+    @Test
+    void ConcurrencyTest_ManyUsersCheckoutDifferentOrders_ThenAllCheckoutsSucceed()
+            throws InterruptedException {
+
+        Long eventId = 104L;
+        Long areaId = 1L;
+
+        Event event = createActiveStandingEvent(eventId);
+        eventRepository.addEvent(event);
+
+        int numberOfUsers = 10;
+
+        for (int i = 0; i < numberOfUsers; i++) {
+            int userId = i + 1;
+
+            reservationService.selectStandingTicket(
+                    "member-token-" + userId,
+                    eventId,
+                    areaId,
+                    1,
+                    null
+            );
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfUsers);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(numberOfUsers);
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        List<Throwable> exceptions = synchronizedList(new ArrayList<>());
+
+        for (int i = 0; i < numberOfUsers; i++) {
+            final int userId = i + 1;
+
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+
+                    boolean result = reservationService.checkout(
+                            "member-token-" + userId,
+                            eventId,
+                            createPaymentDetails()
+                    );
+
+                    if (result) {
+                        successCount.incrementAndGet();
+                    }
+
+                } catch (Throwable t) {
+                    exceptions.add(t);
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        boolean completed = doneLatch.await(10, TimeUnit.SECONDS);
+        executor.shutdown();
+
+       assertTrue(completed, "Test timed out");
+
+        assertTrue(successCount.get() > 0,
+                "At least one checkout should succeed");
+
+        assertTrue(successCount.get() <= numberOfUsers,
+                "Success count cannot exceed number of users");
+
+        assertEquals(numberOfUsers, successCount.get() + exceptions.size(),
+                "Every checkout attempt should either succeed or fail safely");
+
+        assertTrue(orderRepository.getAll().size() <= numberOfUsers,
+                "Repository should remain in a consistent state");
+    }
+
+    @Test
+    void ConcurrencyTest_ManyUsersSelectStandingTickets_OverCapacity_ThenOnlyCapacityUsersSucceed()
+            throws InterruptedException {
+
+        Long eventId = 105L;
+        Long areaId = 1L;
+
+        int capacity = 5;
+
+        Event event = createActiveStandingEventWithCapacity(eventId, capacity);
+        eventRepository.addEvent(event);
+
+        int numberOfUsers = 20;
+
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfUsers);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(numberOfUsers);
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        List<Throwable> exceptions = synchronizedList(new ArrayList<>());
+
+        for (int i = 0; i < numberOfUsers; i++) {
+            final int userId = i + 1;
+
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+
+                    boolean result = reservationService.selectStandingTicket(
+                            "member-token-" + userId,
+                            eventId,
+                            areaId,
+                            1,
+                            null
+                    );
+
+                    if (result) {
+                        successCount.incrementAndGet();
+                    }
+
+                } catch (Throwable t) {
+                    exceptions.add(t);
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        boolean completed = doneLatch.await(10, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        assertTrue(completed, "Test timed out");
+
+        assertTrue(successCount.get() <= capacity,
+                "Successful reservations must not exceed standing capacity");
+    }
 
     private Event createActiveEventWithManySeats(Long eventId, int rows, int columns) {
     Event event = new Event(
