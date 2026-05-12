@@ -64,7 +64,7 @@ public class OrderServiceAcceptanceTest {
     }
 
     @Test
-    void AcceptanceTest_OnUserSignIn_WhenGuestHasNoActiveOrder_ThenNothingChanges() {
+    void AcceptanceTest_OnUserLogin_WhenGuestHasNoActiveOrder_ThenNothingChanges() {
         orderService.onUserLogin(guestToken, memberToken);
 
         ActiveOrder memberOrder = orderRepository.getActiveOrderByUserId(userId);
@@ -76,7 +76,7 @@ public class OrderServiceAcceptanceTest {
     }
 
     @Test
-    void AcceptanceTest_OnUserSignIn_WhenGuestHasOrderAndMemberHasNoOrder_ThenGuestOrderBecomesMemberOrder() {
+    void AcceptanceTest_OnUserLogin_WhenGuestHasOrderAndMemberHasNoOrder_ThenGuestOrderBecomesMemberOrder() {
         Long eventId = 100L;
 
         ActiveOrder guestOrder = new ActiveOrder(
@@ -100,7 +100,7 @@ public class OrderServiceAcceptanceTest {
     }
 
     @Test
-    void AcceptanceTest_OnUserSignIn_WhenGuestAndMemberHaveOrdersForSameEvent_ThenOrdersAreMergedAndGuestOrderIsDeleted() {
+    void AcceptanceTest_OnUserLogin_WhenGuestAndMemberHaveOrdersForSameEvent_ThenOrdersAreMergedAndGuestOrderIsDeleted() {
         Long eventId = 200L;
 
         ActiveOrder guestOrder = new ActiveOrder(
@@ -132,7 +132,7 @@ public class OrderServiceAcceptanceTest {
     }
 
     @Test
-    void AcceptanceTest_OnUserSignIn_WhenMemberHasOrderForDifferentEvent_ThenGuestOrderIsDeletedAndMemberOrderRemains() {
+    void AcceptanceTest_OnUserLogin_WhenMemberHasOrderForDifferentEvent_ThenGuestOrderIsDeletedAndMemberOrderRemains() {
         Long guestEventId = 300L;
         Long memberEventId = 400L;
 
@@ -164,7 +164,7 @@ public class OrderServiceAcceptanceTest {
     }
 
     @Test
-    void AcceptanceTest_OnUserSignIn_WhenTokenExtractionFails_ThenWarningIsLoggedAndExceptionIsThrown() {
+    void AcceptanceTest_OnUserLogin_WhenTokenExtractionFails_ThenWarningIsLoggedAndExceptionIsThrown() {
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
                 new TokenRepository()) {
