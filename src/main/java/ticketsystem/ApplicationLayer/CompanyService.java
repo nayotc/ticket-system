@@ -1,7 +1,6 @@
 package ticketsystem.ApplicationLayer;
 
 import java.util.List;
-import java.util.Optional;
 
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -293,10 +292,19 @@ public class CompanyService {
             throw new Exception("Failed to remove user from companies: " + e.getMessage(), e);
         }
     }
-<<<<<<< HEAD
 
 
-private boolean canViewCompanyDetails(String sessionToken, Company company) throws Exception {
+
+/**
+ * Checks whether the current session is allowed to view the given company details.
+ * Active companies can be viewed by any valid active session.
+ * Inactive companies can be viewed only by company role holders through CompanyService.
+ *
+ * @param sessionToken active session token
+ * @param company company to view
+ * @return true if the requester can view the company details, false otherwise
+ */
+private boolean canViewCompanyDetails(String sessionToken, Company company) {
     if (company.isActive()) {
         return true;
     }
@@ -314,63 +322,53 @@ private boolean canViewCompanyDetails(String sessionToken, Company company) thro
             || company.getOwners().contains(memberId)
             || company.getManagers().contains(memberId);
 }
-    public CompanyDTO getCompanyDetails(String sessionToken, long companyId) throws Exception {
-    if (!tokenService.validateToken(sessionToken)) {
-        throw new Exception("Error: Invalid or expired session token.");
-    }
 
-    Company company = companyRepository.findById(companyId)
-            .orElseThrow(() -> new Exception("Error: Company not found."));
+/**
+ * Returns company details according to viewing permissions.
+ * Active companies can be viewed by any valid active session.
+ * Inactive companies can be viewed only by company role holders.
+ *
+ * Important: this method does not log the session token, because session tokens are sensitive.
+ *
+ * @param sessionToken active session token
+ * @param companyId company id
+ * @return DTO of the requested company
+ * @throws Exception if the session is invalid, the company does not exist,
+ *                   or the requester does not have permission to view it
+ */
+public CompanyDTO getCompanyDetails(String sessionToken, long companyId) throws Exception {
+    logEvent("Get company details started, companyId=" + companyId,
+            ISystemLogger.LogLevel.INFO);
 
-    if (!canViewCompanyDetails(sessionToken, company)) {
-        throw new Exception("Error: User does not have permission to view this company.");
-    }
-        return new CompanyDTO(company);
-}
+    try {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Error: Invalid or expired session token.");
+        }
 
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new Exception("Error: Company not found."));
 
-=======
+        if (!canViewCompanyDetails(sessionToken, company)) {
+            throw new Exception("Error: User does not have permission to view this company.");
+        }
 
-    /**
-     * Use Case 6.1: Close production company by system admin.
-     * This method is called by SystemAdminService after the requester was validated as a system admin.
-     * The company is marked inactive and its company appointments are cancelled by the domain object.
-     *
-     * @param companyId id of the company to close
-     * @param adminId id of the validated system admin
-     * @return DTO of the closed company
-     * @throws Exception if the company does not exist or cannot be closed
-     */
-    public CompanyDTO closeProductionCompanyBySystemAdmin(long companyId, long adminId) throws Exception {
-        logEvent("UC 6.1 company-side started: close production company by system admin, companyId="
-                        + companyId + ", adminId=" + adminId,
+        logEvent("Get company details completed, companyId=" + companyId,
                 ISystemLogger.LogLevel.INFO);
 
-        try {
-            Company company = companyRepository.findById(companyId)
-                    .orElseThrow(() -> new Exception("Company not found."));
+        return new CompanyDTO(company);
 
-            company.closeBySystemAdmin(adminId);
-            companyRepository.save(company);
+    } catch (RuntimeException e) {
+        logError("Get company details failed due to an unexpected system error, companyId="
+                + companyId, e);
+        throw e;
 
-            logEvent("UC 6.1 company-side completed: company closed by system admin, companyId="
-                            + companyId + ", adminId=" + adminId,
-                    ISystemLogger.LogLevel.INFO);
-
-            return new CompanyDTO(company);
-
-        } catch (RuntimeException e) {
-            logError("UC 6.1 company-side failed due to an unexpected system error, companyId="
-                    + companyId + ", adminId=" + adminId, e);
-            throw e;
-
-        } catch (Exception e) {
-            logEvent("UC 6.1 company-side rejected: close by system admin failed, companyId="
-                            + companyId + ", adminId=" + adminId + ", reason=" + e.getMessage(),
-                    ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
+    } catch (Exception e) {
+        logEvent("Get company details rejected, companyId=" + companyId
+                        + ", reason=" + e.getMessage(),
+                ISystemLogger.LogLevel.WARN);
+        throw e;
     }
+}
 
     /**
      * Writes an event log message if a logger was injected.
@@ -395,5 +393,4 @@ private boolean canViewCompanyDetails(String sessionToken, Company company) thro
             logger.logError(message, exception);
         }
     }
->>>>>>> 5f5bb60 (Add logging and documentation to company service)
 }
