@@ -27,7 +27,6 @@ public class SystemAdminService {
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
     private final ISystemLogger logger;
-    private final CompanyService companyService;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
@@ -46,7 +45,6 @@ public class SystemAdminService {
         this.tokenService = tokenService;
         this.companyRepository = companyRepository;
         this.logger = logger;
-        companyService = new CompanyService(companyRepository, tokenService);
     }
 
 //Use Case: Ticket System Initialization
