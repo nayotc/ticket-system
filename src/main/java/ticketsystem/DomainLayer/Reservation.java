@@ -104,7 +104,7 @@ public class Reservation {
 
     public void releaseTicket(Ticket ticket, Event event) {
      if(ticket.getRow()==0 && ticket.getChair()==0) {
-           event. releaseSpot(ticket.getAreaId());
+           event. releaseSpot(ticket.getAreaId(),1);
         } else {
             SeatPosition position = new SeatPosition(ticket.getRow(), ticket.getChair());   
             event.releaseSeat(ticket.getAreaId(), position);
@@ -229,4 +229,46 @@ void GivenSeatTicketsInSameArea_WhenRemoveStandingTicketsFromActiveOrder_ThenIgn
     verify(order, never()).deleteTicket(2L);
 
     verify(event).releaseSpot(areaId, 1);
-} */
+
+}
+    
+@Test
+void GivenExpiredOrder_WhenSelectSeatTicket_ThenExpireOrderAndThrowException() {
+    // Arrange
+    Event event = mock(Event.class);
+
+    ActiveOrder order = new ActiveOrder(
+            1L,
+            "guest-token",
+            null,
+            10L,
+            LocalDateTime.now().minusMinutes(1)
+    );
+
+    Ticket oldTicket = new Ticket(
+            1L,
+            10L,
+            5L,
+            2,
+            3,
+            BigDecimal.valueOf(100)
+    );
+
+    order.addTicket(oldTicket);
+
+    // Act
+    IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> reservationService.selectSeatTicket(
+                    "guest-token",
+                    10L,
+                    5L,
+                    new seatPositionDTO(1, 1)
+            )
+    );
+
+    // Assert
+    assertEquals("Order has expired", exception.getMessage());
+    assertTrue(order.getTickets().isEmpty());
+    verify(event).releaseSeat(eq(5L), any(SeatPosition.class));
+}*/
