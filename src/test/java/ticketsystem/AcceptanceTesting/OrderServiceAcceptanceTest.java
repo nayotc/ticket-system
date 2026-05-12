@@ -14,6 +14,7 @@ import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
@@ -159,8 +160,7 @@ public class OrderServiceAcceptanceTest {
         assertNotNull(remainingMemberOrder);
         assertEquals(2L, remainingMemberOrder.getOrderId());
         assertEquals(memberEventId, remainingMemberOrder.getEventId());
-
-        assertNull(deletedGuestOrder);
+        assertEquals(OrderStatus.CANCELLED, deletedGuestOrder.getStatus());
     }
 
     @Test

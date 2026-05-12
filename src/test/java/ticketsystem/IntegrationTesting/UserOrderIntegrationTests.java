@@ -13,6 +13,7 @@ import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
 import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
@@ -122,7 +123,7 @@ public class UserOrderIntegrationTests {
                 orderRepository.getNextId(),
                 guestToken,
                 null, 100L);
-        guestOrder.addTicket(new Ticket(1L, 100L, 1L, 0, 1, BigDecimal.TEN));
+        guestOrder.addTicket(new Ticket(2L, 100L, 1L, 0, 0, BigDecimal.TEN));
         orderRepository.addOrder(guestOrder);
         // Act - login again
         userService.login(guestToken, "member", "password");
@@ -156,7 +157,8 @@ public class UserOrderIntegrationTests {
         // Assert - guest order deleted and member order remains
         assertNotNull(orderRepository.getActiveOrderByUserId(member.getId()));
         assertEquals(memberOrder.getOrderId(), orderRepository.getActiveOrderByUserId(member.getId()).getOrderId());
-        assertNull(orderRepository.getActiveOrderBySessionToken(guestToken));
-        assertNull(orderRepository.findOrderById(guestOrder.getOrderId()));
+        assertEquals(OrderStatus.CANCELLED, orderRepository.getActiveOrderBySessionToken(guestToken).getStatus());
+        assertEquals(OrderStatus.CANCELLED, orderRepository.findOrderById(guestOrder.getOrderId()).getStatus());
+   
     }
 }

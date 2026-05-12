@@ -103,10 +103,18 @@ public class UserService {
                 return null;
             }
             Member member = userRepository.getMemberByUsername(username);
-            String memberToken = tokenService.addActiveSession(member);
-            notifyListeners(sessionToken, memberToken);
-            tokenService.removeActiveSession(sessionToken); // Remove the guest session token since the user is now logged in as a member
-            return memberToken;
+           String memberToken = tokenService.addActiveSession(member);
+
+            try {
+                notifyListeners(sessionToken, memberToken);
+                tokenService.removeActiveSession(sessionToken);
+                return memberToken;
+            } catch (Exception e) {
+                tokenService.removeActiveSession(memberToken);
+                throw e;
+            }
+            
+
         } catch (Exception e) {
             logger.logEvent("Error logging in: " + e.getMessage(), LogLevel.INFO);
             throw e;
