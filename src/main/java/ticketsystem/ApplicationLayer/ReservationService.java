@@ -7,9 +7,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.ILoggerFactory;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
+import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
@@ -34,6 +37,7 @@ public class ReservationService{
     private final ISecureBarcode secureBarcode;
     private final ILotteryRepository lotteryRepository;
     private final Reservation reservation;
+    private final ISystemLogger logger;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
 
 
@@ -42,15 +46,16 @@ public class ReservationService{
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
-            TokenService tokenService,IPaymentService paymentService, ISecureBarcode secureBarcode, ILotteryRepository lotteryRepository) {
+            TokenService tokenService,IPaymentService paymentService, ISecureBarcode secureBarcode, ILotteryRepository lotteryRepository,ISystemLogger logger) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.paymentService=paymentService;
         this.secureBarcode=secureBarcode;
         this.lotteryRepository=lotteryRepository;
+        this.logger=logger;
         this.reservation=new Reservation();
-
+        
     }
 
 //UC 2.5,2.4
@@ -81,7 +86,7 @@ public class ReservationService{
             return true;
 
         } catch (Exception e) {
-            logWarning("selectSeatTicket failed: " + e.getMessage());
+            logger.logEvent("selectSeatTicket failed: " + e.getMessage(),LogLevel.WARN);
             throw e;
         }
     }
@@ -112,7 +117,7 @@ public class ReservationService{
             saveAll(order, event);
             return true;
         } catch (Exception e) {
-            logWarning("selectStandingTicket failed: " + e.getMessage());
+            logger.logEvent("selectStandingTicket failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
     }
@@ -134,7 +139,7 @@ public class ReservationService{
             return true;
 
         } catch (Exception e) {
-            logWarning("removeTicketFromActiveOrder failed: " + e.getMessage());
+            logger.logEvent("removeTicketFromActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
     }
@@ -157,7 +162,7 @@ public class ReservationService{
             return activeOrderDTO;
         } 
         catch (Exception e) {
-            logWarning("viewActiveOrder failed: " + e.getMessage());
+            logger.logEvent("viewActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
     }
@@ -223,7 +228,7 @@ public class ReservationService{
                 );
             }
         } catch (Exception e) {
-            logWarning("checkout failed: " + e.getMessage());
+            logger.logEvent("checkout failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
 
@@ -301,13 +306,9 @@ public class ReservationService{
                 Event event = eventRepository.getEventById(order.getEventId());
                 reservation.expire(event,order);
                 orderRepository.deleteOrder(order.getOrderId());
-                //logWarning("Expired order cancelled: " + order.getOrderId());
+                //logger.logEvent("Expired order cancelled: " + order.getOrderId(), LogLevel.WARN);
          }
     }
     }
-
-    //for logging - can be replaced with a proper logging framework
-    private void logWarning(String msg) {
-        /* ... */ }
 
 }

@@ -32,6 +32,8 @@ public class ReservationServiceTest {
     private FakePaymentService paymentService;
     private FakeSecureBarcode secureBarcode;
     private TokenService tokenService;
+    private FakeSystemLogger logger;
+
 
     @BeforeEach
     void setUp() {
@@ -43,6 +45,8 @@ public class ReservationServiceTest {
 
         paymentService = new FakePaymentService();
         secureBarcode = new FakeSecureBarcode();
+        logger= new FakeSystemLogger();
+
 
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
@@ -76,7 +80,7 @@ public class ReservationServiceTest {
                 tokenService,
                 paymentService,
                 secureBarcode,
-                lotteryRepository
+                lotteryRepository,logger
         );
     }
 
@@ -474,6 +478,21 @@ private Event createActiveEventWithSingleSeat(Long eventId) {
         public String generateSecureBarcode(Long ticketId, Long eventId, Long userId) {
             generateCalls.incrementAndGet();
             return "SECURE_BARCODE_" + ticketId + "_" + eventId + "_" + userId;
+        }
+    }
+
+    private static class FakeSystemLogger implements ISystemLogger {
+        List<String> messages = new ArrayList<>();
+
+        @Override
+        public void logEvent(String message, LogLevel level) {
+            messages.add("[" + level + "] " + message);
+        }
+
+        @Override
+        public void logError(String errorMessage, Throwable exception) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'logError'");
         }
     }
 }
