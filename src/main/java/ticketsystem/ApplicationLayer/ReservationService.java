@@ -17,9 +17,11 @@ import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.history.Purchase;
+import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
 public class ReservationService {
@@ -29,6 +31,7 @@ public class ReservationService {
     private final TokenService tokenService;
     private final IPaymentService paymentService;
     private final ISecureBarcode secureBarcode;
+    private final ILotteryRepository lotteryRepository;
     private final Reservation reservation;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
 
@@ -38,12 +41,13 @@ public class ReservationService {
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
-            TokenService tokenService,IPaymentService paymentService, ISecureBarcode secureBarcode) {
+            TokenService tokenService,IPaymentService paymentService, ISecureBarcode secureBarcode, ILotteryRepository lotteryRepository) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.paymentService=paymentService;
         this.secureBarcode=secureBarcode;
+        this.lotteryRepository=lotteryRepository;
         this.reservation=new Reservation();
 
     }
@@ -57,6 +61,7 @@ public class ReservationService {
             if(eventRepository.getEventById(eventId)==null) {
                 throw new IllegalArgumentException("Event not found");
             }
+            
 
             ActiveOrder order = getOrCreateOrder(token, eventId);
             if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
@@ -286,6 +291,14 @@ public class ReservationService {
                 //logWarning("Expired order cancelled: " + order.getOrderId());
          }
     }
+    }
+
+    private void chekLottery(Long eventId) {
+        Lottery lottery = lotteryRepository.findByEventId(eventId);
+        if (lottery != null) {
+            reservation.checkLottery(lottery);
+            
+        }
     }
     
     //for logging - can be replaced with a proper logging framework

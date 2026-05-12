@@ -10,6 +10,7 @@ import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.SeatPosition;
+import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
@@ -88,6 +89,11 @@ public class Reservation {
         }
 
 }
+
+    public void checkLottery(Lottery lottery, Long userId) {
+        
+        
+    }
 
     public Long generateTicketId() {
         return ticketIdCounter.incrementAndGet();
