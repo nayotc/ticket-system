@@ -12,7 +12,7 @@ public record StandingAreaDTO(
         long capacity,
         long reserved,
         long sold
-) {
+) implements IMapElementDTO {
 
     public static StandingAreaDTO from(StandingArea area) {
         if (area == null) {

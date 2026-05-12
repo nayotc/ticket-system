@@ -112,4 +112,24 @@ public class EventService {
             throw e;
         }
     }
+
+    public EventMapDTO getEventMap(String sessionId, Long eventId) {
+        try {
+            // precondition: user logged in
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+            // precondition: user has permission to view event map
+            Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+
+            // main scenario: return map
+            EventMap map = event.getMap();
+            return EventMapDTO.from(map);
+        } catch (Exception e) {
+            throw e;
+        }
+    }
 }
