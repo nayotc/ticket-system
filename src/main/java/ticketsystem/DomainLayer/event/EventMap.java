@@ -2,6 +2,8 @@ package ticketsystem.DomainLayer.event;
 
 import java.util.List;
 
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+
 public class EventMap {
 
     private Pair<Integer, Integer> size;
@@ -121,14 +123,14 @@ public class EventMap {
         }
         return foundAnyArea;
     }
-    //     for (Element element : elements) {
-    //         if (element instanceof Area) {
-    //             if (!((Area) element).isSoldOut()) {
-    //                 return false;
-    //             }
-    //         }
-    //     }
-    //     return true;
-    // }
+
+    public SeatStatus isSeatAvailable(Long areaId, SeatPosition position) {
+        for (Element element : elements) {
+            if (element instanceof SeatingArea && element.getId() == areaId) {
+                return ((SeatingArea) element).isSeatAvailable(position);
+            }
+        }
+        throw new IllegalArgumentException("Area not found");
+    }
 
 }

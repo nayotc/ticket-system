@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 public class Event {
 
@@ -222,6 +223,10 @@ public class Event {
 
     public void sellSpot(Long areaId, int quantity) {
         this.map.sellSpot(areaId, quantity);
+    }
+
+    public SeatStatus getSeatStatus(Long areaId, SeatPosition position) {
+        return this.map.isSeatAvailable(areaId, position);
     }
 
     // use case: virtual queue and load management

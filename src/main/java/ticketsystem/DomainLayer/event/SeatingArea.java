@@ -3,6 +3,8 @@ package ticketsystem.DomainLayer.event;
 import java.util.HashMap;
 import java.util.Map;
 
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+
 public class SeatingArea extends Area {
     private final Map<SeatPosition, Seat> seats = new HashMap<>();
     private int rows;
@@ -85,6 +87,14 @@ public class SeatingArea extends Area {
             }
         }
         return true;
+    }
+
+    public SeatStatus isSeatAvailable(SeatPosition position) {
+        Seat seat = seats.get(position);
+        if (seat == null) {
+            throw new IllegalArgumentException("Seat not found");
+        }
+        return seat.getStatus();
     }
 
 }
