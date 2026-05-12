@@ -12,6 +12,14 @@ public class EventMap {
         this.elements = new java.util.ArrayList<>();
     }
 
+    // Copy constructor
+    public EventMap(EventMap other) {
+        this.size = other.size.copy();
+        this.elements = other.elements.stream()
+                .map(Element::copy)
+                .toList();
+    }
+
     public Pair<Integer, Integer> getSize() {
         return size;
     }

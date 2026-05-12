@@ -8,6 +8,10 @@ public abstract class Area extends Element {
         super(id, name, location, size);
     }
 
+    public Area(Area other) {
+        super(other);
+    }
+
     public abstract boolean isSoldOut();
 
 }

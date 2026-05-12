@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DTO.Event.ElementDTO;
+import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DTO.Event.IMapElementDTO;
 import ticketsystem.DTO.Event.PairDTO;
@@ -57,6 +58,7 @@ public class EventServiceAcceptanceTest {
 
         membershipDomain.allow(validOwnerSessionId, companyId, "event:create");
         membershipDomain.allow(validOwnerSessionId, companyId, "event:defineMap");
+        membershipDomain.allow(validOwnerSessionId, companyId, "event:update");
     }
 
     // -------------------- Insert Event Tests -------------------
@@ -232,6 +234,308 @@ public class EventServiceAcceptanceTest {
         // Assert
         assertTrue(exception.getMessage().contains("User does not have permission to create an event"));
         assertNull(eventRepository.getEventById(1L));
+    }
+
+    // -------------------- Update Event Tests -------------------
+    @Test
+    void GivenOwnerLoggedInEventExistsAndValidUpdatedDetails_WhenUpdateEvent_ThenEventIsUpdatedAndSaved() {
+        // Arrange
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        Event savedEvent = eventRepository.getEventById(event.getId());
+
+        EventDTO updateDTO = new EventDTO(
+                savedEvent.getId(),
+                "Updated Rock Concert",
+                savedEvent.getCompanyId(),
+                savedEvent.getOpenedBy(),
+                LocalDateTime.now().plusDays(30),
+                EventLocation.HAIFA.name(),
+                200L,
+                savedEvent.getStatus().name(),
+                EventCategory.CONCERT.name(),
+                "Updated Artist",
+                BigDecimal.valueOf(149.99),
+                null,
+                savedEvent.getRate(),
+                savedEvent.isSoldOut(),
+                savedEvent.isOverloaded(),
+                savedEvent.getActiveReservationsCount(),
+                savedEvent.getVersion(),
+                null);
+
+        // Act
+        Boolean result = eventService.updateEvent(validOwnerSessionId, updateDTO);
+
+        // Assert
+        Event updatedEvent = eventRepository.getEventById(savedEvent.getId());
+
+        assertTrue(result);
+        assertNotNull(updatedEvent);
+        assertEquals("Updated Rock Concert", updatedEvent.getName());
+        assertEquals(EventLocation.HAIFA, updatedEvent.getLocation());
+        assertEquals(200L, updatedEvent.getTrafficThreshold());
+        assertEquals(EventCategory.CONCERT, updatedEvent.getCategory());
+        assertEquals("Updated Artist", updatedEvent.getArtistName());
+        assertEquals(0, BigDecimal.valueOf(149.99).compareTo(updatedEvent.getTicketPrice()));
+    }
+
+    @Test
+    void GivenOwnerLoggedInEventExistsAndInvalidUpdatedName_WhenUpdateEvent_ThenSystemRejectsTheRequest() {
+        // Arrange
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        Event savedEvent = eventRepository.getEventById(event.getId());
+
+        String originalName = savedEvent.getName();
+        LocalDateTime originalDate = savedEvent.getDate();
+        EventLocation originalLocation = savedEvent.getLocation();
+        EventCategory originalCategory = savedEvent.getCategory();
+        BigDecimal originalPrice = savedEvent.getTicketPrice();
+
+        EventDTO invalidUpdateDTO = new EventDTO(
+                savedEvent.getId(),
+                "",
+                savedEvent.getCompanyId(),
+                savedEvent.getOpenedBy(),
+                LocalDateTime.now().plusDays(30),
+                EventLocation.HAIFA.name(),
+                200L,
+                savedEvent.getStatus().name(),
+                EventCategory.CONCERT.name(),
+                "Updated Artist",
+                BigDecimal.valueOf(149.99),
+                null,
+                savedEvent.getRate(),
+                savedEvent.isSoldOut(),
+                savedEvent.isOverloaded(),
+                savedEvent.getActiveReservationsCount(),
+                savedEvent.getVersion(),
+                null);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(validOwnerSessionId, invalidUpdateDTO));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
+        assertTrue(exception.getMessage().contains("Event name"));
+        assertEquals(originalName, unchangedEvent.getName());
+        assertEquals(originalDate, unchangedEvent.getDate());
+        assertEquals(originalLocation, unchangedEvent.getLocation());
+        assertEquals(originalCategory, unchangedEvent.getCategory());
+        assertEquals(0, originalPrice.compareTo(unchangedEvent.getTicketPrice()));
+    }
+
+    @Test
+    void GivenOwnerLoggedInEventExistsAndPastUpdatedDate_WhenUpdateEvent_ThenSystemRejectsTheRequest() {
+        // Arrange
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        Event savedEvent = eventRepository.getEventById(event.getId());
+
+        LocalDateTime originalDate = savedEvent.getDate();
+
+        EventDTO invalidUpdateDTO = new EventDTO(
+                savedEvent.getId(),
+                "Updated Rock Concert",
+                savedEvent.getCompanyId(),
+                savedEvent.getOpenedBy(),
+                LocalDateTime.now().minusDays(1),
+                EventLocation.HAIFA.name(),
+                200L,
+                savedEvent.getStatus().name(),
+                EventCategory.CONCERT.name(),
+                "Updated Artist",
+                BigDecimal.valueOf(149.99),
+                null,
+                savedEvent.getRate(),
+                savedEvent.isSoldOut(),
+                savedEvent.isOverloaded(),
+                savedEvent.getActiveReservationsCount(),
+                savedEvent.getVersion(),
+                null);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(validOwnerSessionId, invalidUpdateDTO));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
+        assertTrue(exception.getMessage().contains("date"));
+        assertEquals(originalDate, unchangedEvent.getDate());
+    }
+
+    @Test
+    void GivenInvalidSession_WhenUpdateEvent_ThenSystemRejectsTheRequest() {
+        // Arrange
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        Event savedEvent = eventRepository.getEventById(event.getId());
+
+        EventDTO updateDTO = createValidUpdateDTO(savedEvent);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(invalidSessionId, updateDTO));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
+        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertEquals(savedEvent.getName(), unchangedEvent.getName());
+    }
+
+    @Test
+    void GivenLoggedInUserWithoutUpdatePermission_WhenUpdateEvent_ThenSystemRejectsTheRequest() {
+        // Arrange
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        Event savedEvent = eventRepository.getEventById(event.getId());
+
+        String sessionWithoutPermission = "session-without-update-permission";
+        tokenService.addValidSession(sessionWithoutPermission, 2L);
+
+        EventDTO updateDTO = createValidUpdateDTO(savedEvent);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(sessionWithoutPermission, updateDTO));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
+        assertTrue(exception.getMessage().contains("User does not have permission to update event"));
+        assertEquals(savedEvent.getName(), unchangedEvent.getName());
+    }
+
+    @Test
+    void GivenEventDoesNotExist_WhenUpdateEvent_ThenSystemRejectsTheRequest() {
+        // Arrange
+        EventDTO updateDTO = new EventDTO(
+                999L,
+                "Updated Rock Concert",
+                companyId,
+                ownerId,
+                LocalDateTime.now().plusDays(30),
+                EventLocation.HAIFA.name(),
+                200L,
+                eventStatus.DRAFT.name(),
+                EventCategory.CONCERT.name(),
+                "Updated Artist",
+                BigDecimal.valueOf(149.99),
+                null,
+                0.0,
+                false,
+                false,
+                0,
+                0,
+                null);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(validOwnerSessionId, updateDTO));
+
+        // Assert
+        assertTrue(exception.getMessage().contains("Event not found"));
+    }
+
+    @Test
+    void GivenUpdateEventTriesToChangeCompany_WhenUpdateEvent_ThenSystemRejectsTheRequest() {
+        // Arrange
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        Event savedEvent = eventRepository.getEventById(event.getId());
+
+        Long differentCompanyId = companyId + 1;
+
+        membershipDomain.allow(validOwnerSessionId, differentCompanyId, "event:update");
+
+        EventDTO updateDTO = new EventDTO(
+                savedEvent.getId(),
+                "Updated Rock Concert",
+                differentCompanyId,
+                savedEvent.getOpenedBy(),
+                LocalDateTime.now().plusDays(30),
+                EventLocation.HAIFA.name(),
+                200L,
+                savedEvent.getStatus().name(),
+                EventCategory.CONCERT.name(),
+                "Updated Artist",
+                BigDecimal.valueOf(149.99),
+                null,
+                savedEvent.getRate(),
+                savedEvent.isSoldOut(),
+                savedEvent.isOverloaded(),
+                savedEvent.getActiveReservationsCount(),
+                savedEvent.getVersion(),
+                null);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(validOwnerSessionId, updateDTO));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
+        assertTrue(exception.getMessage().contains("Cannot change event's company"));
+        assertEquals(companyId, unchangedEvent.getCompanyId());
+    }
+
+    @Test
+    void GivenEventWasUpdatedByAnotherRequest_WhenUpdateEvent_ThenSystemRejectsTheRequest() {
+        // Arrange
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        Event savedEvent = eventRepository.getEventById(event.getId());
+
+        int staleVersion = savedEvent.getVersion() - 1;
+
+        EventDTO staleUpdateDTO = new EventDTO(
+                savedEvent.getId(),
+                "Updated Rock Concert",
+                savedEvent.getCompanyId(),
+                savedEvent.getOpenedBy(),
+                LocalDateTime.now().plusDays(30),
+                EventLocation.HAIFA.name(),
+                200L,
+                savedEvent.getStatus().name(),
+                EventCategory.CONCERT.name(),
+                "Updated Artist",
+                BigDecimal.valueOf(149.99),
+                null,
+                savedEvent.getRate(),
+                savedEvent.isSoldOut(),
+                savedEvent.isOverloaded(),
+                savedEvent.getActiveReservationsCount(),
+                staleVersion,
+                null);
+
+        // Act
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> eventService.updateEvent(validOwnerSessionId, staleUpdateDTO));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
+        assertTrue(exception.getMessage().contains("Event was updated by another request"));
+        assertEquals(savedEvent.getName(), unchangedEvent.getName());
     }
 
     // -------------------- Define Event Map Tests -------------------
@@ -478,6 +782,28 @@ public class EventServiceAcceptanceTest {
     }
 
     // -------------------- Helper Methods and Test Doubles -------------------
+
+    private EventDTO createValidUpdateDTO(Event savedEvent) {
+        return new EventDTO(
+                savedEvent.getId(),
+                "Updated Rock Concert",
+                savedEvent.getCompanyId(),
+                savedEvent.getOpenedBy(),
+                LocalDateTime.now().plusDays(30),
+                EventLocation.HAIFA.name(),
+                200L,
+                savedEvent.getStatus().name(),
+                EventCategory.CONCERT.name(),
+                "Updated Artist",
+                BigDecimal.valueOf(149.99),
+                null,
+                savedEvent.getRate(),
+                savedEvent.isSoldOut(),
+                savedEvent.isOverloaded(),
+                savedEvent.getActiveReservationsCount(),
+                savedEvent.getVersion(),
+                null);
+    }
 
     private EventMapDTO createValidMapDTO() {
         ElementDTO stage = new ElementDTO(

@@ -1,11 +1,10 @@
 package ticketsystem.DomainLayer.event;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 public class SeatingArea extends Area {
-    private final Map<SeatPosition, Seat> seats = new HashMap();
+    private final Map<SeatPosition, Seat> seats = new HashMap<>();
     private int rows;
     private int columns;
 
@@ -20,6 +19,19 @@ public class SeatingArea extends Area {
                 seats.put(position, new Seat(position));
             }
         }
+    }
+
+    public SeatingArea(SeatingArea other) {
+        super(other);
+        this.rows = other.rows;
+        this.columns = other.columns;
+        for (Map.Entry<SeatPosition, Seat> entry : other.seats.entrySet()) {
+            this.seats.put(entry.getKey(), new Seat(entry.getValue()));
+        }
+    }
+
+    public SeatingArea copy() {
+        return new SeatingArea(this);
     }
 
     public int getRows() {

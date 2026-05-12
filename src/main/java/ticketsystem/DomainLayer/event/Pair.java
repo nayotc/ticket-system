@@ -10,6 +10,15 @@ public class Pair<K, V> {
         this.second = second;
     }
 
+    public Pair(Pair<K, V> other) {
+        this.first = other.first;
+        this.second = other.second;
+    }
+
+    public Pair<K, V> copy() {
+        return new Pair<>(this);
+    }
+
     public K getFirst() {
         return first;
     }
