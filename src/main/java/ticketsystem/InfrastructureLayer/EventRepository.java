@@ -87,7 +87,7 @@ public class EventRepository implements IEventRepository {
     public List<Event> getEventsByCompanyId(Long companyId) {
         return eventStorage.values().stream()
             .filter(event -> event.getCompanyId() != null)
-            .filter(event -> event.getCompanyId() == companyId)
+            .filter(event -> event.getCompanyId().equals(companyId))
             .map(Event::copy)
             .toList();
     }
