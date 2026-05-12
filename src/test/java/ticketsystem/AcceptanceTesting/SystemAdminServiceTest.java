@@ -5,6 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -12,12 +16,16 @@ import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.history.Purchase;
+import ticketsystem.DomainLayer.history.PurchasedTicket;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
@@ -35,6 +43,8 @@ public class SystemAdminServiceTest {
     private CompanyService companyService;
     private SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
     ICompanyRepository companyRepo;
+    HistoryRepository historyRepo;
+    OrderRepository orderRepo;
     LogbackSystemLogger logger = new LogbackSystemLogger();
 
     @BeforeEach
@@ -50,8 +60,8 @@ public class SystemAdminServiceTest {
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         companyService = new CompanyService(companyRepo, tokenService);
-        OrderRepository orderRepo = new OrderRepository();
-
+        orderRepo = new OrderRepository();
+        historyRepo = new HistoryRepository();
         systemAdminService = new SystemAdminService(
                 realAdminRepo,
                 paymentProxy,
@@ -59,7 +69,8 @@ public class SystemAdminServiceTest {
                 userRepo,
                 orderRepo,
                 tokenService,
-                companyRepo, logger
+                companyRepo, logger, historyRepo
+
         );
     }
 
@@ -218,4 +229,200 @@ public class SystemAdminServiceTest {
         assertTrue(savedCompany.isActive(), "Company should remain active after a failed closure attempt.");
     }
 
+// Use Case 6.4: View Purchase History by Buyer
+    @Test
+    void AcceptanceTest_ViewPurchaseHistoryByBuyer_Successful() {
+        // --- 1. Preparation (Admin is created, logged in, and is system admin) ---
+        long adminId = 1L;
+        realAdminRepo.addAdmin(admin); 
+
+        // --- 2. Create Purchase History ---
+
+        long buyer1_Id = 801L;
+        long buyer2_Id = 802L;
+  
+      
+        Purchase purchase1 = new Purchase(
+            10L, 
+            Arrays.asList(new PurchasedTicket(401, 60, 1, 1, 200.0, "BARCODE_A")), 
+            "Jazz Festival", 
+            "Shuni", 
+            buyer1_Id, 
+            50L
+        );
+        
+        Purchase purchase2 = new Purchase(
+            11L, 
+            Arrays.asList(new PurchasedTicket(402, 60, 1, 2, 200.0, "BARCODE_B")), 
+            "Jazz Festival", 
+            "Shuni", 
+            buyer1_Id, 
+            50L
+        );
+        
+        Purchase purchase3 = new Purchase(
+            12L, 
+            Arrays.asList(new PurchasedTicket(403, 61, 5, 5, 150.0, "BARCODE_C")), 
+            "Rock Concert", 
+            "Barby", 
+            buyer2_Id, 
+            50L
+        );
+
+        historyRepo.addPurchase(purchase1);
+        historyRepo.addPurchase(purchase2);
+        historyRepo.addPurchase(purchase3);
+
+        // --- 3. Action (Admin requests to view purchase history by buyer) ---
+       
+        Map<Long, List<OrderDTO>> historyResult = systemAdminService.getPurchaseHistoryByBuyer(adminId);
+
+        // --- 4. Assertions (System displays the purchase history grouped by buyer) ---
+        assertNotNull(historyResult, "History result should not be null");
+        assertFalse(historyResult.isEmpty(), "History result should not be empty");
+        
+        
+        assertEquals(2, historyResult.size(), "Result should contain exactly 2 distinct buyers");
+        
+        // buyer 1
+        assertTrue(historyResult.containsKey(buyer1_Id), "Result should contain buyer 1");
+        List<OrderDTO> buyer1Purchases = historyResult.get(buyer1_Id);
+        assertEquals(2, buyer1Purchases.size(), "Buyer 1 should have exactly 2 purchases");
+        
+        //buyer 2
+        assertTrue(historyResult.containsKey(buyer2_Id), "Result should contain buyer 2");
+        List<OrderDTO> buyer2Purchases = historyResult.get(buyer2_Id);
+        assertEquals(1, buyer2Purchases.size(), "Buyer 2 should have exactly 1 purchase");
+    }
+
+    // Use Case 6.4: View Purchase History by Buyer - Failure Scenarios
+    @Test
+    void AcceptanceTest_ViewPurchaseHistoryByBuyer_Failure_NoHistory() {
+        // --- 1. Preparation (Admin is created, logged in, and is system admin) ---
+        long adminId = 1L;
+        realAdminRepo.addAdmin(admin); 
+
+        // --- 2. NO PURCHASE HISTORY EXISTS ---
+        // empty historyRepo, no purchases added
+
+        // --- 3 & 4. Action & Assertions (System displays message / throws exception) ---
+        Exception exception = assertThrows(IllegalStateException.class, () -> {
+            systemAdminService.getPurchaseHistoryByBuyer(adminId);
+        });
+
+        assertTrue(exception.getMessage().contains("No purchases have been made yet."), 
+            "Exception message should indicate that no history is available");
+    }
+    
+    // Use Case 6.4: View Purchase History by Buyer - Failure Scenarios
+    @Test
+    void AcceptanceTest_ViewPurchaseHistoryByBuyer_Failure_UnauthorizedAccess() {
+        // --- 1. Preparation (Simulating an unauthorized request) ---
+        // נשתמש ב-ID של אדמין שלא קיים במערכת (או שלא הוספנו ל-repo)
+        long unauthorizedAdminId = 999L; 
+
+        // --- 2 & 3 & 4. Action & Assertions ---
+        Exception exception = assertThrows(SecurityException.class, () -> {
+            systemAdminService.getPurchaseHistoryByBuyer(unauthorizedAdminId);
+        });
+
+        assertTrue(exception.getMessage().contains("Unauthorized access"), 
+            "Exception message should indicate unauthorized access");
+    }
+
+    // Use Case 6.4: View Global Purchase History (By Company and Event)
+    @Test
+    void AcceptanceTest_ViewHistoryByCompanyAndEvent_Successful() {
+        // --- 1. Preparation (Admin is logged in) ---
+        long adminId = 1L;
+        realAdminRepo.addAdmin(admin);
+
+        // --- 2. Create Purchase History ---
+        long companyId = 40L;
+        String event1_Name = "Tomorrowland Israel";
+        String event2_Name = "Winter Festival";
+  
+        //create purchases for the same company but different events, to check the grouping by both company and event name
+        Purchase purchase1 = new Purchase(
+            4L, 
+            Arrays.asList(new PurchasedTicket(301, 52, 10, 5, 400.0, "VIP_BARCODE")), 
+            event1_Name, 
+            "Expo TLV", 
+            666L, 
+            companyId
+        );
+        Purchase purchase2 = new Purchase(
+            5L, 
+            Arrays.asList(new PurchasedTicket(302, 52, 10, 6, 400.0, "VIP_BARCODE")), 
+            event1_Name, 
+            "Expo TLV", 
+            777L, 
+            companyId
+        );
+        //one purchase for a different event but same company, to check the grouping by event name as well
+        Purchase purchase3 = new Purchase(
+            6L, 
+            Arrays.asList(new PurchasedTicket(303, 53, 1, 1, 200.0, "REGULAR_BARCODE")), 
+            event2_Name, 
+            "Expo TLV", 
+            888L, 
+            companyId 
+        );
+
+        historyRepo.addPurchase(purchase1);
+        historyRepo.addPurchase(purchase2);
+        historyRepo.addPurchase(purchase3);
+
+        // --- 3. Action ---
+        Map<Long, Map<String, List<OrderDTO>>> historyResult = 
+            systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
+
+        // --- 4. Assertions ---
+        assertNotNull(historyResult, "History result should not be null");
+        assertFalse(historyResult.isEmpty(), "History result should not be empty");
+        
+        assertTrue(historyResult.containsKey(companyId), "Result should group by company ID (40)");
+        
+        Map<String, List<OrderDTO>> eventsForCompany = historyResult.get(companyId);
+        assertNotNull(eventsForCompany, "The inner map for the company should not be null");
+        assertTrue(eventsForCompany.containsKey(event1_Name), "Result should contain " + event1_Name);
+        assertEquals(2, eventsForCompany.get(event1_Name).size(), "There should be exactly 2 purchases for Tomorrowland");
+    
+        assertTrue(eventsForCompany.containsKey(event2_Name), "Result should contain " + event2_Name);
+        assertEquals(1, eventsForCompany.get(event2_Name).size(), "There should be exactly 1 purchase for Winter Festival");
+    }
+
+    // Use Case 6.4: View Global Purchase History (By Company and Event) - Failure Scenarios
+    @Test
+    void AcceptanceTest_ViewHistoryByCompanyAndEvent_Failure_NoHistory() {
+        // --- 1. Preparation ---
+        long adminId = 1L;
+        realAdminRepo.addAdmin(admin); 
+
+        // --- 2. NO PURCHASE HISTORY EXISTS ---
+        // empty historyRepo, no purchases added
+
+        // --- 3 & 4. Action & Assertions ---
+        Exception exception = assertThrows(IllegalStateException.class, () -> {
+            systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
+        });
+
+        assertTrue(exception.getMessage().contains("No purchase history"), 
+            "Exception message should indicate that no history is available");
+    }
+    
+    // Use Case 6.4: View Global Purchase History (By Company and Event) - Failure Scenarios
+    @Test
+    void AcceptanceTest_ViewHistoryByCompanyAndEvent_Failure_UnauthorizedAccess() {
+        // --- 1. Preparation ---
+        long unauthorizedAdminId = 999L; // ID that does not correspond to any real admin in the repository
+
+        // --- 2 & 3 & 4. Action & Assertions ---
+        Exception exception = assertThrows(SecurityException.class, () -> {
+            systemAdminService.getPurchaseHistoryByCompanyAndEvent(unauthorizedAdminId);
+        });
+
+        assertTrue(exception.getMessage().contains("Unauthorized access"), 
+            "Exception message should indicate unauthorized access for invalid admin");
+    }
 }

@@ -5,3 +5,34 @@
 2026-05-12 16:01:47 [INFO] Production company closed by System Admin.
 2026-05-12 16:01:47 [INFO] ERROR: Member with ID 99 was not found.
 2026-05-12 16:01:47 [WARN] ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 17:22:26 [INFO] Company role cleanup started for memberId=1
+2026-05-12 17:22:26 [DEBUG] Company role cleanup found 0 relevant companies for memberId=1
+2026-05-12 17:22:26 [INFO] Company role cleanup completed for memberId=1
+2026-05-12 17:22:27 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: No purchase history is available.
+2026-05-12 17:22:27 [INFO] System initialized successfully by System Admin.
+2026-05-12 17:22:27 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: No purchase history is available.
+2026-05-12 17:22:27 [INFO] Production company closed by System Admin.
+2026-05-12 17:22:27 [INFO] ERROR: Member with ID 99 was not found.
+2026-05-12 17:22:27 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 17:22:27 [WARN] ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 17:22:27 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 18:11:08 [INFO] Company role cleanup started for memberId=1
+2026-05-12 18:11:08 [DEBUG] Company role cleanup found 0 relevant companies for memberId=1
+2026-05-12 18:11:08 [INFO] Company role cleanup completed for memberId=1
+2026-05-12 18:11:08 [INFO] System initialized successfully by System Admin.
+2026-05-12 18:11:08 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: No purchases have been made yet.
+2026-05-12 18:11:08 [INFO] Production company closed by System Admin.
+2026-05-12 18:11:08 [INFO] ERROR: Member with ID 99 was not found.
+2026-05-12 18:11:08 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 18:11:08 [WARN] ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 18:11:08 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 18:12:27 [INFO] Company role cleanup started for memberId=1
+2026-05-12 18:12:27 [DEBUG] Company role cleanup found 0 relevant companies for memberId=1
+2026-05-12 18:12:27 [INFO] Company role cleanup completed for memberId=1
+2026-05-12 18:12:27 [INFO] System initialized successfully by System Admin.
+2026-05-12 18:12:27 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: No purchases have been made yet.
+2026-05-12 18:12:27 [INFO] Production company closed by System Admin.
+2026-05-12 18:12:27 [INFO] ERROR: Member with ID 99 was not found.
+2026-05-12 18:12:27 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 18:12:27 [WARN] ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 18:12:27 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: ERROR: Unauthorized access. Invalid admin credentials.
