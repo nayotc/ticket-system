@@ -17,19 +17,14 @@ public class HistoryRepository implements IHistoryRepository {
     private Map<Long, List<Purchase>> purchasesByMemberId;
     private Map<Long, List<Purchase>> purchasesByCompanyId;
 
-    private HistoryRepository() {
+    public HistoryRepository() {
         this.counter = new AtomicLong(1);
         this.allPurchases = new ConcurrentHashMap<>();
         this.purchasesByMemberId = new ConcurrentHashMap<>();
         this.purchasesByCompanyId = new ConcurrentHashMap<>();
     }
 
-    public static HistoryRepository getInstance() {
-        if (instance == null) {
-            instance = new HistoryRepository();
-        }
-        return instance;
-    }
+
 
     @Override
     public void addPurchase(Purchase purchase) {

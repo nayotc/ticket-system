@@ -31,11 +31,7 @@ public class HistoryServiceTest {
     @BeforeEach
     void setUp() {
         // --- Setup Real Repositories (Acceptance Level) ---
-        
-        // Handling Singleton HistoryRepository
-        HistoryRepository hRepo = HistoryRepository.getInstance();
-        // הערה: את חייבת להוסיף מתודת clear ב-HistoryRepository כדי שהטסטים יהיו נקיים
-        // hRepo.clearForTests(); 
+        HistoryRepository hRepo = new HistoryRepository();
         this.historyRepository = hRepo;
 
         this.tokenRepository = new TokenRepository();
