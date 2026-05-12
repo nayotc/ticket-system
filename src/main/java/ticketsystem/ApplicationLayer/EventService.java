@@ -2,36 +2,33 @@ package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
-import ticketsystem.DomainLayer.event.DiscountPolicy;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 
-
-
-
 public class EventService {
-    
+
     private final IEventRepository eventRepository;
     private final ITokenService tokenService;
     private final MembershipDomainService membershipDomain;
 
-    public EventService(IEventRepository eventRepository, ITokenService tokenService, MembershipDomainService membershipDomain) {
+    public EventService(IEventRepository eventRepository, ITokenService tokenService,
+            MembershipDomainService membershipDomain) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
     }
 
-    public void insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date, EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price, Integer mapHigh, Integer mapWidth) {
+    public void insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
+            EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
+            Integer mapHigh, Integer mapWidth) {
         try {
             // precondition: user logged in
             if (!tokenService.validateToken(sessionId)) {
@@ -43,27 +40,7 @@ public class EventService {
             }
 
             // main scenario: validate input
-            if (eventName == null || eventName.isEmpty()) {
-                throw new IllegalArgumentException("Event name cannot be null or empty");
-            }
-            if (date == null || date.isBefore(LocalDateTime.now())) {
-                throw new IllegalArgumentException("Event date must be in the future");
-            }
-            if (location == null) {
-                throw new IllegalArgumentException("Event location cannot be null");
-            }
-            if (trafficThreshold == null || trafficThreshold <= 0) {
-                throw new IllegalArgumentException("Traffic threshold must be a positive number");
-            }
-            if (category == null) {
-                throw new IllegalArgumentException("Event category cannot be null");
-            }
-            if (artist == null || artist.isEmpty()) {
-                throw new IllegalArgumentException("Artist name cannot be null or empty");
-            }
-            if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
-                throw new IllegalArgumentException("Price must be a non-negative number");
-            }
+            validateEventDetails(eventName, date, location, trafficThreshold, category, artist, price);
             if (mapHigh == null || mapHigh <= 0) {
                 throw new IllegalArgumentException("Map size must be positive");
             }
@@ -71,18 +48,19 @@ public class EventService {
                 throw new IllegalArgumentException("Map size must be positive");
             }
             // main scenario: create and add event
-            Long userId = tokenService.extractUserId(sessionId);  
+            Long userId = tokenService.extractUserId(sessionId);
             Long eventId = eventRepository.getNextId();
 
-            Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,artist,price,new Pair<>(mapHigh, mapWidth));
+            Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,
+                    artist, price, new Pair<>(mapHigh, mapWidth));
             eventRepository.addEvent(event);
             // logger.servere("Event created successfully: " + event.getName());
         } catch (Exception e) {
             // TODO: handle exception
-            //logger.servere("create event failed: " + e.getMessage());
+            // logger.servere("create event failed: " + e.getMessage());
             throw e;
         }
-        
+
     }
 
     public Boolean updateEvent(String SessionId, EventDTO eventDTO) {
@@ -114,22 +92,23 @@ public class EventService {
                 throw new IllegalArgumentException("Cannot change event's company");
             }
             if (eventDTO.version() != existingEvent.getVersion()) {
-                    throw new IllegalStateException("Event was updated by another request");
+                throw new IllegalStateException("Event was updated by another request");
             }
             String name = eventDTO.name() != null ? eventDTO.name() : existingEvent.getName();
             LocalDateTime date = eventDTO.date() != null ? eventDTO.date() : existingEvent.getDate();
-            EventLocation location = eventDTO.location() != null ? EventMapper.toEventLocation(eventDTO.location()) : existingEvent.getLocation();
-            Long trafficThreshold = eventDTO.trafficThreshold() != null ? eventDTO.trafficThreshold() : existingEvent.getTrafficThreshold();
-            EventCategory category = eventDTO.category() != null ? EventMapper.toEventCategory(eventDTO.category()) : existingEvent.getCategory();
+            EventLocation location = eventDTO.location() != null ? EventMapper.toEventLocation(eventDTO.location()): existingEvent.getLocation();
+            Long trafficThreshold = eventDTO.trafficThreshold() != null ? eventDTO.trafficThreshold(): existingEvent.getTrafficThreshold();
+            EventCategory category = eventDTO.category() != null ? EventMapper.toEventCategory(eventDTO.category()): existingEvent.getCategory();
             String artistName = eventDTO.artistName() != null ? eventDTO.artistName() : existingEvent.getArtistName();
-            BigDecimal ticketPrice = eventDTO.ticketPrice() != null ? eventDTO.ticketPrice() : existingEvent.getTicketPrice();
+            BigDecimal ticketPrice = eventDTO.ticketPrice() != null ? eventDTO.ticketPrice(): existingEvent.getTicketPrice();
+            validateEventDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
             existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
             eventRepository.updateEvent(existingEvent);
             return true;
         } catch (Exception e) {
             throw e;
         }
-    }      
+    }
 
     public Boolean defineEventMap(String sessionId, Long eventId, EventMapDTO mapDTO) {
         try {
@@ -177,6 +156,43 @@ public class EventService {
             return EventMapDTO.from(map);
         } catch (Exception e) {
             throw e;
+        }
+    }
+
+    private void validateEventDetails(
+            String eventName,
+            LocalDateTime date,
+            EventLocation location,
+            Long trafficThreshold,
+            EventCategory category,
+            String artist,
+            BigDecimal price) {
+        if (eventName == null || eventName.isBlank()) {
+            throw new IllegalArgumentException("Event name cannot be null or empty");
+        }
+
+        if (date == null || date.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Event date must be in the future");
+        }
+
+        if (location == null) {
+            throw new IllegalArgumentException("Event location cannot be null");
+        }
+
+        if (trafficThreshold == null || trafficThreshold <= 0) {
+            throw new IllegalArgumentException("Traffic threshold must be a positive number");
+        }
+
+        if (category == null) {
+            throw new IllegalArgumentException("Event category cannot be null");
+        }
+
+        if (artist == null || artist.isBlank()) {
+            throw new IllegalArgumentException("Artist name cannot be null or empty");
+        }
+
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Price must be a non-negative number");
         }
     }
 }

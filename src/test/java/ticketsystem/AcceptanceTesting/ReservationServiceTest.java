@@ -322,7 +322,7 @@ public class ReservationServiceTest {
         }
 
         @Override
-        public Event getEventById(long eventId) {
+        public Event getEventById(Long eventId) {
             return events.get(eventId);
         }
 
@@ -332,7 +332,7 @@ public class ReservationServiceTest {
         }
 
         @Override
-        public void deleteEvent(long eventId) {
+        public void deleteEvent(Long eventId, long expectedVersion) {
             events.remove(eventId);
         }
 
@@ -342,7 +342,7 @@ public class ReservationServiceTest {
         }
 
         @Override
-        public List<Event> getEventsByCompanyId(long companyId) {
+        public List<Event> getEventsByCompanyId(Long companyId) {
             List<Event> result = new ArrayList<>();
 
             for (Event event : events.values()) {
