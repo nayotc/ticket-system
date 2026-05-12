@@ -74,30 +74,30 @@ public class EventMap {
         throw new IllegalArgumentException("Area not found");
     }
 
-    public void reserveSpot(Long areaId) {
+    public void reserveSpot(Long areaId, int quantity) {
         for (Element element : elements) {
             if (element instanceof StandingArea && element.getId() == areaId) {
-                ((StandingArea) element).reserveSpot();
+                ((StandingArea) element).reserveSpot(quantity);
                 return;
             }
         }
         throw new IllegalArgumentException("Area not found");
     }
 
-    public void releaseSpot(Long areaId) {
+    public void releaseSpot(Long areaId, int quantity) {
         for (Element element : elements) {
             if (element instanceof StandingArea && element.getId() == areaId) {
-                ((StandingArea) element).releaseSpot();
+                ((StandingArea) element).releaseSpot(quantity);
                 return;
             }
         }
         throw new IllegalArgumentException("Area not found");
     }
 
-    public void sellSpot(Long areaId) {
+    public void sellSpot(Long areaId, int quantity) {
         for (Element element : elements) {
             if (element instanceof StandingArea && element.getId() == areaId) {
-                ((StandingArea) element).sellSpot();
+                ((StandingArea) element).sellSpot(quantity);
                 return;
             }
         }

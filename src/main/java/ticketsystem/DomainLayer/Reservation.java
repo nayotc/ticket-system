@@ -58,7 +58,7 @@ public class Reservation {
         for (Ticket ticket : new ArrayList<>(order.getTickets())) {
 
             if(ticket.getRow()==0 && ticket.getChair()==0) {
-                event.sellSpot(ticket.getAreaId());
+                event.sellSpot(ticket.getAreaId(), 1);
             } else {
                 event.sellSeat(ticket.getAreaId(),new SeatPosition(ticket.getRow(), ticket.getChair()));
             }
@@ -83,7 +83,7 @@ public class Reservation {
 
     public void releaseTicket(Ticket ticket, Event event) {
      if(ticket.getRow()==0 && ticket.getChair()==0) {
-           event. releaseSpot(ticket.getAreaId());
+           event. releaseSpot(ticket.getAreaId(),1);
         } else {
             SeatPosition position = new SeatPosition(ticket.getRow(), ticket.getChair());   
             event.releaseSeat(ticket.getAreaId(), position);

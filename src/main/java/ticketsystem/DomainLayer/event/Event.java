@@ -213,15 +213,15 @@ public class Event {
     }
 
     public void reserveSpot(Long areaId, int quantity) {
-        this.map.reserveSpot(areaId);
+        this.map.reserveSpot(areaId, quantity);
     }
 
-    public void releaseSpot(Long areaId) {
-        this.map.releaseSpot(areaId);
+    public void releaseSpot(Long areaId, int quantity) {
+        this.map.releaseSpot(areaId, quantity);
     }
 
-    public void sellSpot(Long areaId) {
-        this.map.sellSpot(areaId);
+    public void sellSpot(Long areaId, int quantity) {
+        this.map.sellSpot(areaId, quantity);
     }
 
     // use case: virtual queue and load management
