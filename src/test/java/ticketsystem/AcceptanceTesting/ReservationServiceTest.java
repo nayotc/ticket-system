@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.IPaymentService;
 import ticketsystem.ApplicationLayer.ISecureBarcode;
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ReservationService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.OrderDTO;
@@ -43,6 +44,7 @@ public class ReservationServiceTest {
     private FakePaymentService paymentService;
     private FakeSecureBarcode secureBarcode;
     private TokenService tokenService;
+    private ISystemLogger logger;
 
     @BeforeEach
     void setUp() {
@@ -51,6 +53,32 @@ public class ReservationServiceTest {
         lotteryRepository = new FakeLotteryRepository();
         paymentService = new FakePaymentService();
         secureBarcode = new FakeSecureBarcode();
+        logger=new FakeSystemLogger();
+
+         tokenService = new TokenService(
+                "manual_test_secret_32_chars_long",
+                new TokenRepository()
+        ) {
+            @Override
+            public boolean validateToken(String token) {
+                return true;
+            }
+
+            @Override
+            public boolean isGuestToken(String token) {
+                return false;
+            }
+
+            @Override
+            public boolean isMemberToken(String token) {
+                return true;
+            }
+
+            @Override
+            public Long extractUserId(String token) {
+                return 1L;
+            }
+        };
 
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
@@ -83,7 +111,7 @@ public class ReservationServiceTest {
                 eventRepository,
                 tokenService,
                 paymentService,
-                secureBarcode,lotteryRepository
+                secureBarcode,lotteryRepository,logger
         );
     }
     @Test
@@ -690,6 +718,24 @@ private Event createActiveEventWithSeatingArea(Long eventId) {
         }
     }
 
+    private static class FakeSystemLogger implements ISystemLogger {
+
+        private final List<String> messages = new ArrayList<>();
+        private final List<LogLevel> levels = new ArrayList<>();
+
+        @Override
+        public void logEvent(String message, LogLevel level) {
+            messages.add(message);
+            levels.add(level);
+         }
+
+        @Override
+        public void logError(String errorMessage, Throwable exception) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'logError'");
+        }
+    }
+
     private void useGuestTokenService() {
     tokenService = new TokenService(
             "manual_test_secret_32_chars_long",
@@ -721,7 +767,7 @@ private Event createActiveEventWithSeatingArea(Long eventId) {
             eventRepository,
             tokenService,
             paymentService,
-            secureBarcode,lotteryRepository
+            secureBarcode,lotteryRepository,logger
     );
 }
 }
