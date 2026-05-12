@@ -9,6 +9,8 @@ public interface ISystemAdminRepository {
 
     void addAdmin(SystemAdmin systemAdmin);
 
+    boolean isSystemAdmin(String adminId);
+
     Optional<SystemAdmin> findById(String adminId);
 
     List<SystemAdmin> findAll();
@@ -16,4 +18,6 @@ public interface ISystemAdminRepository {
     void deleteById(String adminId);
 
     int countAdmins();
+
+    SystemAdmin getAdminById(String adminId);
 }

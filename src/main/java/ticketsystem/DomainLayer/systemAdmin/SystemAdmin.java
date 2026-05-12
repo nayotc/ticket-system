@@ -1,6 +1,7 @@
 package ticketsystem.DomainLayer.systemAdmin;
 
 public class SystemAdmin {
+
     private String adminId;
     private String username;
     private boolean active;
@@ -19,7 +20,6 @@ public class SystemAdmin {
         return username;
     }
 
-  
     public boolean isActive() {
         return active;
     }

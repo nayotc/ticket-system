@@ -19,15 +19,17 @@ public class OrderRepository implements IOrderRepository {
         this.orders = new ConcurrentHashMap<>();
     }
 
-  public synchronized void addOrder(ActiveOrder order) { 
-     for (ActiveOrder existingOrder : orders.values()) { 
-        if (existingOrder.getSessionToken().equals(order.getSessionToken()) 
-            || existingOrder.getUserId().equals(order.getUserId())) {
+    public synchronized void addOrder(ActiveOrder order) {
+        for (ActiveOrder existingOrder : orders.values()) {
+            if (existingOrder.getSessionToken().equals(order.getSessionToken())
+                    || existingOrder.getUserId().equals(order.getUserId())) {
 
-         throw new IllegalArgumentException("An active order already exists for this user to another event"); } 
-        } 
-        
-        this.orders.put(order.getOrderId(), order); }
+                throw new IllegalArgumentException("An active order already exists for this user to another event");
+            }
+        }
+
+        this.orders.put(order.getOrderId(), order);
+    }
 
     public ActiveOrder findOrderById(Long orderId) {
         return orders.get(orderId);
@@ -44,9 +46,9 @@ public class OrderRepository implements IOrderRepository {
     }
 
     public synchronized void deleteOrderBySessionToken(String sessionToken) {
-        orders.values().removeIf(order ->
-                order.getSessionToken() != null
-                        && order.getSessionToken().equals(sessionToken)
+        orders.values().removeIf(order
+                -> order.getSessionToken() != null
+                && order.getSessionToken().equals(sessionToken)
         );
     }
 
@@ -62,10 +64,10 @@ public class OrderRepository implements IOrderRepository {
 
     public ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, Long eventId) {
         return orders.values().stream()
-                .filter(order ->
-                        order.getUserId() != null
-                                && order.getUserId().equals(userId)
-                                && order.getEventId().equals(eventId)
+                .filter(order
+                        -> order.getUserId() != null
+                && order.getUserId().equals(userId)
+                && order.getEventId().equals(eventId)
                 )
                 .findFirst()
                 .orElse(null);
@@ -86,19 +88,19 @@ public class OrderRepository implements IOrderRepository {
 
     public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, Long eventId) {
         return orders.values().stream()
-                .filter(order ->
-                        order.getSessionToken() != null
-                                && order.getSessionToken().equals(sessionToken)
-                                && order.getEventId().equals(eventId)
+                .filter(order
+                        -> order.getSessionToken() != null
+                && order.getSessionToken().equals(sessionToken)
+                && order.getEventId().equals(eventId)
                 )
                 .findFirst()
                 .orElse(null);
     }
 
     public synchronized void deleteActiveOrdersByUserId(Long userId) {
-        orders.values().removeIf(order ->
-                order.getUserId() != null
-                        && order.getUserId().equals(userId)
+        orders.values().removeIf(order
+                -> order.getUserId() != null
+                && order.getUserId().equals(userId)
         );
     }
 

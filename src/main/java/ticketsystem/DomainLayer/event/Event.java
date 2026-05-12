@@ -1,16 +1,12 @@
 package ticketsystem.DomainLayer.event;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.Locale;
-import java.text.Normalizer;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import ticketsystem.DomainLayer.event.EventCategory;
-import ticketsystem.DomainLayer.event.EventMap;
-import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.SearchCriteria;
-import ticketsystem.DomainLayer.event.DiscountPolicy;
 
 public class Event {
 
@@ -27,7 +23,7 @@ public class Event {
     private Long trafficThreshold;
     private eventStatus status;
     private EventCategory category;
-    private String artistName; 
+    private String artistName;
     private EventMap map;
     private BigDecimal TicketPrice;
     private Double rate = 0.0; // for search and filtering
@@ -36,10 +32,10 @@ public class Event {
     private PurchasePolicy purchasePolicy;
     private DiscountPolicy discountPolicy;
     private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
-    private int version = 0;
+    private int version;
     // waiting queue
-    
-    public Event(Long id,LocalDateTime date,String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category,String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
+
+    public Event(Long id, LocalDateTime date, String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
         this.id = id;
         this.name = name;
         this.Date = date;
@@ -51,9 +47,10 @@ public class Event {
         this.status = eventStatus.DRAFT; // Default status until the map is set and the event is activated
         this.category = category;
         this.TicketPrice = ticketPrice;
-        this.map = new EventMap(mapSize); 
+        this.map = new EventMap(mapSize);
         this.purchasePolicy = new PurchasePolicy("Default purchase policy");
         this.discountPolicy = new DiscountPolicy();
+        this.version = 0;
     }
 
     public Long getId() {
@@ -87,7 +84,7 @@ public class Event {
     public Long getOpenedBy() {
         return openedBy;
     }
-    
+
     public EventLocation getLocation() {
         return location;
     }
@@ -218,26 +215,24 @@ public class Event {
         return activeReservationsCount.get();
     }
 
-
-    public BigDecimal getTicktPrice(){
+    public BigDecimal getTicktPrice() {
         return this.TicketPrice;
     }
 
     // use case: search and filtering 
-
     public boolean matchesSearchCriteria(SearchCriteria criteria) {
         if (criteria == null) {
             throw new IllegalArgumentException("Search criteria cannot be null");
         }
 
-        return matchesSearchTerm(criteria.getSearchTerm()) && 
-               matchesCategory(criteria.getCategory()) &&
-               matchesDateRange(criteria.getFromDate(), criteria.getToDate()) &&
-               matchesLocation(criteria.getLocation()) &&
-               matchesPriceRange(criteria.getMinPrice(), criteria.getMaxPrice()) &&
-               matchesRate(criteria.getEventRate()) &&
-               matchesArtist(criteria.getArtist());
-               
+        return matchesSearchTerm(criteria.getSearchTerm())
+                && matchesCategory(criteria.getCategory())
+                && matchesDateRange(criteria.getFromDate(), criteria.getToDate())
+                && matchesLocation(criteria.getLocation())
+                && matchesPriceRange(criteria.getMinPrice(), criteria.getMaxPrice())
+                && matchesRate(criteria.getEventRate())
+                && matchesArtist(criteria.getArtist());
+
     }
 
     private boolean matchesSearchTerm(String searchTerm) {
@@ -294,8 +289,8 @@ public class Event {
         return true; // the event price is within the specified range
     }
 
-    private boolean matchesRate(Double requestedRate){
-        if(requestedRate == null){
+    private boolean matchesRate(Double requestedRate) {
+        if (requestedRate == null) {
             return true;  // event matches any rate if no specific rate is requested
         }
         return this.rate >= requestedRate;
@@ -320,7 +315,7 @@ public class Event {
             return "";
         }
         return Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")              // removes accents
+                .replaceAll("\\p{M}", "") // removes accents
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9]", "");          // removes space, _, -, /, ., comma, etc.
     }
