@@ -10,6 +10,8 @@ import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.SeatPosition;
+import ticketsystem.DomainLayer.lottery.Lottery;
+import ticketsystem.DomainLayer.lottery.LotteryRegistration;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
@@ -88,6 +90,29 @@ public class Reservation {
         }
 
 }
+
+    public void checkLottery(Lottery lottery, Long userId, String lotteryCode) {
+        if (lottery == null) {
+            return; // האירוע לא מוגרל
+        }
+
+        if (userId == null) {
+            throw new IllegalArgumentException("Guests cannot buy tickets for lottery events");
+        }
+
+        if (lotteryCode == null || lotteryCode.isBlank()) {
+            throw new IllegalArgumentException("Lottery code is required for this event");
+        }   
+
+        lottery.getRegisteredMemberIds().stream()
+                .filter(id -> id.equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("User is not registered for this lottery"));
+
+        if (!lottery.validateWinnerCode(userId, lotteryCode)) {
+            throw new IllegalArgumentException("Invalid lottery code");
+        }
+    }
 
     public Long generateTicketId() {
         return ticketIdCounter.incrementAndGet();
