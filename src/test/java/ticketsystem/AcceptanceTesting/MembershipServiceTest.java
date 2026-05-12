@@ -290,6 +290,41 @@ public class MembershipServiceTest {
     }
 
     // =========================================================================================
+    // Use Case 4.12: Remove Manager Assignment
+    // =========================================================================================
+
+    @Test
+    public void GivenValidDetails_WhenRemoveManagerAssignment_ThenReturnsTrue() throws Exception {
+        // Act
+        boolean result = membershipService.removeManagerAssignment(appointerToken, companyId, managerId);
+
+        // Assert
+        assertTrue(result, "Manager removal should return true on success.");
+        assertNull(userRepository.getMemberById(managerId).getRoleInCompany(companyId), "Manager role should be removed from the member.");
+    }
+
+    @Test
+    public void GivenUnauthorizedActor_WhenRemoveManagerAssignment_ThenThrowsException() {
+        // Act & Assert: appointeeToken belongs to a member with no authority over managerMember
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.removeManagerAssignment(appointeeToken, companyId, managerId);
+        });
+
+        assertTrue(exception.getMessage().contains("You are not the appointer") || 
+                   exception.getMessage().contains("You do not have a role"));
+    }
+
+    @Test
+    public void GivenTargetIsNotAManager_WhenRemoveManagerAssignment_ThenThrowsException() {
+        // Act & Assert: founderId is a Founder, not a Manager
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.removeManagerAssignment(appointerToken, companyId, founderId);
+        });
+
+        assertEquals("The target user is not a Manager.", exception.getMessage());
+    }
+
+    // =========================================================================================
     // Use Case 4.9: Remove Owner Assignment
     // =========================================================================================
 

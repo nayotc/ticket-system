@@ -499,4 +499,36 @@ public class MembershipDomainServiceTest {
         });
         assertEquals("You are not the appointer of the specified user", ex.getMessage());
     }
+
+        // --- Remove Manager Assignment ---
+
+    @Test
+    public void GivenAuthorizedAppointer_WhenValidateRemoveManagerAssignment_ThenReturnsTrue() throws Exception {
+        // Arrange
+        appointer.addFounderRole(companyId);
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+        
+        appointee.addManagerRole(companyId, 100L, new HashSet<>());
+        founderRole.addAppointee(200L);
+
+        // Act
+        boolean result = domainService.validateRemoveManagerAssignment(appointer, appointee, companyId);
+
+        // Assert
+        assertTrue(result);
+        assertNull(appointee.getRoleInCompany(companyId), "Manager role should be deleted.");
+        assertFalse(founderRole.getAppointeesMemberIds().contains(200L), "Target should be removed from appointer's list.");
+    }
+
+    @Test
+    public void GivenUnauthorizedActor_WhenValidateRemoveManagerAssignment_ThenThrowsException() {
+        appointer.addFounderRole(companyId);
+        // Appointee was appointed by someone else (999L)
+        appointee.addManagerRole(companyId, 999L, new HashSet<>()); 
+
+        Exception ex = assertThrows(Exception.class, () -> {
+            domainService.validateRemoveManagerAssignment(appointer, appointee, companyId);
+        });
+        assertEquals("You are not the appointer of the specified user", ex.getMessage());
+    }
 }

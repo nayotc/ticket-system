@@ -6,31 +6,18 @@ import java.util.stream.Collectors;
 
 public class Member extends User {
 
-<<<<<<< HEAD
     private final Long memberId;
-=======
-    private final Long id;
->>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     private String userName;
     private ConcurrentHashMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
 
-<<<<<<< HEAD
     public Member(Long memberId, String userName) {
         this.memberId = memberId;
-=======
-    public Member(Long id, String userName, String password) {
-        this.id = id;
->>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
         this.userName = userName;
         this.myRoles = new ConcurrentHashMap<Long, CompanyRole>();
     }
 
     public Long getId() {
-<<<<<<< HEAD
         return this.memberId;
-=======
-        return this.id;
->>>>>>> 44d970c (Refactor UC 4.7 to use RoleStatus and a unified MembershipRepository)
     }
 
     public String getUserName() {

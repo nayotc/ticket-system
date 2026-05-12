@@ -255,7 +255,34 @@ public class MembershipService {
         // 6. Return a success message or status
         return true;
     }
+    
+    /**
+     * Use Case 4.12: Remove manager assignment
+     */
+    public boolean removeManagerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception {
+        
+        // 1. Authenticate session
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        // 2. Retrieve appointer and target member information
+        Long appointerId = tokenService.extractUserId(sessionToken);
+        Member appointer = userRepository.getMemberById(appointerId);
+        if (appointer == null) throw new Exception("Appointer not found.");
 
+        Member targetMember = userRepository.getMemberById(targetMemberId);
+        if (targetMember == null) throw new Exception("Target Member not found.");
+        
+        // 3. Execute domain logic (passing companyId directly)
+        membershipDomain.validateRemoveManagerAssignment(appointer, targetMember, companyId);
+
+        // 4. Persist changes in the repository
+        userRepository.updateMember(appointer);
+        userRepository.updateMember(targetMember);
+        
+        return true;
+    }
     
 
 }
