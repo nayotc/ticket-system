@@ -43,26 +43,32 @@ public class WaitingQueueService {
             try {
                 Event event = (Event) eventRepository.getEventById(eventId);
                 if (event == null) {
-                    logger.logEvent("Attempt to reserve for non-existent event. Event ID: " + eventId, LogbackSystemLogger.LogLevel.INFO);
+                    logger.logEvent("Attempt to reserve for non-existent event. Event ID: " + eventId,
+                            LogbackSystemLogger.LogLevel.INFO);
                     return "ERROR: Event not found";
                 }
                 if (event.isSoldOut()) {
-                    logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId, LogbackSystemLogger.LogLevel.INFO);
+                    logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId,
+                            LogbackSystemLogger.LogLevel.INFO);
                     return "ERROR: Sold Out";
                 }
 
-                if (!event.isOverloaded()) { //if event is not overloaded, approve the user immediately
+                if (!event.isOverloaded()) { // if event is not overloaded, approve the user immediately
                     event.incrementActiveReservations();
                     eventRepository.updateEvent(event);
-                    logger.logEvent("User with session id" + tokenString + " APPROVED to enter checkout for Event " + eventId, LogbackSystemLogger.LogLevel.INFO);
+                    logger.logEvent(
+                            "User with session id" + tokenString + " APPROVED to enter checkout for Event " + eventId,
+                            LogbackSystemLogger.LogLevel.INFO);
                     return "APPROVED";
-                } else { //enqueue the user and return their position in the queue
+                } else { // enqueue the user and return their position in the queue
                     queueRepository.enqueueUser(eventId, tokenString);
                     int position = queueRepository.getQueueSize(eventId);
-                    logger.logEvent("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position, LogbackSystemLogger.LogLevel.INFO);
+                    logger.logEvent("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position,
+                            LogbackSystemLogger.LogLevel.INFO);
                     return "QUEUED";
                 }
-            } catch (Exception e) { //optimistic locking failure or other concurrency issue, retry the operation a few times before giving up
+            } catch (Exception e) { // optimistic locking failure or other concurrency issue, retry the operation a
+                                    // few times before giving up
                 logger.logError("EXCEPTION CAUGHT: " + e.getMessage(), e);
                 e.printStackTrace();
                 continue;
@@ -71,44 +77,37 @@ public class WaitingQueueService {
         return "ERROR: System is too busy, please try again.";
     }
 
-    //called when a spot is released to fill the next batch in the queue
-    public void processQueue(long eventId) {
-        Event tempEvent = (Event) eventRepository.getEventById(eventId);
+    private void promoteOneFromWaitingQueue(long eventId) {
+        Event tempEvent = eventRepository.getEventById(eventId);
         if (tempEvent == null) {
             return;
         }
-        long availableSpots = tempEvent.getTrafficThreshold() - tempEvent.getActiveReservationsCount();
-        if (availableSpots <= 0) {
+        long slack = tempEvent.getTrafficThreshold() - tempEvent.getActiveReservationsCount();
+        if (slack <= 0) {
             return;
         }
 
-        List<String> approvedUsers = queueRepository.dequeueBatch(eventId, availableSpots);
+        List<String> approvedUsers = queueRepository.dequeueBatch(eventId, 1);
         if (approvedUsers.isEmpty()) {
             return;
         }
 
-        // retry loop to handle optimistic locking when updating the event's active reservations count
         int maxRetries = 3;
         for (int i = 0; i < maxRetries; i++) {
             try {
-                // to get most updated version of the event before we update the active reservations count
-                Event eventToUpdate = (Event) eventRepository.getEventById(eventId);
+                Event eventToUpdate = eventRepository.getEventById(eventId);
                 if (eventToUpdate == null) {
                     return;
                 }
 
-                // increment the active reservations count by the num we approved from the queue
-                for (int j = 0; j < approvedUsers.size(); j++) {
-                    eventToUpdate.incrementActiveReservations();
-                }
-
-                // if version has changed since we read it, exception wiil be thrown
+                eventToUpdate.incrementActiveReservations();
                 eventRepository.updateEvent(eventToUpdate);
 
-                for (String sessionId : approvedUsers) {
-                    notificationsService.notifyUser(sessionId, "It's your turn! You can now purchase tickets for Event " + eventId);
-                }
-                logger.logEvent("Processed waiting queue for Event " + eventId + ". Approved users: " + approvedUsers.size(), LogbackSystemLogger.LogLevel.INFO);
+                String sessionId = approvedUsers.get(0);
+                notificationsService.notifyUser(sessionId,
+                        "It's your turn! You can now purchase tickets for Event " + eventId);
+                logger.logEvent("Processed waiting queue for Event " + eventId + ". Approved users: 1",
+                        LogbackSystemLogger.LogLevel.INFO);
                 return;
 
             } catch (Exception e) {
@@ -118,24 +117,28 @@ public class WaitingQueueService {
     }
 
     public void releaseSpot(long eventId, String sessionId) {
-        int maxRetries = 3;
-        boolean updateSuccessful = false;
-        for (int i = 0; i < maxRetries; i++) {
-            try {
-                Event event = (Event) eventRepository.getEventById(eventId);
-                if (event != null) {
+        synchronized (getEventLock(eventId)) {
+            int maxRetries = 3;
+            boolean updateSuccessful = false;
+            for (int i = 0; i < maxRetries; i++) {
+                try {
+                    Event event = eventRepository.getEventById(eventId);
+                    if (event == null) {
+                        break;
+                    }
                     event.decrementActiveReservations();
-                    eventRepository.updateEvent(event); // try to save the updated event
+                    eventRepository.updateEvent(event);
+                    updateSuccessful = true;
+                    break;
+                } catch (Exception e) {
+                    continue;
                 }
-                updateSuccessful = true;
-                break;
-            } catch (Exception e) {
-                continue;
             }
-        }
-        if (updateSuccessful) {
-            processQueue(eventId); //call batch processing to fill the new available spot
-            logger.logEvent("User with session id " + sessionId + " released their spot for Event " + eventId, LogbackSystemLogger.LogLevel.INFO);
+            if (updateSuccessful) {
+                promoteOneFromWaitingQueue(eventId);
+                logger.logEvent("User with session id " + sessionId + " released their spot for Event " + eventId,
+                        LogbackSystemLogger.LogLevel.INFO);
+            }
         }
     }
 

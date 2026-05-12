@@ -26,6 +26,7 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Guest;
+import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
@@ -38,15 +39,15 @@ public class QueueConcurrencyTest {
     @Test
     public void testHighConcurrencyLoadOnQueue() throws InterruptedException {
         // fake implementations for testing until we have real ones
-        IEventRepository fakeEventRepo = createFakeEventRepo();
+        IEventRepository eventRepo = new EventRepository();
         NotificationsService fakeNotifications = createFakeNotifications();
         TokenRepository tokenRepo = new TokenRepository();
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService, logger);
+        WaitingQueueService queueService = new WaitingQueueService(eventRepo, queueRepo, fakeNotifications, TokenService, logger);
         var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK, 100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
-        fakeEventRepo.addEvent(event);
+        eventRepo.addEvent(event);
 
         int numberOfUsers = 1000;
         List<String> validTokens = new ArrayList<>();
@@ -106,7 +107,7 @@ public class QueueConcurrencyTest {
 
         System.out.println("Approved: " + approvedCount.get());
         System.out.println("Queued: " + queuedCount.get());
-        Event updatedEvent = fakeEventRepo.getEventById(1L);
+        Event updatedEvent = eventRepo.getEventById(1L);
 
         assertEquals(100, approvedCount.get(), "Exactly 100 users should be approved.");
         assertEquals(100, updatedEvent.getActiveReservationsCount(), "Event should be at exact maximum capacity.");
