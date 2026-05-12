@@ -143,7 +143,7 @@ public class UserServiceTest {
                 try {
                     startLatch.await();
                     String sessionToken = userService.visitSystem();
-                    sessionToken=userService.login(sessionToken, "username", "password");
+                    sessionToken = userService.login(sessionToken, "username", "password");
                     generatedTokens.add(sessionToken);
                 } catch (Throwable t) {
                     exceptions.add(t);

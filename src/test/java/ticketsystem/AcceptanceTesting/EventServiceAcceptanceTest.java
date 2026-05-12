@@ -17,6 +17,7 @@ import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
+import ticketsystem.DTO.Event.IMapElementDTO;
 import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
@@ -57,6 +58,8 @@ public class EventServiceAcceptanceTest {
         membershipDomain.allow(validOwnerSessionId, companyId, "event:create");
         membershipDomain.allow(validOwnerSessionId, companyId, "event:defineMap");
     }
+
+    // -------------------- Insert Event Tests -------------------
 
     @Test
     void GivenOwnerLoggedInAndValidEventDetails_WhenInsertEvent_ThenEventIsCreatedAndSaved() {
@@ -231,6 +234,8 @@ public class EventServiceAcceptanceTest {
         assertNull(eventRepository.getEventById(1L));
     }
 
+    // -------------------- Define Event Map Tests -------------------
+
     @Test
     void GivenOwnerLoggedInEventExistsAndValidMap_WhenDefineEventMap_ThenConfigurationIsSaved() {
         // Arrange
@@ -397,13 +402,83 @@ public class EventServiceAcceptanceTest {
                 new ticketsystem.DomainLayer.event.Pair<>(10, 20));
     }
 
-    /*
-     * Replace this body with your real EventMapDTO constructor.
-     * The object should represent a valid map:
-     * - valid hall dimensions
-     * - valid stage/entrance/section elements
-     * - seating areas match the inventory
-     */
+    // --------------------view Event Map Tests -------------------
+
+    @Test
+    void GivenUserEnteredSystemAndEventHasConfiguredMap_WhenGetEventMap_ThenSystemReturnsEventMapAndAvailability() {
+        // Arrange
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        EventMapDTO mapLayout = createValidMapDTO();
+
+        eventService.defineEventMap(
+                validOwnerSessionId,
+                event.getId(),
+                mapLayout);
+
+        // Act
+        EventMapDTO result = eventService.getEventMap(
+                validOwnerSessionId,
+                event.getId());
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(new PairDTO<>(10, 20), result.size());
+        assertFalse(result.soldOut());
+
+        assertNotNull(result.getElementDTOs());
+        assertEquals(4, result.getElementDTOs().size());
+
+        assertTrue(mapContainsElementNamed(result, "Main Stage"));
+        assertTrue(mapContainsElementNamed(result, "Main Entrance"));
+        assertTrue(mapContainsElementNamed(result, "Seating Area A"));
+        assertTrue(mapContainsElementNamed(result, "Standing Area B"));
+
+        SeatingAreaDTO seatingArea = findSeatingArea(result, "Seating Area A");
+        assertNotNull(seatingArea);
+        assertEquals(4, seatingArea.rows());
+        assertEquals(6, seatingArea.columns());
+        assertEquals(24, seatingArea.seats().size());
+
+        StandingAreaDTO standingArea = findStandingArea(result, "Standing Area B");
+        assertNotNull(standingArea);
+        assertEquals(100L, standingArea.capacity());
+        assertEquals(0L, standingArea.reserved());
+        assertEquals(0L, standingArea.sold());
+    }
+
+    @Test
+    void GivenUserEnteredSystemAndEventDoesNotExist_WhenGetEventMap_ThenSystemRejectsTheRequest() {
+        // Arrange
+        Long nonExistingEventId = 999L;
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.getEventMap(validOwnerSessionId, nonExistingEventId));
+
+        // Assert
+        assertTrue(exception.getMessage().contains("Event not found"));
+    }
+
+    @Test
+    void GivenInvalidSession_WhenGetEventMap_ThenSystemRejectsTheRequest() {
+        // Arrange
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.getEventMap(invalidSessionId, event.getId()));
+
+        // Assert
+        assertTrue(exception.getMessage().contains("Invalid session ID"));
+    }
+
+    // -------------------- Helper Methods and Test Doubles -------------------
+
     private EventMapDTO createValidMapDTO() {
         ElementDTO stage = new ElementDTO(
                 1L,
@@ -447,15 +522,6 @@ public class EventServiceAcceptanceTest {
                 false);
     }
 
-    /*
-     * Replace this body with a real DTO that EventMapper/EventMap validation
-     * rejects.
-     * Example:
-     * - section outside map boundaries
-     * - negative size
-     * - area linked to missing inventory
-     * - seating count does not match inventory
-     */
     private EventMapDTO createInconsistentMapDTO() {
         StandingAreaDTO inconsistentStandingArea = new StandingAreaDTO(
                 1L,
@@ -480,6 +546,48 @@ public class EventServiceAcceptanceTest {
         }
 
         return event.getMap().getElements().size();
+    }
+
+    private boolean mapContainsElementNamed(EventMapDTO mapDTO, String name) {
+        return mapDTO.getElementDTOs()
+                .stream()
+                .anyMatch(element -> elementName(element).equals(name));
+    }
+
+    private String elementName(IMapElementDTO element) {
+        if (element instanceof ElementDTO elementDTO) {
+            return elementDTO.name();
+        }
+
+        if (element instanceof SeatingAreaDTO seatingAreaDTO) {
+            return seatingAreaDTO.name();
+        }
+
+        if (element instanceof StandingAreaDTO standingAreaDTO) {
+            return standingAreaDTO.name();
+        }
+
+        return "";
+    }
+
+    private SeatingAreaDTO findSeatingArea(EventMapDTO mapDTO, String name) {
+        return mapDTO.getElementDTOs()
+                .stream()
+                .filter(element -> element instanceof SeatingAreaDTO)
+                .map(element -> (SeatingAreaDTO) element)
+                .filter(area -> area.name().equals(name))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private StandingAreaDTO findStandingArea(EventMapDTO mapDTO, String name) {
+        return mapDTO.getElementDTOs()
+                .stream()
+                .filter(element -> element instanceof StandingAreaDTO)
+                .map(element -> (StandingAreaDTO) element)
+                .filter(area -> area.name().equals(name))
+                .findFirst()
+                .orElse(null);
     }
 
     private static class FakeTokenService implements ITokenService {

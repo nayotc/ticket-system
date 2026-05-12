@@ -5,21 +5,23 @@ import java.math.BigDecimal;
 public class PurchaseDTO {
     private Long ticketId;
     private Long eventId;
-    private int row;
-    private int chair;
+    private Integer row;
+    private Integer chair;
     private BigDecimal price;
     private String status;
+    private String secureBarcode;
 
     //for json
     public PurchaseDTO() {}
 
-    public PurchaseDTO(Long ticketId, Long eventId, int row, int chair, BigDecimal price, String status) {
+    public PurchaseDTO(Long ticketId, Long eventId, Integer row, Integer chair, BigDecimal price, String status, String secureBarcode) {
         this.ticketId = ticketId;
         this.eventId = eventId;
         this.row = row;
         this.chair = chair;
         this.price = price;
         this.status = status;
+        this.secureBarcode = secureBarcode;
     }
 
     public Long getTicketId() { return ticketId; }
@@ -28,15 +30,19 @@ public class PurchaseDTO {
     public Long getEventId() { return eventId; }
     public void setEventId(Long eventId) { this.eventId = eventId; }
     
-    public int getRow() { return row; }
-    public void setRow(int row) { this.row = row; }
+    public Integer getRow() { return row; }
+    public void setRow(Integer row) { this.row = row; }
     
-    public int getChair() { return chair; }
-    public void setChair(int chair) { this.chair = chair; }
+    public Integer getChair() { return chair; }
+    public void setChair(Integer chair) { this.chair = chair; }
     
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
     
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getSecureBarcode() { return secureBarcode; }
+    public void setSecureBarcode(String secureBarcode) { this.secureBarcode = secureBarcode; }
+
 }

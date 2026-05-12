@@ -4,16 +4,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
 
-import ticketsystem.DTO.Event.AreaDTO;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
+import ticketsystem.DTO.Event.IMapElementDTO;
 import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatDTO;
 import ticketsystem.DTO.Event.SeatPositionDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
-import ticketsystem.DomainLayer.event.Area;
 import ticketsystem.DomainLayer.event.Element;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -59,14 +58,14 @@ public class EventMapper {
 
         EventMap eventMap = new EventMap(toDomain(dto.size()));
 
-        for (Object object : dto.getElementDTOs()) {
-            eventMap.addElement(toDomain(object));
+        for (IMapElementDTO mapElement : dto.getElementDTOs()) {
+            eventMap.addElement(toDomain(mapElement));
         }
 
         return eventMap;
     }
 
-    public static Element toDomain(Object dto) {
+    public static Element toDomain(IMapElementDTO  dto) {
         if (dto == null) {
             return null;
         }
@@ -154,14 +153,6 @@ public class EventMapper {
         standingArea.setSold(dto.sold());
         return standingArea;
     }
-
-    // public static Pair<Integer, Integer> toDomain(PairDTO dto) {
-    //     if (dto == null) {
-    //         return null;
-    //     }
-
-    //     return new Pair<>(dto.getFirst(), dto.getSecond());
-    // }
 
     public static SeatPosition toDomain(SeatPositionDTO dto) {
         if (dto == null) {

@@ -5,16 +5,16 @@ import java.util.List;
 
 
 public class Purchase {
-    private int purchaseId;
+    private long purchaseId;
     private List<PurchasedTicket> tickets;
     private String eventName;
     private String location;
     private long memberId;
-    private int companyId;
+    private long companyId;
 
     public Purchase() {
     }
-    public Purchase(int purchaseId, List<PurchasedTicket> tickets, String eventName, String location, long memberId, int companyId) {
+    public Purchase(long purchaseId, List<PurchasedTicket> tickets, String eventName, String location, long memberId, long companyId) {
         this.purchaseId = purchaseId;
         this.tickets = new ArrayList<>(tickets);
         this.eventName = eventName;
@@ -22,16 +22,16 @@ public class Purchase {
         this.memberId = memberId;
         this.companyId = companyId;
     }
-    public int getPurchaseId() {
+    public long getPurchaseId() {
         return purchaseId;
     }
-    public void setPurchaseId(int purchaseId) {
+    public void setPurchaseId(long purchaseId) {
         this.purchaseId = purchaseId;
     }
     public long getMemberId() {
         return memberId;
     }
-    public Integer getCompanyId() {
+    public long getCompanyId() {
         return companyId;
     }
     public String getEventName() {

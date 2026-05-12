@@ -12,7 +12,7 @@ import ticketsystem.DomainLayer.event.StandingArea;
 
 public record EventMapDTO(
         PairDTO<Integer, Integer> size,
-        List<Object> elements,
+        List<IMapElementDTO> elements,
         boolean soldOut) {
 
     public static EventMapDTO from(EventMap map) {
@@ -30,7 +30,7 @@ public record EventMapDTO(
         );
     }
 
-    private static Object mapElement(Element element) {
+    private static IMapElementDTO mapElement(Element element) {
         if (element instanceof SeatingArea seatingArea) {
             return SeatingAreaDTO.from(seatingArea);
         }
@@ -39,15 +39,13 @@ public record EventMapDTO(
             return StandingAreaDTO.from(standingArea);
         }
 
-        if (element instanceof Area area) {
-            return AreaDTO.from(area);
-        }
-
         return ElementDTO.from(element);
     }
 
-    public List<Object> getElementDTOs() {
+    public List<IMapElementDTO> getElementDTOs() {
         return elements;
     }
     
 }
+
+

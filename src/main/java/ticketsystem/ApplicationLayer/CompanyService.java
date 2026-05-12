@@ -1,6 +1,7 @@
 package ticketsystem.ApplicationLayer;
 
 import java.util.List;
+import java.util.Optional;
 
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -137,4 +138,37 @@ try {
             throw new Exception("Failed to remove user from companies: " + e.getMessage());
         }
     }
+
+private boolean canViewCompanyDetails(String sessionToken, Company company) throws Exception {
+    if (company.isActive()) {
+        return true;
+    }
+
+    if (tokenService.isGuestToken(sessionToken)) {
+        return false;
+    }
+
+    Long memberId = tokenService.extractUserId(sessionToken);
+    if (memberId == null) {
+        return false;
+    }
+
+    return company.getFounderId() == memberId
+            || company.getOwners().contains(memberId)
+            || company.getManagers().contains(memberId);
+}
+    public CompanyDTO getCompanyDetails(String sessionToken, long companyId) throws Exception {
+    if (!tokenService.validateToken(sessionToken)) {
+        throw new Exception("Error: Invalid or expired session token.");
+    }
+
+    Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new Exception("Error: Company not found."));
+
+    if (!canViewCompanyDetails(sessionToken, company)) {
+        throw new Exception("Error: User does not have permission to view this company.");
+    }
+        return new CompanyDTO(company);
+}
+
 }
