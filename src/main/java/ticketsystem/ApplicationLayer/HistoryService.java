@@ -4,8 +4,10 @@ import java.util.List;
 
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
+import ticketsystem.DomainLayer.user.Permission;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -13,10 +15,15 @@ import com.fasterxml.jackson.core.type.TypeReference;
 public class HistoryService implements OrderCompletedListener {
     private final IHistoryRepository historyRepository;
     private final ITokenService tokenService;
+    private ObjectMapper objectMapper = new ObjectMapper();
+    private MembershipDomainService membershipDomainService;
+    private ISystemLogger logger;
 
-    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService) {
+    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
+        this.membershipDomainService = membershipDomainService;
+        this.logger = logger;
     }
     
     @Override
@@ -52,7 +59,9 @@ public class HistoryService implements OrderCompletedListener {
             }
 
             List<Purchase> purchases = historyRepository.getPurchasesByMemberId(memberId);
-            ObjectMapper objectMapper = new ObjectMapper();
+            if(purchases.isEmpty()){
+                //notification
+            }
             List<OrderDTO> historyDtoList = objectMapper.convertValue(
                 purchases, 
                 new TypeReference<List<OrderDTO>>() {}
@@ -63,6 +72,43 @@ public class HistoryService implements OrderCompletedListener {
             throw e;
         }
     }
+    
+    // This method retrieves the purchase history for a specific company. It validates the token, checks permissions, and then fetches the purchase history from the repository.
+    public List<OrderDTO> getHistoryForCompany(String token, long companyId) {
+        try{
+            // Validate token
+            if (!tokenService.validateToken(token)) {
+                throw new IllegalArgumentException("Invalid or expired token");
+            }
+
+            if(!tokenService.isMemberToken(token)){
+                throw new IllegalArgumentException("Only members can view personal purchase history");
+            }
+
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId == null){
+                throw new IllegalArgumentException("Could not extract user id from token");
+            }
+            if(!membershipDomainService.validatePermission(memberId, companyId, Permission.VIEW_PURCHASE_HISTORY)) {
+                throw new IllegalArgumentException("Insufficient permissions to view company purchase history");
+            }
+            List<Purchase> purchases = historyRepository.getPurchasesByCompanyId(companyId);
+            if(purchases.isEmpty()){
+                //notification
+            }
+            List<OrderDTO> historyDtoList = objectMapper.convertValue(
+                purchases, 
+                new TypeReference<List<OrderDTO>>() {}
+            );
+            return historyDtoList;
+        }
+        catch (IllegalArgumentException e) {
+            logger.logEvent("Failed to retrieve company purchase history: " + e.getMessage(), ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
+    }
+
+
 
 
 
