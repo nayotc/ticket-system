@@ -241,6 +241,7 @@ public class CompanyService {
             throw e;
         }
     }
+//
 
     /**
      * Checks whether the current session is allowed to view the given company
