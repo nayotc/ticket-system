@@ -35,10 +35,6 @@ public enum Permission {
                 .filter(p -> p.key.equalsIgnoreCase(key))
                 .findFirst();
     }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 28466bf (Finish use-case assign manager to company without notifications)
 
     /**
      * Returns a set containing all available permissions in the system.
@@ -47,9 +43,4 @@ public enum Permission {
     public static Set<Permission> getAllPermissions() {
         return EnumSet.allOf(Permission.class);
     }
-<<<<<<< HEAD
-=======
->>>>>>> ba7482c (Update Permission enum class)
-=======
->>>>>>> 28466bf (Finish use-case assign manager to company without notifications)
 }

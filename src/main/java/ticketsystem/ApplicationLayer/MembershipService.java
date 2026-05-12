@@ -76,6 +76,43 @@ public class MembershipService {
         return true;
     }
 
+/**
+     * Use Case 4.8: Request to assign an owner to a company
+     */
+    public boolean requestOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception {
+
+        // Authenticate session
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        // Extract user ID from token and retrieve member information
+        Long appointerId = tokenService.extractUserId(sessionToken);
+        Member appointer = userRepository.getMemberById(appointerId);
+        if (appointer == null) {
+            throw new Exception("Appointer not found.");
+        }
+
+        // Retrieve target member information
+        Member targetMember = userRepository.getMemberById(targetMemberId);
+        if (targetMember == null) {
+            throw new Exception("Target Member not found.");
+        }
+
+        // Call the domain service to handle the business logic of creating the owner role
+        boolean isAssignmentSuccessful = membershipDomain.OwnerAssignmentRequest(appointer, targetMember, companyId);
+
+        // Update the repository with the changes to the target member ONLY if successful
+        if (isAssignmentSuccessful) {
+            userRepository.updateMember(targetMember);
+        }
+        
+        // TODO: add notification to the target member about the pending assignment
+        
+        // Return the actual result from the domain layer
+        return isAssignmentSuccessful;
+    }
+
     /**
      * Use-case 4.9: Remove owner assignment
      */

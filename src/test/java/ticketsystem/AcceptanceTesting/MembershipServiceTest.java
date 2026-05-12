@@ -293,10 +293,6 @@ public class MembershipServiceTest {
     // Use Case 4.9: Remove Owner Assignment
     // =========================================================================================
 
-    // =========================================================================================
-    // Use Case 4.9: Remove Owner Assignment
-    // =========================================================================================
-
     @Test
     public void GivenValidDetails_WhenRemoveOwnerAssignment_ThenReturnsTrueAndUpdatesDB() throws Exception {
         // Arrange is fully handled by setUp()! ownerMember (105L) is already an active Owner in the company tree.
@@ -336,5 +332,73 @@ public class MembershipServiceTest {
             membershipService.removeOwnerAssignment(appointerToken, companyId, memberId);
         });
         assertEquals("You are not the appointer of the specified user", ex.getMessage());
+    }
+
+    // =========================================================================================
+    // Use-case: Request Owner Assignment
+    // =========================================================================================
+
+    @Test
+    public void GivenValidDetails_WhenRequestOwnerAssignment_ThenRoleIsCreatedInPendingStatus() throws Exception {
+        // Act
+        // appointerToken belongs to founderMember, memberId is a plain user without a role
+        boolean result = membershipService.requestOwnerAssignment(appointerToken, companyId, memberId);
+
+        // Assert
+        assertTrue(result, "Service should return true on success.");
+        Member updatedMember = userRepository.getMemberById(memberId);
+        CompanyRole assignedRole = updatedMember.getRoleInCompany(companyId);
+        
+        assertNotNull(assignedRole, "A role should be created for the member.");
+        assertTrue(assignedRole instanceof Owner, "The role must be of type Owner.");
+        assertEquals(RoleStatus.PENDING, assignedRole.getStatus(), "Initial assignment must be PENDING.");
+    }
+
+    @Test
+    public void GivenTargetAlreadyHasRole_WhenRequestOwnerAssignment_ThenThrowsException() {
+        // Act & Assert
+        // managerId already has an active Manager role defined in setUp()
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.requestOwnerAssignment(appointerToken, companyId, managerId);
+        });
+
+        assertEquals("This user already has an active or pending role in this company.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointerIsManager_WhenRequestOwnerAssignment_ThenThrowsException() {
+        // Act & Assert
+        // A Manager tries to appoint an Owner
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.requestOwnerAssignment(managerToken, companyId, memberId);
+        });
+
+        assertEquals("Only Owners and Founders can appoint others.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenTargetMemberNotFound_WhenRequestOwnerAssignment_ThenThrowsException() {
+        // Arrange
+        Long nonExistentMemberId = 999L;
+
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.requestOwnerAssignment(appointerToken, companyId, nonExistentMemberId);
+        });
+
+        assertEquals("Target Member not found.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenInvalidSessionToken_WhenRequestOwnerAssignment_ThenThrowsException() {
+        // Arrange
+        String invalidToken = "invalid-session-token";
+
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.requestOwnerAssignment(invalidToken, companyId, memberId);
+        });
+
+        assertTrue(exception.getMessage().contains("Invalid") || exception.getMessage().contains("Session authentication failed."));
     }
 }

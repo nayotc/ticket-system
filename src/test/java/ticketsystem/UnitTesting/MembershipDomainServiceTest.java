@@ -325,6 +325,72 @@ public class MembershipDomainServiceTest {
         assertEquals("Permissions set cannot be null or contain null values.", exception.getMessage());
     }
 
+    // --- Owner Assignment Request ---   
+
+    @Test
+    public void GivenValidOwner_WhenOwnerAssignmentRequest_ThenAddRole() throws Exception {
+        // Arrange
+        appointer.addFounderRole(companyId); // Founder is active and valid to appoint
+        
+        // Act
+        boolean result = domainService.OwnerAssignmentRequest(appointer, appointee, companyId);
+        
+        // Assert: State verification on real objects
+        assertTrue(result);
+        CompanyRole assignedRole = appointee.getRoleInCompany(companyId);
+        assertNotNull(assignedRole);
+        assertTrue(assignedRole instanceof Owner);
+        assertEquals(RoleStatus.PENDING, assignedRole.getStatus());
+        assertEquals(100L, ((Owner) assignedRole).getAppointedByMemberId());
+    }
+
+    @Test
+    public void GivenAppointerHasNoRole_WhenOwnerAssignmentRequest_ThenThrowException() {
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.OwnerAssignmentRequest(appointer, appointee, companyId);
+        });
+        assertEquals("You do not have a role in this company.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointerIsPending_WhenOwnerAssignmentRequest_ThenThrowException() {
+        // Arrange
+        appointer.addOwnerRole(companyId, 999L); // Owner starts as PENDING by default
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.OwnerAssignmentRequest(appointer, appointee, companyId);
+        });
+        assertEquals("Your role is not active yet. You cannot appoint others.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointerIsManager_WhenOwnerAssignmentRequest_ThenThrowException() {
+        // Arrange
+        appointer.addManagerRole(companyId, 999L, new HashSet<>());
+        appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.OwnerAssignmentRequest(appointer, appointee, companyId);
+        });
+        assertEquals("Only Owners and Founders can appoint others.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointeeHasRole_WhenOwnerAssignmentRequest_ThenThrowException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+        appointee.addManagerRole(companyId, 100L, new HashSet<>()); // Appointee already has a role
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.OwnerAssignmentRequest(appointer, appointee, companyId);
+        });
+        assertEquals("This user already has an active or pending role in this company.", exception.getMessage());
+    }
+
     // --- Remove Owner Assignment ---
 
     @Test
