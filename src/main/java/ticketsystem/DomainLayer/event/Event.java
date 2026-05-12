@@ -16,7 +16,7 @@ public class Event {
 
     private final Long id;
     private String name;
-    private Long companyId;
+    private final Long companyId;
     private Long openedBy; // userId of the creator
     private LocalDateTime Date;
     private EventLocation location;
@@ -53,6 +53,34 @@ public class Event {
         this.version = 0;
     }
 
+    // copy constructor
+    public Event(Event other) {
+        this.id = other.id;
+        this.name = other.name;
+        this.Date = other.Date;
+        this.companyId = other.companyId;
+        this.openedBy = other.openedBy;
+        this.location = other.location;
+        this.trafficThreshold = other.trafficThreshold;
+        this.category = other.category;
+        this.artistName = other.artistName;
+        this.TicketPrice = other.TicketPrice;
+        this.map = new EventMap(other.map); // Deep copy of the map
+        this.status = other.status;
+        this.rate = other.rate;
+        this.totalRating = other.totalRating;
+        this.ratingCount = other.ratingCount;
+        this.purchasePolicy = other.purchasePolicy;
+        this.discountPolicy = other.discountPolicy;
+        this.activeReservationsCount = new AtomicInteger(other.activeReservationsCount.get());
+        this.version = other.version;
+        
+    }
+
+    public Event copy() {
+        return new Event(this);
+    }
+
     public Long getId() {
         return id;
     }
@@ -75,10 +103,6 @@ public class Event {
 
     public Long getCompanyId() {
         return companyId;
-    }
-
-    public void setCompanyId(Long companyId) {
-        this.companyId = companyId;
     }
 
     public Long getOpenedBy() {
@@ -215,10 +239,6 @@ public class Event {
         return activeReservationsCount.get();
     }
 
-    public BigDecimal getTicktPrice() {
-        return this.TicketPrice;
-    }
-
     // use case: search and filtering 
     public boolean matchesSearchCriteria(SearchCriteria criteria) {
         if (criteria == null) {
@@ -326,6 +346,30 @@ public class Event {
 
     public void incrementVersion() {
         this.version++;
+    }
+
+    public void updateDetails(String name, LocalDateTime date, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice) {
+        if (name != null && !name.isEmpty()) {
+            this.name = name;
+        }
+        if (date != null && date.isAfter(LocalDateTime.now())) {
+            this.Date = date;
+        }
+        if (location != null) {
+            this.location = location;
+        }
+        if (trafficThreshold != null && trafficThreshold > 0) {
+            this.trafficThreshold = trafficThreshold;
+        }
+        if (category != null) {
+            this.category = category;
+        }
+        if (artistName != null && !artistName.isEmpty()) {
+            this.artistName = artistName;
+        }
+        if (ticketPrice != null && ticketPrice.compareTo(BigDecimal.ZERO) >= 0) {
+            this.TicketPrice = ticketPrice;
+        }
     }
 
 }

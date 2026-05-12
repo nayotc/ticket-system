@@ -1,6 +1,5 @@
 package ticketsystem.DomainLayer.IRepository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import ticketsystem.DomainLayer.event.Event;
 
@@ -8,9 +7,9 @@ public interface IEventRepository {
     void addEvent(Event event);
     long getNextId();
   
-    Event getEventById(long eventId);
+    Event getEventById(Long eventId);
     void updateEvent(Event event);
-    void deleteEvent(long eventId);
-    List<Event> getEventsByCompanyId(long companyId);
+    void deleteEvent(Long eventId, long expectedVersion);
+    List<Event> getEventsByCompanyId(Long companyId);
     List<Event> getAllEvents();
 }

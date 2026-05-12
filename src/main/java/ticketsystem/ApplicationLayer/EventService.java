@@ -12,6 +12,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.DiscountPolicy;
+import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 
@@ -70,7 +71,7 @@ public class EventService {
                 throw new IllegalArgumentException("Map size must be positive");
             }
             // main scenario: create and add event
-            Long userId = tokenService.extractUserId(sessionId);  // TODO: remove casting
+            Long userId = tokenService.extractUserId(sessionId);  
             Long eventId = eventRepository.getNextId();
 
             Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,artist,price,new Pair<>(mapHigh, mapWidth));
@@ -83,6 +84,52 @@ public class EventService {
         }
         
     }
+
+    public Boolean updateEvent(String SessionId, EventDTO eventDTO) {
+        try {
+            // precondition: user logged in
+            if (!tokenService.validateToken(SessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+            // precondition: given data is not null and valid
+            if (eventDTO == null) {
+                throw new IllegalArgumentException("Event data cannot be null");
+            }
+            if (eventDTO.id() == null) {
+                throw new IllegalArgumentException("Event ID cannot be null");
+            }
+            if (eventDTO.companyId() == null) {
+                throw new IllegalArgumentException("Company ID cannot be null");
+            }
+            // precondition: user has permission to update event
+            if (!membershipDomain.validatePermission(SessionId, eventDTO.companyId(), "event:update")) {
+                throw new IllegalArgumentException("User does not have permission to update event");
+            }
+            // precondition: event exists
+            Event existingEvent = eventRepository.getEventById(eventDTO.id());
+            if (existingEvent == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+            if (!existingEvent.getCompanyId().equals(eventDTO.companyId())) {
+                throw new IllegalArgumentException("Cannot change event's company");
+            }
+            if (eventDTO.version() != existingEvent.getVersion()) {
+                    throw new IllegalStateException("Event was updated by another request");
+            }
+            String name = eventDTO.name() != null ? eventDTO.name() : existingEvent.getName();
+            LocalDateTime date = eventDTO.date() != null ? eventDTO.date() : existingEvent.getDate();
+            EventLocation location = eventDTO.location() != null ? EventMapper.toEventLocation(eventDTO.location()) : existingEvent.getLocation();
+            Long trafficThreshold = eventDTO.trafficThreshold() != null ? eventDTO.trafficThreshold() : existingEvent.getTrafficThreshold();
+            EventCategory category = eventDTO.category() != null ? EventMapper.toEventCategory(eventDTO.category()) : existingEvent.getCategory();
+            String artistName = eventDTO.artistName() != null ? eventDTO.artistName() : existingEvent.getArtistName();
+            BigDecimal ticketPrice = eventDTO.ticketPrice() != null ? eventDTO.ticketPrice() : existingEvent.getTicketPrice();
+            existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
+            eventRepository.updateEvent(existingEvent);
+            return true;
+        } catch (Exception e) {
+            throw e;
+        }
+    }      
 
     public Boolean defineEventMap(String sessionId, Long eventId, EventMapDTO mapDTO) {
         try {
