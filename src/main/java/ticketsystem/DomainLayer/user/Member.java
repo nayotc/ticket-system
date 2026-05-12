@@ -2,14 +2,13 @@ package ticketsystem.DomainLayer.user;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 public class Member extends User {
 
     private final Long memberId;
     private String userName;
-    private ConcurrentMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
+    private ConcurrentHashMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
 
     public Member(Long memberId, String userName) {
         this.memberId = memberId;
@@ -42,23 +41,23 @@ public class Member extends User {
         return role != null && role.hasPermission(permission);
     }
 
-    public void addManagerRole(Long companyId, Long memberId, Set<Permission> permissions) {
+    public boolean addManagerRole(Long companyId, Long memberId, Set<Permission> permissions) {
         CompanyRole newRole = new Manager(companyId, memberId, permissions);
-        myRoles.putIfAbsent(companyId, newRole);
+        return myRoles.putIfAbsent(companyId, newRole) == null;
     }
 
-    public void addOwnerRole(Long companyId, Long memberId) {
+    public boolean addOwnerRole(Long companyId, Long memberId) {
         CompanyRole newRole = new Owner(companyId, memberId);
-        myRoles.putIfAbsent(companyId, newRole);
+        return myRoles.putIfAbsent(companyId, newRole) == null;
     }
 
-    public void addFounderRole(Long companyId) {
+    public boolean addFounderRole(Long companyId) {
         CompanyRole newRole = new Founder(companyId);
-        myRoles.putIfAbsent(companyId, newRole);
+        return myRoles.putIfAbsent(companyId, newRole) == null;
     }
 
-    public void deleteRoleInCompany(Long companyId) {
-        myRoles.remove(companyId);
+    public boolean deleteRoleInCompany(Long companyId) {
+        return myRoles.remove(companyId) != null;
     }
 
     public void updateManagerPermissions(Long companyId, Set<Permission> newPermissions) {

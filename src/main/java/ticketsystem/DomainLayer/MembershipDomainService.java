@@ -63,7 +63,7 @@ public class MembershipDomainService {
         return null; // Default case
     }
 
-    public void ManagerAssignmentRequest(Member appointer, Member targetMember, Long companyId, Set<Permission> permissions) throws Exception {
+    public boolean ManagerAssignmentRequest(Member appointer, Member targetMember, Long companyId, Set<Permission> permissions) throws Exception {
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
         CompanyRole targetRole = targetMember.getRoleInCompany(companyId);
 
@@ -88,7 +88,7 @@ public class MembershipDomainService {
         }
 
         // 5. If all validations pass, add a pending Manager role
-        targetMember.addManagerRole(companyId, appointer.getId(), permissions);
+        return targetMember.addManagerRole(companyId, appointer.getId(), permissions) == true;
     }
 
     public void addNewAppointeeToAppointer(CompanyRole appointerRole, Long appointeeId) throws Exception {
@@ -106,7 +106,7 @@ public class MembershipDomainService {
         }
     }
 
-    public void ApproveAssignment(Member appointer, Member appointee, Company company) throws Exception {
+    public boolean ApproveAssignment(Member appointer, Member appointee, Company company) throws Exception {
         Long companyId = company.getId();
         CompanyRole approvedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
@@ -135,6 +135,7 @@ public class MembershipDomainService {
         approvedRole.setStatus(RoleStatus.ACTIVE);
         addNewAppointeeToAppointer(appointerRole, appointee.getId());
         company.registerNewAppointment(appointer.getId(), appointee.getId(), approvedRole instanceof Manager ? "Manager" : "Owner");
+        return true;
     }
 
     public void deleteAppointeeFromAppointer(CompanyRole appointerRole, Long appointeeId) throws Exception {
@@ -151,7 +152,7 @@ public class MembershipDomainService {
         }
     }
 
-    public void RejectAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
+    public boolean RejectAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
         CompanyRole rejectedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
@@ -167,7 +168,7 @@ public class MembershipDomainService {
 
         // 3. If validation passes, remove the pending role and update the appointer's list of appointees
         deleteAppointeeFromAppointer(appointerRole, appointee.getId());
-        appointee.deleteRoleInCompany(companyId);
+        return appointee.deleteRoleInCompany(companyId) == true;
     }
 
 }

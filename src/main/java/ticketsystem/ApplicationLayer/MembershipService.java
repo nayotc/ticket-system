@@ -5,12 +5,7 @@ import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Permission;
-import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.DomainLayer.user.Founder;
-import ticketsystem.DomainLayer.user.Owner;
-import ticketsystem.DomainLayer.user.Manager;
 
 public class MembershipService {
 
@@ -59,9 +54,15 @@ public class MembershipService {
         // Extract user ID from token and retrieve member information
         Long appointerId = tokenService.extractUserId(sessionToken);
         Member appointer = userRepository.getMemberById(appointerId);
+        if (appointer == null) {
+            throw new Exception("Appointer not found.");
+        }
 
         // Retrieve target member information
         Member targetMember = userRepository.getMemberById(targetMemberId);
+        if (targetMember == null) {
+            throw new Exception("Target Member not found.");
+        }
 
         // Call the domain service to handle the business logic of creating the manager role
         membershipDomain.ManagerAssignmentRequest(appointer, targetMember, companyId, permissions);
@@ -88,6 +89,9 @@ public class MembershipService {
         // Extract user ID from token and retrieve member information
         Long appointeeId = tokenService.extractUserId(sessionToken);
         Member appointee = userRepository.getMemberById(appointeeId);
+        if (appointee == null) {
+            throw new Exception("Appointee not found.");
+        }
         
         Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
         if (appointerId == null) {
@@ -95,6 +99,10 @@ public class MembershipService {
         }
 
         Member appointer = userRepository.getMemberById(appointerId);
+        if (appointer == null) {
+            throw new Exception("Appointer not found.");
+        }
+
         Company company = companyRepository.findById(companyId).orElseThrow(() -> new Exception("Company not found."));
         membershipDomain.ApproveAssignment(appointer, appointee, company);
 
@@ -120,7 +128,10 @@ public class MembershipService {
         // Extract user ID from token and retrieve member information
         Long memberId = tokenService.extractUserId(sessionToken);
         Member appointee = userRepository.getMemberById(memberId);
-        
+        if (appointee == null) {
+            throw new Exception("Appointee not found.");
+        }
+
         // Extract user ID from token and retrieve member information
         Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
         if (appointerId == null) {
@@ -128,6 +139,9 @@ public class MembershipService {
         }
         
         Member appointer = userRepository.getMemberById(appointerId);
+        if (appointer == null) {
+            throw new Exception("Appointer not found.");
+        }
 
         membershipDomain.RejectAssignment(appointer, appointee, companyId);
 

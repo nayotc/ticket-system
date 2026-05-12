@@ -36,7 +36,7 @@ public class EventService {
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
-            Long userId = tokenService.extractUserId(sessionId);  // TODO: remove casting
+            Long userId = tokenService.extractUserId(sessionId);
             // precondition: user has permission to create an event
             if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to create an event");
@@ -123,7 +123,7 @@ public class EventService {
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
-            Long userId = tokenService.extractUserId(sessionId);  // TODO: remove casting
+            Long userId = tokenService.extractUserId(sessionId);
             if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.CONFIGURE_HALL_AND_MAP)) {
                 throw new IllegalArgumentException("User does not have permission to define event map");
             }
