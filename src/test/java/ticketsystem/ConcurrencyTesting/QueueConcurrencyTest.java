@@ -256,11 +256,11 @@ public class QueueConcurrencyTest {
                 this.savedEvent = event;
             }
 
-            public Event getEventById(long id) {
+            public Event getEventById(Long id) {
                 return savedEvent;
             }
 
-            public void deleteEvent(long eventId) {
+            public void deleteEvent(Long eventId, long expectedVersion) {
                 /* no-op */
             }
 
@@ -272,7 +272,7 @@ public class QueueConcurrencyTest {
                 return 1L;
             }
 
-            public List<Event> getEventsByCompanyId(long companyId) {
+            public List<Event> getEventsByCompanyId(Long companyId) {
                 return List.of(savedEvent);
             }
 

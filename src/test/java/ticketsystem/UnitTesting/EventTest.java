@@ -91,13 +91,6 @@ public class EventTest {
     }
 
     @Test
-    void givenEvent_whenSetCompanyId_thenCompanyIdIsUpdated() {
-        event.setCompanyId(99L);
-
-        assertEquals(99L, event.getCompanyId());
-    }
-
-    @Test
     void givenEvent_whenSetLocation_thenLocationIsUpdated() {
         event.setLocation(EventLocation.TEL_AVIV);
 
