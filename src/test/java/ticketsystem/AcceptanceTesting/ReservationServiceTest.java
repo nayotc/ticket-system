@@ -230,6 +230,117 @@ void AcceptanceTest_SelectSeatTicket_WhenEventIsRegular_ThenTicketIsSelectedWith
 
     assertTrue(result);
 }
+@Test
+void AcceptanceTest_SelectSeatTicket_WhenLotteryEventAndValidCode_ThenTicketIsSelected() {
+    Long eventId = 16L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+    String lotteryCode = "ABC12345";
+
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(1L);
+    lottery.setWinner(1L, lotteryCode);
+    lotteryRepository.addLottery(lottery);
+
+    seatPositionDTO position = new seatPositionDTO(1, 1);
+
+    boolean result = reservationService.selectSeatTicket(
+            token,
+            eventId,
+            areaId,
+            position,
+            lotteryCode
+    );
+
+    assertTrue(result);
+}
+
+@Test
+void AcceptanceTest_SelectSeatTicket_WhenLotteryEventAndMissingCode_ThenSelectionFails() {
+    Long eventId = 17L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(1L);
+    lottery.setWinner(1L, "ABC12345");
+    lotteryRepository.addLottery(lottery);
+
+    seatPositionDTO position = new seatPositionDTO(1, 1);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectSeatTicket(
+                    token,
+                    eventId,
+                    areaId,
+                    position,
+                    null
+            )
+    );
+}
+
+@Test
+void AcceptanceTest_SelectSeatTicket_WhenLotteryEventAndWrongCode_ThenSelectionFails() {
+    Long eventId = 18L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(1L);
+    lottery.setWinner(1L, "ABC12345");
+    lotteryRepository.addLottery(lottery);
+
+    seatPositionDTO position = new seatPositionDTO(1, 1);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectSeatTicket(
+                    token,
+                    eventId,
+                    areaId,
+                    position,
+                    "WRONGCODE"
+            )
+    );
+}
+
+@Test
+void AcceptanceTest_SelectSeatTicket_WhenLotteryEventAndUserDidNotWin_ThenSelectionFails() {
+    Long eventId = 19L;
+    Long areaId = 1L;
+    String token = "member-token-1";
+
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    Lottery lottery = new Lottery(1L, eventId, 1);
+    lottery.registerMember(999L);
+    lottery.setWinner(999L, "ABC12345");
+    lotteryRepository.addLottery(lottery);
+
+    seatPositionDTO position = new seatPositionDTO(1, 1);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectSeatTicket(
+                    token,
+                    eventId,
+                    areaId,
+                    position,
+                    "ABC12345"
+            )
+    );
+}
 
     @Test
     void AcceptanceTest_Checkout_WhenPaymentAndTicketIssuingSucceed_ThenOrderIsCompletedAndBarcodeIssued() {
