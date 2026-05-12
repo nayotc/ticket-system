@@ -26,7 +26,6 @@ public class SystemAdminService {
     private final ISystemAdminRepository adminRepository;
     private final IPaymentService paymentService;
     private final ISecureBarcode barcodeService;
-    private final ITokenService tokenService;
     private final IOrderRepository orderRepository;
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
@@ -47,7 +46,6 @@ public class SystemAdminService {
         this.barcodeService = barcodeService;
         this.userRepository = userRepository;
         this.orderRepository = orderRepository;
-        this.tokenService = tokenService;
         this.companyRepository = companyRepository;
         this.logger = logger;
         this.historyRepository = historyRepository;
@@ -171,10 +169,8 @@ public class SystemAdminService {
         return new CompanyDTO(company);
     }
     // Use Case: View Purchase History by Buyer 6.4
-    public Map<Long, List<Purchase>> getPurchaseHistoryByBuyer(String adminToken) {
+    public Map<Long, List<Purchase>> getPurchaseHistoryByBuyer(long adminId) {
         try{
-            tokenService.validateToken(adminToken);
-            long adminId = tokenService.extractUserId(adminToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
                 throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
@@ -184,17 +180,15 @@ public class SystemAdminService {
             return allOrders.stream()
                 .collect(Collectors.groupingBy(Purchase::getMemberId));
         } catch (Exception e) {
-            logger.logEvent("Unauthorized access attempt with token: " + adminToken, ISystemLogger.LogLevel.WARN);
+            logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
             throw e;
         }     
 
     }
 
-
-    public Map<Long, Map<String, List<Purchase>>> getPurchaseHistoryByCompanyAndEvent(String adminToken) {
+    // Use Case: View Purchase History by Company and Event 6.4
+    public Map<Long, Map<String, List<Purchase>>> getPurchaseHistoryByCompanyAndEvent(long adminId) {
         try{
-            tokenService.validateToken(adminToken);
-            long adminId = tokenService.extractUserId(adminToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
                 throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
@@ -209,7 +203,7 @@ public class SystemAdminService {
                                 ));
         }
         catch (Exception e) {
-            logger.logEvent("Unauthorized access attempt with token: " + adminToken, ISystemLogger.LogLevel.WARN);
+            logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
             throw e;
         }
     }
