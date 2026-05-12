@@ -1,24 +1,29 @@
 package ticketsystem.ApplicationLayer;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
 
+import ticketsystem.ApplicationLayer.Events.UserLoginListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
 public class UserService {
     private final IUserRepository userRepository;
     private final ITokenService tokenService;
     private final IPasswordService passwordService;
     private final ISystemLogger logger;
+    private final List<UserLoginListener> userLoginListeners;
+    
 
     public UserService(IUserRepository userRepository, ITokenService tokenService, ISystemLogger logger) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
         this.passwordService = new PasswordService();
         this.logger = logger;
+        this.userLoginListeners = new ArrayList<>();
     }
 
 
@@ -98,13 +103,10 @@ public class UserService {
                 return null;
             }
             Member member = userRepository.getMemberByUsername(username);
-            // TODO: implement add Guest's active order to Member's active order if exists
-            tokenService.removeActiveSession(sessionToken); // Remove the guest session token since the user is now
-                                                            // logged
-                                                            // in as a member, and we will create a new session token
-                                                            // for
-                                                            // the member
-            return tokenService.addActiveSession(member);
+            String memberToken = tokenService.addActiveSession(member);
+            notifyListeners(sessionToken, memberToken);
+            tokenService.removeActiveSession(sessionToken); // Remove the guest session token since the user is now logged in as a member
+            return memberToken;
         } catch (Exception e) {
             logger.logEvent("Error logging in: " + e.getMessage(), LogLevel.INFO);
             throw e;
@@ -206,6 +208,17 @@ public class UserService {
             return null;
         }
         return member;
+    }
+    private void notifyListeners(String guestToken, String memberToken) {
+        for (UserLoginListener listener :userLoginListeners ) {
+            listener.onUserLogin(guestToken,memberToken);
+        }
+    }
+    public void addUserLoginListener(UserLoginListener listener) {
+        userLoginListeners.add(listener);
+    }
+    public void removeUserLoginListener(UserLoginListener listener) {
+        userLoginListeners.remove(listener);
     }
 
 }

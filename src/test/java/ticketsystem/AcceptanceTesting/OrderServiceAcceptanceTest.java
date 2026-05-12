@@ -35,8 +35,7 @@ public class OrderServiceAcceptanceTest {
 
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
-                new TokenRepository()
-        ) {
+                new TokenRepository()) {
             @Override
             public boolean validateToken(String token) {
                 return true;
@@ -61,13 +60,12 @@ public class OrderServiceAcceptanceTest {
         orderService = new OrderService(
                 orderRepository,
                 tokenService,
-                logger
-        );
+                logger);
     }
 
     @Test
     void AcceptanceTest_OnUserSignIn_WhenGuestHasNoActiveOrder_ThenNothingChanges() {
-        orderService.onUserSignIn(guestToken, memberToken);
+        orderService.onUserLogin(guestToken, memberToken);
 
         ActiveOrder memberOrder = orderRepository.getActiveOrderByUserId(userId);
         ActiveOrder guestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
@@ -85,12 +83,11 @@ public class OrderServiceAcceptanceTest {
                 1L,
                 guestToken,
                 null,
-                eventId
-        );
+                eventId);
 
         orderRepository.addOrder(guestOrder);
 
-        orderService.onUserSignIn(guestToken, memberToken);
+        orderService.onUserLogin(guestToken, memberToken);
 
         ActiveOrder updatedOrder = orderRepository.getActiveOrderByUserId(userId);
 
@@ -110,20 +107,18 @@ public class OrderServiceAcceptanceTest {
                 1L,
                 guestToken,
                 null,
-                eventId
-        );
+                eventId);
 
         ActiveOrder memberOrder = new ActiveOrder(
                 2L,
                 memberToken,
                 userId,
-                eventId
-        );
+                eventId);
 
         orderRepository.addOrder(guestOrder);
         orderRepository.addOrder(memberOrder);
 
-        orderService.onUserSignIn(guestToken, memberToken);
+        orderService.onUserLogin(guestToken, memberToken);
 
         ActiveOrder updatedMemberOrder = orderRepository.getActiveOrderByUserId(userId);
         ActiveOrder deletedGuestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
@@ -145,20 +140,18 @@ public class OrderServiceAcceptanceTest {
                 1L,
                 guestToken,
                 null,
-                guestEventId
-        );
+                guestEventId);
 
         ActiveOrder memberOrder = new ActiveOrder(
                 2L,
                 memberToken,
                 userId,
-                memberEventId
-        );
+                memberEventId);
 
         orderRepository.addOrder(guestOrder);
         orderRepository.addOrder(memberOrder);
 
-        orderService.onUserSignIn(guestToken, memberToken);
+        orderService.onUserLogin(guestToken, memberToken);
 
         ActiveOrder remainingMemberOrder = orderRepository.getActiveOrderByUserId(userId);
         ActiveOrder deletedGuestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
@@ -174,8 +167,7 @@ public class OrderServiceAcceptanceTest {
     void AcceptanceTest_OnUserSignIn_WhenTokenExtractionFails_ThenWarningIsLoggedAndExceptionIsThrown() {
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
-                new TokenRepository()
-        ) {
+                new TokenRepository()) {
             @Override
             public Long extractUserId(String token) {
                 throw new IllegalArgumentException("Invalid member token");
@@ -185,22 +177,19 @@ public class OrderServiceAcceptanceTest {
         orderService = new OrderService(
                 orderRepository,
                 tokenService,
-                logger
-        );
+                logger);
 
         ActiveOrder guestOrder = new ActiveOrder(
                 1L,
                 guestToken,
                 null,
-                500L
-        );
+                500L);
 
         orderRepository.addOrder(guestOrder);
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> orderService.onUserSignIn(guestToken, memberToken)
-        );
+                () -> orderService.onUserLogin(guestToken, memberToken));
 
         assertFalse(logger.messages.isEmpty());
         assertTrue(logger.messages.get(0).contains("mergeGuestOrderIntoMemberOrders failed"));
@@ -208,19 +197,19 @@ public class OrderServiceAcceptanceTest {
 
     private static class FakeSystemLogger implements ISystemLogger {
 
-    private final List<String> messages = new ArrayList<>();
-    private final List<LogLevel> levels = new ArrayList<>();
+        private final List<String> messages = new ArrayList<>();
+        private final List<LogLevel> levels = new ArrayList<>();
 
-    @Override
-    public void logEvent(String message, LogLevel level) {
-        messages.add(message);
-        levels.add(level);
-    }
+        @Override
+        public void logEvent(String message, LogLevel level) {
+            messages.add(message);
+            levels.add(level);
+        }
 
-    @Override
-    public void logError(String errorMessage, Throwable exception) {
-        messages.add(errorMessage);
-        levels.add(LogLevel.WARN);
+        @Override
+        public void logError(String errorMessage, Throwable exception) {
+            messages.add(errorMessage);
+            levels.add(LogLevel.WARN);
+        }
     }
-}
 }

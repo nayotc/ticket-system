@@ -1,18 +1,12 @@
 package ticketsystem.ApplicationLayer;
 
-import java.util.List;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
+import ticketsystem.ApplicationLayer.Events.UserLoginListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
-import ticketsystem.ApplicationLayer.Events.UserSignInListener;
-import ticketsystem.DTO.ActiveOrderDTO;
-import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
-public class OrderService implements UserSignInListener {
+public class OrderService implements UserLoginListener {
 
     private final IOrderRepository orderRepository;
     private final TokenService tokenService;
@@ -25,43 +19,42 @@ public class OrderService implements UserSignInListener {
     }
 
     @Override
-    public void onUserSignIn(String guestToken, String memberToken) {
-            
-        try{
-        ActiveOrder guestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
-        Long userId = tokenService.extractUserId(memberToken);
-        if (guestOrder == null) {
-            return;
-        }
+    public void onUserLogin(String guestToken, String memberToken) {
 
-        ActiveOrder memberOrder = orderRepository.getActiveOrderByUserId(userId);
+        try {
+            ActiveOrder guestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
+            Long userId = tokenService.extractUserId(memberToken);
+            if (guestOrder == null) {
+                return;
+            }
 
-        if (memberOrder == null) {
-            guestOrder.setUserId(userId);
-            guestOrder.setSessionToken(memberToken);
-            orderRepository.updateOrder(guestOrder);
-            return;
-        }
+            ActiveOrder memberOrder = orderRepository.getActiveOrderByUserId(userId);
 
-        //User already has an active order for another event
-        if (!memberOrder.getEventId().equals(guestOrder.getEventId())) {
+            if (memberOrder == null) {
+                guestOrder.setUserId(userId);
+                guestOrder.setSessionToken(memberToken);
+                orderRepository.updateOrder(guestOrder);
+                return;
+            }
+
+            // User already has an active order for another event
+            if (!memberOrder.getEventId().equals(guestOrder.getEventId())) {
+                orderRepository.deleteOrder(guestOrder.getOrderId());
+                return;
+
+            }
+
+            for (Ticket ticket : guestOrder.getTickets()) {
+                memberOrder.addTicket(ticket);
+            }
+
+            orderRepository.updateOrder(memberOrder);
             orderRepository.deleteOrder(guestOrder.getOrderId());
-            return;
-        
+
+        } catch (Exception e) {
+            logger.logEvent("mergeGuestOrderIntoMemberOrders failed: " + e.getMessage(), LogLevel.WARN);
+            throw e;
         }
 
-        for (Ticket ticket : guestOrder.getTickets()) {
-            memberOrder.addTicket(ticket);
-        }
-
-        orderRepository.updateOrder(memberOrder);
-        orderRepository.deleteOrder(guestOrder.getOrderId());
-
     }
-    catch (Exception e) {
-        logger.logEvent("mergeGuestOrderIntoMemberOrders failed: " + e.getMessage(), LogLevel.WARN);
-        throw e;
-    }
-
-}
 }
