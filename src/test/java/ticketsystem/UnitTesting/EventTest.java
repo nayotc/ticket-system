@@ -289,7 +289,7 @@ public class EventTest {
         EventMap mockMap = mock(EventMap.class);
         event.setMap(mockMap);
 
-        event.releaseSpot(2L);
+        event.releaseSpot(2L,1);
 
         verify(mockMap, times(1)).releaseSpot(2L);
     }

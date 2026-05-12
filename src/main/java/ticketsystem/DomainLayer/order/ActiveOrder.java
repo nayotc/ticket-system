@@ -181,5 +181,9 @@ public class ActiveOrder {
             this.status = OrderStatus.ACTIVE;
             this.expiresAt = expiresAt;
         }
+        //only for testing purposes
+        public void setExpiresAt(LocalDateTime expiresAt) {
+            this.expiresAt = expiresAt;
+        }
 
     }

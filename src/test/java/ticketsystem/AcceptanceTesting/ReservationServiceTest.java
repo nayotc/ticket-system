@@ -30,10 +30,12 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
@@ -671,6 +673,51 @@ void AcceptanceTest_RemoveTicketFromActiveOrder_WhenSeatTicketExists_ThenTicketI
         assertNotNull(completedOrder.get().getTickets().get(0).getSecureBarcode());
     }
 
+
+    @Test
+    void GivenExpiredOrder_WhenSelectSeatTicket_ThenExpiredOrderIsCancelledAndNewTicketIsSelected() {
+        // Arrange
+        Long eventId = 30L;
+        Long areaId = 1L;
+        String token = "member-token-1";
+
+        Event event = createActiveEventWithSeatingArea(eventId);
+        eventRepository.addEvent(event);
+
+        reservationService.selectSeatTicket(
+                token,
+                eventId,
+                areaId,
+                new seatPositionDTO(1, 1),
+                null
+        );
+
+        ActiveOrder expiredOrder = orderRepository.getActiveOrderByUserId(1L);
+        Long expiredOrderId = expiredOrder.getOrderId();
+
+        expiredOrder.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        orderRepository.updateOrder(expiredOrder);
+
+        // Act
+        boolean result = reservationService.selectSeatTicket(
+                token,
+                eventId,
+                areaId,
+                new seatPositionDTO(1, 2),
+                null
+        );
+
+       assertTrue(result);
+
+        assertNull(orderRepository.findOrderById(expiredOrderId));
+
+        ActiveOrder newActiveOrder = orderRepository.getActiveOrderByUserId(1L);
+
+        assertNotNull(newActiveOrder);
+        assertEquals(ActiveOrder.OrderStatus.ACTIVE, newActiveOrder.getStatus());
+        assertEquals(1, newActiveOrder.getTickets().size());
+        assertNotEquals(expiredOrderId, newActiveOrder.getOrderId());
+    }
    //create event
    private Event createActiveEvent(Long eventId) {
     Event event = new Event(

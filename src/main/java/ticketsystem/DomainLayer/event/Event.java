@@ -212,7 +212,7 @@ public class Event {
         this.map.reserveSpot(areaId);
     }
 
-    public void releaseSpot(Long areaId) {
+    public void releaseSpot(Long areaId, int quantity) {
         this.map.releaseSpot(areaId);
     }
 

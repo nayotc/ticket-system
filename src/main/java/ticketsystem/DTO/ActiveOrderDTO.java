@@ -16,7 +16,7 @@ public class ActiveOrderDTO {
         this.eventId = eventId;
         this.tickets = tickets;
     }
-
+    
     public Long getOrderId() {
         return orderId;
     }

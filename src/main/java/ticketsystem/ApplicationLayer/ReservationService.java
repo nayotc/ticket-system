@@ -163,7 +163,7 @@ public class ReservationService{
             return true;
 
         } catch (Exception e) {
-            logWarning("removeStandingTicketsFromActiveOrder failed: " + e.getMessage());
+            logger.logEvent("removeStandingTicketsFromActiveOrder failed: " + e.getMessage(), LogLevel.WARN );
             throw e;
         }
     }
@@ -176,11 +176,8 @@ public class ReservationService{
             if (order == null|| order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
-            ObjectMapper objectMapper = new ObjectMapper();
-           ActiveOrderDTO activeOrderDTO = objectMapper.convertValue(
-                order, 
-                ActiveOrderDTO.class
-            );
+            
+           ActiveOrderDTO activeOrderDTO = order.toDTO();
             return activeOrderDTO;
         } 
         catch (Exception e) {
