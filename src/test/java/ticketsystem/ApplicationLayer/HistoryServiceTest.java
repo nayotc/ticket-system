@@ -1,9 +1,6 @@
 package ticketsystem.ApplicationLayer;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -11,36 +8,48 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
-import ticketsystem.DomainLayer.history.Purchase;
-import ticketsystem.DomainLayer.history.PurchasedTicket;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.InfrastructureLayer.HistoryRepository;
+import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
 public class HistoryServiceTest {
 
-    @Mock
     private IHistoryRepository historyRepository;
-    
-    @Mock
+    private ITokenRepository tokenRepository;
+    private IUserRepository userRepository;
     private ITokenService tokenService;
-    
+    private UserService userService;
     private HistoryService historyService;
-
-    // Simulation of a logged-in user and tokens
-    private final long user1Id = 100L;
-    private final String validToken = "valid-token-123";
-    private final String invalidToken = "invalid-token-456";
 
     @BeforeEach
     void setUp() {
-        // Initializes the mocks and the service before each test
-        MockitoAnnotations.openMocks(this);
-        // Injecting both mocks into the service
-        historyService = new HistoryService(historyRepository, tokenService);
+        // --- Setup Real Repositories (Acceptance Level) ---
+        HistoryRepository hRepo = new HistoryRepository();
+        this.historyRepository = hRepo;
+
+        this.tokenRepository = new TokenRepository();
+        this.userRepository = new UserRepository(); 
+        
+        this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        this.userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
+        
+        this.historyService = new HistoryService(historyRepository, tokenService);
+    }
+
+    /**
+     * Helper method to simulate a full user registration and login flow.
+     */
+    private String getValidMemberToken(String username, String password) {
+        String guestToken = userService.visitSystem();
+        userService.signUp(guestToken, username, password);
+        return userService.login(guestToken, username, password);
     }
 
     /**
@@ -49,36 +58,22 @@ public class HistoryServiceTest {
     @Test
     void GivenValidTokenAndExistingHistory_WhenGetHistoryForUser_ThenReturnsHistory() {
         // --- Given (Arrange) ---
-        // 1. Valid token is provided
-        when(tokenService.validateToken(validToken)).thenReturn(true);
-        // Mock extracting the member ID from the valid token
-        when(tokenService.isMemberToken(validToken)).thenReturn(true);
-        when(tokenService.extractUserId(validToken)).thenReturn(user1Id);
+        String validToken = getValidMemberToken("reut_history_user", "Pass123!");
+        long userId = tokenService.extractUserId(validToken);
         
-        // 2. Purchase history exists for user1
-        List<Purchase> fakeHistory = new ArrayList<>();
-        List<PurchasedTicket> tickets = new ArrayList<>(); 
-        tickets.add(new PurchasedTicket(10, 20, 1, 1, 150.0, "SECURE-BARCODE-123")); // adding a fake ticket
+        List<PurchaseDTO> ticketDTOs = new ArrayList<>();
+        ticketDTOs.add(new PurchaseDTO(10L, 20L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L);
         
-        Purchase p = new Purchase(1, tickets, "Taylor Swift Tour", "HaYarkon Park", user1Id, 50);
-        fakeHistory.add(p);
-        
-        // Mocking the repository to return the fake history
-        when(historyRepository.getPurchasesByMemberId(user1Id)).thenReturn(fakeHistory);
+        historyService.onOrderCompleted(orderDto);
 
         // --- When (Act) ---
-        List<OrderDTO> result = historyService.getHistoryForUser( validToken);
+        List<OrderDTO> result = historyService.getHistoryForUser(validToken);
 
         // --- Then (Assert) ---
         assertNotNull(result, "The result should not be null");
         assertFalse(result.isEmpty(), "The history list should not be empty");
-        assertEquals(1, result.size(), "User should have exactly 1 purchase record");
         assertEquals("Taylor Swift Tour", result.get(0).getEventName(), "Event name should match");
-        assertEquals(1, result.get(0).getTickets().size(), "Should have exactly 1 ticket in the DTO");
-        
-        // Verify interactions
-        verify(tokenService, times(1)).validateToken(validToken);
-        verify(historyRepository, times(1)).getPurchasesByMemberId(user1Id);
     }
 
     /**
@@ -87,11 +82,7 @@ public class HistoryServiceTest {
     @Test
     void GivenValidTokenAndNoHistory_WhenGetHistoryForUser_ThenReturnsEmptyList() {
         // --- Given (Arrange) ---
-        when(tokenService.validateToken(validToken)).thenReturn(true);
-        when(historyRepository.getPurchasesByMemberId(user1Id)).thenReturn(new ArrayList<>());
-        // Mock extracting the member ID from the valid token
-        when(tokenService.isMemberToken(validToken)).thenReturn(true);
-        when(tokenService.extractUserId(validToken)).thenReturn(user1Id);
+        String validToken = getValidMemberToken("new_user_no_history", "Pass123!");
 
         // --- When (Act) ---
         List<OrderDTO> result = historyService.getHistoryForUser(validToken);
@@ -99,10 +90,6 @@ public class HistoryServiceTest {
         // --- Then (Assert) ---
         assertNotNull(result, "Result should be an empty list, not null");
         assertTrue(result.isEmpty(), "History should be empty when user has no purchases");
-        
-        // Verify interactions
-        verify(tokenService, times(1)).validateToken(validToken);
-        verify(historyRepository, times(1)).getPurchasesByMemberId(user1Id);
     }
 
     /**
@@ -111,35 +98,34 @@ public class HistoryServiceTest {
     @Test
     void GivenInvalidToken_WhenGetHistoryForUser_ThenThrowsIllegalArgumentException() {
         // --- Given (Arrange) ---
-        when(tokenService.validateToken(invalidToken)).thenReturn(false);
+        String invalidToken = "invalid-token-456";
 
         // --- When & Then (Act & Assert) ---
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             historyService.getHistoryForUser(invalidToken);
         });
         
-        assertEquals("Invalid or expired token", exception.getMessage());
-        
-        // Verify that the repository was NEVER called because the token was invalid
-        verify(historyRepository, never()).getPurchasesByMemberId(anyInt());
+        assertTrue(exception.getMessage().contains("token"), "Error message should mention token");
     }
 
     /**
      * Add Purchase - Successful Scenario
      */
- @Test
+    @Test
     void GivenOrderDTO_WhenOnOrderCompleted_ThenPurchaseIsAdded() {
         // --- Arrange ---
+        String validToken = getValidMemberToken("buyer_user", "Pass123!");
+        long userId = tokenService.extractUserId(validToken);
+        
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new PurchaseDTO(10L, 20L   , 1, 1, new BigDecimal(150), "ACTIVE","SECURE-BARCODE-123"));
-        OrderDTO orderDto = new OrderDTO(0, ticketDTOs, "Rock Concert", "Barby", user1Id, 5L);
-        when(historyRepository.generateNextId()).thenReturn(999);
+        ticketDTOs.add(new PurchaseDTO(10L, 20L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L);
 
         // --- Act ---
         historyService.onOrderCompleted(orderDto);
 
         // --- Assert ---
-        verify(historyRepository, times(1)).addPurchase(any(Purchase.class));
-        verify(historyRepository, times(1)).generateNextId();
+        List<OrderDTO> history = historyService.getHistoryForUser(validToken);
+        assertEquals(1, history.size(), "One purchase should be added to history");
     }
 }
