@@ -16,6 +16,7 @@ import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.history.Purchase;
@@ -228,9 +229,8 @@ public class SystemAdminServiceTest {
         assertTrue(savedCompany.isActive(), "Company should remain active after a failed closure attempt.");
     }
 
-
 // Use Case 6.4: View Purchase History by Buyer
-@Test
+    @Test
     void AcceptanceTest_ViewPurchaseHistoryByBuyer_Successful() {
         // --- 1. Preparation (Admin is created, logged in, and is system admin) ---
         long adminId = 1L;
@@ -275,7 +275,7 @@ public class SystemAdminServiceTest {
 
         // --- 3. Action (Admin requests to view purchase history by buyer) ---
        
-        Map<Long, List<Purchase>> historyResult = systemAdminService.getPurchaseHistoryByBuyer(adminId);
+        Map<Long, List<OrderDTO>> historyResult = systemAdminService.getPurchaseHistoryByBuyer(adminId);
 
         // --- 4. Assertions (System displays the purchase history grouped by buyer) ---
         assertNotNull(historyResult, "History result should not be null");
@@ -286,12 +286,12 @@ public class SystemAdminServiceTest {
         
         // buyer 1
         assertTrue(historyResult.containsKey(buyer1_Id), "Result should contain buyer 1");
-        List<Purchase> buyer1Purchases = historyResult.get(buyer1_Id);
+        List<OrderDTO> buyer1Purchases = historyResult.get(buyer1_Id);
         assertEquals(2, buyer1Purchases.size(), "Buyer 1 should have exactly 2 purchases");
         
         //buyer 2
         assertTrue(historyResult.containsKey(buyer2_Id), "Result should contain buyer 2");
-        List<Purchase> buyer2Purchases = historyResult.get(buyer2_Id);
+        List<OrderDTO> buyer2Purchases = historyResult.get(buyer2_Id);
         assertEquals(1, buyer2Purchases.size(), "Buyer 2 should have exactly 1 purchase");
     }
 
@@ -310,7 +310,7 @@ public class SystemAdminServiceTest {
             systemAdminService.getPurchaseHistoryByBuyer(adminId);
         });
 
-        assertTrue(exception.getMessage().contains("No purchase history"), 
+        assertTrue(exception.getMessage().contains("No purchases have been made yet."), 
             "Exception message should indicate that no history is available");
     }
     
@@ -374,7 +374,7 @@ public class SystemAdminServiceTest {
         historyRepo.addPurchase(purchase3);
 
         // --- 3. Action ---
-        Map<Long, Map<String, List<Purchase>>> historyResult = 
+        Map<Long, Map<String, List<OrderDTO>>> historyResult = 
             systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
 
         // --- 4. Assertions ---
@@ -383,7 +383,7 @@ public class SystemAdminServiceTest {
         
         assertTrue(historyResult.containsKey(companyId), "Result should group by company ID (40)");
         
-        Map<String, List<Purchase>> eventsForCompany = historyResult.get(companyId);
+        Map<String, List<OrderDTO>> eventsForCompany = historyResult.get(companyId);
         assertNotNull(eventsForCompany, "The inner map for the company should not be null");
         assertTrue(eventsForCompany.containsKey(event1_Name), "Result should contain " + event1_Name);
         assertEquals(2, eventsForCompany.get(event1_Name).size(), "There should be exactly 2 purchases for Tomorrowland");
@@ -425,6 +425,4 @@ public class SystemAdminServiceTest {
         assertTrue(exception.getMessage().contains("Unauthorized access"), 
             "Exception message should indicate unauthorized access for invalid admin");
     }
-
-
 }

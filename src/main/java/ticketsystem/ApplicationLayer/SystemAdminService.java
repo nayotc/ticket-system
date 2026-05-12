@@ -7,7 +7,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
@@ -31,6 +34,7 @@ public class SystemAdminService {
     private final ICompanyRepository companyRepository;
     private final ISystemLogger logger;
     private final IHistoryRepository historyRepository;
+    private final ObjectMapper objectMapper;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
@@ -49,6 +53,7 @@ public class SystemAdminService {
         this.companyRepository = companyRepository;
         this.logger = logger;
         this.historyRepository = historyRepository;
+        this.objectMapper = new ObjectMapper();
     }
 
 //Use Case: Ticket System Initialization
@@ -169,44 +174,63 @@ public class SystemAdminService {
         return new CompanyDTO(company);
     }
     // Use Case: View Purchase History by Buyer 6.4
-    public Map<Long, List<Purchase>> getPurchaseHistoryByBuyer(long adminId) {
-        try{
-            SystemAdmin admin = adminRepository.getAdminById("" + adminId);
-            if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
-                throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
-            }
-            List<Purchase> allOrders = historyRepository.getAllPurchases();
-            checkIfHistoryIsEmpty(allOrders); 
-            return allOrders.stream()
-                .collect(Collectors.groupingBy(Purchase::getMemberId));
-        } catch (Exception e) {
-            logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
-            throw e;
-        }     
-
-    }
+    public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(long adminId) {
+            try{
+                SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+                if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                    throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
+                }
+                List<Purchase> allOrders = historyRepository.getAllPurchases();
+                if(allOrders == null || allOrders.isEmpty()){
+                    throw new IllegalStateException("No purchases have been made yet.");
+                }
+                checkIfHistoryIsEmpty(allOrders); 
+                return allOrders.stream()
+                    .collect(Collectors.groupingBy(
+                        Purchase::getMemberId, 
+                        Collectors.mapping(    
+                            purchase -> objectMapper.convertValue(purchase, OrderDTO.class), 
+                            Collectors.toList()
+                        )
+                    ));
+            } catch (Exception e) {
+                if (!(e instanceof IllegalStateException && "No purchase history is available.".equals(e.getMessage()))) {
+                    logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
+                }
+                throw e; 
+            } 
+        }
 
     // Use Case: View Purchase History by Company and Event 6.4
-    public Map<Long, Map<String, List<Purchase>>> getPurchaseHistoryByCompanyAndEvent(long adminId) {
-        try{
-            SystemAdmin admin = adminRepository.getAdminById("" + adminId);
-            if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
-                throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
-            }
-            List<Purchase> allPurchases = historyRepository.getAllPurchases();
-            checkIfHistoryIsEmpty(allPurchases);
-            
-            return allPurchases.stream()
-                                .collect(Collectors.groupingBy(
-                                        Purchase::getCompanyId,
-                                        Collectors.groupingBy(Purchase::getEventName) 
-                                ));
+    public Map<Long, Map<String, List<OrderDTO>>> getPurchaseHistoryByCompanyAndEvent(long adminId) {
+            try {
+                SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+                if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                    throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
+                }
+                List<Purchase> allPurchases = historyRepository.getAllPurchases();
+                checkIfHistoryIsEmpty(allPurchases);
+                                if(allPurchases == null || allPurchases.isEmpty()){
+                    throw new IllegalStateException("No purchases have been made yet.");
+                }
+                return allPurchases.stream()
+                    .collect(Collectors.groupingBy(
+                        Purchase::getCompanyId, 
+                        Collectors.groupingBy(
+                            Purchase::getEventName, 
+                            Collectors.mapping(    
+                                purchase -> objectMapper.convertValue(purchase, OrderDTO.class),
+                                Collectors.toList()
+                            )
+                        ) 
+                    ));
+            } catch (Exception e) {
+                if (!(e instanceof IllegalStateException && "No purchase history is available.".equals(e.getMessage()))) {
+                    logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
+                }
+                throw e; 
+            } 
         }
-        catch (Exception e) {
-            logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
-            throw e;
-        }
-    }
 
 
 
