@@ -13,8 +13,12 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.stripe.model.tax.Registration.CountryOptions.No;
+
 import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.NotificationsService;
+import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
@@ -23,12 +27,17 @@ import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.Ticket;
 
 public class EventServiceAcceptanceTest {
 
@@ -59,6 +68,7 @@ public class EventServiceAcceptanceTest {
         membershipDomain.allow(validOwnerSessionId, companyId, "event:create");
         membershipDomain.allow(validOwnerSessionId, companyId, "event:defineMap");
         membershipDomain.allow(validOwnerSessionId, companyId, "event:update");
+        membershipDomain.allow(validOwnerSessionId, companyId, "event:cancel");
     }
 
     // -------------------- Insert Event Tests -------------------
@@ -237,6 +247,7 @@ public class EventServiceAcceptanceTest {
     }
 
     // -------------------- Update Event Tests -------------------
+
     @Test
     void GivenOwnerLoggedInEventExistsAndValidUpdatedDetails_WhenUpdateEvent_ThenEventIsUpdatedAndSaved() {
         // Arrange
@@ -781,6 +792,216 @@ public class EventServiceAcceptanceTest {
         assertTrue(exception.getMessage().contains("Invalid session ID"));
     }
 
+    // -------------------- Cancel Event Tests -------------------
+
+    @Test
+    void GivenOwnerLoggedInEventExistsHistoryAndOrderListenersRegistered_WhenCancelEvent_ThenEventIsCanceledHistoryIsNotifiedAndActiveOrderIsCanceled() {
+        // Arrange
+        Event event = createActiveExistingEvent();
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = new OrderService(orderRepository, notificationsService);
+
+        String buyerSessionId = "buyer-session";
+        Long buyerId = 55L;
+
+        ActiveOrder activeOrder = createActiveOrderForEvent(
+                orderRepository,
+                event.getId(),
+                buyerSessionId,
+                buyerId);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        // Act
+        Boolean result = eventService.cancelEvent(validOwnerSessionId, event.getId());
+
+        // Assert
+        Event cancelledEvent = eventRepository.getEventById(event.getId());
+        ActiveOrder updatedOrder = orderRepository.findOrderById(activeOrder.getOrderId());
+
+        assertTrue(result);
+        assertNotNull(cancelledEvent);
+        assertEquals(eventStatus.CANCELLED, cancelledEvent.getStatus());
+
+        assertTrue(historyService.wasNotifiedFor(event.getId()));
+        assertEquals(1, historyService.notificationCount());
+
+        assertNotNull(updatedOrder);
+        assertEquals(ActiveOrder.OrderStatus.CANCELLED, updatedOrder.getStatus());
+
+        assertTrue(notificationsService.wasNotified(buyerSessionId));
+        assertEquals(1, notificationsService.notificationCount(buyerSessionId));
+        assertTrue(notificationsService.lastMessageFor(buyerSessionId)
+                .contains("has been canceled due to event cancellation"));
+    }
+
+    @Test
+    void GivenInvalidSession_WhenCancelEvent_ThenSystemRejectsTheRequestAndEventAndActiveOrderAreNotCanceled() {
+        // Arrange
+        Event event = createActiveExistingEvent();
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = new OrderService(orderRepository, notificationsService);
+
+        String buyerSessionId = "buyer-session";
+        Long buyerId = 55L;
+
+        ActiveOrder activeOrder = createActiveOrderForEvent(
+                orderRepository,
+                event.getId(),
+                buyerSessionId,
+                buyerId);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.cancelEvent(invalidSessionId, event.getId()));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
+        ActiveOrder unchangedOrder = orderRepository.findOrderById(activeOrder.getOrderId());
+
+        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
+
+        assertFalse(historyService.wasNotifiedFor(event.getId()));
+
+        assertNotNull(unchangedOrder);
+        assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
+
+        assertFalse(notificationsService.wasNotified(buyerSessionId));
+    }
+
+    @Test
+    void GivenLoggedInUserWithoutCancelPermission_WhenCancelEvent_ThenSystemRejectsTheRequestAndEventAndActiveOrderAreNotCanceled() {
+        // Arrange
+        Event event = createActiveExistingEvent();
+
+        String sessionWithoutPermission = "session-without-cancel-permission";
+        tokenService.addValidSession(sessionWithoutPermission, 2L);
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = new OrderService(orderRepository, notificationsService);
+
+        String buyerSessionId = "buyer-session";
+        Long buyerId = 55L;
+
+        ActiveOrder activeOrder = createActiveOrderForEvent(
+                orderRepository,
+                event.getId(),
+                buyerSessionId,
+                buyerId);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.cancelEvent(sessionWithoutPermission, event.getId()));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
+        ActiveOrder unchangedOrder = orderRepository.findOrderById(activeOrder.getOrderId());
+
+        assertTrue(exception.getMessage().contains("User does not have permission to cancel an event"));
+        assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
+
+        assertFalse(historyService.wasNotifiedFor(event.getId()));
+
+        assertNotNull(unchangedOrder);
+        assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
+
+        assertFalse(notificationsService.wasNotified(buyerSessionId));
+    }
+
+    @Test
+    void GivenEventDoesNotExist_WhenCancelEvent_ThenSystemRejectsTheRequestAndListenersAreNotNotified() {
+        // Arrange
+        Long nonExistingEventId = 999L;
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = new OrderService(orderRepository, notificationsService);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.cancelEvent(validOwnerSessionId, nonExistingEventId));
+
+        // Assert
+        assertTrue(exception.getMessage().contains("Event does not exist"));
+
+        assertFalse(historyService.wasNotifiedFor(nonExistingEventId));
+    }
+
+    @Test
+    void GivenEventAlreadyCanceled_WhenCancelEvent_ThenSystemRejectsTheRequestAndOrderServiceIsNotNotifiedAgain() {
+        // Arrange
+        Event event = createActiveExistingEvent();
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = new OrderService(orderRepository, notificationsService);
+
+        String buyerSessionId = "buyer-session";
+        Long buyerId = 55L;
+
+        ActiveOrder activeOrder = createActiveOrderForEvent(
+                orderRepository,
+                event.getId(),
+                buyerSessionId,
+                buyerId);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        eventService.cancelEvent(validOwnerSessionId, event.getId());
+
+        assertEquals(1, historyService.notificationCount());
+        assertEquals(1, notificationsService.notificationCount(buyerSessionId));
+        assertEquals(
+                ActiveOrder.OrderStatus.CANCELLED,
+                orderRepository.findOrderById(activeOrder.getOrderId()).getStatus());
+
+        // Act
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> eventService.cancelEvent(validOwnerSessionId, event.getId()));
+
+        // Assert
+        Event cancelledEvent = eventRepository.getEventById(event.getId());
+        ActiveOrder orderAfterSecondCancel = orderRepository.findOrderById(activeOrder.getOrderId());
+
+        assertTrue(exception.getMessage().contains("Event is already canceled"));
+        assertEquals(eventStatus.CANCELLED, cancelledEvent.getStatus());
+
+        assertEquals(1, historyService.notificationCount());
+        assertEquals(1, notificationsService.notificationCount(buyerSessionId));
+        assertEquals(ActiveOrder.OrderStatus.CANCELLED, orderAfterSecondCancel.getStatus());
+    }
+
     // -------------------- Helper Methods and Test Doubles -------------------
 
     private EventDTO createValidUpdateDTO(Event savedEvent) {
@@ -916,6 +1137,42 @@ public class EventServiceAcceptanceTest {
                 .orElse(null);
     }
 
+    private Event createActiveExistingEvent() {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        eventService.defineEventMap(
+                validOwnerSessionId,
+                event.getId(),
+                createValidMapDTO());
+
+        return eventRepository.getEventById(event.getId());
+    }
+
+    private ActiveOrder createActiveOrderForEvent(OrderRepository orderRepository,
+            Long eventId,
+            String buyerSessionId,
+            Long buyerId) {
+        ActiveOrder activeOrder = new ActiveOrder(
+                orderRepository.getNextId(),
+                buyerSessionId,
+                buyerId,
+                eventId);
+
+        activeOrder.addTicket(
+                new Ticket(
+                        1L,
+                        eventId,
+                        3L,
+                        1,
+                        1,
+                        BigDecimal.valueOf(99.99)));
+
+        orderRepository.addOrder(activeOrder);
+
+        return activeOrder;
+    }
+
     private static class FakeTokenService implements ITokenService {
 
         private final Set<String> validSessions = new HashSet<>();
@@ -1005,6 +1262,65 @@ public class EventServiceAcceptanceTest {
 
         private String key(String sessionId, Long companyId, String permission) {
             return sessionId + "|" + companyId + "|" + permission;
+        }
+    }
+
+    private static class FakeHistoryServiceListener implements EventUpdatesListener {
+
+        private final List<Long> canceledEventIds = new java.util.ArrayList<>();
+        private final List<String> receivedUpdateMessages = new java.util.ArrayList<>();
+
+        @Override
+        public void onEventCanceled(Long eventId) {
+            canceledEventIds.add(eventId);
+        }
+
+        @Override
+        public void onEventUpdated(Long eventId, String updateMessage) {
+            receivedUpdateMessages.add(updateMessage);
+        }
+
+        boolean wasNotifiedFor(Long eventId) {
+            return canceledEventIds.contains(eventId);
+        }
+
+        int notificationCount() {
+            return canceledEventIds.size();
+        }
+    }
+
+    private static class FakeNotificationsService implements NotificationsService {
+
+        private final Map<String, List<String>> messagesBySession = new HashMap<>();
+
+        @Override
+        public void notifyUser(String sessionId, String message) {
+            messagesBySession
+                    .computeIfAbsent(sessionId, key -> new java.util.ArrayList<>())
+                    .add(message);
+        }
+
+        boolean wasNotified(String sessionId) {
+            return messagesBySession.containsKey(sessionId)
+                    && !messagesBySession.get(sessionId).isEmpty();
+        }
+
+        int notificationCount(String sessionId) {
+            if (!messagesBySession.containsKey(sessionId)) {
+                return 0;
+            }
+
+            return messagesBySession.get(sessionId).size();
+        }
+
+        String lastMessageFor(String sessionId) {
+            if (!messagesBySession.containsKey(sessionId)
+                    || messagesBySession.get(sessionId).isEmpty()) {
+                return "";
+            }
+
+            List<String> messages = messagesBySession.get(sessionId);
+            return messages.get(messages.size() - 1);
         }
     }
 }

@@ -2,6 +2,9 @@ package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -10,6 +13,7 @@ import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
+import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -19,8 +23,10 @@ public class EventService {
     private final IEventRepository eventRepository;
     private final ITokenService tokenService;
     private final MembershipDomainService membershipDomain;
-    
-    public EventService(IEventRepository eventRepository, ITokenService tokenService, MembershipDomainService membershipDomain) {
+    private final List<EventUpdatesListener> eventUpdatesListeners = new ArrayList<>();
+
+    public EventService(IEventRepository eventRepository, ITokenService tokenService,
+            MembershipDomainService membershipDomain) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
@@ -64,6 +70,11 @@ public class EventService {
     }
 
     public Boolean updateEvent(String SessionId, EventDTO eventDTO) {
+        String name;
+        LocalDateTime date;
+        EventLocation location;
+        BigDecimal ticketPrice;
+        boolean notificateUsers = false;
         try {
             // precondition: user logged in
             if (!tokenService.validateToken(SessionId)) {
@@ -88,20 +99,58 @@ public class EventService {
             if (existingEvent == null) {
                 throw new IllegalArgumentException("Event not found");
             }
+
+            // validate that the event belongs to the same company and version matches
             if (!existingEvent.getCompanyId().equals(eventDTO.companyId())) {
                 throw new IllegalArgumentException("Cannot change event's company");
             }
             if (eventDTO.version() != existingEvent.getVersion()) {
                 throw new IllegalStateException("Event was updated by another request");
             }
-            String name = eventDTO.name() != null ? eventDTO.name() : existingEvent.getName();
-            LocalDateTime date = eventDTO.date() != null ? eventDTO.date() : existingEvent.getDate();
-            EventLocation location = eventDTO.location() != null ? EventMapper.toEventLocation(eventDTO.location()): existingEvent.getLocation();
-            Long trafficThreshold = eventDTO.trafficThreshold() != null ? eventDTO.trafficThreshold(): existingEvent.getTrafficThreshold();
-            EventCategory category = eventDTO.category() != null ? EventMapper.toEventCategory(eventDTO.category()): existingEvent.getCategory();
+
+            // main scenario: update event details and notify users if needed
+            String message = "Event " + existingEvent.getName() + " has been updated. New details: /n";
+            if (eventDTO.name() != null) {
+                name = eventDTO.name();
+                message += "New Name: " + eventDTO.name() + "/n";
+                notificateUsers = true;
+            }
+            else {
+                name = existingEvent.getName();
+            }
+            if (eventDTO.date() != null) {
+                date = eventDTO.date();
+                message += "New Date: " + eventDTO.date().toString() + "/n";
+                notificateUsers = true;
+            }
+            else {
+                date = existingEvent.getDate();
+            }
+            if (eventDTO.location() != null) {
+                location = EventMapper.toEventLocation(eventDTO.location());
+                message += "New Location: " + eventDTO.location().toString() + "/n";
+                notificateUsers = true;
+            }
+            else {
+                location = existingEvent.getLocation();
+            }
+            
+            if (eventDTO.ticketPrice() != null) {
+                if (existingEvent.getStatus () == eventStatus.ACTIVE) {
+                    throw new IllegalStateException("Cannot change ticket price of an active event");
+                }
+                ticketPrice = eventDTO.ticketPrice();
+            }
+            else {
+                ticketPrice = existingEvent.getTicketPrice();
+            }
+            Long trafficThreshold = eventDTO.trafficThreshold() != null ? eventDTO.trafficThreshold() : existingEvent.getTrafficThreshold();
+            EventCategory category = eventDTO.category() != null ? EventMapper.toEventCategory(eventDTO.category()) : existingEvent.getCategory();
             String artistName = eventDTO.artistName() != null ? eventDTO.artistName() : existingEvent.getArtistName();
-            BigDecimal ticketPrice = eventDTO.ticketPrice() != null ? eventDTO.ticketPrice(): existingEvent.getTicketPrice();
             validateEventDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
+            if (notificateUsers) {
+                notifyEventUpdatedListeners(existingEvent.getId(), message);
+            }
             existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
             eventRepository.updateEvent(existingEvent);
             return true;
@@ -139,7 +188,6 @@ public class EventService {
         }
     }
 
-    
     public Boolean deleteEvent(String sessionId, Long eventId) {
         try {
             // precondition: user logged in
@@ -165,7 +213,7 @@ public class EventService {
             // logger.servere("Event removed successfully: " + eventId);
             return true;
         } catch (Exception e) {
-            //logger.servere("remove event failed: " + e.getMessage());
+            // logger.servere("remove event failed: " + e.getMessage());
             throw e;
         }
     }
@@ -187,6 +235,49 @@ public class EventService {
             return EventMapDTO.from(map);
         } catch (Exception e) {
             throw e;
+        }
+    }
+
+    public Boolean cancelEvent(String sessionId, Long eventId) {
+        try {
+            // precondition: user logged in
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+            Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event does not exist");
+            }
+            Long companyId = event.getCompanyId();
+            // precondition: user has permission to cancel an event
+            if (!membershipDomain.validatePermission(sessionId, companyId, "event:cancel")) {
+                throw new IllegalArgumentException("User does not have permission to cancel an event");
+            }
+            if (event.getStatus() == eventStatus.CANCELLED) {
+                throw new IllegalStateException("Event is already canceled");
+            }
+            event.cancel();
+            eventRepository.updateEvent(event); // update event status to cancelled
+            notifyEventCanceledListeners(eventId);
+            return true;
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+
+    public void addEventUpdatesListener(EventUpdatesListener listener) {
+        eventUpdatesListeners.add(listener);
+    }
+
+    private void notifyEventCanceledListeners(Long eventId) {
+        for (EventUpdatesListener listener : eventUpdatesListeners) {
+            listener.onEventCanceled(eventId);
+        }
+    }
+
+    private void notifyEventUpdatedListeners(Long eventId, String updateMessage) {
+        for (EventUpdatesListener listener : eventUpdatesListeners) {
+            listener.onEventUpdated(eventId, updateMessage);
         }
     }
 
@@ -226,6 +317,5 @@ public class EventService {
             throw new IllegalArgumentException("Price must be a non-negative number");
         }
     }
-
 
 }

@@ -23,4 +23,6 @@ public interface IOrderRepository {
 
     void deleteActiveOrdersByUserId(Long userId);
 
+    List<ActiveOrder> getActiveOrdersByEventId(Long eventId);
+
 }
