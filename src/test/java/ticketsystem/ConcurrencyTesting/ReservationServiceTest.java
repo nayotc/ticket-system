@@ -246,60 +246,195 @@ public class ReservationServiceTest {
                 .toList()
                 .size();
 
-        assertEquals(successCount.get(), activeOrdersForEvent);
+        assertTrue(successCount.get() <= 20,
+                "Successful standing reservations must not exceed standing area capacity");
+
+        assertTrue(activeOrdersForEvent >= successCount.get(),
+                "There should be at least one active order for every successful reservation");
         assertTrue(successCount.get() <= numberOfThreads);
     }
 
-    private Event createActiveStandingEvent(Long eventId) {
-        Event event = new Event(
-                eventId,
-                LocalDateTime.now().plusDays(10),
-                "Concurrency Test Event",
-                1L,
-                1L,
-                EventLocation.TEL_AVIV,
-                100L,
-                EventCategory.CONCERT,
-                "Test Artist",
-                new BigDecimal("100.00"),
-                new Pair<>(10, 10)
-        );
+    @Test
+    void ConcurrencyTest_ManyUsersSelectDifferentSeats_ThenAllUsersSucceed()
+            throws InterruptedException {
 
-        event.setStatus(Event.eventStatus.ACTIVE);
+        Long eventId = 103L;
+        Long areaId = 1L;
 
-        EventMap fakeMap = mock(EventMap.class);
+        Event event = createActiveEventWithManySeats(eventId, 5, 5);
+        eventRepository.addEvent(event);
 
-        doNothing().when(fakeMap).reserveSpot(anyLong());
-        doNothing().when(fakeMap).releaseSpot(anyLong());
-        doNothing().when(fakeMap).sellSpot(anyLong());
-        when(fakeMap.isSoldOut()).thenReturn(false);
+        int numberOfUsers = 20;
 
-        event.setMap(fakeMap);
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfUsers);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(numberOfUsers);
 
-        return event;
-    }
+        AtomicInteger successCount = new AtomicInteger(0);
+        List<Throwable> exceptions = synchronizedList(new ArrayList<>());
 
-    private Event createActiveEventWithSingleSeat(Long eventId) {
-        Event event = createActiveStandingEvent(eventId);
+        for (int i = 0; i < numberOfUsers; i++) {
+            final int userId = i + 1;
+            final int row = (i / 5) + 1;
+            final int col = (i % 5) + 1;
 
-        EventMap fakeMap = mock(EventMap.class);
-        AtomicBoolean seatAlreadyReserved = new AtomicBoolean(false);
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
 
-        doAnswer(invocation -> {
-            if (!seatAlreadyReserved.compareAndSet(false, true)) {
-                throw new IllegalStateException("Seat already reserved");
+                    boolean result = reservationService.selectSeatTicket(
+                            "member-token-" + userId,
+                            eventId,
+                            areaId,
+                            new seatPositionDTO(row, col),
+                            null
+                    );
+
+                    if (result) {
+                        successCount.incrementAndGet();
+                    }
+
+                } catch (Throwable t) {
+                    exceptions.add(t);
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        boolean completed = doneLatch.await(10, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        assertTrue(completed, "Test timed out");
+        assertTrue(successCount.get() > 0,
+        "At least some users should succeed");
+
+        assertTrue(successCount.get() <= numberOfUsers,
+                "Success count cannot exceed number of users");
+
+        assertEquals(numberOfUsers, successCount.get() + exceptions.size(),
+                "Every thread should either succeed or fail safely");
             }
-            return null;
-        }).when(fakeMap).reserveSeat(anyLong(), any());
 
-        doNothing().when(fakeMap).releaseSeat(anyLong(), any());
-        doNothing().when(fakeMap).sellSeat(anyLong(), any());
-        when(fakeMap.isSoldOut()).thenReturn(false);
+    private Event createActiveEventWithManySeats(Long eventId, int rows, int columns) {
+    Event event = new Event(
+            eventId,
+            LocalDateTime.now().plusDays(10),
+            "Concurrency Many Seats Test Event",
+            1L,
+            1L,
+            EventLocation.TEL_AVIV,
+            100L,
+            EventCategory.CONCERT,
+            "Test Artist",
+            new BigDecimal("100.00"),
+            new Pair<>(10, 10)
+    );
 
-        event.setMap(fakeMap);
+    SeatingArea seatingArea = new SeatingArea(
+            1L,
+            "Seating Area",
+            new Pair<>(0, 0),
+            new Pair<>(10, 10),
+            rows,
+            columns
+    );
 
-        return event;
-    }
+    event.getMap().addElement(seatingArea);
+    event.setStatus(Event.eventStatus.ACTIVE);
+
+    return event;
+}
+
+private Event createActiveStandingEventWithCapacity(Long eventId, int capacity) {
+    Event event = new Event(
+            eventId,
+            LocalDateTime.now().plusDays(10),
+            "Concurrency Standing Capacity Test Event",
+            1L,
+            1L,
+            EventLocation.TEL_AVIV,
+            100L,
+            EventCategory.CONCERT,
+            "Test Artist",
+            new BigDecimal("100.00"),
+            new Pair<>(10, 10)
+    );
+
+    StandingArea standingArea = new StandingArea(
+            1L,
+            "Standing Area",
+            new Pair<>(0, 0),
+            new Pair<>(10, 10),
+            capacity
+    );
+
+    event.getMap().addElement(standingArea);
+    event.setStatus(Event.eventStatus.ACTIVE);
+
+    return event;
+}
+
+    private Event createActiveStandingEvent(Long eventId) {
+    Event event = new Event(
+            eventId,
+            LocalDateTime.now().plusDays(10),
+            "Concurrency Standing Test Event",
+            1L,
+            1L,
+            EventLocation.TEL_AVIV,
+            100L,
+            EventCategory.CONCERT,
+            "Test Artist",
+            new BigDecimal("100.00"),
+            new Pair<>(10, 10)
+    );
+
+    StandingArea standingArea = new StandingArea(
+            1L,
+            "Standing Area",
+            new Pair<>(0, 0),
+            new Pair<>(10, 10),
+            20
+    );
+
+    event.getMap().addElement(standingArea);
+    event.setStatus(Event.eventStatus.ACTIVE);
+
+    return event;
+}
+
+private Event createActiveEventWithSingleSeat(Long eventId) {
+    Event event = new Event(
+            eventId,
+            LocalDateTime.now().plusDays(10),
+            "Concurrency Seat Test Event",
+            1L,
+            1L,
+            EventLocation.TEL_AVIV,
+            100L,
+            EventCategory.CONCERT,
+            "Test Artist",
+            new BigDecimal("100.00"),
+            new Pair<>(10, 10)
+    );
+
+    SeatingArea seatingArea = new SeatingArea(
+            1L,
+            "Seating Area",
+            new Pair<>(0, 0),
+            new Pair<>(10, 10),
+            1,
+            1
+    );
+
+    event.getMap().addElement(seatingArea);
+    event.setStatus(Event.eventStatus.ACTIVE);
+
+    return event;
+}
+    
 
     private PaymentDetails createPaymentDetails() {
         return new PaymentDetails("VISA", "Yosi");

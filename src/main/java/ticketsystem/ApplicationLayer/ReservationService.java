@@ -282,17 +282,15 @@ public class ReservationService{
 
         return order;
     }
-    
+    private void saveAll(ActiveOrder order, Event event) {
+        eventRepository.updateEvent(event);
 
-    private void saveAll( ActiveOrder order, Event event) {
-        if(order.getStatus()==ActiveOrder.OrderStatus.CANCELLED|| order.getStatus()==ActiveOrder.OrderStatus.COMPLETED) {
+        if (order.getStatus() == ActiveOrder.OrderStatus.CANCELLED
+                || order.getStatus() == ActiveOrder.OrderStatus.COMPLETED) {
             orderRepository.deleteOrder(order.getOrderId());
-        }
-        else{
+        } else {
             orderRepository.updateOrder(order);
         }
-        eventRepository.updateEvent(event);
-        
     }
 
 

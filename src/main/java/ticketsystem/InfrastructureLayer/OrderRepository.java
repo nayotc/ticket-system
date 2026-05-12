@@ -19,7 +19,7 @@ public class OrderRepository implements IOrderRepository {
         this.orders = new ConcurrentHashMap<>();
     }
 
-public synchronized void addOrder(ActiveOrder order) {
+    public synchronized void addOrder(ActiveOrder order) {
     for (ActiveOrder existingOrder : orders.values()) {
 
         boolean sameSession =
