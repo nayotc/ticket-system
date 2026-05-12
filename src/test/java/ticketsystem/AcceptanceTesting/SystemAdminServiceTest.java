@@ -248,7 +248,7 @@ public class SystemAdminServiceTest {
             "Jazz Festival", 
             "Shuni", 
             buyer1_Id, 
-            50L
+            50L, 4L
         );
         
         Purchase purchase2 = new Purchase(
@@ -257,7 +257,7 @@ public class SystemAdminServiceTest {
             "Jazz Festival", 
             "Shuni", 
             buyer1_Id, 
-            50L
+            50L, 4L
         );
         
         Purchase purchase3 = new Purchase(
@@ -266,7 +266,7 @@ public class SystemAdminServiceTest {
             "Rock Concert", 
             "Barby", 
             buyer2_Id, 
-            50L
+            50L, 4L
         );
 
         historyRepo.addPurchase(purchase1);
@@ -349,7 +349,8 @@ public class SystemAdminServiceTest {
             event1_Name, 
             "Expo TLV", 
             666L, 
-            companyId
+            companyId, 4L
+
         );
         Purchase purchase2 = new Purchase(
             5L, 
@@ -357,7 +358,7 @@ public class SystemAdminServiceTest {
             event1_Name, 
             "Expo TLV", 
             777L, 
-            companyId
+            companyId, 4L
         );
         //one purchase for a different event but same company, to check the grouping by event name as well
         Purchase purchase3 = new Purchase(
@@ -366,7 +367,7 @@ public class SystemAdminServiceTest {
             event2_Name, 
             "Expo TLV", 
             888L, 
-            companyId 
+            companyId , 4L
         );
 
         historyRepo.addPurchase(purchase1);

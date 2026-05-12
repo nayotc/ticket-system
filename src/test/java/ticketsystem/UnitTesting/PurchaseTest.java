@@ -17,7 +17,7 @@ public class PurchaseTest {
         PurchasedTicket ticket = new PurchasedTicket(1, 101, 1, 1, 150.0,"SECURE-BARCODE-123");
         originalList.add(ticket);
         
-        Purchase purchase = new Purchase(1, originalList, "Rock Concert", "Tel Aviv", 10, 5);
+        Purchase purchase = new Purchase(1L, originalList, "Rock Concert", "Tel Aviv", 10L, 5L, 1L);
 
         // Act (Invocation)
 
@@ -33,7 +33,7 @@ public class PurchaseTest {
         // Arrange (Setup)
         List<PurchasedTicket> originalList = new ArrayList<>();
         originalList.add(new PurchasedTicket(1, 101, 1, 1, 150.0, "SECURE-BARCODE-123"));
-        Purchase purchase = new Purchase(1, originalList, "Rock Concert", "Tel Aviv", 10, 5);
+        Purchase purchase = new Purchase(1L, originalList, "Rock Concert", "Tel Aviv", 10L, 5L, 1L);
 
         // Act (Invocation)
         List<PurchasedTicket> retrievedList = purchase.getTickets();
