@@ -68,7 +68,7 @@ public class SystemAdminServiceTest {
                 userRepo,
                 orderRepo,
                 tokenService,
-                companyRepo, logger, companyService, historyRepo
+                companyRepo, logger, historyRepo
 
         );
     }
