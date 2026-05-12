@@ -171,14 +171,4 @@ private boolean canViewCompanyDetails(String sessionToken, Company company) thro
         return new CompanyDTO(company);
 }
 
-//UC 6.1 close Production Company By System Admin
-    public CompanyDTO closeProductionCompanyBySystemAdmin(long companyId, long adminId) throws Exception {
-    Company company = companyRepository.findById(companyId)
-            .orElseThrow(() -> new Exception("Company not found."));
-
-    company.closeBySystemAdmin(adminId);
-
-    companyRepository.save(company);
-    return new CompanyDTO(company);
-}
 }
