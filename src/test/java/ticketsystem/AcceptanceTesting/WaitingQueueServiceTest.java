@@ -60,7 +60,8 @@ public class WaitingQueueServiceTest {
 
         // Assert
         assertEquals("APPROVED", result, "User should be approved instantly.");
-        assertEquals(1, event.getActiveReservationsCount(), "Active reservations should be 1.");
+        Event savedEvent = EventRepo.getEventById(event.getId());
+        assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
         assertEquals(0, realQueueRepo.getQueueSize(1), "Queue should be completely empty.");
     }
 
@@ -79,7 +80,8 @@ public class WaitingQueueServiceTest {
         // Assert
         assertEquals("QUEUED", result, "User should be queued because event is full.");
         assertEquals(1, realQueueRepo.getQueueSize(2), "Queue size should be exactly 1.");
-        assertEquals(1, event.getActiveReservationsCount(), "Active reservations should not exceed the maximum capacity.");
+        Event savedEvent = EventRepo.getEventById(event.getId());
+        assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
     }
 
     @Test
@@ -102,7 +104,8 @@ public class WaitingQueueServiceTest {
 
         // Assert
         assertTrue(fakeNotifications.notifiedUsers.contains(validToken2), "The queued user should have received a notification.");
-        assertEquals(1, event.getActiveReservationsCount(), "Capacity should be full again because the queued user took the spot.");
+        Event savedEvent = EventRepo.getEventById(event.getId());
+        assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
         assertEquals(0, realQueueRepo.getQueueSize(3), "Queue should be empty after the user was dequeued.");
     }
 
@@ -125,7 +128,8 @@ public class WaitingQueueServiceTest {
         waitingQueueService.releaseSpot(4, validToken2);
 
         // Assert
-        assertEquals(1, event.getActiveReservationsCount(), "Capacity should drop to 1.");
+        Event savedEvent = EventRepo.getEventById(event.getId());
+        assertEquals(1, savedEvent.getActiveReservationsCount(), "Capacity should drop to 1.");
         assertTrue(fakeNotifications.notifiedUsers.isEmpty(), "No notifications should be sent since the queue is empty.");
     }
 
@@ -139,7 +143,8 @@ public class WaitingQueueServiceTest {
         assertThrows(IllegalArgumentException.class, () -> waitingQueueService.tryReserve(5, "invalid-token"), "An invalid token should throw an exception.");
 
         // Assert
-        assertEquals(0, event.getActiveReservationsCount(), "Active reservations should remain 0.");
+        Event savedEvent = EventRepo.getEventById(event.getId());
+        assertEquals(0, savedEvent.getActiveReservationsCount(), "Active reservations should remain 0.");
         assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
     }
 
