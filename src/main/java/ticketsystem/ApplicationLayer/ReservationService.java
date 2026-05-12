@@ -166,26 +166,47 @@ public class ReservationService {
             Event event = eventRepository.getEventById(eventId);
             BigDecimal amount = reservation.calculateTotalPrice(order, event);           
 
-            //pay
-            boolean paymentResult=paymentService.pay(amount,details);
+            boolean paymentResult = paymentService.pay(amount, details);
+
             if (!paymentResult) {
                 order.paymentFailed();
                 throw new IllegalStateException("Payment failed");
             }
-            reservation.completeCheckout(order, event);
-            OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId() );
-            for(PurchaseDTO purchesDTO : orderDTO.getTickets()) {
-                String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(),order.getEventId(),order.getUserId());
-                purchesDTO.setSecureBarcode(barcode);
-            }
-            saveAll(order, event);
-            notifyListeners(orderDTO);
-            return true;
+    
+            try {
+                OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId() );
+                for(PurchaseDTO purchesDTO : orderDTO.getTickets()) {
+                    String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(),order.getEventId(),order.getUserId());
+                    purchesDTO.setSecureBarcode(barcode);
+                
+                }
+                reservation.completeCheckout(order, event);
+                saveAll(order, event);
+                notifyListeners(orderDTO);
+                return true;
 
+            } catch (Exception issuingException) {
+                boolean refundResult = paymentService.refund(amount, details);
+                order.paymentFailed();
+                saveAll(order, event);
+
+                if (!refundResult) {
+                    throw new IllegalStateException(
+                            "Ticket issuing failed and refund failed",
+                            issuingException
+                    );
+                }
+
+                throw new IllegalStateException(
+                        "Ticket issuing failed. Payment was refunded.",
+                        issuingException
+                );
+            }
         } catch (Exception e) {
             logWarning("checkout failed: " + e.getMessage());
-            return false;
+            throw e;
         }
+
     }
     //listener
     public void addOrderListener(OrderCompletedListener listener) {

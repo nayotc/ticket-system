@@ -3,13 +3,17 @@ package ticketsystem.InfrastructureLayer;
 import java.math.BigDecimal;
 
 import ticketsystem.ApplicationLayer.IPaymentService;
-import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 
 public class PaymentServiceProxy implements IPaymentService {
 
-    public static boolean isConnectionSuccessful = true; // for testing purposes
-    public static boolean wasConnectCalled = false; // for testing purposes
+    public static boolean isConnectionSuccessful = true; // for testing
+    public static boolean isPaymentSuccessful = true;    // for testing
+    public static boolean isRefundSuccessful = true;     // for testing
+
+    public static boolean wasConnectCalled = false;
+    public static boolean wasPayCalled = false;
+    public static boolean wasRefundCalled = false;
 
     @Override
     public boolean connect() {
@@ -19,11 +23,23 @@ public class PaymentServiceProxy implements IPaymentService {
 
     @Override
     public boolean pay(BigDecimal amount, PaymentDetails details) {
-      //  System.out.println("Payment Proxy: Processing payment for Order ID: " + order.getOrderId() + " with amount: $" + details.getAmount());
-        // Simulate payment processing logic here   
-        return true; // Simulate successful payment    
+        wasPayCalled = true;
+
+        if (!isConnectionSuccessful) {
+            return false;
         }
 
+        return isPaymentSuccessful;
+    }
 
+    @Override
+    public boolean refund(BigDecimal amount, PaymentDetails details) {
+        wasRefundCalled = true;
 
+        if (!isConnectionSuccessful) {
+            return false;
+        }
+
+        return isRefundSuccessful;
+    }
 }
