@@ -269,4 +269,54 @@ public class MembershipDomainServiceTest {
         });
         assertEquals("You are not the appointer of the specified user", exception.getMessage());
     }
+
+    @Test
+    public void GivenTargetIsPending_WhenSetPermissions_ThenThrowsException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+        
+        // Target is appointed but stays in default PENDING status
+        appointee.addManagerRole(companyId, 100L, new HashSet<>()); 
+        
+        Set<Permission> newPerms = new HashSet<>();
+        newPerms.add(Permission.MANAGE_INQUIRIES);
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.setPermissionsToManager(appointer, appointee, companyId, newPerms);
+        });
+        assertEquals("Cannot update permissions for a pending manager.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenNullPermissionsSet_WhenSetPermissions_ThenThrowsException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+        appointee.addManagerRole(companyId, 100L, new HashSet<>());
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.setPermissionsToManager(appointer, appointee, companyId, null);
+        });
+        assertEquals("Permissions set cannot be null or contain null values.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenPermissionsSetWithNullElement_WhenSetPermissions_ThenThrowsException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+        appointee.addManagerRole(companyId, 100L, new HashSet<>());
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        
+        Set<Permission> invalidPerms = new HashSet<>();
+        invalidPerms.add(Permission.MANAGE_EVENT_INVENTORY);
+        invalidPerms.add(null); // Injecting a null value
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.setPermissionsToManager(appointer, appointee, companyId, invalidPerms);
+        });
+        assertEquals("Permissions set cannot be null or contain null values.", exception.getMessage());
+    }
 }

@@ -195,12 +195,22 @@ public class MembershipDomainService {
             throw new Exception("The specified user does not hold a Manager role");
         }
 
-        // 5. Validate the actor is the appointer of target user
-        if (!getAppointerId(targetManager, companyId).equals(appointer.getId())) {
+        // 5. Validate that the target manager is ACTIVE (prevent changing permissions of a pending invitation)
+        if (managerRole.getStatus() == RoleStatus.PENDING) {
+            throw new Exception("Cannot update permissions for a pending manager.");
+        }
+
+        // 6. Validate permissions set is not null and does not contain null elements
+        if (permissions == null || permissions.contains(null)) {
+            throw new Exception("Permissions set cannot be null or contain null values.");
+        }
+
+        // 7. Validate the actor is the appointer of target user
+        if (!java.util.Objects.equals(getAppointerId(targetManager, companyId), appointer.getId())) {
             throw new Exception("You are not the appointer of the specified user");
         }
 
-        // 6. If all validations pass, update manager's permissions
+        // 8. If all validations pass, update manager's permissions
         ((Manager) managerRole).setPermissions(permissions);
         return true;
     }
