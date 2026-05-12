@@ -282,4 +282,71 @@ public class MembershipServiceTest {
 
         assertEquals("You are not the appointer of the specified user", exception.getMessage());
     }
+
+    // =========================================================================================
+    // Use Case 4.9: Remove Owner Assignment
+    // =========================================================================================
+
+    @Test
+    public void GivenValidDetails_WhenRemoveOwnerAssignment_ThenReturnsTrueAndUpdatesDB() throws Exception {
+        // Arrange: Setup member as an active Owner appointed by the Founder
+        member.addOwnerRole(companyId, founderId);
+        member.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        ((Founder) founderMember.getRoleInCompany(companyId)).addAppointee(memberId);
+        userRepository.updateMember(member);
+        userRepository.updateMember(founderMember);
+
+        // Act: Founder attempts to remove the Owner
+        boolean result = membershipService.removeOwnerAssignment(appointerToken, companyId, memberId);
+
+        // Assert
+        assertTrue(result, "Service should return true upon successful removal.");
+        assertNull(userRepository.getMemberById(memberId).getRoleInCompany(companyId), "Target's role should be removed from the repository.");
+        assertFalse(((Founder) userRepository.getMemberById(founderId).getRoleInCompany(companyId)).getAppointeesMemberIds().contains(memberId), "Target should be removed from Founder's tree.");
+    }
+
+    @Test
+    public void GivenInvalidToken_WhenRemoveOwnerAssignment_ThenThrowsException() {
+        Exception ex = assertThrows(Exception.class, () -> {
+            membershipService.removeOwnerAssignment("invalid-token", companyId, memberId);
+        });
+        
+        // We simply verify an exception occurred. The exact message depends on the internal JWT library.
+        assertNotNull(ex);
+    }
+
+    @Test
+    public void GivenTargetMemberNotFound_WhenRemoveOwnerAssignment_ThenThrowsException() {
+        Exception ex = assertThrows(Exception.class, () -> {
+            membershipService.removeOwnerAssignment(appointerToken, companyId, 9999L);
+        });
+        assertEquals("Target Member not found.", ex.getMessage());
+    }
+
+    @Test
+    public void GivenNotTheAppointer_WhenRemoveOwnerAssignment_ThenThrowsException() throws Exception {
+        // Arrange: Member appointed by a different user (888L)
+        member.addOwnerRole(companyId, 888L);
+        userRepository.updateMember(member);
+
+        // Act & Assert: Founder (100L) tries to remove an Owner appointed by 888L
+        Exception ex = assertThrows(Exception.class, () -> {
+            membershipService.removeOwnerAssignment(appointerToken, companyId, memberId);
+        });
+        assertEquals("You are not the appointer of the specified user", ex.getMessage());
+    }
+
+    @Test
+    public void GivenCompanyNotFound_WhenRemoveOwnerAssignment_ThenThrowsException() {
+        // Arrange
+        member.addOwnerRole(companyId, founderId);
+        userRepository.updateMember(member);
+
+        Exception ex = assertThrows(Exception.class, () -> {
+            membershipService.removeOwnerAssignment(appointerToken, 9999L, memberId);
+        });
+        
+        // The expected behavior now is that the domain logic blocks it
+        assertEquals("You do not have a role in this company.", ex.getMessage());
+    }
 }

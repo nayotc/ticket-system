@@ -319,4 +319,80 @@ public class MembershipDomainServiceTest {
         });
         assertEquals("Permissions set cannot be null or contain null values.", exception.getMessage());
     }
+
+    // --- Remove Owner Assignment ---
+
+    // =========================================================================================
+    // Use Case 4.9: Remove Owner Assignment (Domain Tests)
+    // =========================================================================================
+
+    @Test
+    public void GivenValidOwner_WhenValidateRemoveOwnerAssignment_ThenReturnsTrueAndCleansUp() throws Exception {
+        // Arrange: Appointer is Founder
+        appointer.addFounderRole(companyId);
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+        
+        // Target is Owner appointed by the Founder
+        appointee.addOwnerRole(companyId, 100L); 
+        Owner appointeeRole = (Owner) appointee.getRoleInCompany(companyId);
+        founderRole.addAppointee(200L);
+        
+        // Add a subordinate to the removed owner to ensure transfer logic works
+        Member subordinate = new Member(300L, "Subordinate");
+        subordinate.addManagerRole(companyId, 200L, new HashSet<>());
+        userRepository.addRegisteredMember(300L, subordinate, "pass");
+        appointeeRole.addAppointee(300L);
+
+        // Act
+        boolean result = domainService.validateRemoveOwnerAssignment(appointer, appointee, companyId);
+
+        // Assert
+        assertTrue(result, "Should return true on successful validation and removal.");
+        assertNull(appointee.getRoleInCompany(companyId), "The Owner role should be deleted.");
+        assertFalse(founderRole.getAppointeesMemberIds().contains(200L), "The removed owner should be cleared from appointer's list.");
+        assertTrue(founderRole.getAppointeesMemberIds().contains(300L), "The subordinate should be transferred to the Founder.");
+    }
+
+    @Test
+    public void GivenAppointerHasNoRole_WhenValidateRemoveOwnerAssignment_ThenThrowsException() {
+        appointee.addOwnerRole(companyId, 100L);
+        
+        Exception ex = assertThrows(Exception.class, () -> {
+            domainService.validateRemoveOwnerAssignment(appointer, appointee, companyId);
+        });
+        assertEquals("You do not have a role in this company.", ex.getMessage());
+    }
+
+    @Test
+    public void GivenTargetHasNoRole_WhenValidateRemoveOwnerAssignment_ThenThrowsException() {
+        appointer.addFounderRole(companyId);
+        
+        Exception ex = assertThrows(Exception.class, () -> {
+            domainService.validateRemoveOwnerAssignment(appointer, appointee, companyId);
+        });
+        assertEquals("The target user does not have a role in this company.", ex.getMessage());
+    }
+
+    @Test
+    public void GivenTargetIsNotOwner_WhenValidateRemoveOwnerAssignment_ThenThrowsException() {
+        appointer.addFounderRole(companyId);
+        appointee.addManagerRole(companyId, 100L, new HashSet<>());
+        
+        Exception ex = assertThrows(Exception.class, () -> {
+            domainService.validateRemoveOwnerAssignment(appointer, appointee, companyId);
+        });
+        assertEquals("The target user is not an Owner.", ex.getMessage());
+    }
+
+    @Test
+    public void GivenActorIsNotAppointer_WhenValidateRemoveOwnerAssignment_ThenThrowsException() {
+        appointer.addFounderRole(companyId);
+        appointee.addOwnerRole(companyId, 999L); // Appointed by someone else (999L)
+        
+        Exception ex = assertThrows(Exception.class, () -> {
+            domainService.validateRemoveOwnerAssignment(appointer, appointee, companyId);
+        });
+        assertEquals("You are not the appointer of the specified user", ex.getMessage());
+    }
+
 }
