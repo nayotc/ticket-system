@@ -11,7 +11,6 @@ import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
 
 public class UserService {
-    
     private final IUserRepository userRepository;
     private final ITokenService tokenService;
     private final IPasswordService passwordService;
