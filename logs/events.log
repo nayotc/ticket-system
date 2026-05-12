@@ -36,3 +36,4 @@
 2026-05-12 18:12:27 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: ERROR: Unauthorized access. Invalid admin credentials.
 2026-05-12 18:12:27 [WARN] ERROR: Unauthorized access. Invalid admin credentials.
 2026-05-12 18:12:27 [WARN] ERROR: An unexpected error occurred while retrieving purchase history: ERROR: Unauthorized access. Invalid admin credentials.
+2026-05-12 20:36:26 [WARN] Failed to retrieve company purchase history: Insufficient permissions to view company purchase history
