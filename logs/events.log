@@ -1,0 +1,7 @@
+2026-05-12 16:01:46 [INFO] Company role cleanup started for memberId=1
+2026-05-12 16:01:46 [DEBUG] Company role cleanup found 0 relevant companies for memberId=1
+2026-05-12 16:01:46 [INFO] Company role cleanup completed for memberId=1
+2026-05-12 16:01:47 [INFO] System initialized successfully by System Admin.
+2026-05-12 16:01:47 [INFO] Production company closed by System Admin.
+2026-05-12 16:01:47 [INFO] ERROR: Member with ID 99 was not found.
+2026-05-12 16:01:47 [WARN] ERROR: Unauthorized access. Invalid admin credentials.
