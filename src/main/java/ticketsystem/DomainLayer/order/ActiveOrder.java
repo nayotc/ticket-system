@@ -67,6 +67,14 @@ public class ActiveOrder {
         return this.userId;
     }
 
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public void setSessionToken(String sessionToken) {
+        this.sessionToken = sessionToken;
+    }
+
     public Long getEventId() {
         return this.eventId;
     }

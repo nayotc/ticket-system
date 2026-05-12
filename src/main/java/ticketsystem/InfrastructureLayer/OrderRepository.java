@@ -19,17 +19,28 @@ public class OrderRepository implements IOrderRepository {
         this.orders = new ConcurrentHashMap<>();
     }
 
-    public synchronized void addOrder(ActiveOrder order) {
-        for (ActiveOrder existingOrder : orders.values()) {
-            if (existingOrder.getSessionToken().equals(order.getSessionToken())
-                    || existingOrder.getUserId().equals(order.getUserId())) {
+public synchronized void addOrder(ActiveOrder order) {
+    for (ActiveOrder existingOrder : orders.values()) {
 
-                throw new IllegalArgumentException("An active order already exists for this user to another event");
-            }
+        boolean sameSession =
+                existingOrder.getSessionToken() != null
+                && order.getSessionToken() != null
+                && existingOrder.getSessionToken().equals(order.getSessionToken());
+
+        boolean sameUser =
+                existingOrder.getUserId() != null
+                && order.getUserId() != null
+                && existingOrder.getUserId().equals(order.getUserId());
+
+        if (sameSession || sameUser) {
+            throw new IllegalArgumentException(
+                    "An active order already exists for this user to another event"
+            );
         }
-
-        this.orders.put(order.getOrderId(), order);
     }
+
+    this.orders.put(order.getOrderId(), order);
+}
 
     public ActiveOrder findOrderById(Long orderId) {
         return orders.get(orderId);
@@ -102,6 +113,36 @@ public class OrderRepository implements IOrderRepository {
                 -> order.getUserId() != null
                 && order.getUserId().equals(userId)
         );
+    }
+
+    public ActiveOrder getActiveOrderBySessionToken(String sessionToken) {
+        return orders.values().stream()
+                .filter(order ->
+                        order.getSessionToken() != null
+                                && order.getSessionToken().equals(sessionToken)
+                )
+                .findFirst()
+                .orElse(null);
+            }
+
+    public ActiveOrder getActiveOrderByUserId(Long userId) {
+        return orders.values().stream()
+                .filter(order ->
+                        order.getUserId() != null
+                                && order.getUserId().equals(userId)
+                )
+                .findFirst()
+                .orElse(null);
+            }
+    
+    public List<ActiveOrder> getActiveOrdersByEventId(Long eventId) {
+        List<ActiveOrder> activeOrders = new ArrayList<>();
+        for (ActiveOrder order : orders.values()) {
+            if (order.getEventId() != null && order.getEventId().equals(eventId)) {
+                activeOrders.add(order);
+            }
+        }
+        return activeOrders;
     }
 
     public void clear() {
