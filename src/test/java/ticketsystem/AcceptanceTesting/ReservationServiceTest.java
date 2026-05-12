@@ -18,6 +18,7 @@ import ticketsystem.ApplicationLayer.ISecureBarcode;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ReservationService;
 import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
@@ -32,6 +33,7 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.lottery.Lottery;
+import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
@@ -369,7 +371,165 @@ void AcceptanceTest_SelectSeatTicket_WhenLotteryEventAndUserDidNotWin_ThenSelect
             )
     );
 }
+@Test
+void AcceptanceTest_RemoveTicketFromActiveOrder_WhenSeatTicketExists_ThenTicketIsRemoved() {
+    Long eventId = 20L;
+    Long areaId = 1L;
+    String token = "member-token-1";
 
+    Event event = createActiveEventWithSeatingArea(eventId);
+    eventRepository.addEvent(event);
+
+    reservationService.selectSeatTicket(
+            token,
+            eventId,
+            areaId,
+            new seatPositionDTO(1, 1),
+            null
+    );
+
+    ActiveOrder order = orderRepository.getActiveOrderByUserId(1L);
+    Long ticketId = order.getTickets().get(0).getTicketId();
+
+    boolean result = reservationService.removeTicketFromActiveOrder(
+            token,
+            eventId,
+            ticketId
+    );
+
+    assertTrue(result);
+    assertTrue(order.getTickets().isEmpty());
+}
+
+    @Test
+    void AcceptanceTest_RemoveTicketFromActiveOrder_WhenNoActiveOrderExists_ThenThrowException() {
+        Long eventId = 21L;
+        Long ticketId = 1L;
+        String token = "member-token-1";
+
+        Event event = createActiveEventWithSeatingArea(eventId);
+        eventRepository.addEvent(event);
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> reservationService.removeTicketFromActiveOrder(
+                        token,
+                        eventId,
+                        ticketId
+                )
+        );
+
+        assertEquals("No active order found for this event", exception.getMessage());
+    }
+
+    @Test
+    void AcceptanceTest_RemoveStandingTicketsFromActiveOrder_WhenEnoughTicketsExist_ThenRequestedQuantityIsRemoved() {
+        Long eventId = 22L;
+        Long areaId = 1L;
+        String token = "member-token-1";
+
+        Event event = createActiveEvent(eventId);
+        eventRepository.addEvent(event);
+
+        reservationService.selectStandingTicket(
+                token,
+                eventId,
+                areaId,
+                3,
+                null
+        );
+
+        ActiveOrder order = orderRepository.getActiveOrderByUserId(1L);
+
+        boolean result = reservationService.removeStandingTicketsFromActiveOrder(
+                token,
+                eventId,
+                areaId,
+                2
+        );
+
+        assertTrue(result);
+        assertEquals(1, order.getTickets().size());
+    }
+
+    @Test
+    void AcceptanceTest_RemoveStandingTicketsFromActiveOrder_WhenNotEnoughTicketsExist_ThenThrowException() {
+        Long eventId = 23L;
+        Long areaId = 1L;
+        String token = "member-token-1";
+
+        Event event = createActiveEvent(eventId);
+        eventRepository.addEvent(event);
+
+        reservationService.selectStandingTicket(
+                token,
+                eventId,
+                areaId,
+                1,
+                null
+        );
+
+        ActiveOrder order = orderRepository.getActiveOrderByUserId(1L);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> reservationService.removeStandingTicketsFromActiveOrder(
+                        token,
+                        eventId,
+                        areaId,
+                        2
+                )
+        );
+
+        assertEquals(
+                "Not enough standing tickets in the order to remove",
+                exception.getMessage()
+        );
+
+        assertEquals(1, order.getTickets().size());
+    }
+    @Test
+    void AcceptanceTest_ViewActiveOrder_WhenActiveOrderExists_ThenReturnActiveOrderDTO() {
+        Long eventId = 24L;
+        Long areaId = 1L;
+        String token = "member-token-1";
+
+        Event event = createActiveEvent(eventId);
+        eventRepository.addEvent(event);
+
+        reservationService.selectStandingTicket(
+                token,
+                eventId,
+                areaId,
+                2,
+                null
+        );
+
+        ActiveOrder order = orderRepository.getActiveOrderByUserId(1L);
+
+        ActiveOrderDTO dto = reservationService.viewActiveOrder(
+                token,
+                order.getOrderId()
+        );
+
+        assertNotNull(dto);
+        assertEquals(order.getOrderId(), dto.getOrderId());
+        assertEquals(eventId, dto.getEventId());
+        assertEquals(2, dto.getTickets().size());
+    }
+
+    @Test
+    void AcceptanceTest_ViewActiveOrder_WhenOrderDoesNotExist_ThenThrowException() {
+        String token = "member-token-1";
+        Long nonExistingOrderId = 999L;
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> reservationService.viewActiveOrder(token, nonExistingOrderId)
+        );
+
+        assertEquals("No active order found for this event", exception.getMessage());
+    }
     @Test
     void AcceptanceTest_Checkout_WhenPaymentAndTicketIssuingSucceed_ThenOrderIsCompletedAndBarcodeIssued() {
         Long eventId = 1L;
