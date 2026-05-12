@@ -1,12 +1,26 @@
 package ticketsystem.DomainLayer.user;
-public abstract class CompanyRole {
-    protected Member member;
-    protected long companyId;
 
-    public CompanyRole(Member member, long companyId) {
-        this.member = member;
+public abstract class CompanyRole {
+
+    protected Long companyId;
+    protected RoleStatus status;
+
+    public CompanyRole(Long companyId) {
         this.companyId = companyId;
+        this.status = RoleStatus.PENDING;
     }
-    
-    public long getCompanyId() { return companyId; }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public RoleStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(RoleStatus status) {
+        this.status = status;
+    }
+
+    public abstract boolean hasPermission(Permission permission);
 }
