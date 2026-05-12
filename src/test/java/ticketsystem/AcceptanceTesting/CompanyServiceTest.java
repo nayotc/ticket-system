@@ -6,6 +6,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.CompanyService;
+import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
@@ -22,6 +24,7 @@ public class CompanyServiceTest {
     private CompanyService companyService;
     private UserService userService;
     private ITokenService tokenService;
+    private ISystemLogger testLogger;
 
     private String founderToken;
     private String nonFounderToken;
@@ -39,7 +42,19 @@ public class CompanyServiceTest {
                 tokenRepository
         );
 
-        userService = new UserService(userRepository, tokenService);
+        testLogger = new ISystemLogger() {
+            @Override
+            public void logEvent(String message, LogLevel level) {
+                // No-op logger for acceptance tests
+            }
+
+            @Override
+            public void logError(String errorMessage, Throwable exception) {
+                // No-op logger for acceptance tests
+            }
+        };
+
+        userService = new UserService(userRepository, tokenService, testLogger);
         companyService = new CompanyService(companyRepository, tokenService);
 
         founderToken = createLoggedInMember("noa_user", "password123");
@@ -162,20 +177,22 @@ public class CompanyServiceTest {
         );
     }
 
-    // // UC 4.15: View roles and permissions tree
+    // UC 4.15: View roles and permissions tree
+    // Keep these tests commented out until viewRolesAndPermissionsTree is available
+    // in this branch's CompanyService API.
 
     // @Test
     // void GivenCompanyAndFounder_WhenViewRolesAndPermissionsTree_ThenReturnsTreeWithFounder() throws Exception {
     //     // Arrange
     //     CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
+    //
     //     // Act
     //     String tree = companyService.viewRolesAndPermissionsTree(founderToken, company.getId());
-
+    //
     //     // Assert
     //     assertNotNull(tree, "Roles and permissions tree should not be null.");
     //     assertTrue(tree.contains("FOUNDER"), "Roles tree should include the founder role.");
-    //     assertTrue(tree.contains(String.valueOf(tokenService.extractUserId(founderToken))),
+    //     assertTrue(tree.contains(String.valueOf(tokenService.extractUserId(founderToken)),
     //             "Roles tree should include the founder member id.");
     // }
 
@@ -183,7 +200,7 @@ public class CompanyServiceTest {
     // void GivenCompanyAndNonOwner_WhenViewRolesAndPermissionsTree_ThenThrowsException() throws Exception {
     //     // Arrange
     //     CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
+    //
     //     // Act + Assert
     //     assertThrows(Exception.class, () ->
     //             companyService.viewRolesAndPermissionsTree(nonFounderToken, company.getId())
