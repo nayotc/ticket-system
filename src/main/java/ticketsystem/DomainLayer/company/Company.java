@@ -14,7 +14,7 @@ public class Company {
     private boolean isActive;
     private List<Long> owners; 
     private List<Long> managers;
-    private final CompanyTree rolesTree;
+    private CompanyTree rolesTree;
     private PurchasePolicy purchasePolicy; 
     private DiscountPolicy discountPolicy; 
     private Double rate = 0.0; // for search and filtering
@@ -41,6 +41,8 @@ public class Company {
         this.rolesTree = new CompanyTree(founderId);
 
         this.version = 0; // Initialize version
+
+        
     }
 
     // Copy Constructor
@@ -61,6 +63,7 @@ public class Company {
         this.rolesTree = other.rolesTree;
         this.purchasePolicy = other.purchasePolicy;
         this.discountPolicy = other.discountPolicy;
+        this.rolesTree = new CompanyTree(other.rolesTree);
     }
     // --- Getters & Setters ---
 
@@ -209,4 +212,29 @@ public class Company {
         this.managers.remove(Long.valueOf(memberId));
         this.rolesTree.removeNode(memberId);
     }
+
+    public List<Long> getOwnersAndManagersIds() {
+    List<Long> members = new ArrayList<>();
+    members.addAll(owners);
+
+    for (Long managerId : managers) {
+        if (!members.contains(managerId)) {
+            members.add(managerId);
+        }
+    }
+
+    return members;
+}
+
+public void closeBySystemAdmin(long adminId) throws Exception {
+    if (!this.isActive) {
+        throw new Exception("Company is already inactive.");
+    }
+
+    this.isActive = false;
+
+    this.owners.clear();
+    this.managers.clear();
+    this.rolesTree.clearAllAppointments();
+}
 }

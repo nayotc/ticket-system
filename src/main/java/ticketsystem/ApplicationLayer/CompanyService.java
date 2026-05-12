@@ -168,7 +168,7 @@ private boolean canViewCompanyDetails(String sessionToken, Company company) thro
     if (!canViewCompanyDetails(sessionToken, company)) {
         throw new Exception("Error: User does not have permission to view this company.");
     }
-
-    return new CompanyDTO(company);
+        return new CompanyDTO(company);
 }
+
 }
