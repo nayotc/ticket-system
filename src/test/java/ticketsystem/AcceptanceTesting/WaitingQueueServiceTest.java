@@ -22,6 +22,7 @@ import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 
@@ -34,6 +35,7 @@ public class WaitingQueueServiceTest {
     private ITokenService tokenService;
     private ITokenRepository tokenRepository;
     private WaitingQueueService waitingQueueService;
+    private LogbackSystemLogger logger;
 
     @BeforeEach
     public void setUp() {
@@ -42,7 +44,8 @@ public class WaitingQueueServiceTest {
         fakeNotifications = new FakeNotificationsService();
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
-        waitingQueueService = new WaitingQueueService(EventRepo, realQueueRepo, fakeNotifications, tokenService);
+        logger = new LogbackSystemLogger();
+        waitingQueueService = new WaitingQueueService(EventRepo, realQueueRepo, fakeNotifications, tokenService, logger);
     }
 
     @Test
@@ -140,44 +143,6 @@ public class WaitingQueueServiceTest {
         assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
     }
 
-    // Fake Implementations for Acceptance Testing
-    // private class FakeEventRepository implements IEventRepository {
-    //     private Map<Long, Event> events = new HashMap<>();
-    //     @Override
-    //     public void addEvent(Event event) {
-    //         events.put(event.getId(), event);
-    //     }
-    //     @Override
-    //     public Event getEventById(long id) {
-    //         return events.get(id);
-    //     }
-    //     @Override
-    //     public void deleteEvent(long eventId) {
-    //         events.remove(eventId);
-    //     }
-    //     @Override
-    //     public void updateEvent(Event event) {
-    //         events.put(event.getId(), event);
-    //     }
-    //     @Override
-    //     public long getNextId() {
-    //         return events.size() + 1L;
-    //     }
-    //     @Override
-    //     public List<Event> getEventsByCompanyId(long companyId) {
-    //         List<Event> result = new ArrayList<>();
-    //         for (Event event : events.values()) {
-    //             if (event.getCompanyId() == companyId) {
-    //                 result.add(event);
-    //             }
-    //         }
-    //         return result;
-    //     }
-    //     @Override
-    //     public List<Event> getAllEvents() {
-    //         return new ArrayList<>(events.values());
-    //     }
-    // }
     private class FakeNotificationsService implements NotificationsService {
 
         public List<String> notifiedUsers = new ArrayList<>();

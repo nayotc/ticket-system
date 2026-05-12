@@ -2,6 +2,8 @@ package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
@@ -32,6 +35,7 @@ public class SystemAdminServiceTest {
     private CompanyService companyService;
     private SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
     ICompanyRepository companyRepo;
+    LogbackSystemLogger logger = new LogbackSystemLogger();
 
     @BeforeEach
     public void setUp() {
@@ -53,9 +57,9 @@ public class SystemAdminServiceTest {
                 paymentProxy,
                 barcodeProxy,
                 userRepo,
-                companyService,
                 orderRepo,
-                tokenService
+                tokenService,
+                companyRepo, logger
         );
     }
 
@@ -163,10 +167,6 @@ public class SystemAdminServiceTest {
         long founderId = 2L;
         long ownerId = 3L;
         long managerId = 4L;
-
-        // Create active admin session
-        String adminSessionId = tokenService.addActiveSession(new Member(adminId, "admin"));
-
         // Add active system admin to admin repository
         realAdminRepo.addAdmin(new SystemAdmin(String.valueOf(adminId), "admin", true));
 
@@ -183,17 +183,39 @@ public class SystemAdminServiceTest {
         companyRepo.save(company);
 
         // Act
-        // CompanyDTO closedCompany = systemAdminService.closeProductionCompanyByAdmin(
-        //         adminSessionId,
-        //         createdCompany.getId()
-        // );
-        // // Assert
-        // assertNotNull(closedCompany);
-        // Company savedCompany = companyRepo.findById(createdCompany.getId())
-        //         .orElseThrow(() -> new Exception("Company was not found after closing"));
-        // assertFalse(savedCompany.isActive());
-        // assertTrue(savedCompany.getOwners().isEmpty());
-        // assertTrue(savedCompany.getManagers().isEmpty());
+        CompanyDTO closedCompany = systemAdminService.closeProductionCompanyByAdmin(
+                adminId,
+                createdCompany.getId()
+        );
+        // Assert
+        assertNotNull(closedCompany);
+        Company savedCompany = companyRepo.findById(createdCompany.getId())
+                .orElseThrow(() -> new Exception("Company was not found after closing"));
+        assertFalse(savedCompany.isActive());
+        assertTrue(savedCompany.getOwners().isEmpty());
+        assertTrue(savedCompany.getManagers().isEmpty());
+    }
+
+    @Test
+    void GivenNonAdminMember_WhenCloseProductionCompanyByAdmin_ThenThrowsExceptionAndCompanyRemainsActive() throws Exception {
+        // Arrange
+        long nonAdminId = 10L;
+        long founderId = 20L;
+        String founderSessionId = tokenService.addActiveSession(new Member(founderId, "founder"));
+        CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
+
+        // Act + Assert
+        Exception exception = assertThrows(Exception.class, ()
+                -> systemAdminService.closeProductionCompanyByAdmin(nonAdminId, createdCompany.getId())
+        );
+
+        assertTrue(exception.getMessage().contains("Unauthorized access"),
+                "Should throw unauthorized access exception.");
+
+        Company savedCompany = companyRepo.findById(createdCompany.getId())
+                .orElseThrow(() -> new Exception("Company was not found"));
+
+        assertTrue(savedCompany.isActive(), "Company should remain active after a failed closure attempt.");
     }
 
 }

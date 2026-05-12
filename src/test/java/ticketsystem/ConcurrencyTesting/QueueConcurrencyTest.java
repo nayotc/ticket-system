@@ -26,12 +26,14 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Guest;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 
 public class QueueConcurrencyTest {
 
     private final String TEST_SECRET = "manual_test_secret_key_for_jwt_must_be_at_least_32_bytes_long";
+    private LogbackSystemLogger logger = new LogbackSystemLogger();
 
     @Test
     public void testHighConcurrencyLoadOnQueue() throws InterruptedException {
@@ -42,7 +44,7 @@ public class QueueConcurrencyTest {
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService);
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService, logger);
         var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK, 100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
         fakeEventRepo.addEvent(event);
 
@@ -78,8 +80,6 @@ public class QueueConcurrencyTest {
                         approvedCount.incrementAndGet();
                     } else if ("QUEUED".equals(result)) {
                         queuedCount.incrementAndGet();
-                    } else {
-                        System.err.println("UNEXPECTED RESULT: " + result); // <--- יראה לנו לאן המשתמש נעלם
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -123,7 +123,7 @@ public class QueueConcurrencyTest {
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService);
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService, logger);
 
         // create an event that is already at full capacity
         var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival2", 1L, 1L, EventLocation.NEW_YORK, 100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
@@ -182,7 +182,7 @@ public class QueueConcurrencyTest {
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService);
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService, logger);
 
         // full event with 100 active reservations and 200 people in the queue
         var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK, 100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));

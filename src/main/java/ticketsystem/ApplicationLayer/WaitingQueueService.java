@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
 public class WaitingQueueService {
 
@@ -14,14 +15,16 @@ public class WaitingQueueService {
     private final NotificationsService notificationsService;
     private final ITokenService tokenService;
     private final ConcurrentHashMap<Long, Object> eventLocks = new ConcurrentHashMap<>();
+    private final ISystemLogger logger;
 
     public WaitingQueueService(IEventRepository eventRepository,
             IWaitingQueueRepository queueRepository,
-            NotificationsService notificationsService, ITokenService tokenService) {
+            NotificationsService notificationsService, ITokenService tokenService, ISystemLogger logger) {
         this.eventRepository = eventRepository;
         this.queueRepository = queueRepository;
         this.notificationsService = notificationsService;
         this.tokenService = tokenService;
+        this.logger = logger;
     }
 
     // Helper method to retrieve or create a lock for a specific event
@@ -32,6 +35,7 @@ public class WaitingQueueService {
     public String tryReserve(long eventId, String tokenString) {
         // Validate the token
         if (!(tokenService.validateToken(tokenString))) {
+            logger.logEvent("Invalid token provided for reservation attempt.", LogbackSystemLogger.LogLevel.INFO);
             return "ERROR: Invalid token";
         }
         int maxRetries = 3;
@@ -39,25 +43,27 @@ public class WaitingQueueService {
             try {
                 Event event = (Event) eventRepository.getEventById(eventId);
                 if (event == null) {
+                    logger.logEvent("Attempt to reserve for non-existent event. Event ID: " + eventId, LogbackSystemLogger.LogLevel.INFO);
                     return "ERROR: Event not found";
                 }
                 if (event.isSoldOut()) {
+                    logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId, LogbackSystemLogger.LogLevel.INFO);
                     return "ERROR: Sold Out";
                 }
 
                 if (!event.isOverloaded()) { //if event is not overloaded, approve the user immediately
                     event.incrementActiveReservations();
                     eventRepository.updateEvent(event);
-                    System.out.println("User with session id" + tokenString + " APPROVED to enter checkout for Event " + eventId);
+                    logger.logEvent("User with session id" + tokenString + " APPROVED to enter checkout for Event " + eventId, LogbackSystemLogger.LogLevel.INFO);
                     return "APPROVED";
                 } else { //enqueue the user and return their position in the queue
                     queueRepository.enqueueUser(eventId, tokenString);
                     int position = queueRepository.getQueueSize(eventId);
-                    System.out.println("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position);
+                    logger.logEvent("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position, LogbackSystemLogger.LogLevel.INFO);
                     return "QUEUED";
                 }
             } catch (Exception e) { //optimistic locking failure or other concurrency issue, retry the operation a few times before giving up
-                System.err.println("EXCEPTION CAUGHT: " + e.getMessage()); // <--- מדליקים את האור!
+                logger.logError("EXCEPTION CAUGHT: " + e.getMessage(), e);
                 e.printStackTrace();
                 continue;
             }
@@ -102,6 +108,7 @@ public class WaitingQueueService {
                 for (String sessionId : approvedUsers) {
                     notificationsService.notifyUser(sessionId, "It's your turn! You can now purchase tickets for Event " + eventId);
                 }
+                logger.logEvent("Processed waiting queue for Event " + eventId + ". Approved users: " + approvedUsers.size(), LogbackSystemLogger.LogLevel.INFO);
                 return;
 
             } catch (Exception e) {
@@ -128,6 +135,7 @@ public class WaitingQueueService {
         }
         if (updateSuccessful) {
             processQueue(eventId); //call batch processing to fill the new available spot
+            logger.logEvent("User with session id " + sessionId + " released their spot for Event " + eventId, LogbackSystemLogger.LogLevel.INFO);
         }
     }
 
