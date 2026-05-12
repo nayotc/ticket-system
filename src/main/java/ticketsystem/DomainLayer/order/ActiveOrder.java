@@ -148,7 +148,7 @@ public class ActiveOrder {
     CANCELLED
     }
 
-    public OrderDTO toDTO(String eventName,String location, Long companyId ) {
+    public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId) {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
@@ -156,9 +156,9 @@ public class ActiveOrder {
         }
 
         if(userId!=null)
-            return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId);
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId, managedByMemberId);
         else
-            return new OrderDTO(0L,ticketDTOs,eventName,location ,0L,companyId);
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,null ,companyId, managedByMemberId);
     }
 
      public ActiveOrderDTO toDTO() {

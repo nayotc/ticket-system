@@ -4,20 +4,27 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
+import ticketsystem.DTO.SalesReportDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
@@ -69,7 +76,7 @@ public class HistoryServiceTest {
         
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 20L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L);
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId);
         
         historyService.onOrderCompleted(orderDto);
 
@@ -125,7 +132,7 @@ public class HistoryServiceTest {
         
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 20L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L);
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId);
 
         // --- Act ---
         historyService.onOrderCompleted(orderDto);
@@ -171,7 +178,9 @@ public class HistoryServiceTest {
                 eventName,
                 "HaYarkon Park",
                 userId,
-                companyId
+                companyId,
+                userId
+
         );
     }
     /**
@@ -222,4 +231,193 @@ public class HistoryServiceTest {
                 "Error message should mention insufficient permissions"
         );
     }
+    private OrderDTO createSalesReportOrderDTO(Long buyerMemberId, long companyId, Long managedByMemberId,
+            String eventName, BigDecimal... ticketPrices) {
+        List<PurchaseDTO> purchases = new ArrayList<>();
+
+        long ticketId = 1L;
+        for (BigDecimal price : ticketPrices) {
+            purchases.add(new PurchaseDTO(
+                    ticketId++,
+                    20L,
+                    1,
+                    1,
+                    price,
+                    "ACTIVE",
+                    ""
+            ));
+        }
+
+        return new OrderDTO(
+                0L,
+                purchases,
+                eventName,
+                "HaYarkon Park",
+                buyerMemberId,
+                companyId,
+                managedByMemberId
+        );
+    }
+    private long createActiveManagerUnderFounder(long founderId, long companyId, String username) {
+        String managerToken = getValidMemberToken(username, "Pass123!");
+        long managerId = tokenService.extractUserId(managerToken);
+
+        Member founder = userRepository.getMemberById(founderId);
+        Member manager = userRepository.getMemberById(managerId);
+
+        assertNotNull(founder, "Founder must exist");
+        assertNotNull(manager, "Manager must exist");
+
+        Set<Permission> permissions = new HashSet<>();
+        permissions.add(Permission.GENERATE_SALES_REPORT);
+
+        boolean roleAdded = manager.addManagerRole(companyId, founderId, permissions);
+        assertTrue(roleAdded, "Manager role should be added successfully");
+
+        CompanyRole managerRole = manager.getRoleInCompany(companyId);
+        assertNotNull(managerRole, "Manager role should exist");
+        managerRole.setStatus(RoleStatus.ACTIVE);
+
+        CompanyRole founderRole = founder.getRoleInCompany(companyId);
+        assertNotNull(founderRole, "Founder role should exist");
+
+        assertTrue(founderRole instanceof Founder, "Founder role should be Founder");
+
+        ((Founder) founderRole).addAppointee(managerId);
+
+        return managerId;
+    }
+    /**
+     * 4.6 Generate sales report - Successful Scenario
+     */
+    @Test
+    void GivenOwnerAndSalesData_WhenGenerateSalesReport_ThenReturnsTotalRevenueAndTicketsFromManagementTree() {
+        // --- Given (Arrange) ---
+        String ownerToken = getValidMemberToken("sales_report_owner", "Pass123!");
+        long ownerId = tokenService.extractUserId(ownerToken);
+
+        Company company = createCompanyWithFounderRole(ownerId);
+
+        long managerId = createActiveManagerUnderFounder(
+                ownerId,
+                company.getId(),
+                "sales_report_manager"
+        );
+
+        String outsideOwnerToken = getValidMemberToken("outside_sales_owner", "Pass123!");
+        long outsideOwnerId = tokenService.extractUserId(outsideOwnerToken);
+
+        // Purchase managed directly by owner: 2 tickets, total 250
+        OrderDTO ownerManagedOrder = createSalesReportOrderDTO(
+                ownerId,
+                company.getId(),
+                ownerId,
+                "Owner Managed Event",
+                new BigDecimal("100.0"),
+                new BigDecimal("150.0")
+        );
+
+        // Purchase managed by manager under owner's subtree: 1 ticket, total 200
+        OrderDTO managerManagedOrder = createSalesReportOrderDTO(
+                null, // guest buyer
+                company.getId(),
+                managerId,
+                "Manager Managed Event",
+                new BigDecimal("200.0")
+        );
+
+        // Purchase managed by someone outside owner's subtree: should not be counted
+        OrderDTO outsideManagedOrder = createSalesReportOrderDTO(
+                ownerId,
+                company.getId(),
+                outsideOwnerId,
+                "Outside Managed Event",
+                new BigDecimal("999.0")
+        );
+
+        historyService.onOrderCompleted(ownerManagedOrder);
+        historyService.onOrderCompleted(managerManagedOrder);
+        historyService.onOrderCompleted(outsideManagedOrder);
+
+        // --- When (Act) ---
+        SalesReportDTO report = historyService.generateSalesReport(ownerToken, company.getId());
+
+        // --- Then (Assert) ---
+        assertNotNull(report, "Sales report should not be null");
+        assertEquals(3, report.getTotalTicketsSold(), "Report should count only owner + subtree tickets");
+        assertEquals(
+                0,
+                new BigDecimal("450.0").compareTo(report.getTotalRevenue()),
+                "Report revenue should include only owner + subtree sales"
+        );
+        assertEquals(
+                "Sales report generated successfully",
+                report.getMessage(),
+                "Success message should match"
+        );
+    }
+    /**
+     * 4.6 Generate sales report - No sales data available
+     */
+    @Test
+    void GivenOwnerAndNoSalesData_WhenGenerateSalesReport_ThenReturnsEmptyReportSummary() {
+        // --- Given (Arrange) ---
+        String ownerToken = getValidMemberToken("sales_report_empty_owner", "Pass123!");
+        long ownerId = tokenService.extractUserId(ownerToken);
+
+        Company company = createCompanyWithFounderRole(ownerId);
+
+        // --- When (Act) ---
+        SalesReportDTO report = historyService.generateSalesReport(ownerToken, company.getId());
+
+        // --- Then (Assert) ---
+        assertNotNull(report, "Sales report should not be null");
+        assertEquals(0, report.getTotalTicketsSold(), "No tickets should be counted");
+        assertEquals(
+                0,
+                BigDecimal.ZERO.compareTo(report.getTotalRevenue()),
+                "Revenue should be zero"
+        );
+        assertEquals(
+                "No sales data was found",
+                report.getMessage(),
+                "Empty report message should match"
+        );
+    }
+    /**
+     * 4.6 Generate sales report - Guest purchases are included in company sales report
+     */
+    @Test
+    void GivenGuestPurchase_WhenGenerateSalesReport_ThenGuestPurchaseIsIncludedInCompanyReport() {
+        // --- Given (Arrange) ---
+        String ownerToken = getValidMemberToken("sales_report_guest_owner", "Pass123!");
+        long ownerId = tokenService.extractUserId(ownerToken);
+
+        Company company = createCompanyWithFounderRole(ownerId);
+
+        OrderDTO guestOrder = createSalesReportOrderDTO(
+                null, // guest buyer
+                company.getId(),
+                ownerId,
+                "Guest Buyer Event",
+                new BigDecimal("80.0"),
+                new BigDecimal("120.0")
+        );
+
+        historyService.onOrderCompleted(guestOrder);
+
+        // --- When (Act) ---
+        SalesReportDTO report = historyService.generateSalesReport(ownerToken, company.getId());
+
+        // --- Then (Assert) ---
+        assertNotNull(report, "Sales report should not be null");
+        assertEquals(2, report.getTotalTicketsSold(), "Guest purchase tickets should be counted");
+        assertEquals(
+                0,
+                new BigDecimal("200.0").compareTo(report.getTotalRevenue()),
+                "Guest purchase revenue should be counted"
+        );
+    }
+
+    
 }

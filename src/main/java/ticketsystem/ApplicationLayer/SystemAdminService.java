@@ -3,6 +3,8 @@ package ticketsystem.ApplicationLayer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -185,14 +187,18 @@ public class SystemAdminService {
                     throw new IllegalStateException("No purchases have been made yet.");
                 }
                 checkIfHistoryIsEmpty(allOrders); 
-                return allOrders.stream()
-                    .collect(Collectors.groupingBy(
-                        Purchase::getMemberId, 
-                        Collectors.mapping(    
-                            purchase -> objectMapper.convertValue(purchase, OrderDTO.class), 
-                            Collectors.toList()
-                        )
-                    ));
+                Map<Long, List<OrderDTO>> result = new HashMap<>();
+
+                for (Purchase purchase : allOrders) {
+                    Long buyerMemberId = purchase.getMemberId(); // null means Guest
+
+                    OrderDTO orderDTO = objectMapper.convertValue(purchase, OrderDTO.class);
+
+                    result.computeIfAbsent(buyerMemberId, k -> new ArrayList<>())
+                        .add(orderDTO);
+                }
+
+                return result;
             } catch (Exception e) {
                 if (!(e instanceof IllegalStateException && "No purchase history is available.".equals(e.getMessage()))) {
                     logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
