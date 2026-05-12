@@ -884,7 +884,7 @@ public class EventServiceTest {
         assertTrue(result);
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockEventRepository, times(3)).getEventById(validEventId);
+        verify(mockEventRepository, times(2)).getEventById(validEventId);
         verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:remove");
         verify(mockEventRepository).deleteEvent(validEventId, event.getVersion());
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
@@ -906,7 +906,7 @@ public class EventServiceTest {
         assertTrue(result);
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockEventRepository, times(3)).getEventById(validEventId);
+        verify(mockEventRepository, times(2)).getEventById(validEventId);
         verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:remove");
         verify(mockEventRepository).deleteEvent(validEventId, event.getVersion());
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
@@ -975,7 +975,7 @@ public class EventServiceTest {
         assertEquals("Only inactive or cancelled events can be removed", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockEventRepository, times(2)).getEventById(validEventId);
+        verify(mockEventRepository, times(1)).getEventById(validEventId);
         verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:remove");
         verify(mockEventRepository, never()).deleteEvent(any(), anyLong());
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
@@ -1000,7 +1000,7 @@ public class EventServiceTest {
         assertEquals("Only inactive or cancelled events can be removed", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockEventRepository, times(2)).getEventById(validEventId);
+        verify(mockEventRepository, times(1)).getEventById(validEventId);
         verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:remove");
         verify(mockEventRepository, never()).deleteEvent(any(), anyLong());
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);

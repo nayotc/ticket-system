@@ -99,8 +99,4 @@ public class EventRepository implements IEventRepository {
             .toList();
     }
 
-    public void updateEvent(Event event) {
-        eventStorage.put(event.getId(), event);
-    }
-
 }
