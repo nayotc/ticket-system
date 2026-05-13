@@ -1,4 +1,6 @@
+package ticketsystem.IntegrationTesting;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
@@ -41,104 +43,142 @@ public class ReservationIntegrationTest {
         event = createActiveEventWithSeatingAndStandingAreas(100L);
     }
 
-    //after rotem g. upload her code.
     
-    // public void testSelectSeatTicket_WhenSeatAvailable_ThenTicketAddedToOrderAndSeatStatusBecomesReserved() {
-    //     // Arrange
-    //     Long eventId = 100L;
-    //     Long areaId = 1L;
+    public void testSelectSeatTicket_WhenSeatAvailable_ThenTicketAddedToOrderAndSeatStatusBecomesReserved() {
+        // Arrange
+        Long eventId = 100L;
+        Long areaId = 1L;
 
-    //     Reservation reservation = new Reservation();
-    //     Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
+        Reservation reservation = new Reservation();
+        Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
 
-    //     ActiveOrder order = new ActiveOrder(
-    //             1L,
-    //             "token-1",
-    //             1L,
-    //             eventId
-    //     );
+        ActiveOrder order = new ActiveOrder(
+                1L,
+                "token-1",
+                1L,
+                eventId
+        );
 
-    //     seatPositionDTO position = new seatPositionDTO(1, 1);
+        seatPositionDTO position = new seatPositionDTO(1, 1);
 
-    //     // Act
-    //     reservation.selectSeatTicket(order, event, areaId, position);
+        // Act
+        reservation.selectSeatTicket(order, event, areaId, position);
 
-    //     // Assert - Order
-    //     assertEquals(1, order.getTickets().size());
+        // Assert - Order
+        assertEquals(1, order.getTickets().size());
 
-    //     Ticket ticket = order.getTickets().get(0);
-    //     assertEquals(eventId, ticket.getEventId());
-    //     assertEquals(areaId, ticket.getAreaId());
-    //     assertEquals(1, ticket.getRow());
-    //     assertEquals(1, ticket.getChair());
+        Ticket ticket = order.getTickets().get(0);
+        assertEquals(eventId, ticket.getEventId());
+        assertEquals(areaId, ticket.getAreaId());
+        assertEquals(1, ticket.getRow());
+        assertEquals(1, ticket.getChair());
 
-    //     // Assert - Event
-    //     assertEquals(
-    //             SeatStatus.RESERVED,
-    //             event.getSeatStatus(areaId, new SeatPosition(1, 1))
-    //     );
-    // }
-    // @Test
-    // public void testCompleteCheckout_WhenSeatReserved_ThenSeatStatusBecomesSold() {
-    //     // Arrange
-    //     Long eventId = 100L;
-    //     Long areaId = 1L;
+        // Assert - Event
+        assertEquals(
+                SeatStatus.RESERVED,
+                event.getSeatStatus(areaId, new SeatPosition(1, 1))
+        );
+    }
+    @Test
+    public void testCompleteCheckout_WhenSeatReserved_ThenSeatStatusBecomesSold() {
+        // Arrange
+        Long eventId = 100L;
+        Long areaId = 1L;
 
-    //     Reservation reservation = new Reservation();
-    //     Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
+        Reservation reservation = new Reservation();
+        Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
 
-    //     ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
+        ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
 
-    //     reservation.selectSeatTicket(
-    //             order,
-    //             event,
-    //             areaId,
-    //             new seatPositionDTO(1, 1)
-    //     );
+        reservation.selectSeatTicket(
+                order,
+                event,
+                areaId,
+                new seatPositionDTO(1, 1)
+        );
 
-    //     // Act
-    //     reservation.completeCheckout(order, event);
+        // Act
+        reservation.completeCheckout(order, event);
 
-    //     // Assert
-    //     assertEquals(ActiveOrder.OrderStatus.COMPLETED, order.getStatus());
+        // Assert
+        assertEquals(ActiveOrder.OrderStatus.COMPLETED, order.getStatus());
 
-    //     assertEquals(
-    //             SeatStatus.SOLD,
-    //             event.getSeatStatus(areaId, new SeatPosition(1, 1))
-    //     );
-    // }
+        assertEquals(
+                SeatStatus.SOLD,
+                event.getSeatStatus(areaId, new SeatPosition(1, 1))
+        );
+    }
 
-    // @Test
-    // public void testRemoveSeatTicket_WhenSeatWasReserved_ThenTicketRemovedAndSeatStatusBecomesAvailable() {
-    //     // Arrange
-    //     Long eventId = 100L;
-    //     Long areaId = 1L;
+    @Test
+    public void testRemoveSeatTicket_WhenSeatWasReserved_ThenTicketRemovedAndSeatStatusBecomesAvailable() {
+        // Arrange
+        Long eventId = 100L;
+        Long areaId = 1L;
 
-    //     Reservation reservation = new Reservation();
-    //     Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
+        Reservation reservation = new Reservation();
+        Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
 
-    //     ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
+        ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
 
-    //     reservation.selectSeatTicket(
-    //             order,
-    //             event,
-    //             areaId,
-    //             new seatPositionDTO(1, 1)
-    //     );
+        reservation.selectSeatTicket(
+                order,
+                event,
+                areaId,
+                new seatPositionDTO(1, 1)
+        );
 
-    //     Long ticketId = order.getTickets().get(0).getTicketId();
+        Long ticketId = order.getTickets().get(0).getTicketId();
 
-    //     // Act
-    //     reservation.removeTicketFromActiveOrder(order, event, ticketId);
+        // Act
+        reservation.removeTicketFromActiveOrder(order, event, ticketId);
 
-    //     // Assert
-    //     assertTrue(order.getTickets().isEmpty());
+        // Assert
+        assertTrue(order.getTickets().isEmpty());
 
-    //     assertEquals(
-    //             SeatStatus.AVAILABLE,
-    //             event.getSeatStatus(areaId, new SeatPosition(1, 1))
-    //     );
-    // }
+        assertEquals(
+                SeatStatus.AVAILABLE,
+                event.getSeatStatus(areaId, new SeatPosition(1, 1))
+        );
+    }
+
+    @Test
+        public void testSelectSameSeatTwice_WhenSeatAlreadyReserved_ThenSecondSelectionFailsAndSeatRemainsReserved() {
+        // Arrange
+        Long eventId = 100L;
+        Long areaId = 1L;
+
+        Reservation reservation = new Reservation();
+        Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
+
+        ActiveOrder firstOrder = new ActiveOrder(1L, "token-1", 1L, eventId);
+        ActiveOrder secondOrder = new ActiveOrder(2L, "token-2", 2L, eventId);
+
+        reservation.selectSeatTicket(
+                firstOrder,
+                event,
+                areaId,
+                new seatPositionDTO(1, 1)
+        );
+
+        // Act + Assert
+        assertThrows(
+                IllegalStateException.class,
+                () -> reservation.selectSeatTicket(
+                        secondOrder,
+                        event,
+                        areaId,
+                        new seatPositionDTO(1, 1)
+                )
+        );
+
+        assertEquals(1, firstOrder.getTickets().size());
+        assertTrue(secondOrder.getTickets().isEmpty());
+
+        assertEquals(
+                SeatStatus.RESERVED,
+                event.getSeatStatus(areaId, new SeatPosition(1, 1))
+        );
+        }
 
    private Event createActiveEventWithSeatingAndStandingAreas(Long eventId) {
         Event event = new Event(
