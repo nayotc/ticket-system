@@ -251,4 +251,68 @@ public class MembershipDomainService {
         }
     }
 
+    public void transferAppointees(Member resigningMember, Member newAppointer, Long companyId) throws Exception {
+        CompanyRole resigningRole = resigningMember.getRoleInCompany(companyId);
+        CompanyRole newAppointerRole = newAppointer.getRoleInCompany(companyId);
+
+        if (resigningRole instanceof Owner) {
+            Owner resigningOwner = (Owner) resigningRole;
+            // Use a copy to avoid ConcurrentModificationException during iteration
+            Set<Long> appointeesIds = new java.util.HashSet<>(resigningOwner.getAppointeesMemberIds());
+
+            for (Long appointeeId : appointeesIds) {
+                Member appointee = userRepository.getMemberById(appointeeId);
+                if (appointee != null) {
+                    CompanyRole appointeeRole = appointee.getRoleInCompany(companyId);
+                    
+                    // Update the subordinate's record to point to the new appointer
+                    if (appointeeRole instanceof Manager) {
+                        ((Manager) appointeeRole).setAppointer(newAppointer.getId());
+                    } else if (appointeeRole instanceof Owner) {
+                        ((Owner) appointeeRole).setAppointer(newAppointer.getId());
+                    }
+                    
+                    // Add the subordinate to the new appointer's list using existing domain logic
+                    addNewAppointeeToAppointer(newAppointerRole, appointeeId);
+                    userRepository.updateMember(appointee);
+                }
+            }
+            resigningOwner.getAppointeesMemberIds().clear();
+        }
+        else {
+            throw new Exception("Only Owner's appointees can be transfer.");
+        }
+    }
+
+    public boolean validateRemoveOwnerAssignment(Member appointer, Member appointee, Company company) throws Exception {
+        Long companyId = company.getId();
+        CompanyRole removedRole = appointee.getRoleInCompany(companyId);
+        CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
+
+        if (appointerRole == null) {
+            throw new Exception("You do not have a role in this company.");
+        }
+        if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
+            throw new Exception("Your role is not active yet. You cannot update others permissions.");
+        }
+        if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
+            throw new Exception("Only Owners and Founders can remove owner assignment.");
+        }
+        if (removedRole == null) {
+            throw new Exception("The target user does not have a role in this company.");
+        }
+        if (!(removedRole instanceof Owner)) {
+            throw new Exception("The target user is not an Owner.");
+        }
+        if (!java.util.Objects.equals(getAppointerId(appointee, companyId), appointer.getId())) {
+            throw new Exception("You are not the appointer of the specified user");
+        }
+        
+        // Removed the company tree update. Only transferring appointees and deleting the role.
+        transferAppointees(appointee, appointer, companyId);
+        company.removeUserFromAllRoles(appointee.getId());
+        deleteAppointeeFromAppointer(appointerRole, appointee.getId());
+        return appointee.deleteRoleInCompany(companyId);        
+    }
+
 }
