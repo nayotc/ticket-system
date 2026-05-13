@@ -11,13 +11,14 @@ public class OrderDTO {
     private Long memberId;
     private Long companyId;
     private Long managedByMemberId;
+    private Long eventId;
 
     //for json 
     public OrderDTO() {
     }
 
     public OrderDTO(Long purchaseId, List<PurchaseDTO> tickets, String eventName, 
-                    String location, Long memberId, Long companyId, Long managedByMemberId) {
+                    String location, Long memberId, Long companyId, Long managedByMemberId, Long eventId) {
         this.purchaseId = purchaseId;
         this.tickets = tickets;
         this.eventName = eventName;
@@ -25,6 +26,7 @@ public class OrderDTO {
         this.memberId = memberId;
         this.companyId = companyId;
         this.managedByMemberId = managedByMemberId;
+        this.eventId = eventId;
     }
 
     public Long getPurchaseId() {
@@ -77,6 +79,9 @@ public class OrderDTO {
 
     public Long getManagedByMemberId() {
         return managedByMemberId;
+    }
+    public Long getEventId(){
+        return eventId;
     }
 
     public void setManagedByMemberId(Long managedByMemberId) {

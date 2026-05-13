@@ -14,10 +14,10 @@ public class PurchaseTest {
     public void GivenExternalList_WhenPurchaseCreated_ThenInternalListNotModifiedByExternalChanges() {
         // Arrange (Setup)
         List<PurchasedTicket> originalList = new ArrayList<>();
-        PurchasedTicket ticket = new PurchasedTicket(1, 101, 1, 1, 150.0,"SECURE-BARCODE-123");
+        PurchasedTicket ticket = new PurchasedTicket(1, 1, 1, 150.0,"SECURE-BARCODE-123");
         originalList.add(ticket);
         
-        Purchase purchase = new Purchase(1L, originalList, "Rock Concert", "Tel Aviv", 10L, 5L, 1L);
+        Purchase purchase = new Purchase(1L, originalList, "Rock Concert", "Tel Aviv", 10L, 5L, 1L, 101L);
 
         // Act (Invocation)
 
@@ -32,8 +32,8 @@ public class PurchaseTest {
     public void GivenPurchase_WhenGetTicketsCalled_ThenReturnedListModificationsDoNotAffectPurchase() {
         // Arrange (Setup)
         List<PurchasedTicket> originalList = new ArrayList<>();
-        originalList.add(new PurchasedTicket(1, 101, 1, 1, 150.0, "SECURE-BARCODE-123"));
-        Purchase purchase = new Purchase(1L, originalList, "Rock Concert", "Tel Aviv", 10L, 5L, 1L);
+        originalList.add(new PurchasedTicket(1, 1, 1, 150.0, "SECURE-BARCODE-123"));
+        Purchase purchase = new Purchase(1L, originalList, "Rock Concert", "Tel Aviv", 10L, 5L, 1L, 101L);
 
         // Act (Invocation)
         List<PurchasedTicket> retrievedList = purchase.getTickets();

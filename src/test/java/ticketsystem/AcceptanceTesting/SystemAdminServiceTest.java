@@ -244,29 +244,29 @@ public class SystemAdminServiceTest {
       
         Purchase purchase1 = new Purchase(
             10L, 
-            Arrays.asList(new PurchasedTicket(401, 60, 1, 1, 200.0, "BARCODE_A")), 
+            Arrays.asList(new PurchasedTicket(401, 1, 1, 200.0, "BARCODE_A")), 
             "Jazz Festival", 
             "Shuni", 
             buyer1_Id, 
-            50L, 4L
+            50L, 4L, 60L
         );
         
         Purchase purchase2 = new Purchase(
             11L, 
-            Arrays.asList(new PurchasedTicket(402, 60, 1, 2, 200.0, "BARCODE_B")), 
+            Arrays.asList(new PurchasedTicket(402, 1, 2, 200.0, "BARCODE_B")), 
             "Jazz Festival", 
             "Shuni", 
             buyer1_Id, 
-            50L, 4L
+            50L, 4L, 60L
         );
         
         Purchase purchase3 = new Purchase(
             12L, 
-            Arrays.asList(new PurchasedTicket(403, 61, 5, 5, 150.0, "BARCODE_C")), 
+            Arrays.asList(new PurchasedTicket(403, 5, 5, 150.0, "BARCODE_C")), 
             "Rock Concert", 
             "Barby", 
             buyer2_Id, 
-            50L, 4L
+            50L, 4L, 61L
         );
 
         historyRepo.addPurchase(purchase1);
@@ -345,29 +345,31 @@ public class SystemAdminServiceTest {
         //create purchases for the same company but different events, to check the grouping by both company and event name
         Purchase purchase1 = new Purchase(
             4L, 
-            Arrays.asList(new PurchasedTicket(301, 52, 10, 5, 400.0, "VIP_BARCODE")), 
+            Arrays.asList(new PurchasedTicket(301, 10, 5, 400.0, "VIP_BARCODE")), 
             event1_Name, 
             "Expo TLV", 
             666L, 
-            companyId, 4L
+            companyId, 4L,
+            52L
 
         );
         Purchase purchase2 = new Purchase(
             5L, 
-            Arrays.asList(new PurchasedTicket(302, 52, 10, 6, 400.0, "VIP_BARCODE")), 
+            Arrays.asList(new PurchasedTicket(302, 10, 6, 400.0, "VIP_BARCODE")), 
             event1_Name, 
             "Expo TLV", 
             777L, 
-            companyId, 4L
+            companyId, 4L,
+             52L
         );
         //one purchase for a different event but same company, to check the grouping by event name as well
         Purchase purchase3 = new Purchase(
             6L, 
-            Arrays.asList(new PurchasedTicket(303, 53, 1, 1, 200.0, "REGULAR_BARCODE")), 
+            Arrays.asList(new PurchasedTicket(303, 1, 1, 200.0, "REGULAR_BARCODE")), 
             event2_Name, 
             "Expo TLV", 
             888L, 
-            companyId , 4L
+            companyId , 4L, 53L
         );
 
         historyRepo.addPurchase(purchase1);

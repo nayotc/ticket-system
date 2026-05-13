@@ -12,10 +12,12 @@ public class Purchase {
     private Long memberId;
     private Long companyId;
     private Long managedByMemberId;
+    private Long eventId;
 
     public Purchase() {
     }
-    public Purchase(Long purchaseId, List<PurchasedTicket> tickets, String eventName, String location, Long memberId, Long companyId, Long managedByMemberId) {
+    public Purchase(Long purchaseId, List<PurchasedTicket> tickets, String eventName, String location, Long memberId, Long companyId, 
+        Long managedByMemberId, Long eventId) {
         this.purchaseId = purchaseId;
         this.tickets = new ArrayList<>(tickets);
         this.eventName = eventName;
@@ -23,6 +25,7 @@ public class Purchase {
         this.memberId = memberId;
         this.companyId = companyId;
         this.managedByMemberId = managedByMemberId;
+        this.eventId = eventId;
     }
     public Long getPurchaseId() {
         return purchaseId;
@@ -44,6 +47,9 @@ public class Purchase {
     }
     public String getLocation() {
         return location;
+    }
+    public Long getEventId(){
+        return eventId;
     }
     public List<PurchasedTicket> getTickets() {
         return new ArrayList<>(tickets);

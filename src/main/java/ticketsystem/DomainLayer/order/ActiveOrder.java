@@ -149,17 +149,17 @@ public class ActiveOrder {
     CANCELLED
     }
 
-    public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId) {
+    public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId, Long eventId) {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
-            ticketDTOs.add(new PurchaseDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(),"","" ));
+            ticketDTOs.add(new PurchaseDTO(ticket.getTicketId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(),"","" ));
         }
 
         if(userId!=null)
-            return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId, managedByMemberId);
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId, managedByMemberId, eventId);
         else
-            return new OrderDTO(0L,ticketDTOs,eventName,location ,null ,companyId, managedByMemberId);
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,null ,companyId, managedByMemberId, eventId);
     }
 
      public ActiveOrderDTO toDTO() {

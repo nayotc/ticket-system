@@ -76,8 +76,8 @@ public class HistoryServiceTest {
         long userId = tokenService.extractUserId(validToken);
         
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new PurchaseDTO(10L, 20L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId);
+        ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId, 20L);
         
         historyService.onOrderCompleted(orderDto);
 
@@ -132,8 +132,8 @@ public class HistoryServiceTest {
         long userId = tokenService.extractUserId(validToken);
         
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new PurchaseDTO(10L, 20L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId);
+        ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L);
 
         // --- Act ---
         historyService.onOrderCompleted(orderDto);
@@ -165,7 +165,6 @@ public class HistoryServiceTest {
         List<PurchaseDTO> purchases = new ArrayList<>();
         purchases.add(new PurchaseDTO(
                 10L,
-                20L,
                 1,
                 1,
                 new BigDecimal("150.0"),
@@ -180,7 +179,8 @@ public class HistoryServiceTest {
                 "HaYarkon Park",
                 userId,
                 companyId,
-                userId
+                userId, 
+                20L
 
         );
     }
@@ -240,7 +240,6 @@ public class HistoryServiceTest {
         for (BigDecimal price : ticketPrices) {
             purchases.add(new PurchaseDTO(
                     ticketId++,
-                    20L,
                     1,
                     1,
                     price,
@@ -256,7 +255,8 @@ public class HistoryServiceTest {
                 "HaYarkon Park",
                 buyerMemberId,
                 companyId,
-                managedByMemberId
+                managedByMemberId,
+                20L
         );
     }
     private long createActiveManagerUnderFounder(long founderId, long companyId, String username) {
@@ -437,7 +437,6 @@ public class HistoryServiceTest {
         List<PurchaseDTO> tickets = new ArrayList<>();
         tickets.add(new PurchaseDTO(
                 10L,
-                20L,
                 1,
                 1,
                 new BigDecimal("100.0"),
@@ -446,7 +445,6 @@ public class HistoryServiceTest {
         ));
         tickets.add(new PurchaseDTO(
                 11L,
-                20L,
                 1,
                 2,
                 new BigDecimal("150.0"),
@@ -465,8 +463,9 @@ public class HistoryServiceTest {
                 "HaYarkon Park",
                 buyerId,
                 company.getId(),
-                ownerId // managedByMemberId - should come from the event creator in the real flow
-        );
+                ownerId,// managedByMemberId - should come from the event creator in the real flow
+                20L
+            );
 
         // --- When (Act) ---
         historyService.onOrderCompleted(completedOrder);

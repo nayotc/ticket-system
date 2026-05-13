@@ -218,7 +218,7 @@ public class ReservationService{
             }
     
             try {
-                OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId(), event.getOpenedBy());
+                OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId(), event.getOpenedBy(), event.getId());
                 for(PurchaseDTO purchesDTO : orderDTO.getTickets()) {
                     String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(),order.getEventId(),order.getUserId());
                     purchesDTO.setSecureBarcode(barcode);
