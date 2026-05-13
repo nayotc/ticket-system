@@ -24,15 +24,19 @@ public class HistoryRepository implements IHistoryRepository {
         this.purchasesByCompanyId = new ConcurrentHashMap<>();
     }
 
-
-
     @Override
     public void addPurchase(Purchase purchase) {
         allPurchases.put(purchase.getPurchaseId(), purchase);
-        purchasesByMemberId.computeIfAbsent(purchase.getMemberId(), k -> new CopyOnWriteArrayList<>())
-                       .add(purchase);
-        purchasesByCompanyId.computeIfAbsent(purchase.getCompanyId(), k -> new CopyOnWriteArrayList<>())
-                            .add(purchase);
+
+        if (purchase.getMemberId() != null) { //if it is null it is guest purchase and we do not want to add it to the purchasesByMemberId map
+            purchasesByMemberId
+                    .computeIfAbsent(purchase.getMemberId(), k -> new CopyOnWriteArrayList<>())
+                    .add(purchase);//
+        }
+
+        purchasesByCompanyId
+                .computeIfAbsent(purchase.getCompanyId(), k -> new CopyOnWriteArrayList<>())
+                .add(purchase);
     }
 
     @Override

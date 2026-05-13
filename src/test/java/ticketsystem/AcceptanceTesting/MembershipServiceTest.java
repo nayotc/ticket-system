@@ -47,17 +47,19 @@ public class MembershipServiceTest {
     private Member member;
     private final Long memberId = 103L;
 
+    private Member ownerMember;
+    private final Long ownerId = 105L;
+
     // Tokens will be generated dynamically using the real TokenService
     private String appointerToken;
     private String appointeeToken;
     private String managerToken;
+    private String ownerToken;
 
     @BeforeEach
     void setUp() {
         // 1. Initialize Concrete Repositories and Services
         ITokenRepository tokenRepo = new TokenRepository();
-        
-        // Initialize TokenService with a long dummy secret key required for JWT signing
         this.tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo);
         this.userRepository = new UserRepository();
         this.companyRepository = new CompanyRepository();
@@ -67,15 +69,12 @@ public class MembershipServiceTest {
 
         // 2. Setup Company state
         testCompany = new Company("BGU Productions", founderId, new PurchasePolicy(), new DiscountPolicy());
-        testCompany.setId(companyId);
-        companyRepository.save(testCompany);
+        try { testCompany.setId(companyId); } catch (Exception e) {}
 
         // 3. Setup Founder - Active state
         founderMember = new Member(founderId, "FounderUser");
         founderMember.addFounderRole(companyId);
         userRepository.addRegisteredMember(founderId, founderMember, "password123");
-        
-        // Generate a REAL JWT token using the service
         appointerToken = tokenService.addActiveSession(founderMember);
 
         // 4. Setup Manager - Pre-existing active role
@@ -83,22 +82,29 @@ public class MembershipServiceTest {
         Set<Permission> managerPerms = new HashSet<>();
         managerPerms.add(Permission.MANAGE_INQUIRIES);
         managerMember.addManagerRole(companyId, founderId, managerPerms);
-        
-        CompanyRole managerRole = managerMember.getRoleInCompany(companyId);
-        if (managerRole instanceof Manager) {
-            // Role starts PENDING by default, we must activate it for the test
-            managerRole.setStatus(RoleStatus.ACTIVE);
-        }
+        managerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(managerId, managerMember, "password123");
-        
-        // Generate a REAL JWT token for the manager
         managerToken = tokenService.addActiveSession(managerMember);
+        
+        // SYNC WITH COMPANY TREE
+        testCompany.registerNewAppointment(founderId, managerId, "MANAGER");
 
-        // 5. Setup Regular Member - Starting with no role
+        // 5. Setup Owner - Specifically for UC 4.9 (Remove Owner) and 4.10
+        ownerMember = new Member(ownerId, "OwnerUser");
+        ownerMember.addOwnerRole(companyId, founderId);
+        ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(ownerId, ownerMember, "password123");
+        ownerToken = tokenService.addActiveSession(ownerMember);
+        
+        // SYNC WITH COMPANY TREE
+        testCompany.registerNewAppointment(founderId, ownerId, "OWNER");
+
+        // Save company after all initial appointments
+        companyRepository.save(testCompany);
+
+        // 6. Setup Regular Member - Starting with no role (For UC 4.7, 4.8)
         member = new Member(memberId, "PlainMember");
         userRepository.addRegisteredMember(memberId, member, "password123");
-        
-        // Generate a REAL JWT token for the regular member
         appointeeToken = tokenService.addActiveSession(member);
     }
     
@@ -281,5 +287,54 @@ public class MembershipServiceTest {
         });
 
         assertEquals("You are not the appointer of the specified user", exception.getMessage());
+    }
+
+    // =========================================================================================
+    // Use Case 4.9: Remove Owner Assignment
+    // =========================================================================================
+
+    // =========================================================================================
+    // Use Case 4.9: Remove Owner Assignment
+    // =========================================================================================
+
+    @Test
+    public void GivenValidDetails_WhenRemoveOwnerAssignment_ThenReturnsTrueAndUpdatesDB() throws Exception {
+        // Arrange is fully handled by setUp()! ownerMember (105L) is already an active Owner in the company tree.
+
+        // Act: Founder attempts to remove the Owner
+        boolean result = membershipService.removeOwnerAssignment(appointerToken, companyId, ownerId);
+
+        // Assert
+        assertTrue(result, "Service should return true upon successful removal.");
+        assertNull(userRepository.getMemberById(ownerId).getRoleInCompany(companyId), "Target's role should be removed from the repository.");
+    }
+
+    @Test
+    public void GivenInvalidToken_WhenRemoveOwnerAssignment_ThenThrowsException() {
+        Exception ex = assertThrows(Exception.class, () -> {
+            membershipService.removeOwnerAssignment("invalid-token", companyId, ownerId);
+        });
+        assertNotNull(ex);
+    }
+
+    @Test
+    public void GivenTargetMemberNotFound_WhenRemoveOwnerAssignment_ThenThrowsException() {
+        Exception ex = assertThrows(Exception.class, () -> {
+            membershipService.removeOwnerAssignment(appointerToken, companyId, 9999L);
+        });
+        assertEquals("Target Member not found.", ex.getMessage());
+    }
+
+    @Test
+    public void GivenNotTheAppointer_WhenRemoveOwnerAssignment_ThenThrowsException() throws Exception {
+        // Arrange: Make 'member' an Owner appointed by a DIFFERENT user (888L)
+        member.addOwnerRole(companyId, 888L);
+        userRepository.updateMember(member);
+
+        // Act & Assert: Founder (100L) tries to remove an Owner appointed by 888L
+        Exception ex = assertThrows(Exception.class, () -> {
+            membershipService.removeOwnerAssignment(appointerToken, companyId, memberId);
+        });
+        assertEquals("You are not the appointer of the specified user", ex.getMessage());
     }
 }

@@ -10,19 +10,21 @@ public class OrderDTO {
     private String location;
     private Long memberId;
     private Long companyId;
+    private Long managedByMemberId;
 
     //for json 
     public OrderDTO() {
     }
 
     public OrderDTO(Long purchaseId, List<PurchaseDTO> tickets, String eventName, 
-                    String location, Long memberId, Long companyId) {
+                    String location, Long memberId, Long companyId, Long managedByMemberId) {
         this.purchaseId = purchaseId;
         this.tickets = tickets;
         this.eventName = eventName;
         this.location = location;
         this.memberId = memberId;
         this.companyId = companyId;
+        this.managedByMemberId = managedByMemberId;
     }
 
     public Long getPurchaseId() {
@@ -71,5 +73,13 @@ public class OrderDTO {
 
     public void setCompanyId(Long companyId) {
         this.companyId = companyId;
+    }
+
+    public Long getManagedByMemberId() {
+        return managedByMemberId;
+    }
+
+    public void setManagedByMemberId(Long managedByMemberId) {
+        this.managedByMemberId = managedByMemberId;
     }
 }

@@ -77,6 +77,37 @@ public class MembershipService {
     }
 
     /**
+     * Use-case 4.9: Remove owner assignment
+     */
+    public boolean removeOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        Long appointerId = tokenService.extractUserId(sessionToken);
+        Member appointer = userRepository.getMemberById(appointerId);
+        if (appointer == null) {
+            throw new Exception("Appointer not found.");
+        }
+
+        Member targetMember = userRepository.getMemberById(targetMemberId);
+        if (targetMember == null) {
+            throw new Exception("Target Member not found.");
+        }
+
+        Company company = companyRepository.findById(companyId).orElseThrow(() -> new Exception("Company not found."));
+        
+        // Passing companyId directly instead of querying the Company object
+        membershipDomain.validateRemoveOwnerAssignment(appointer, targetMember, company);
+
+        userRepository.updateMember(appointer);
+        userRepository.updateMember(targetMember);
+        companyRepository.save(company);
+        
+        return true;
+    }
+
+    /**
      * Use Case 4.11: Update manager permissions
      */
     public boolean updateManagerPermissions(String sessionToken, Long companyId, Long managerId, Set<Permission> permissions) throws Exception {
