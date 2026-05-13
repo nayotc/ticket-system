@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.internal.matchers.Not;
 
+import ticketsystem.ApplicationLayer.NotificationsService;
 import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
@@ -30,6 +32,7 @@ public class UserOrderIntegrationTests {
     private LogbackSystemLogger logger;
     private OrderRepository orderRepository;
     private OrderService orderService;
+    private NotificationsService notification;
 
     @BeforeEach
     public void setup() {
@@ -39,7 +42,7 @@ public class UserOrderIntegrationTests {
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         userService = new UserService(userRepository, tokenService, logger);
         orderRepository = new OrderRepository();
-        orderService = new OrderService(orderRepository, tokenService, logger);
+        orderService = new OrderService(orderRepository, tokenService, logger, notification);
         userService.addUserLoginListener(orderService);
     }
 

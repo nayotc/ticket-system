@@ -93,7 +93,8 @@ public class EventService {
                 throw new IllegalArgumentException("Company ID cannot be null");
             }
             // precondition: user has permission to update event
-            if (!membershipDomain.validatePermission(SessionId, eventDTO.companyId(), "event:update")) {
+            Long userId = tokenService.extractUserId(SessionId);
+            if (!membershipDomain.validatePermission(userId, eventDTO.companyId(), Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to update event");
             }
             // precondition: event exists
@@ -203,7 +204,8 @@ public class EventService {
             }
             Long companyId = event.getCompanyId();
             // precondition: user has permission to remove an event
-            if (!membershipDomain.validatePermission(sessionId, companyId, "event:remove")) {
+            Long userId = tokenService.extractUserId(sessionId);
+            if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to remove an event");
             }
             eventStatus status = event.getStatus();
@@ -253,7 +255,8 @@ public class EventService {
             }
             Long companyId = event.getCompanyId();
             // precondition: user has permission to cancel an event
-            if (!membershipDomain.validatePermission(sessionId, companyId, "event:cancel")) {
+            Long userId = tokenService.extractUserId(sessionId);
+            if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to cancel an event");
             }
             if (event.getStatus() == eventStatus.CANCELLED) {

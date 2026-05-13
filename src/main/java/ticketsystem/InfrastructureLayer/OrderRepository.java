@@ -148,16 +148,4 @@ public class OrderRepository implements IOrderRepository {
     public void clear() {
         orders.clear();
     }
-
-    public List<ActiveOrder> getActiveOrdersByEventId(Long eventId) {
-        List<ActiveOrder> activeOrders = new ArrayList<>();
-
-        for (ActiveOrder order : orders.values()) {
-            if (order.getEventId().equals(eventId)) {
-                activeOrders.add(order);
-            }
-        }
-
-        return activeOrders;
-    }
 }

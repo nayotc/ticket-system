@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -16,6 +18,7 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +26,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.DTO.Event.EventDTO;
+import ticketsystem.DTO.Event.EventMapDTO;
+import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
@@ -31,15 +37,6 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Permission;
-import ticketsystem.DomainLayer.MembershipDomainService;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 public class EventServiceTest {
 
@@ -51,6 +48,9 @@ public class EventServiceTest {
 
     @Mock
     private MembershipDomainService mockMembershipDomainService;
+
+    @Mock
+    private EventUpdatesListener mockEventUpdatesListener;
 
     private EventService eventService;
 
@@ -68,17 +68,21 @@ public class EventServiceTest {
                 mockTokenService,
                 mockMembershipDomainService
         );
-            
 
         when(mockTokenService.validateToken(validSessionId)).thenReturn(true);
-        when(mockTokenService.validateToken(validSessionId)).thenReturn(true);
-        // FIX: Extracting the user ID must be mocked in setUp so all validation tests know who the user is!
         when(mockTokenService.extractUserId(validSessionId)).thenReturn(validUserId);
-        
+
         when(mockMembershipDomainService.validatePermission(
-            validUserId,
-            validCompanyId,
-            Permission.MANAGE_EVENT_INVENTORY)).thenReturn(true);
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        )).thenReturn(true);
+
+        when(mockMembershipDomainService.validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.CONFIGURE_HALL_AND_MAP
+        )).thenReturn(true);
     }
 
     private Event createEvent(Event.eventStatus status) {
@@ -101,45 +105,52 @@ public class EventServiceTest {
     }
 
     private EventDTO createEventDTO(
-        Long id,
-        String name,
-        Long companyId,
-        LocalDateTime date,
-        EventLocation location,
-        Long trafficThreshold,
-        EventCategory category,
-        String artistName,
-        BigDecimal ticketPrice,
-        int version
-) {
-    return new EventDTO(
-            id,
-            name,
-            companyId,
-            validUserId,
-            date,
-            location == null ? null : location.name(),
-            trafficThreshold,
-            Event.eventStatus.DRAFT.name(),
-            category == null ? null : category.name(),
-            artistName,
-            ticketPrice,
-            null,       // mapSize
-            0.0,        // rate
-            false,      // soldOut
-            false,      // overloaded
-            0,          // activeReservationsCount
-            version,
-            null        // map
-    );
-
-        
+            Long id,
+            String name,
+            Long companyId,
+            LocalDateTime date,
+            EventLocation location,
+            Long trafficThreshold,
+            EventCategory category,
+            String artistName,
+            BigDecimal ticketPrice,
+            int version
+    ) {
+        return new EventDTO(
+                id,
+                name,
+                companyId,
+                validUserId,
+                date,
+                location == null ? null : location.name(),
+                trafficThreshold,
+                Event.eventStatus.DRAFT.name(),
+                category == null ? null : category.name(),
+                artistName,
+                ticketPrice,
+                null,
+                0.0,
+                false,
+                false,
+                0,
+                version,
+                null
+        );
     }
+
+    private EventMapDTO createMapDTO() {
+        return new EventMapDTO(
+                new PairDTO<>(10, 10),
+                List.of(),
+                false
+        );
+    }
+
+    // ------------------ Insert Event Tests ------------------
 
     @Test
     void GivenValidTokenAndPermission_WhenInsertEvent_ThenAddEventOnce() {
-        when(mockTokenService.extractUserId(validSessionId)).thenReturn(validUserId);
-        when(mockEventRepository.getNextId()).thenReturn(1L);
+        when(mockEventRepository.getNextId()).thenReturn(validEventId);
 
         LocalDateTime futureDate = LocalDateTime.now().plusDays(1);
 
@@ -158,7 +169,7 @@ public class EventServiceTest {
         ));
 
         ArgumentCaptor<Event> eventCaptor = ArgumentCaptor.forClass(Event.class);
-        verify(mockEventRepository, times(1)).addEvent(eventCaptor.capture());
+        verify(mockEventRepository).addEvent(eventCaptor.capture());
 
         Event createdEvent = eventCaptor.getValue();
 
@@ -173,9 +184,14 @@ public class EventServiceTest {
         assertEquals(Event.eventStatus.DRAFT, createdEvent.getStatus());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
         verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
         verify(mockEventRepository).getNextId();
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -204,17 +220,25 @@ public class EventServiceTest {
         assertEquals("Invalid session ID", exception.getMessage());
 
         verify(mockTokenService).validateToken(sessionId);
-        verify(mockMembershipDomainService, never()).validatePermission(any(), any(), any());
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenInvalidPermission_WhenInsertEvent_ThenThrowException() {
         when(mockMembershipDomainService.validatePermission(
-            validUserId,
-            validCompanyId,
-            Permission.MANAGE_EVENT_INVENTORY)).thenReturn(false);
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        )).thenReturn(false);
+
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -235,19 +259,19 @@ public class EventServiceTest {
         assertEquals("User does not have permission to create an event", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenEmptyEventName_WhenInsertEvent_ThenThrowException() {
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:create"
-        )).thenReturn(true);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -268,19 +292,19 @@ public class EventServiceTest {
         assertEquals("Event name cannot be null or empty", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenPastDate_WhenInsertEvent_ThenThrowException() {
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:create"
-        )).thenReturn(true);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -301,19 +325,19 @@ public class EventServiceTest {
         assertEquals("Event date must be in the future", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenNullLocation_WhenInsertEvent_ThenThrowException() {
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:create"
-        )).thenReturn(true);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -334,19 +358,19 @@ public class EventServiceTest {
         assertEquals("Event location cannot be null", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenInvalidTrafficThreshold_WhenInsertEvent_ThenThrowException() {
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:create"
-        )).thenReturn(true);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -367,19 +391,19 @@ public class EventServiceTest {
         assertEquals("Traffic threshold must be a positive number", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenNullCategory_WhenInsertEvent_ThenThrowException() {
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:create"
-        )).thenReturn(true);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -400,19 +424,19 @@ public class EventServiceTest {
         assertEquals("Event category cannot be null", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenEmptyArtist_WhenInsertEvent_ThenThrowException() {
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:create"
-        )).thenReturn(true);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -433,19 +457,19 @@ public class EventServiceTest {
         assertEquals("Artist name cannot be null or empty", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenNegativePrice_WhenInsertEvent_ThenThrowException() {
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:create"
-        )).thenReturn(true);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -466,19 +490,19 @@ public class EventServiceTest {
         assertEquals("Price must be a non-negative number", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenInvalidMapHeight_WhenInsertEvent_ThenThrowException() {
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:create"
-        )).thenReturn(true);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -499,19 +523,19 @@ public class EventServiceTest {
         assertEquals("Map size must be positive", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
     @Test
     void GivenInvalidMapWidth_WhenInsertEvent_ThenThrowException() {
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:create"
-        )).thenReturn(true);
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.insertEvent(
@@ -532,8 +556,14 @@ public class EventServiceTest {
         assertEquals("Map size must be positive", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:create");
-        verify(mockEventRepository, never()).addEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).addEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -556,12 +586,6 @@ public class EventServiceTest {
                 existingEvent.getVersion()
         );
 
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:update"
-        )).thenReturn(true);
-
         when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
 
         Boolean result = eventService.updateEvent(validSessionId, eventDTO);
@@ -581,9 +605,71 @@ public class EventServiceTest {
         assertEquals(0, BigDecimal.valueOf(80).compareTo(updatedEvent.getTicketPrice()));
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:update");
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
         verify(mockEventRepository).getEventById(validEventId);
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenSuccessfulUpdateWithNameDateLocation_WhenUpdateEvent_ThenNotifyListeners() {
+        Event existingEvent = createEvent(Event.eventStatus.DRAFT);
+        eventService.addEventUpdatesListener(mockEventUpdatesListener);
+
+        EventDTO eventDTO = createEventDTO(
+                validEventId,
+                "Updated Event",
+                validCompanyId,
+                LocalDateTime.now().plusDays(20),
+                EventLocation.NEW_YORK,
+                null,
+                null,
+                null,
+                null,
+                existingEvent.getVersion()
+        );
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
+
+        Boolean result = eventService.updateEvent(validSessionId, eventDTO);
+
+        assertTrue(result);
+
+        verify(mockEventUpdatesListener).onEventUpdated(eq(validEventId), anyString());
+        verify(mockEventRepository).updateEvent(existingEvent);
+    }
+
+    @Test
+    void GivenUpdateWithoutNameDateLocation_WhenUpdateEvent_ThenDoNotNotifyListeners() {
+        Event existingEvent = createEvent(Event.eventStatus.DRAFT);
+        eventService.addEventUpdatesListener(mockEventUpdatesListener);
+
+        EventDTO eventDTO = createEventDTO(
+                validEventId,
+                null,
+                validCompanyId,
+                null,
+                null,
+                300L,
+                EventCategory.CONCERT,
+                "Changed Artist",
+                BigDecimal.valueOf(90),
+                existingEvent.getVersion()
+        );
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
+
+        Boolean result = eventService.updateEvent(validSessionId, eventDTO);
+
+        assertTrue(result);
+
+        verify(mockEventUpdatesListener, never()).onEventUpdated(anyLong(), anyString());
+        verify(mockEventRepository).updateEvent(existingEvent);
     }
 
     @Test
@@ -612,8 +698,14 @@ public class EventServiceTest {
         assertEquals("Invalid session ID", exception.getMessage());
 
         verify(mockTokenService).validateToken(sessionId);
-        verify(mockMembershipDomainService, never()).validatePermission(any(), any(), any());
-        verify(mockEventRepository, never()).updateEvent(any());
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -627,8 +719,14 @@ public class EventServiceTest {
         assertEquals("Event data cannot be null", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService, never()).validatePermission(any(), any(), any());
-        verify(mockEventRepository, never()).updateEvent(any());
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -655,8 +753,14 @@ public class EventServiceTest {
         assertEquals("Event ID cannot be null", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService, never()).validatePermission(any(), any(), any());
-        verify(mockEventRepository, never()).updateEvent(any());
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -683,8 +787,14 @@ public class EventServiceTest {
         assertEquals("Company ID cannot be null", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService, never()).validatePermission(any(), any(), any());
-        verify(mockEventRepository, never()).updateEvent(any());
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -704,9 +814,9 @@ public class EventServiceTest {
         );
 
         when(mockMembershipDomainService.validatePermission(
-                validSessionId,
+                validUserId,
                 validCompanyId,
-                "event:update"
+                Permission.MANAGE_EVENT_INVENTORY
         )).thenReturn(false);
 
         IllegalArgumentException exception = assertThrows(
@@ -717,8 +827,14 @@ public class EventServiceTest {
         assertEquals("User does not have permission to update event", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:update");
-        verify(mockEventRepository, never()).updateEvent(any());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -737,12 +853,6 @@ public class EventServiceTest {
                 0
         );
 
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:update"
-        )).thenReturn(true);
-
         when(mockEventRepository.getEventById(validEventId)).thenReturn(null);
 
         IllegalArgumentException exception = assertThrows(
@@ -753,9 +863,15 @@ public class EventServiceTest {
         assertEquals("Event not found", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:update");
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
         verify(mockEventRepository).getEventById(validEventId);
-        verify(mockEventRepository, never()).updateEvent(any());
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -774,13 +890,13 @@ public class EventServiceTest {
                 EventCategory.CONCERT,
                 "Updated Artist",
                 BigDecimal.valueOf(80),
-                0
+                existingEvent.getVersion()
         );
 
         when(mockMembershipDomainService.validatePermission(
-                validSessionId,
+                validUserId,
                 differentCompanyId,
-                "event:update"
+                Permission.MANAGE_EVENT_INVENTORY
         )).thenReturn(true);
 
         when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
@@ -793,9 +909,15 @@ public class EventServiceTest {
         assertEquals("Cannot change event's company", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, differentCompanyId, "event:update");
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                differentCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
         verify(mockEventRepository).getEventById(validEventId);
-        verify(mockEventRepository, never()).updateEvent(any());
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -817,12 +939,6 @@ public class EventServiceTest {
                 0
         );
 
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:update"
-        )).thenReturn(true);
-
         when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
 
         IllegalStateException exception = assertThrows(
@@ -833,9 +949,15 @@ public class EventServiceTest {
         assertEquals("Event was updated by another request", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:update");
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
         verify(mockEventRepository).getEventById(validEventId);
-        verify(mockEventRepository, never()).updateEvent(any());
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -856,12 +978,6 @@ public class EventServiceTest {
                 existingEvent.getVersion()
         );
 
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:update"
-        )).thenReturn(true);
-
         when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
 
         IllegalArgumentException exception = assertThrows(
@@ -872,9 +988,361 @@ public class EventServiceTest {
         assertEquals("Event date must be in the future", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:update");
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
         verify(mockEventRepository).getEventById(validEventId);
-        verify(mockEventRepository, never()).updateEvent(any());
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenEmptyName_WhenUpdateEvent_ThenThrowException() {
+        Event existingEvent = createEvent(Event.eventStatus.DRAFT);
+
+        EventDTO eventDTO = createEventDTO(
+                validEventId,
+                " ",
+                validCompanyId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                existingEvent.getVersion()
+        );
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(validSessionId, eventDTO)
+        );
+
+        assertEquals("Event name cannot be null or empty", exception.getMessage());
+
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+    }
+
+    @Test
+    void GivenInvalidTrafficThreshold_WhenUpdateEvent_ThenThrowException() {
+        Event existingEvent = createEvent(Event.eventStatus.DRAFT);
+
+        EventDTO eventDTO = createEventDTO(
+                validEventId,
+                null,
+                validCompanyId,
+                null,
+                null,
+                0L,
+                null,
+                null,
+                null,
+                existingEvent.getVersion()
+        );
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(validSessionId, eventDTO)
+        );
+
+        assertEquals("Traffic threshold must be a positive number", exception.getMessage());
+
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+    }
+
+    @Test
+    void GivenEmptyArtist_WhenUpdateEvent_ThenThrowException() {
+        Event existingEvent = createEvent(Event.eventStatus.DRAFT);
+
+        EventDTO eventDTO = createEventDTO(
+                validEventId,
+                null,
+                validCompanyId,
+                null,
+                null,
+                null,
+                null,
+                " ",
+                null,
+                existingEvent.getVersion()
+        );
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(validSessionId, eventDTO)
+        );
+
+        assertEquals("Artist name cannot be null or empty", exception.getMessage());
+
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+    }
+
+    @Test
+    void GivenNegativePrice_WhenUpdateEvent_ThenThrowException() {
+        Event existingEvent = createEvent(Event.eventStatus.DRAFT);
+
+        EventDTO eventDTO = createEventDTO(
+                validEventId,
+                null,
+                validCompanyId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                BigDecimal.valueOf(-1),
+                existingEvent.getVersion()
+        );
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.updateEvent(validSessionId, eventDTO)
+        );
+
+        assertEquals("Price must be a non-negative number", exception.getMessage());
+
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+    }
+
+    @Test
+    void GivenActiveEventAndNewTicketPrice_WhenUpdateEvent_ThenThrowException() {
+        Event existingEvent = createEvent(Event.eventStatus.ACTIVE);
+
+        EventDTO eventDTO = createEventDTO(
+                validEventId,
+                null,
+                validCompanyId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                BigDecimal.valueOf(90),
+                existingEvent.getVersion()
+        );
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(existingEvent);
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> eventService.updateEvent(validSessionId, eventDTO)
+        );
+
+        assertEquals("Cannot change ticket price of an active event", exception.getMessage());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    // ------------------ Define Event Map Tests ------------------
+
+    @Test
+    void GivenValidMap_WhenDefineEventMap_ThenMapIsSavedAndEventBecomesActive() {
+        Event event = createEvent(Event.eventStatus.DRAFT);
+        EventMapDTO mapDTO = createMapDTO();
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+
+        Boolean result = eventService.defineEventMap(validSessionId, validEventId, mapDTO);
+
+        assertTrue(result);
+
+        ArgumentCaptor<Event> eventCaptor = ArgumentCaptor.forClass(Event.class);
+        verify(mockEventRepository).updateEvent(eventCaptor.capture());
+
+        Event updatedEvent = eventCaptor.getValue();
+
+        assertEquals(Event.eventStatus.ACTIVE, updatedEvent.getStatus());
+        assertNotNull(updatedEvent.getMap());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.CONFIGURE_HALL_AND_MAP
+        );
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenInvalidToken_WhenDefineEventMap_ThenThrowException() {
+        String sessionId = "invalid-session";
+        when(mockTokenService.validateToken(sessionId)).thenReturn(false);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.defineEventMap(sessionId, validEventId, createMapDTO())
+        );
+
+        assertEquals("Invalid session ID", exception.getMessage());
+
+        verify(mockTokenService).validateToken(sessionId);
+        verify(mockEventRepository, never()).getEventById(anyLong());
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenEventNotFound_WhenDefineEventMap_ThenThrowException() {
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.defineEventMap(validSessionId, validEventId, createMapDTO())
+        );
+
+        assertEquals("Event not found", exception.getMessage());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenNoPermission_WhenDefineEventMap_ThenThrowException() {
+        Event event = createEvent(Event.eventStatus.DRAFT);
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+        when(mockMembershipDomainService.validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.CONFIGURE_HALL_AND_MAP
+        )).thenReturn(false);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.defineEventMap(validSessionId, validEventId, createMapDTO())
+        );
+
+        assertEquals("User does not have permission to define event map", exception.getMessage());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.CONFIGURE_HALL_AND_MAP
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenNullMapDTO_WhenDefineEventMap_ThenThrowException() {
+        Event event = createEvent(Event.eventStatus.DRAFT);
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.defineEventMap(validSessionId, validEventId, null)
+        );
+
+        assertEquals("Map data cannot be null", exception.getMessage());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.CONFIGURE_HALL_AND_MAP
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    // ------------------ Get Event Map Tests ------------------
+
+    @Test
+    void GivenValidEvent_WhenGetEventMap_ThenReturnMapDTO() {
+        Event event = createEvent(Event.eventStatus.ACTIVE);
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+
+        EventMapDTO result = eventService.getEventMap(validSessionId, validEventId);
+
+        assertNotNull(result);
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenInvalidToken_WhenGetEventMap_ThenThrowException() {
+        String sessionId = "invalid-session";
+        when(mockTokenService.validateToken(sessionId)).thenReturn(false);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.getEventMap(sessionId, validEventId)
+        );
+
+        assertEquals("Invalid session ID", exception.getMessage());
+
+        verify(mockTokenService).validateToken(sessionId);
+        verify(mockEventRepository, never()).getEventById(anyLong());
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenEventNotFound_WhenGetEventMap_ThenThrowException() {
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.getEventMap(validSessionId, validEventId)
+        );
+
+        assertEquals("Event not found", exception.getMessage());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -885,20 +1353,21 @@ public class EventServiceTest {
         Event event = createEvent(Event.eventStatus.INACTIVE);
 
         when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:remove"
-        )).thenReturn(true);
 
         Boolean result = eventService.deleteEvent(validSessionId, validEventId);
 
         assertTrue(result);
 
         verify(mockTokenService).validateToken(validSessionId);
+        verify(mockTokenService).extractUserId(validSessionId);
         verify(mockEventRepository, times(2)).getEventById(validEventId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:remove");
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
         verify(mockEventRepository).deleteEvent(validEventId, event.getVersion());
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -907,20 +1376,21 @@ public class EventServiceTest {
         Event event = createEvent(Event.eventStatus.CANCELLED);
 
         when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:remove"
-        )).thenReturn(true);
 
         Boolean result = eventService.deleteEvent(validSessionId, validEventId);
 
         assertTrue(result);
 
         verify(mockTokenService).validateToken(validSessionId);
+        verify(mockTokenService).extractUserId(validSessionId);
         verify(mockEventRepository, times(2)).getEventById(validEventId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:remove");
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
         verify(mockEventRepository).deleteEvent(validEventId, event.getVersion());
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -937,9 +1407,39 @@ public class EventServiceTest {
         assertEquals("Invalid session ID", exception.getMessage());
 
         verify(mockTokenService).validateToken(sessionId);
-        verify(mockEventRepository, never()).getEventById(any());
-        verify(mockEventRepository, never()).deleteEvent(any(), anyLong());
-        verify(mockMembershipDomainService, never()).validatePermission(any(), any(), any());
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockEventRepository, never()).getEventById(anyLong());
+        verify(mockEventRepository, never()).deleteEvent(anyLong(), anyLong());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenEventDoesNotExist_WhenDeleteEvent_ThenThrowException() {
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.deleteEvent(validSessionId, validEventId)
+        );
+
+        assertEquals("Event does not exist", exception.getMessage());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).deleteEvent(anyLong(), anyLong());
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -949,9 +1449,9 @@ public class EventServiceTest {
 
         when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
         when(mockMembershipDomainService.validatePermission(
-                validSessionId,
+                validUserId,
                 validCompanyId,
-                "event:remove"
+                Permission.MANAGE_EVENT_INVENTORY
         )).thenReturn(false);
 
         IllegalArgumentException exception = assertThrows(
@@ -962,9 +1462,15 @@ public class EventServiceTest {
         assertEquals("User does not have permission to remove an event", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
+        verify(mockTokenService).extractUserId(validSessionId);
         verify(mockEventRepository).getEventById(validEventId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:remove");
-        verify(mockEventRepository, never()).deleteEvent(any(), anyLong());
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).deleteEvent(anyLong(), anyLong());
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -973,11 +1479,6 @@ public class EventServiceTest {
         Event event = createEvent(Event.eventStatus.ACTIVE);
 
         when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:remove"
-        )).thenReturn(true);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -987,9 +1488,15 @@ public class EventServiceTest {
         assertEquals("Only inactive or cancelled events can be removed", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockEventRepository, times(1)).getEventById(validEventId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:remove");
-        verify(mockEventRepository, never()).deleteEvent(any(), anyLong());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).deleteEvent(anyLong(), anyLong());
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }
 
@@ -998,11 +1505,6 @@ public class EventServiceTest {
         Event event = createEvent(Event.eventStatus.DRAFT);
 
         when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
-        when(mockMembershipDomainService.validatePermission(
-                validSessionId,
-                validCompanyId,
-                "event:remove"
-        )).thenReturn(true);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -1012,9 +1514,174 @@ public class EventServiceTest {
         assertEquals("Only inactive or cancelled events can be removed", exception.getMessage());
 
         verify(mockTokenService).validateToken(validSessionId);
-        verify(mockEventRepository, times(1)).getEventById(validEventId);
-        verify(mockMembershipDomainService).validatePermission(validSessionId, validCompanyId, "event:remove");
-        verify(mockEventRepository, never()).deleteEvent(any(), anyLong());
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).deleteEvent(anyLong(), anyLong());
+
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    // ------------------ Cancel Event Tests ------------------
+
+    @Test
+    void GivenActiveEvent_WhenCancelEvent_ThenEventIsCancelledAndUpdated() {
+        Event event = createEvent(Event.eventStatus.ACTIVE);
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+
+        eventService.addEventUpdatesListener(mockEventUpdatesListener);
+
+        Boolean result = eventService.cancelEvent(validSessionId, validEventId);
+
+        assertTrue(result);
+        assertEquals(Event.eventStatus.CANCELLED, event.getStatus());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository).updateEvent(event);
+        verify(mockEventUpdatesListener).onEventCanceled(validEventId);
+
+        verifyNoMoreInteractions(
+                mockEventRepository,
+                mockTokenService,
+                mockMembershipDomainService,
+                mockEventUpdatesListener
+        );
+    }
+
+    @Test
+    void GivenActiveEventAndNoListener_WhenCancelEvent_ThenEventIsCancelledAndUpdated() {
+        Event event = createEvent(Event.eventStatus.ACTIVE);
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+
+        Boolean result = eventService.cancelEvent(validSessionId, validEventId);
+
+        assertTrue(result);
+        assertEquals(Event.eventStatus.CANCELLED, event.getStatus());
+
+        verify(mockEventRepository).updateEvent(event);
+    }
+
+    @Test
+    void GivenInvalidToken_WhenCancelEvent_ThenThrowException() {
+        String sessionId = "invalid-session";
+        when(mockTokenService.validateToken(sessionId)).thenReturn(false);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.cancelEvent(sessionId, validEventId)
+        );
+
+        assertEquals("Invalid session ID", exception.getMessage());
+
+        verify(mockTokenService).validateToken(sessionId);
+        verify(mockEventRepository, never()).getEventById(anyLong());
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenEventDoesNotExist_WhenCancelEvent_ThenThrowException() {
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.cancelEvent(validSessionId, validEventId)
+        );
+
+        assertEquals("Event does not exist", exception.getMessage());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockTokenService, never()).extractUserId(anyString());
+        verify(mockMembershipDomainService, never()).validatePermission(
+                anyLong(),
+                anyLong(),
+                any(Permission.class)
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenNoPermission_WhenCancelEvent_ThenThrowException() {
+        Event event = createEvent(Event.eventStatus.ACTIVE);
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+        when(mockMembershipDomainService.validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        )).thenReturn(false);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.cancelEvent(validSessionId, validEventId)
+        );
+
+        assertEquals("User does not have permission to cancel an event", exception.getMessage());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenAlreadyCancelledEvent_WhenCancelEvent_ThenThrowException() {
+        Event event = createEvent(Event.eventStatus.CANCELLED);
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+
+        eventService.addEventUpdatesListener(mockEventUpdatesListener);
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> eventService.cancelEvent(validSessionId, validEventId)
+        );
+
+        assertEquals("Event is already canceled", exception.getMessage());
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.MANAGE_EVENT_INVENTORY
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
+        verify(mockEventUpdatesListener, never()).onEventCanceled(anyLong());
+
+        verifyNoMoreInteractions(
+                mockEventRepository,
+                mockTokenService,
+                mockMembershipDomainService,
+                mockEventUpdatesListener
+        );
     }
 }

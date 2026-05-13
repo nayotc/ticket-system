@@ -13,8 +13,6 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.stripe.model.tax.Registration.CountryOptions.No;
-
 import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.NotificationsService;
@@ -27,7 +25,6 @@ import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
-import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
@@ -38,11 +35,17 @@ import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
+import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.Ticket;
+
 
 public class EventServiceAcceptanceTest {
 
@@ -745,7 +748,7 @@ public class EventServiceAcceptanceTest {
 
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = new OrderService(orderRepository, notificationsService);
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
 
         String buyerSessionId = "buyer-session";
         Long buyerId = 55L;
@@ -791,7 +794,7 @@ public class EventServiceAcceptanceTest {
 
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = new OrderService(orderRepository, notificationsService);
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
 
         String buyerSessionId = "buyer-session";
         Long buyerId = 55L;
@@ -837,7 +840,7 @@ public class EventServiceAcceptanceTest {
 
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = new OrderService(orderRepository, notificationsService);
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
 
         String buyerSessionId = "buyer-session";
         Long buyerId = 55L;
@@ -880,7 +883,7 @@ public class EventServiceAcceptanceTest {
 
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = new OrderService(orderRepository, notificationsService);
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
 
         eventService.addEventUpdatesListener(historyService);
         eventService.addEventUpdatesListener(orderService);
@@ -905,7 +908,7 @@ public class EventServiceAcceptanceTest {
 
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = new OrderService(orderRepository, notificationsService);
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
 
         String buyerSessionId = "buyer-session";
         Long buyerId = 55L;
@@ -1074,6 +1077,18 @@ public class EventServiceAcceptanceTest {
         return activeOrder;
     }
 
+    private OrderService createOrderServiceListener(
+        OrderRepository orderRepository,
+        FakeNotificationsService notificationsService
+    ) {
+        return new OrderService(
+                orderRepository,
+                null,
+                new LogbackSystemLogger(),
+                notificationsService
+        );
+    }
+
     private static class FakeTokenService implements ITokenService {
 
         private final Set<String> validSessions = new HashSet<>();
@@ -1201,5 +1216,6 @@ public class EventServiceAcceptanceTest {
             return messages.get(messages.size() - 1);
         }
     }
+
 }
 
