@@ -85,6 +85,7 @@ public class ReservationService{
             reservation.selectSeatTicket(order, event, areaId, position);
 
             saveAll(order, event);
+            logger.logEvent("Seat ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId=" + areaId + ", position=" + position, LogLevel.INFO);
             return true;
 
         } catch (Exception e) {
@@ -117,6 +118,7 @@ public class ReservationService{
             Event event = eventRepository.getEventById(eventId);
             reservation.selectStandingTicket(order, event, areaId, quantity);
             saveAll(order, event);
+            logger.logEvent("Standing ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
             return true;
         } catch (Exception e) {
             logger.logEvent("selectStandingTicket failed: " + e.getMessage(), LogLevel.WARN);
@@ -138,6 +140,7 @@ public class ReservationService{
             reservation.removeTicketFromActiveOrder(order, event, ticketId);
 
             saveAll(order, event);
+            logger.logEvent("Ticket removed from active order: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", ticketId=" + ticketId, LogLevel.INFO);
             return true;
 
         } catch (Exception e) {
@@ -160,6 +163,7 @@ public class ReservationService{
             reservation.removeStandingTicketsFromActiveOrder(order, event, areaId, quantity);
 
             saveAll(order, event);
+            logger.logEvent("Standing tickets removed from active order: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
             return true;
 
         } catch (Exception e) {
@@ -178,6 +182,7 @@ public class ReservationService{
             }
             
            ActiveOrderDTO activeOrderDTO = order.toDTO();
+            logger.logEvent("Active order viewed: orderId=" + order.getOrderId() + ", eventId=" + order.getEventId(), LogLevel.INFO);
             return activeOrderDTO;
         } 
         catch (Exception e) {
@@ -227,6 +232,7 @@ public class ReservationService{
                 reservation.completeCheckout(order, event);
                 saveAll(order, event);
                 notifyListeners(orderDTO);
+                logger.logEvent("Checkout completed successfully: orderId=" + order.getOrderId() + ", eventId=" + eventId, LogLevel.INFO);
                 return true;
 
             } catch (Exception issuingException) {

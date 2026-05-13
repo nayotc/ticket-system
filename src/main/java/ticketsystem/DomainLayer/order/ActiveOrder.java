@@ -33,6 +33,9 @@ public class ActiveOrder {
 
 
     public void addTicket(Ticket ticket) {
+        if(!ticket.getEventId().equals(eventId))
+            throw new IllegalStateException("Ticket event ID does not match order event ID");
+
         this.tickets.add(ticket);
     }
 
