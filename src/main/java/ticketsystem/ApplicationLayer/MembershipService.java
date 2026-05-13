@@ -94,12 +94,15 @@ public class MembershipService {
         if (targetMember == null) {
             throw new Exception("Target Member not found.");
         }
+
+        Company company = companyRepository.findById(companyId).orElseThrow(() -> new Exception("Company not found."));
         
         // Passing companyId directly instead of querying the Company object
-        membershipDomain.validateRemoveOwnerAssignment(appointer, targetMember, companyId);
+        membershipDomain.validateRemoveOwnerAssignment(appointer, targetMember, company);
 
         userRepository.updateMember(appointer);
         userRepository.updateMember(targetMember);
+        companyRepository.save(company);
         
         return true;
     }

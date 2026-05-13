@@ -248,12 +248,19 @@ public class MembershipDomainService {
         }
     }
 
-    public boolean validateRemoveOwnerAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
+    public boolean validateRemoveOwnerAssignment(Member appointer, Member appointee, Company company) throws Exception {
+        Long companyId = company.getId();
         CompanyRole removedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
         if (appointerRole == null) {
             throw new Exception("You do not have a role in this company.");
+        }
+        if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
+            throw new Exception("Your role is not active yet. You cannot update others permissions.");
+        }
+        if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
+            throw new Exception("Only Owners and Founders can remove owner assignment.");
         }
         if (removedRole == null) {
             throw new Exception("The target user does not have a role in this company.");
@@ -267,6 +274,7 @@ public class MembershipDomainService {
         
         // Removed the company tree update. Only transferring appointees and deleting the role.
         transferAppointees(appointee, appointer, companyId);
+        company.removeUserFromAllRoles(appointee.getId());
         deleteAppointeeFromAppointer(appointerRole, appointee.getId());
         return appointee.deleteRoleInCompany(companyId);        
     }
