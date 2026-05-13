@@ -149,7 +149,7 @@ public class ActiveOrder {
     CANCELLED
     }
 
-    public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId) {
+    public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId, Long eventId) {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
