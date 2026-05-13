@@ -382,4 +382,50 @@ public class MembershipDomainService {
         return appointee.deleteRoleInCompany(companyId);        
     }
 
+    public void transferAppointees(Member resigningMember, Member newAppointer, Long companyId) throws Exception {
+        CompanyRole resigningRole = resigningMember.getRoleInCompany(companyId);
+        CompanyRole newAppointerRole = newAppointer.getRoleInCompany(companyId);
+
+        if (resigningRole instanceof Owner) {
+            Owner resigningOwner = (Owner) resigningRole;
+            // Use a copy to avoid ConcurrentModificationException during iteration
+            Set<Long> appointeesIds = new java.util.HashSet<>(resigningOwner.getAppointeesMemberIds());
+
+            for (Long appointeeId : appointeesIds) {
+                Member appointee = userRepository.getMemberById(appointeeId);
+                if (appointee != null) {
+                    CompanyRole appointeeRole = appointee.getRoleInCompany(companyId);
+                    
+                    // Update the subordinate's record to point to the new appointer
+                    if (appointeeRole instanceof Manager) {
+                        ((Manager) appointeeRole).setAppointer(newAppointer.getId());
+                    } else if (appointeeRole instanceof Owner) {
+                        ((Owner) appointeeRole).setAppointer(newAppointer.getId());
+                    }
+                    
+                    // Add the subordinate to the new appointer's list using existing domain logic
+                    addNewAppointeeToAppointer(newAppointerRole, appointeeId);
+                    userRepository.updateMember(appointee);
+                }
+            }
+            resigningOwner.getAppointeesMemberIds().clear();
+        }
+        else {
+            throw new Exception("Only Owner's appointees can be transfer.");
+        }
+    }
+
+    public boolean validateOwnerResignation(CompanyRole role) throws Exception {
+        if (role == null) {
+            throw new Exception("You do not have a role in this company.");
+        }
+        if (role instanceof Founder) {
+            throw new Exception("A Founder cannot resign from the company.");
+        }
+        if (!(role instanceof Owner)) {
+            throw new Exception("Only Owners can use this resignation process.");
+        }
+        return true;
+    }
+
 }

@@ -342,6 +342,42 @@ public class MembershipService {
         return company.getRolesTreeRepresentation(memberId, permissionsMap);
     }
 
-    
+    /**
+     * Use Case 4.10: Give Up ownership
+     */
+    public boolean giveUpOwnership(String sessionToken, Long companyId) throws Exception {
+
+        //  Authenticate session
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        // Extract user ID from token and retrieve member information
+        Long memberId = tokenService.extractUserId(sessionToken);
+        Member targetMember = userRepository.getMemberById(memberId);
+        if (targetMember == null) {
+            throw new Exception("Member not found.");
+        }
+        
+        membershipDomain.validateOwnerResignation(targetMember.getRoleInCompany(companyId));
+  
+        // Hierarchy Transfer: Find the appointer of the resigning member
+        Long appointerId = membershipDomain.getAppointerId(targetMember, companyId);
+        if (appointerId != null) {
+            Member appointer = userRepository.getMemberById(appointerId);
+            CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
+            if (appointer != null) {
+                membershipDomain.transferAppointees(targetMember, appointer, companyId);
+                if (appointerRole != null) {
+                    membershipDomain.deleteAppointeeFromAppointer(appointerRole, memberId);
+                }
+                targetMember.deleteRoleInCompany(companyId);
+                userRepository.updateMember(targetMember);
+                userRepository.updateMember(appointer);
+            }
+        }
+
+        return true;
+    }
 
 }

@@ -538,4 +538,37 @@ public class MembershipDomainServiceTest {
         });
         assertEquals("You are not the appointer of the specified user", ex.getMessage());
     }
+
+    // =========================================================================================
+    // Use Case 4.10: Resignation & Transfer (Unit Tests)
+    // =========================================================================================
+
+    @Test
+    public void GivenOwnerWithSubordinates_WhenTransferAppointees_ThenSubordinatesMoveToFounder() throws Exception {
+        // Arrange: Founder(100) -> Owner(200) -> Manager(300)
+        appointer.addFounderRole(companyId); 
+        appointee.addOwnerRole(companyId, 100L);
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        
+        Member sub = new Member(300L, "SubManager");
+        sub.addManagerRole(companyId, 200L, new HashSet<>());
+        userRepository.addRegisteredMember(300L, sub, "pass");
+        ((Owner)appointee.getRoleInCompany(companyId)).addAppointee(300L);
+
+        // Act
+        domainService.transferAppointees(appointee, appointer, companyId);
+
+        // Assert
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+        assertTrue(founderRole.getAppointeesMemberIds().contains(300L), "Founder should inherit the subordinate.");
+        assertEquals(0, ((Owner)appointee.getRoleInCompany(companyId)).getAppointeesMemberIds().size());
+    }
+
+    @Test
+    public void GivenFounderRole_WhenValidateResignation_ThenThrowsException() {
+        appointer.addFounderRole(companyId);
+        assertThrows(Exception.class, () -> {
+            domainService.validateOwnerResignation(appointer.getRoleInCompany(companyId));
+        });
+    }
 }

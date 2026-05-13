@@ -438,4 +438,39 @@ public class MembershipServiceTest {
     }
 
     
+
+    @Test
+    public void GivenMemberWithNoRole_WhenResignFromOwnership_ThenThrowsException() {
+        // Act & Assert: 'appointeeToken' belongs to 'member' who has NO roles initially.
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.giveUpOwnership(appointeeToken, companyId);
+        });
+
+        assertEquals("You do not have a role in this company.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenInvalidSessionToken_WhenResignFromOwnership_ThenThrowsException() {
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.giveUpOwnership("fake-or-expired-token", companyId);
+        });
+
+        assertNotNull(exception, "Should throw an exception for invalid token.");
+        assertTrue(exception.getMessage().contains("Session authentication failed") || 
+                   exception.getMessage().toLowerCase().contains("token"));
+    }
+
+    @Test
+    public void GivenFakeCompanyId_WhenResignFromOwnership_ThenThrowsException() {
+        // Arrange: Make sure the member is an owner in the REAL company
+        member.addOwnerRole(companyId, founderId);
+        userRepository.updateMember(member);
+
+        // Act & Assert: Try to resign from a fake company ID (9999L)
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.giveUpOwnership(appointeeToken, 9999L);
+        });
+
+        assertEquals("You do not have a role in this company.", exception.getMessage());
+    }
 }
