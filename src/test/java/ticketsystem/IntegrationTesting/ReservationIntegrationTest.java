@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.Reservation;
+import ticketsystem.DomainLayer.event.Element;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
@@ -213,9 +214,94 @@ public class ReservationIntegrationTest {
                 SeatStatus.AVAILABLE,
                 event.getSeatStatus(areaId, new SeatPosition(1, 1))
         );
+}
+
+        @Test
+        public void testCompleteCheckout_WhenStandingTicketsReserved_ThenReservedDecreasesAndSoldIncreases() {
+                // Arrange
+                Long eventId = 100L;
+                Long areaId = 2L;
+
+                Reservation reservation = new Reservation();
+                Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
+
+                ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
+
+                StandingArea standingArea = getStandingArea(event, areaId);
+
+                reservation.selectStandingTicket(order, event, areaId, 4);
+
+                // Act
+                reservation.completeCheckout(order, event);
+
+                // Assert
+                assertEquals(
+                        ActiveOrder.OrderStatus.COMPLETED,
+                        order.getStatus()
+                );
+
+                assertEquals(0, standingArea.getReserved());
+                assertEquals(4, standingArea.getSold());
         }
 
-       
+        @Test
+        public void testSelectStandingTickets_WhenTicketsReserved_ThenStandingAreaReservedCountIncreases() {
+        // Arrange
+        Long eventId = 100L;
+        Long areaId = 2L;
+
+        Reservation reservation = new Reservation();
+        Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
+
+        ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
+
+        StandingArea standingArea = getStandingArea(event, areaId);
+
+        // Act
+        reservation.selectStandingTicket(order, event, areaId, 5);
+
+        // Assert
+        assertEquals(5, order.getTickets().size());
+        assertEquals(5, standingArea.getReserved());
+        }
+        @Test
+        public void testRemoveStandingTickets_WhenStandingTicketsExist_ThenReservedCountDecreases() {
+        // Arrange
+        Long eventId = 100L;
+        Long areaId = 2L;
+
+        Reservation reservation = new Reservation();
+        Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
+
+        ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
+
+        StandingArea standingArea = getStandingArea(event, areaId);
+
+        reservation.selectStandingTicket(order, event, areaId, 5);
+
+        // Act
+        reservation.removeStandingTicketsFromActiveOrder(
+                order,
+                event,
+                areaId,
+                3
+        );
+
+        // Assert
+        assertEquals(2, order.getTickets().size());
+        assertEquals(2, standingArea.getReserved());
+        }
+
+       private StandingArea getStandingArea(Event event, Long areaId) {
+        for (Element element : event.getMap().getElements()) {
+                if (element instanceof StandingArea
+                        && element.getId() == areaId) {
+                return (StandingArea) element;
+                }
+        }
+
+        throw new IllegalArgumentException("Standing area not found");
+        }
 
    private Event createActiveEventWithSeatingAndStandingAreas(Long eventId) {
         Event event = new Event(
