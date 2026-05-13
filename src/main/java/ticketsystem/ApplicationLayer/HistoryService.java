@@ -150,11 +150,12 @@ public class HistoryService implements OrderCompletedListener {
                 }
 
                 List<PurchasedTicket> tickets = purchase.getTickets();
-                totalTicketsSold += tickets.size();
 
                 for (PurchasedTicket ticket : tickets) {
                     if(!ticket.getStatus().equals(TicketStatus.CANCELED) ){
                         totalRevenue = totalRevenue.add(BigDecimal.valueOf(ticket.getPrice()));
+                        totalTicketsSold++;
+
                     }
                 }
             }
