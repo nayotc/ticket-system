@@ -11,6 +11,7 @@ import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.history.PurchasedTicket;
+import ticketsystem.DomainLayer.history.TicketStatus;
 import ticketsystem.DomainLayer.user.Permission;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -112,73 +113,89 @@ public class HistoryService implements OrderCompletedListener {
         }
     }
     public SalesReportDTO generateSalesReport(String token, long companyId) {
-    try {
-        if (!tokenService.validateToken(token)) {
-            throw new IllegalArgumentException("Invalid or expired token");
-        }
-
-        if (!tokenService.isMemberToken(token)) {
-            throw new IllegalArgumentException("Only members can generate sales reports");
-        }
-
-        Long memberId = tokenService.extractUserId(token);
-        if (memberId == null) {
-            throw new IllegalArgumentException("Could not extract user id from token");
-        }
-
-        if (!membershipDomainService.validatePermission(
-                memberId,
-                companyId,
-                Permission.GENERATE_SALES_REPORT
-        )) {
-            throw new IllegalArgumentException("Insufficient permissions to generate sales report");
-        }
-
-        Set<Long> allowedManagers =
-                membershipDomainService.getManagementSubTreeMemberIds(memberId, companyId);
-
-        List<Purchase> companyPurchases =
-                historyRepository.getPurchasesByCompanyId(companyId);
-
-        int totalTicketsSold = 0;
-        BigDecimal totalRevenue = BigDecimal.ZERO;
-
-        for (Purchase purchase : companyPurchases) {
-            if (!allowedManagers.contains(purchase.getManagedByMemberId())) {
-                continue;
+        try {
+            if (!tokenService.validateToken(token)) {
+                throw new IllegalArgumentException("Invalid or expired token");
             }
 
-            List<PurchasedTicket> tickets = purchase.getTickets();
-            totalTicketsSold += tickets.size();
-
-            for (PurchasedTicket ticket : tickets) {
-                totalRevenue = totalRevenue.add(BigDecimal.valueOf(ticket.getPrice()));
+            if (!tokenService.isMemberToken(token)) {
+                throw new IllegalArgumentException("Only members can generate sales reports");
             }
-        }
 
-        if (totalTicketsSold == 0) {
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId == null) {
+                throw new IllegalArgumentException("Could not extract user id from token");
+            }
+
+            if (!membershipDomainService.validatePermission(
+                    memberId,
+                    companyId,
+                    Permission.GENERATE_SALES_REPORT
+            )) {
+                throw new IllegalArgumentException("Insufficient permissions to generate sales report");
+            }
+
+            Set<Long> allowedManagers =
+                    membershipDomainService.getManagementSubTreeMemberIds(memberId, companyId);
+
+            List<Purchase> companyPurchases =
+                    historyRepository.getPurchasesByCompanyId(companyId);
+
+            int totalTicketsSold = 0;
+            BigDecimal totalRevenue = BigDecimal.ZERO;
+
+            for (Purchase purchase : companyPurchases) {
+                if (!allowedManagers.contains(purchase.getManagedByMemberId())) {
+                    continue;
+                }
+
+                List<PurchasedTicket> tickets = purchase.getTickets();
+                totalTicketsSold += tickets.size();
+
+                for (PurchasedTicket ticket : tickets) {
+                    if(!ticket.getStatus().equals(TicketStatus.CANCELED) ){
+                        totalRevenue = totalRevenue.add(BigDecimal.valueOf(ticket.getPrice()));
+                    }
+                }
+            }
+
+            if (totalTicketsSold == 0) {
+                return new SalesReportDTO(
+                        0,
+                        BigDecimal.ZERO,
+                        "No sales data was found"
+                );
+            }
+
             return new SalesReportDTO(
-                    0,
-                    BigDecimal.ZERO,
-                    "No sales data was found"
+                    totalTicketsSold,
+                    totalRevenue,
+                    "Sales report generated successfully"
             );
+
+        } catch (IllegalArgumentException e) {
+            logger.logEvent(
+                    "Failed to generate sales report: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
         }
-
-        return new SalesReportDTO(
-                totalTicketsSold,
-                totalRevenue,
-                "Sales report generated successfully"
-        );
-
-    } catch (IllegalArgumentException e) {
-        logger.logEvent(
-                "Failed to generate sales report: " + e.getMessage(),
-                ISystemLogger.LogLevel.WARN
-        );
-        throw e;
     }
-}
 
+    public void onEventCanceled(Long eventId) {
+        List<Purchase> purchases =
+                historyRepository.getAllPurchases();
+        List<PurchasedTicket> purchasedTickets; 
+
+        for (Purchase purchase : purchases) {
+            if (purchase.getEventId().equals(eventId)) {
+                purchasedTickets =purchase.getTickets();
+                for(PurchasedTicket ticket : purchasedTickets){
+                    ticket.setStatus(TicketStatus.CANCELED);
+                }
+            }
+        }
+    }
 
 
 

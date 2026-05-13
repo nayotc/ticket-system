@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 
 public class PurchaseDTO {
     private Long ticketId;
-    private Long eventId;
     private Integer row;
     private Integer chair;
     private BigDecimal price;
@@ -14,9 +13,8 @@ public class PurchaseDTO {
     //for json
     public PurchaseDTO() {}
 
-    public PurchaseDTO(Long ticketId, Long eventId, Integer row, Integer chair, BigDecimal price, String status, String secureBarcode) {
+    public PurchaseDTO(Long ticketId, Integer row, Integer chair, BigDecimal price, String status, String secureBarcode) {
         this.ticketId = ticketId;
-        this.eventId = eventId;
         this.row = row;
         this.chair = chair;
         this.price = price;
@@ -26,9 +24,6 @@ public class PurchaseDTO {
 
     public Long getTicketId() { return ticketId; }
     public void setTicketId(Long ticketId) { this.ticketId = ticketId; }
-    
-    public Long getEventId() { return eventId; }
-    public void setEventId(Long eventId) { this.eventId = eventId; }
     
     public Integer getRow() { return row; }
     public void setRow(Integer row) { this.row = row; }
