@@ -17,7 +17,7 @@ public class UserService {
     private final IPasswordService passwordService;
     private final ISystemLogger logger;
     private final List<UserLoginListener> userLoginListeners;
-    
+
 
     public UserService(IUserRepository userRepository, ITokenService tokenService, ISystemLogger logger) {
         this.userRepository = userRepository;
@@ -35,7 +35,7 @@ public class UserService {
             Guest guest = new Guest();
             return tokenService.addActiveSession(guest);
         } catch (Exception e) {
-            logger.logEvent("Error adding active session: " + e.getMessage(), LogLevel.INFO);
+            logger.logError("Failed to create guest session", e);
             throw e;
         }
     }
@@ -45,15 +45,16 @@ public class UserService {
     public boolean signUp(String sessionToken, String username, String password) {
         try {
             if (username == null || username.isBlank() || password == null || password.isBlank()) {
+                logger.logEvent("Sign-up rejected: blank username or password", LogLevel.WARN);
                 return false;
             }
-            if (!tokenService.validateToken(sessionToken)) {
-                return false;
-            }
+            tokenService.validateToken(sessionToken);
             if (!tokenService.isGuestToken(sessionToken)) {
+                logger.logEvent("Sign-up rejected: session is not a guest token", LogLevel.WARN);
                 return false;
             }
             if (userRepository.isUsernameTaken(username)) {
+                logger.logEvent("Sign-up rejected: username already taken, username=" + username, LogLevel.INFO);
                 return false;
             }
             Long newId = new SecureRandom().nextLong();
@@ -62,9 +63,10 @@ public class UserService {
             }
             String hashedPassword = passwordService.hashPassword(password);
             userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
+            logger.logEvent("Sign-up succeeded: new member registered, username=" + username, LogLevel.INFO);
             return true;
         } catch (Exception e) {
-            logger.logEvent("Error signing up: " + e.getMessage(), LogLevel.INFO);
+            logger.logError("Sign-up failed with unexpected error", e);
             throw e;
         }
     }
@@ -73,51 +75,45 @@ public class UserService {
     // and password, and receive a new session token.
     public String login(String sessionToken, String username, String password) {
         try {
-            if (!tokenService.validateToken(sessionToken) || !tokenService.isGuestToken(sessionToken)) { // Only guests
-                                                                                                         // can
-                                                                                                         // log in, if
-                                                                                                         // the
-                                                                                                         // token is not
-                                                                                                         // a
-                                                                                                         // guest token,
-                                                                                                         // it
-                                                                                                         // means the
-                                                                                                         // user
-                                                                                                         // is already
-                                                                                                         // logged in as
-                                                                                                         // a
-                                                                                                         // member
-                return null;
-            }
-            if (username == null || username.isBlank() || password == null || password.isBlank()) {
-                return null;
-            }
-            String hashedPassword = userRepository.getHashedPasswordByUsername(username); // Get the hashed password for
-                                                                                          // the
-                                                                                          // given username from the
-                                                                                          // repository, null if the
-                                                                                          // username does not exist
-            if (hashedPassword == null) {
-                return null;
-            }
-            if (!passwordService.verifyPassword(password, hashedPassword)) {
-                return null;
-            }
-            Member member = userRepository.getMemberByUsername(username);
-           String memberToken = tokenService.addActiveSession(member);
+            tokenService.validateToken(sessionToken);
+        } catch (RuntimeException e) {
+            logger.logError("Login failed: token validation failed", e);
+            throw e;
+        }
+        // Only guests can log in with credentials; members already have a member token.
+        if (!tokenService.isGuestToken(sessionToken)) {
+            logger.logEvent("Login rejected: session is not a guest token", LogLevel.WARN);
+            return null;
+        }
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            logger.logEvent("Login rejected: blank username or password", LogLevel.WARN);
+            return null;
+        }
+        String hashedPassword = userRepository.getHashedPasswordByUsername(username);
+        if (hashedPassword == null || !passwordService.verifyPassword(password, hashedPassword)) {
+            // Single message avoids distinguishing unknown user vs wrong password (user enumeration).
+            logger.logEvent("Login rejected: invalid credentials, username=" + username, LogLevel.WARN);
+            return null;
+        }
+        Member member = userRepository.getMemberByUsername(username);
+        if (member == null) {
+            logger.logEvent(
+                    "Login rejected: member missing after successful password check, username=" + username,
+                    LogLevel.WARN);
+            return null;
+        }
+        String memberToken = tokenService.addActiveSession(member);
 
-            try {
-                notifyListeners(sessionToken, memberToken);
-                tokenService.removeActiveSession(sessionToken);
-                return memberToken;
-            } catch (Exception e) {
-                tokenService.removeActiveSession(memberToken);
-                throw e;
-            }
-            
-
+        try {
+            notifyListeners(sessionToken, memberToken);
+            tokenService.removeActiveSession(sessionToken);
+            logger.logEvent("Login succeeded: username=" + username, LogLevel.INFO);
+            return memberToken;
         } catch (Exception e) {
-            logger.logEvent("Error logging in: " + e.getMessage(), LogLevel.INFO);
+            tokenService.removeActiveSession(memberToken);
+            logger.logError(
+                    "Login aborted: post-login listener failed; member session rolled back, username=" + username,
+                    e);
             throw e;
         }
     }
@@ -125,16 +121,12 @@ public class UserService {
     // 4. Exit: Allows a user to exit the system entirely.
     public boolean exit(String sessionToken) {
         try {
-            if (!tokenService.validateToken(sessionToken)) {
-                return false;
-            }
-            if (!tokenService.isActiveSession(sessionToken)) {
-                return false;
-            }
+            tokenService.validateToken(sessionToken);
             tokenService.removeActiveSession(sessionToken);
+            logger.logEvent("Exit: session closed", LogLevel.INFO);
             return true;
         } catch (Exception e) {
-            logger.logEvent("Error exiting system: " + e.getMessage(), LogLevel.INFO);
+            logger.logError("Exit failed", e);
             throw e;
         }
     }
@@ -142,19 +134,20 @@ public class UserService {
     // 5. Log Out: Allows a member to log out and receive a new guest session token.
     public String logOut(String sessionToken) {
         try {
-            if (!tokenService.validateToken(sessionToken)) {
-                return null;
-            }
-            if (!tokenService.isActiveSession(sessionToken)) {
-                return null;
-            }
+            tokenService.validateToken(sessionToken);
             if (tokenService.isGuestToken(sessionToken)) {
+                logger.logEvent(
+                        "Logout rejected: guest session cannot use member logout (use exit to end session)",
+                        LogLevel.WARN);
                 return null;
             }
+            Long memberId = tokenService.extractUserId(sessionToken);
             tokenService.removeActiveSession(sessionToken);
-            return visitSystem();
+            String guestToken = visitSystem();
+            logger.logEvent("Logout succeeded: new guest session issued, memberId=" + memberId, LogLevel.INFO);
+            return guestToken;
         } catch (Exception e) {
-            logger.logEvent("Error exiting system: " + e.getMessage(), LogLevel.INFO);
+            logger.logError("Logout failed", e);
             throw e;
         }
 
@@ -165,14 +158,28 @@ public class UserService {
     public boolean updateMemberUsername(String sessionToken, String password, String username, String newUsername) {
         try {
             if (newUsername == null || newUsername.isBlank()) {
+                logger.logEvent("Update username rejected: new username is blank", LogLevel.WARN);
                 return false;
             }
             if (authenticateMemberForUpdate(sessionToken, password, username) == null) {
+                logger.logEvent(
+                        "Update username rejected: authentication failed, username=" + username,
+                        LogLevel.WARN);
                 return false;
             }
-            return userRepository.updateRegisteredMemberUsername(username, newUsername);
+            boolean ok = userRepository.updateRegisteredMemberUsername(username, newUsername);
+            if (ok) {
+                logger.logEvent(
+                        "Member username updated: oldUsername=" + username + ", newUsername=" + newUsername,
+                        LogLevel.INFO);
+            } else {
+                logger.logEvent(
+                        "Update username rejected: repository update failed, username=" + username,
+                        LogLevel.WARN);
+            }
+            return ok;
         } catch (Exception e) {
-            logger.logEvent("Error updating member username: " + e.getMessage(), LogLevel.INFO);
+            logger.logError("Update member username failed", e);
             throw e;
         }
     }
@@ -182,15 +189,27 @@ public class UserService {
     public boolean updateMemberPassword(String sessionToken, String password, String username, String newPassword) {
         try {
             if (newPassword == null || newPassword.isBlank()) {
+                logger.logEvent("Update password rejected: new password is blank", LogLevel.WARN);
                 return false;
             }
             if (authenticateMemberForUpdate(sessionToken, password, username) == null) {
+                logger.logEvent(
+                        "Update password rejected: authentication failed, username=" + username,
+                        LogLevel.WARN);
                 return false;
             }
             String newHashedPassword = passwordService.hashPassword(newPassword);
-            return userRepository.updateRegisteredMemberPassword(username, newHashedPassword);
+            boolean ok = userRepository.updateRegisteredMemberPassword(username, newHashedPassword);
+            if (ok) {
+                logger.logEvent("Member password updated: username=" + username, LogLevel.INFO);
+            } else {
+                logger.logEvent(
+                        "Update password rejected: repository update failed, username=" + username,
+                        LogLevel.WARN);
+            }
+            return ok;
         } catch (Exception e) {
-            logger.logEvent("Error updating member password: " + e.getMessage(), LogLevel.INFO);
+            logger.logError("Update member password failed", e);
             throw e;
         }
     }
@@ -199,7 +218,8 @@ public class UserService {
         if (password == null || password.isBlank() || username == null || username.isBlank()) {
             return null;
         }
-        if (!tokenService.validateToken(sessionToken) || !tokenService.isMemberToken(sessionToken)) {
+        tokenService.validateToken(sessionToken);
+        if (!tokenService.isMemberToken(sessionToken)) {
             return null;
         }
         Member member = userRepository.getMemberByUsername(username);
@@ -218,14 +238,17 @@ public class UserService {
         }
         return member;
     }
+
     private void notifyListeners(String guestToken, String memberToken) {
-        for (UserLoginListener listener :userLoginListeners ) {
-            listener.onUserLogin(guestToken,memberToken);
+        for (UserLoginListener listener : userLoginListeners) {
+            listener.onUserLogin(guestToken, memberToken);
         }
     }
+
     public void addUserLoginListener(UserLoginListener listener) {
         userLoginListeners.add(listener);
     }
+
     public void removeUserLoginListener(UserLoginListener listener) {
         userLoginListeners.remove(listener);
     }
