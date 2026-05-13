@@ -506,9 +506,11 @@ public class MembershipDomainServiceTest {
     public void GivenAuthorizedAppointer_WhenValidateRemoveManagerAssignment_ThenReturnsTrue() throws Exception {
         // Arrange
         appointer.addFounderRole(companyId);
+        appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE); // ווידוא שהממנה פעיל
         Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
         
         appointee.addManagerRole(companyId, 100L, new HashSet<>());
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE); // ווידוא שהמנהל פעיל
         founderRole.addAppointee(200L);
 
         // Act
@@ -522,10 +524,15 @@ public class MembershipDomainServiceTest {
 
     @Test
     public void GivenUnauthorizedActor_WhenValidateRemoveManagerAssignment_ThenThrowsException() {
+        // Arrange
         appointer.addFounderRole(companyId);
+        appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE); // ווידוא שהממנה פעיל
+        
         // Appointee was appointed by someone else (999L)
         appointee.addManagerRole(companyId, 999L, new HashSet<>()); 
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE); // ווידוא שהמנהל פעיל
 
+        // Act & Assert
         Exception ex = assertThrows(Exception.class, () -> {
             domainService.validateRemoveManagerAssignment(appointer, appointee, companyId);
         });

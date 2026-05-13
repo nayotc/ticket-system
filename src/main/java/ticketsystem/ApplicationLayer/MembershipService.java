@@ -1,9 +1,13 @@
 package ticketsystem.ApplicationLayer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Manager;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 
@@ -283,6 +287,61 @@ public class MembershipService {
         
         return true;
     }
+
+    /**
+     * Use Case 4.15: View roles and permissions tree
+     */
+    public String viewRolesAndPermissionsTree(String sessionToken, long companyId) throws Exception {
+        // 1. Authenticate session
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        // 2. Extract the requesting member ID
+        long memberId = tokenService.extractUserId(sessionToken);
+
+        // 3. Fetch the company
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new Exception("Error: Company not found."));
+
+        // 4. PRE-AUTHORIZATION CHECK (Fail-Fast)
+
+        if (!company.getOwners().contains(memberId)) {
+            throw new Exception("The system rejects the request due to lack of permissions. Only Owners can view the roles tree.");
+        }
+
+        // 5. Build the permissions map (MemberID -> Permissions String)
+        Map<Long, String> permissionsMap = new HashMap<>();
+
+        // Add all owners to the map (Owners have full permissions implicitly)
+        for (long ownerId : company.getOwners()) {
+            permissionsMap.put(ownerId, "All Permissions");
+        }
+
+        // Add all managers and their specific permissions to the map
+        for (long managerId : company.getManagers()) {
+            try {
+                // Fetch member by ID directly
+                Member managerMember = userRepository.getMemberById(managerId);
+                
+                if (managerMember != null) {
+                    CompanyRole role = managerMember.getRoleInCompany(companyId);
+                    
+                    if (role instanceof Manager) {
+                        Set<String> perms = ((Manager) role).getPermissionKeys();
+                        String permString = perms.isEmpty() ? "None" : String.join(", ", perms);
+                        permissionsMap.put(managerId, permString);
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore if user is not found to prevent the whole tree from failing
+            }
+        }
+
+        // 6. Request the tree representation from the Company domain object
+        return company.getRolesTreeRepresentation(memberId, permissionsMap);
+    }
+
     
 
 }
