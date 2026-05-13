@@ -45,26 +45,26 @@ public class StandingArea extends Area {
         this.sold = sold;
     }
 
-    public void reserveSpot() {
+    public void reserveSpot(int quantity) {
         if (reserved + sold >= capacity) {
             throw new IllegalStateException("No more spots available");
         }
-        reserved++;
+        reserved += quantity;
     }
 
-    public void releaseSpot() {
-        if (reserved <= 0) {
-            throw new IllegalStateException("No reserved spots to release");
+    public void releaseSpot(int quantity) {
+        if (reserved < quantity) {
+            throw new IllegalStateException("Not enough reserved spots to release");
         }
-        reserved--;
+        reserved -= quantity;
     }
 
-    public void sellSpot() {
+    public void sellSpot(int quantity) {
         if (sold >= capacity) {
             throw new IllegalStateException("No more spots available");
         }
-        reserved--; // Assuming selling a spot that was reserved
-        sold++;
+        reserved -= quantity; // Assuming selling a spot that was reserved
+        sold += quantity;
     }
 
     public boolean isSoldOut() {

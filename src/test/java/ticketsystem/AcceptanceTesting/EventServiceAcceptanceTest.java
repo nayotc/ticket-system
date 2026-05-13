@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.NotificationsService;
+import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
@@ -33,7 +35,17 @@ import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.Ticket;
+import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.Ticket;
+
 
 public class EventServiceAcceptanceTest {
 
@@ -97,15 +109,23 @@ public class EventServiceAcceptanceTest {
         userRepository.addRegisteredMember(ownerId, ownerMember, "password");
 
         tokenService.addValidSession(validOwnerSessionId, ownerId);
+        tokenService.addValidSession(validOwnerSessionId, ownerId);
+
+        // membershipDomain.allow(validOwnerSessionId, companyId, "event:create");
+        // membershipDomain.allow(validOwnerSessionId, companyId, "event:defineMap");
+        // membershipDomain.allow(validOwnerSessionId, companyId, "event:update");
+        // membershipDomain.allow(validOwnerSessionId, companyId, "event:cancel");
     }
 
     // -------------------- Insert Event Tests -------------------
 
     @Test
     void GivenOwnerLoggedInAndValidEventDetails_WhenInsertEvent_ThenEventIsCreatedAndSaved() {
+        // Arrange
         String eventName = "Rock Concert";
         LocalDateTime eventDate = LocalDateTime.now().plusDays(10);
 
+        // Act
         eventService.insertEvent(
                 validOwnerSessionId,
                 eventName,
@@ -119,11 +139,13 @@ public class EventServiceAcceptanceTest {
                 10,
                 20);
 
+        // Assert
         Event savedEvent = eventRepository.getEventById(1L);
 
         assertNotNull(savedEvent);
         assertEquals(eventName, savedEvent.getName());
         assertEquals(companyId, savedEvent.getCompanyId());
+        assertEquals(ownerId, savedEvent.getOpenedBy());
         assertEquals(EventLocation.TEL_AVIV, savedEvent.getLocation());
         assertEquals(EventCategory.CONCERT, savedEvent.getCategory());
     }
@@ -206,6 +228,7 @@ public class EventServiceAcceptanceTest {
                         20));
 
         assertTrue(exception.getMessage().contains("Map size must be positive"));
+        assertNull(eventRepository.getEventById(1L));
     }
 
     @Test
@@ -226,6 +249,7 @@ public class EventServiceAcceptanceTest {
                         20));
 
         assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertNull(eventRepository.getEventById(1L));
     }
 
     @Test
@@ -254,10 +278,12 @@ public class EventServiceAcceptanceTest {
                         20));
 
         assertTrue(exception.getMessage().contains("User does not have permission to create an event"));
+        assertNull(eventRepository.getEventById(1L));
     }
 
     // -------------------- Update Event Tests -------------------
     
+
     @Test
     void GivenOwnerLoggedInEventExistsAndValidUpdatedDetails_WhenUpdateEvent_ThenEventIsUpdatedAndSaved() {
         Event event = createExistingEvent();
@@ -272,6 +298,11 @@ public class EventServiceAcceptanceTest {
         assertTrue(result);
         assertNotNull(updatedEvent);
         assertEquals("Updated Rock Concert", updatedEvent.getName());
+        assertEquals(EventLocation.HAIFA, updatedEvent.getLocation());
+        assertEquals(200L, updatedEvent.getTrafficThreshold());
+        assertEquals(EventCategory.CONCERT, updatedEvent.getCategory());
+        assertEquals("Updated Artist", updatedEvent.getArtistName());
+        assertEquals(0, BigDecimal.valueOf(149.99).compareTo(updatedEvent.getTicketPrice()));
     }
 
     @Test
@@ -279,6 +310,12 @@ public class EventServiceAcceptanceTest {
         Event event = createExistingEvent();
         eventRepository.addEvent(event);
         Event savedEvent = eventRepository.getEventById(event.getId());
+
+        String originalName = savedEvent.getName();
+        LocalDateTime originalDate = savedEvent.getDate();
+        EventLocation originalLocation = savedEvent.getLocation();
+        EventCategory originalCategory = savedEvent.getCategory();
+        BigDecimal originalPrice = savedEvent.getTicketPrice();
 
         EventDTO invalidUpdateDTO = new EventDTO(
                 savedEvent.getId(),
@@ -304,7 +341,13 @@ public class EventServiceAcceptanceTest {
                 IllegalArgumentException.class,
                 () -> eventService.updateEvent(validOwnerSessionId, invalidUpdateDTO));
 
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
         assertTrue(exception.getMessage().contains("Event name"));
+        assertEquals(originalName, unchangedEvent.getName());
+        assertEquals(originalDate, unchangedEvent.getDate());
+        assertEquals(originalLocation, unchangedEvent.getLocation());
+        assertEquals(originalCategory, unchangedEvent.getCategory());
+        assertEquals(0, originalPrice.compareTo(unchangedEvent.getTicketPrice()));
     }
 
     @Test
@@ -312,6 +355,7 @@ public class EventServiceAcceptanceTest {
         Event event = createExistingEvent();
         eventRepository.addEvent(event);
         Event savedEvent = eventRepository.getEventById(event.getId());
+        LocalDateTime originalDate = savedEvent.getDate();
 
         EventDTO invalidUpdateDTO = new EventDTO(
                 savedEvent.getId(),
@@ -337,7 +381,10 @@ public class EventServiceAcceptanceTest {
                 IllegalArgumentException.class,
                 () -> eventService.updateEvent(validOwnerSessionId, invalidUpdateDTO));
 
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
         assertTrue(exception.getMessage().contains("date"));
+        assertEquals(originalDate, unchangedEvent.getDate());
     }
 
     @Test
@@ -351,7 +398,11 @@ public class EventServiceAcceptanceTest {
                 IllegalArgumentException.class,
                 () -> eventService.updateEvent(invalidSessionId, updateDTO));
 
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
         assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertEquals(savedEvent.getName(), unchangedEvent.getName());
     }
 
     @Test
@@ -373,7 +424,10 @@ public class EventServiceAcceptanceTest {
                 IllegalArgumentException.class,
                 () -> eventService.updateEvent(sessionWithoutPermission, updateDTO));
 
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
         assertTrue(exception.getMessage().contains("User does not have permission to update event"));
+        assertEquals(savedEvent.getName(), unchangedEvent.getName());
     }
 
     @Test
@@ -445,7 +499,10 @@ public class EventServiceAcceptanceTest {
                 IllegalArgumentException.class,
                 () -> eventService.updateEvent(validOwnerSessionId, updateDTO));
 
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
         assertTrue(exception.getMessage().contains("Cannot change event's company"));
+        assertEquals(companyId, unchangedEvent.getCompanyId());
     }
 
     @Test
@@ -480,7 +537,11 @@ public class EventServiceAcceptanceTest {
                 IllegalStateException.class,
                 () -> eventService.updateEvent(validOwnerSessionId, staleUpdateDTO));
 
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
+
         assertTrue(exception.getMessage().contains("Event was updated by another request"));
+        assertEquals(savedEvent.getName(), unchangedEvent.getName());
     }
 
     // -------------------- Define Event Map Tests -------------------
@@ -497,6 +558,7 @@ public class EventServiceAcceptanceTest {
         assertTrue(result);
         assertNotNull(updatedEvent);
         assertNotNull(updatedEvent.getMap());
+        assertEquals(eventStatus.ACTIVE, updatedEvent.getStatus());
     }
 
     @Test
@@ -504,19 +566,29 @@ public class EventServiceAcceptanceTest {
         Event event = createExistingEvent();
         eventRepository.addEvent(event);
 
+        int originalElementCount = elementCount(eventRepository.getEventById(event.getId()));
+        eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
+
         EventMapDTO invalidMapDTO = null;
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.defineEventMap(validOwnerSessionId, event.getId(), invalidMapDTO));
 
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
+
         assertTrue(exception.getMessage().contains("Map data cannot be null"));
+        assertEquals(originalElementCount, elementCount(unchangedEvent));
+        assertEquals(originalStatus, unchangedEvent.getStatus());
     }
 
     @Test
     void GivenOwnerLoggedInEventExistsAndMapInventoryInconsistency_WhenDefineEventMap_ThenSystemRejectsAndPreventsSaving() {
         Event event = createExistingEvent();
         eventRepository.addEvent(event);
+        int originalElementCount = elementCount(eventRepository.getEventById(event.getId()));
+        eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
 
         EventMapDTO inconsistentMapDTO = createInconsistentMapDTO();
 
@@ -524,26 +596,41 @@ public class EventServiceAcceptanceTest {
                 IllegalArgumentException.class,
                 () -> eventService.defineEventMap(validOwnerSessionId, event.getId(), inconsistentMapDTO));
 
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
+
         assertTrue(exception.getMessage().contains("Reserved and sold spots cannot exceed capacity"));
+        assertEquals(originalElementCount, elementCount(unchangedEvent));
+        assertEquals(originalStatus, unchangedEvent.getStatus());
     }
 
     @Test
     void GivenInvalidSession_WhenDefineEventMap_ThenSystemRejectsTheRequest() {
         Event event = createExistingEvent();
         eventRepository.addEvent(event);
+        int originalElementCount = elementCount(eventRepository.getEventById(event.getId()));
+        eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
+
         EventMapDTO validMapDTO = createValidMapDTO();
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> eventService.defineEventMap(invalidSessionId, event.getId(), validMapDTO));
 
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
+
         assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertEquals(originalElementCount, elementCount(unchangedEvent));
+        assertEquals(originalStatus, unchangedEvent.getStatus());
     }
 
     @Test
     void GivenLoggedInUserWithoutDefineMapPermission_WhenDefineEventMap_ThenSystemRejectsTheRequest() {
         Event event = createExistingEvent();
         eventRepository.addEvent(event);
+         int originalElementCount = elementCount(eventRepository.getEventById(event.getId()));
+        eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
 
         String sessionWithoutPermission = "session-without-map-permission";
         Member plainUser = new Member(2L, "PlainUser");
@@ -556,7 +643,12 @@ public class EventServiceAcceptanceTest {
                 IllegalArgumentException.class,
                 () -> eventService.defineEventMap(sessionWithoutPermission, event.getId(), validMapDTO));
 
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
+
         assertTrue(exception.getMessage().contains("User does not have permission to define event map"));
+        assertEquals(originalElementCount, elementCount(unchangedEvent));
+        assertEquals(originalStatus, unchangedEvent.getStatus());
     }
 
     @Test
@@ -600,6 +692,25 @@ public class EventServiceAcceptanceTest {
         assertNotNull(result);
         assertEquals(new PairDTO<>(10, 20), result.size());
         assertFalse(result.soldOut());
+        assertNotNull(result.getElementDTOs());
+        assertEquals(4, result.getElementDTOs().size());
+
+        assertTrue(mapContainsElementNamed(result, "Main Stage"));
+        assertTrue(mapContainsElementNamed(result, "Main Entrance"));
+        assertTrue(mapContainsElementNamed(result, "Seating Area A"));
+        assertTrue(mapContainsElementNamed(result, "Standing Area B"));
+
+        SeatingAreaDTO seatingArea = findSeatingArea(result, "Seating Area A");
+        assertNotNull(seatingArea);
+        assertEquals(4, seatingArea.rows());
+        assertEquals(6, seatingArea.columns());
+        assertEquals(24, seatingArea.seats().size());
+
+        StandingAreaDTO standingArea = findStandingArea(result, "Standing Area B");
+        assertNotNull(standingArea);
+        assertEquals(100L, standingArea.capacity());
+        assertEquals(0L, standingArea.reserved());
+        assertEquals(0L, standingArea.sold());
     }
 
     @Test
@@ -622,7 +733,218 @@ public class EventServiceAcceptanceTest {
                 IllegalArgumentException.class,
                 () -> eventService.getEventMap(invalidSessionId, event.getId()));
 
+        // Assert
         assertTrue(exception.getMessage().contains("Invalid session ID"));
+    }
+
+    // -------------------- Cancel Event Tests -------------------
+
+    @Test
+    void GivenOwnerLoggedInEventExistsHistoryAndOrderListenersRegistered_WhenCancelEvent_ThenEventIsCanceledHistoryIsNotifiedAndActiveOrderIsCanceled() {
+        // Arrange
+        Event event = createActiveExistingEvent();
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+
+        String buyerSessionId = "buyer-session";
+        Long buyerId = 55L;
+
+        ActiveOrder activeOrder = createActiveOrderForEvent(
+                orderRepository,
+                event.getId(),
+                buyerSessionId,
+                buyerId);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        // Act
+        Boolean result = eventService.cancelEvent(validOwnerSessionId, event.getId());
+
+        // Assert
+        Event cancelledEvent = eventRepository.getEventById(event.getId());
+        ActiveOrder updatedOrder = orderRepository.findOrderById(activeOrder.getOrderId());
+
+        assertTrue(result);
+        assertNotNull(cancelledEvent);
+        assertEquals(eventStatus.CANCELLED, cancelledEvent.getStatus());
+
+        assertTrue(historyService.wasNotifiedFor(event.getId()));
+        assertEquals(1, historyService.notificationCount());
+
+        assertNotNull(updatedOrder);
+        assertEquals(ActiveOrder.OrderStatus.CANCELLED, updatedOrder.getStatus());
+
+        assertTrue(notificationsService.wasNotified(buyerSessionId));
+        assertEquals(1, notificationsService.notificationCount(buyerSessionId));
+        assertTrue(notificationsService.lastMessageFor(buyerSessionId)
+                .contains("has been canceled due to event cancellation"));
+    }
+
+    @Test
+    void GivenInvalidSession_WhenCancelEvent_ThenSystemRejectsTheRequestAndEventAndActiveOrderAreNotCanceled() {
+        // Arrange
+        Event event = createActiveExistingEvent();
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+
+        String buyerSessionId = "buyer-session";
+        Long buyerId = 55L;
+
+        ActiveOrder activeOrder = createActiveOrderForEvent(
+                orderRepository,
+                event.getId(),
+                buyerSessionId,
+                buyerId);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.cancelEvent(invalidSessionId, event.getId()));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
+        ActiveOrder unchangedOrder = orderRepository.findOrderById(activeOrder.getOrderId());
+
+        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
+
+        assertFalse(historyService.wasNotifiedFor(event.getId()));
+
+        assertNotNull(unchangedOrder);
+        assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
+
+        assertFalse(notificationsService.wasNotified(buyerSessionId));
+    }
+
+    @Test
+    void GivenLoggedInUserWithoutCancelPermission_WhenCancelEvent_ThenSystemRejectsTheRequestAndEventAndActiveOrderAreNotCanceled() {
+        // Arrange
+        Event event = createActiveExistingEvent();
+
+        String sessionWithoutPermission = "session-without-cancel-permission";
+        tokenService.addValidSession(sessionWithoutPermission, 2L);
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+
+        String buyerSessionId = "buyer-session";
+        Long buyerId = 55L;
+
+        ActiveOrder activeOrder = createActiveOrderForEvent(
+                orderRepository,
+                event.getId(),
+                buyerSessionId,
+                buyerId);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.cancelEvent(sessionWithoutPermission, event.getId()));
+
+        // Assert
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
+        ActiveOrder unchangedOrder = orderRepository.findOrderById(activeOrder.getOrderId());
+
+        assertTrue(exception.getMessage().contains("User does not have permission to cancel an event"));
+        assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
+
+        assertFalse(historyService.wasNotifiedFor(event.getId()));
+
+        assertNotNull(unchangedOrder);
+        assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
+
+        assertFalse(notificationsService.wasNotified(buyerSessionId));
+    }
+
+    @Test
+    void GivenEventDoesNotExist_WhenCancelEvent_ThenSystemRejectsTheRequestAndListenersAreNotNotified() {
+        // Arrange
+        Long nonExistingEventId = 999L;
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.cancelEvent(validOwnerSessionId, nonExistingEventId));
+
+        // Assert
+        assertTrue(exception.getMessage().contains("Event does not exist"));
+
+        assertFalse(historyService.wasNotifiedFor(nonExistingEventId));
+    }
+
+    @Test
+    void GivenEventAlreadyCanceled_WhenCancelEvent_ThenSystemRejectsTheRequestAndOrderServiceIsNotNotifiedAgain() {
+        // Arrange
+        Event event = createActiveExistingEvent();
+
+        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
+
+        OrderRepository orderRepository = new OrderRepository();
+        FakeNotificationsService notificationsService = new FakeNotificationsService();
+        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+
+        String buyerSessionId = "buyer-session";
+        Long buyerId = 55L;
+
+        ActiveOrder activeOrder = createActiveOrderForEvent(
+                orderRepository,
+                event.getId(),
+                buyerSessionId,
+                buyerId);
+
+        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(orderService);
+
+        eventService.cancelEvent(validOwnerSessionId, event.getId());
+
+        assertEquals(1, historyService.notificationCount());
+        assertEquals(1, notificationsService.notificationCount(buyerSessionId));
+        assertEquals(
+                ActiveOrder.OrderStatus.CANCELLED,
+                orderRepository.findOrderById(activeOrder.getOrderId()).getStatus());
+
+        // Act
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> eventService.cancelEvent(validOwnerSessionId, event.getId()));
+
+        // Assert
+        Event cancelledEvent = eventRepository.getEventById(event.getId());
+        ActiveOrder orderAfterSecondCancel = orderRepository.findOrderById(activeOrder.getOrderId());
+
+        assertTrue(exception.getMessage().contains("Event is already canceled"));
+        assertEquals(eventStatus.CANCELLED, cancelledEvent.getStatus());
+
+        assertEquals(1, historyService.notificationCount());
+        assertEquals(1, notificationsService.notificationCount(buyerSessionId));
+        assertEquals(ActiveOrder.OrderStatus.CANCELLED, orderAfterSecondCancel.getStatus());
     }
 
     // -------------------- Helper Methods and Test Doubles -------------------
@@ -667,6 +989,104 @@ public class EventServiceAcceptanceTest {
                 1L, "Invalid Standing Area", new PairDTO<>(2, 2), new PairDTO<>(4, 5), "StandingArea", false, 10L, 8L, 5L);
 
         return new EventMapDTO(new PairDTO<>(10, 20), List.of(inconsistentStandingArea), false);
+    }
+
+    private int elementCount(Event event) {
+        if (event.getMap() == null || event.getMap().getElements() == null) {
+            return 0;
+        }
+
+        return event.getMap().getElements().size();
+    }
+
+    private boolean mapContainsElementNamed(EventMapDTO mapDTO, String name) {
+        return mapDTO.getElementDTOs()
+                .stream()
+                .anyMatch(element -> elementName(element).equals(name));
+    }
+
+    private String elementName(IMapElementDTO element) {
+        if (element instanceof ElementDTO elementDTO) {
+            return elementDTO.name();
+        }
+
+        if (element instanceof SeatingAreaDTO seatingAreaDTO) {
+            return seatingAreaDTO.name();
+        }
+
+        if (element instanceof StandingAreaDTO standingAreaDTO) {
+            return standingAreaDTO.name();
+        }
+
+        return "";
+    }
+
+    private SeatingAreaDTO findSeatingArea(EventMapDTO mapDTO, String name) {
+        return mapDTO.getElementDTOs()
+                .stream()
+                .filter(element -> element instanceof SeatingAreaDTO)
+                .map(element -> (SeatingAreaDTO) element)
+                .filter(area -> area.name().equals(name))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private StandingAreaDTO findStandingArea(EventMapDTO mapDTO, String name) {
+        return mapDTO.getElementDTOs()
+                .stream()
+                .filter(element -> element instanceof StandingAreaDTO)
+                .map(element -> (StandingAreaDTO) element)
+                .filter(area -> area.name().equals(name))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Event createActiveExistingEvent() {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        eventService.defineEventMap(
+                validOwnerSessionId,
+                event.getId(),
+                createValidMapDTO());
+
+        return eventRepository.getEventById(event.getId());
+    }
+
+    private ActiveOrder createActiveOrderForEvent(OrderRepository orderRepository,
+            Long eventId,
+            String buyerSessionId,
+            Long buyerId) {
+        ActiveOrder activeOrder = new ActiveOrder(
+                orderRepository.getNextId(),
+                buyerSessionId,
+                buyerId,
+                eventId);
+
+        activeOrder.addTicket(
+                new Ticket(
+                        1L,
+                        eventId,
+                        3L,
+                        1,
+                        1,
+                        BigDecimal.valueOf(99.99)));
+
+        orderRepository.addOrder(activeOrder);
+
+        return activeOrder;
+    }
+
+    private OrderService createOrderServiceListener(
+        OrderRepository orderRepository,
+        FakeNotificationsService notificationsService
+    ) {
+        return new OrderService(
+                orderRepository,
+                null,
+                new LogbackSystemLogger(),
+                notificationsService
+        );
     }
 
     private static class FakeTokenService implements ITokenService {
@@ -737,4 +1157,65 @@ public class EventServiceAcceptanceTest {
             return false;
         }
     }
+
+    private static class FakeHistoryServiceListener implements EventUpdatesListener {
+
+        private final List<Long> canceledEventIds = new java.util.ArrayList<>();
+        private final List<String> receivedUpdateMessages = new java.util.ArrayList<>();
+
+        @Override
+        public void onEventCanceled(Long eventId) {
+            canceledEventIds.add(eventId);
+        }
+
+        @Override
+        public void onEventUpdated(Long eventId, String updateMessage) {
+            receivedUpdateMessages.add(updateMessage);
+        }
+
+        boolean wasNotifiedFor(Long eventId) {
+            return canceledEventIds.contains(eventId);
+        }
+
+        int notificationCount() {
+            return canceledEventIds.size();
+        }
+    }
+
+    private static class FakeNotificationsService implements NotificationsService {
+
+        private final Map<String, List<String>> messagesBySession = new HashMap<>();
+
+        @Override
+        public void notifyUser(String sessionId, String message) {
+            messagesBySession
+                    .computeIfAbsent(sessionId, key -> new java.util.ArrayList<>())
+                    .add(message);
+        }
+
+        boolean wasNotified(String sessionId) {
+            return messagesBySession.containsKey(sessionId)
+                    && !messagesBySession.get(sessionId).isEmpty();
+        }
+
+        int notificationCount(String sessionId) {
+            if (!messagesBySession.containsKey(sessionId)) {
+                return 0;
+            }
+
+            return messagesBySession.get(sessionId).size();
+        }
+
+        String lastMessageFor(String sessionId) {
+            if (!messagesBySession.containsKey(sessionId)
+                    || messagesBySession.get(sessionId).isEmpty()) {
+                return "";
+            }
+
+            List<String> messages = messagesBySession.get(sessionId);
+            return messages.get(messages.size() - 1);
+        }
+    }
+
 }
+

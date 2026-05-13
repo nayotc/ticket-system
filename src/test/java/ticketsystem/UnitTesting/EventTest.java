@@ -281,7 +281,7 @@ public class EventTest {
 
         event.reserveSpot(2L,1);
 
-        verify(mockMap, times(1)).reserveSpot(2L);
+        verify(mockMap, times(1)).reserveSpot(2L,1);
     }
 
     @Test
@@ -289,9 +289,9 @@ public class EventTest {
         EventMap mockMap = mock(EventMap.class);
         event.setMap(mockMap);
 
-        event.releaseSpot(2L,1);
+        event.releaseSpot(2L, 1);
 
-        verify(mockMap, times(1)).releaseSpot(2L);
+        verify(mockMap, times(1)).releaseSpot(2L, 1);
     }
 
     @Test
@@ -299,9 +299,9 @@ public class EventTest {
         EventMap mockMap = mock(EventMap.class);
         event.setMap(mockMap);
 
-        event.sellSpot(2L);
+        event.sellSpot(2L, 1);
 
-        verify(mockMap, times(1)).sellSpot(2L);
+        verify(mockMap, times(1)).sellSpot(2L, 1);
     }
 
     @Test

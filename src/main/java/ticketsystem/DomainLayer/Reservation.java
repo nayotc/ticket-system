@@ -79,7 +79,7 @@ public class Reservation {
         for (Ticket ticket : new ArrayList<>(order.getTickets())) {
 
             if(ticket.getRow()==0 && ticket.getChair()==0) {
-                event.sellSpot(ticket.getAreaId());
+                event.sellSpot(ticket.getAreaId(), 1);
             } else {
                 event.sellSeat(ticket.getAreaId(),new SeatPosition(ticket.getRow(), ticket.getChair()));
             }

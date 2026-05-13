@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 public class Event {
 
@@ -133,6 +134,10 @@ public class Event {
         this.status = status;
     }
 
+    public boolean isActive() {
+        return this.status == eventStatus.ACTIVE;
+    }
+
     public EventCategory getCategory() {
         return category;
     }
@@ -209,15 +214,19 @@ public class Event {
     }
 
     public void reserveSpot(Long areaId, int quantity) {
-        this.map.reserveSpot(areaId);
+        this.map.reserveSpot(areaId, quantity);
     }
 
     public void releaseSpot(Long areaId, int quantity) {
-        this.map.releaseSpot(areaId);
+        this.map.releaseSpot(areaId, quantity);
     }
 
-    public void sellSpot(Long areaId) {
-        this.map.sellSpot(areaId);
+    public void sellSpot(Long areaId, int quantity) {
+        this.map.sellSpot(areaId, quantity);
+    }
+
+    public SeatStatus getSeatStatus(Long areaId, SeatPosition position) {
+        return this.map.isSeatAvailable(areaId, position);
     }
 
     // use case: virtual queue and load management
@@ -370,6 +379,16 @@ public class Event {
         if (ticketPrice != null && ticketPrice.compareTo(BigDecimal.ZERO) >= 0) {
             this.TicketPrice = ticketPrice;
         }
+    }
+
+    public void cancel() {
+        if (this.status == eventStatus.CANCELLED) {
+            throw new IllegalStateException("Event is already cancelled");
+        }
+        if (this.Date.isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("Cannot cancel an event that has already occurred");
+        }
+        this.status = eventStatus.CANCELLED;
     }
 
 }

@@ -155,7 +155,7 @@ public class ReservationTest {
         // Assert
         verify(order).completeOrder();
         verify(event).sellSeat(eq(5L), any(SeatPosition.class));
-        verify(event).sellSpot(6L);
+        verify(event).sellSpot(6L,1);
     }
 
     @Test

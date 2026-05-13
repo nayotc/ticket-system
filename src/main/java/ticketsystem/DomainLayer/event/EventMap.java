@@ -2,6 +2,8 @@ package ticketsystem.DomainLayer.event;
 
 import java.util.List;
 
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+
 public class EventMap {
 
     private Pair<Integer, Integer> size;
@@ -74,30 +76,30 @@ public class EventMap {
         throw new IllegalArgumentException("Area not found");
     }
 
-    public void reserveSpot(Long areaId) {
+    public void reserveSpot(Long areaId, int quantity) {
         for (Element element : elements) {
             if (element instanceof StandingArea && element.getId() == areaId) {
-                ((StandingArea) element).reserveSpot();
+                ((StandingArea) element).reserveSpot(quantity);
                 return;
             }
         }
         throw new IllegalArgumentException("Area not found");
     }
 
-    public void releaseSpot(Long areaId) {
+    public void releaseSpot(Long areaId, int quantity) {
         for (Element element : elements) {
             if (element instanceof StandingArea && element.getId() == areaId) {
-                ((StandingArea) element).releaseSpot();
+                ((StandingArea) element).releaseSpot(quantity);
                 return;
             }
         }
         throw new IllegalArgumentException("Area not found");
     }
 
-    public void sellSpot(Long areaId) {
+    public void sellSpot(Long areaId, int quantity) {
         for (Element element : elements) {
             if (element instanceof StandingArea && element.getId() == areaId) {
-                ((StandingArea) element).sellSpot();
+                ((StandingArea) element).sellSpot(quantity);
                 return;
             }
         }
@@ -121,14 +123,14 @@ public class EventMap {
         }
         return foundAnyArea;
     }
-    //     for (Element element : elements) {
-    //         if (element instanceof Area) {
-    //             if (!((Area) element).isSoldOut()) {
-    //                 return false;
-    //             }
-    //         }
-    //     }
-    //     return true;
-    // }
+
+    public SeatStatus isSeatAvailable(Long areaId, SeatPosition position) {
+        for (Element element : elements) {
+            if (element instanceof SeatingArea && element.getId() == areaId) {
+                return ((SeatingArea) element).isSeatAvailable(position);
+            }
+        }
+        throw new IllegalArgumentException("Area not found");
+    }
 
 }

@@ -6,7 +6,6 @@ import ticketsystem.DomainLayer.event.Event;
 public interface IEventRepository {
     void addEvent(Event event);
     long getNextId();
-  
     Event getEventById(Long eventId);
     void updateEvent(Event event);
     void deleteEvent(Long eventId, long expectedVersion);
