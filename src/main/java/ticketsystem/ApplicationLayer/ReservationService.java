@@ -146,7 +146,27 @@ public class ReservationService{
         }
     }
 
-       //uc 2.7
+    public boolean removeStandingTicketsFromActiveOrder(String token, Long eventId, Long areaId, int quantity) {
+        expireOldOrders();
+        try {
+            tokenService.validateToken(token);
+            ActiveOrder order = findActiveOrder(token, eventId);
+
+            if (order==null|| order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+                throw new IllegalStateException("No active order found for this event");
+            }
+            
+            Event event = eventRepository.getEventById(eventId);
+            reservation.removeStandingTicketsFromActiveOrder(order, event, areaId, quantity);
+
+            saveAll(order, event);
+            return true;
+
+        } catch (Exception e) {
+            logger.logEvent("removeStandingTicketsFromActiveOrder failed: " + e.getMessage(), LogLevel.WARN );
+            throw e;
+        }
+    }
 
     public ActiveOrderDTO viewActiveOrder(String token, Long orderId) {
         expireOldOrders();
@@ -156,11 +176,8 @@ public class ReservationService{
             if (order == null|| order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
-            ObjectMapper objectMapper = new ObjectMapper();
-           ActiveOrderDTO activeOrderDTO = objectMapper.convertValue(
-                order, 
-                ActiveOrderDTO.class
-            );
+            
+           ActiveOrderDTO activeOrderDTO = order.toDTO();
             return activeOrderDTO;
         } 
         catch (Exception e) {

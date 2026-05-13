@@ -45,6 +45,27 @@ public class Reservation {
         
     }
 
+    public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event, Long areaId, int quantity) {
+        List<Ticket> ticketsToRemove = new ArrayList<>();
+        for (Ticket ticket : order.getTickets()) {
+            if (ticket.getAreaId().equals(areaId) && ticket.getRow() == 0 && ticket.getChair() == 0) {
+                ticketsToRemove.add(ticket);
+                if (ticketsToRemove.size() == quantity) {
+                    break;
+                }
+            }
+        }
+
+        if (ticketsToRemove.size() < quantity) {
+            throw new IllegalArgumentException("Not enough standing tickets in the order to remove");
+        }
+
+        for (Ticket ticket : ticketsToRemove) {
+            order.deleteTicket(ticket.getTicketId());
+        }
+        event.releaseSpot(areaId, quantity);
+    }
+
 
     public void submitActiveOrderForCheckout(ActiveOrder order, Event event) {
         order.validateCanBeSubmittedBy();
@@ -83,7 +104,7 @@ public class Reservation {
 
     public void releaseTicket(Ticket ticket, Event event) {
      if(ticket.getRow()==0 && ticket.getChair()==0) {
-           event. releaseSpot(ticket.getAreaId());
+           event. releaseSpot(ticket.getAreaId(),1);
         } else {
             SeatPosition position = new SeatPosition(ticket.getRow(), ticket.getChair());   
             event.releaseSeat(ticket.getAreaId(), position);
@@ -93,7 +114,7 @@ public class Reservation {
 
     public void checkLottery(Lottery lottery, Long userId, String lotteryCode) {
         if (lottery == null) {
-            return; // האירוע לא מוגרל
+            return; 
         }
 
         if (userId == null) {
@@ -119,3 +140,4 @@ public class Reservation {
     }
 
 }
+

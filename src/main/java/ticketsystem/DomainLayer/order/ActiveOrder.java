@@ -18,7 +18,7 @@ public class ActiveOrder {
     private Long eventId;
     private List<Ticket> tickets;
     private OrderStatus status;
-    private final LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
+    private LocalDateTime expiresAt;
     
 
     public ActiveOrder(Long orderId, String sessionToken, Long userId, Long eventId) {
@@ -28,6 +28,7 @@ public class ActiveOrder {
         this.eventId = eventId;
         this.tickets = new ArrayList<>();
         this.status = OrderStatus.ACTIVE;
+        this.expiresAt = LocalDateTime.now().plusMinutes(15);
     }
 
 
@@ -168,6 +169,21 @@ public class ActiveOrder {
             ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice()));
         }
         return new ActiveOrderDTO(orderId, userId, eventId, ticketDTOs);
+        }
+
+        //for testing purposes only
+        public ActiveOrder(Long orderId, String sessionToken, Long userId, Long eventId, LocalDateTime expiresAt) {
+            this.orderId = orderId;
+            this.userId = userId;
+            this.sessionToken = sessionToken;
+            this.eventId = eventId;
+            this.tickets = new ArrayList<>();
+            this.status = OrderStatus.ACTIVE;
+            this.expiresAt = expiresAt;
+        }
+        //only for testing purposes
+        public void setExpiresAt(LocalDateTime expiresAt) {
+            this.expiresAt = expiresAt;
         }
 
     }

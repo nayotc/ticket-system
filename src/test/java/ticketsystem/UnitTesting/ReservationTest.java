@@ -1,9 +1,14 @@
 package ticketsystem.UnitTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -100,7 +105,7 @@ public class ReservationTest {
         // Assert
         verify(order).deleteTicket(ticketId);
         verify(event).releaseSeat(eq(areaId), any(SeatPosition.class));
-        verify(event, never()).releaseSpot(anyLong());
+        verify(event, never()).releaseSpot(anyLong(), anyInt());
     }
 
     @Test
@@ -119,7 +124,7 @@ public class ReservationTest {
 
         // Assert
         verify(order).deleteTicket(ticketId);
-        verify(event).releaseSpot(areaId);
+        verify(event).releaseSpot(areaId,1);
         verify(event, never()).releaseSeat(anyLong(), any(SeatPosition.class));
     }
 
@@ -183,7 +188,7 @@ public class ReservationTest {
 
         // Assert
         verify(event).releaseSeat(eq(5L), any(SeatPosition.class));
-        verify(event).releaseSpot(6L);
+        verify(event).releaseSpot(6L,1);
 
         verify(order).deleteTicket(1L);
         verify(order).deleteTicket(2L);
@@ -284,4 +289,94 @@ public class ReservationTest {
         assertEquals(1L, firstId);
         assertEquals(2L, secondId);
     }
+    @Test
+void GivenEnoughStandingTicketsInOrder_WhenRemoveStandingTicketsFromActiveOrder_ThenDeleteRequestedQuantityAndReleaseSpots() {
+    // Arrange
+    Long eventId = 10L;
+    Long areaId = 5L;
+
+    Ticket ticket1 = new Ticket(1L, eventId, areaId, 0, 0, BigDecimal.valueOf(80));
+    Ticket ticket2 = new Ticket(2L, eventId, areaId, 0, 0, BigDecimal.valueOf(80));
+    Ticket ticket3 = new Ticket(3L, eventId, areaId, 0, 0, BigDecimal.valueOf(80));
+
+    when(order.getTickets()).thenReturn(List.of(ticket1, ticket2, ticket3));
+
+    // Act
+    reservation.removeStandingTicketsFromActiveOrder(order, event, areaId, 2);
+
+    // Assert
+    verify(order).deleteTicket(1L);
+    verify(order).deleteTicket(2L);
+    verify(order, never()).deleteTicket(3L);
+
+    verify(event).releaseSpot(areaId, 2);
+}
+
+@Test
+void GivenNotEnoughStandingTicketsInOrder_WhenRemoveStandingTicketsFromActiveOrder_ThenThrowExceptionAndDoNotReleaseSpots() {
+    // Arrange
+    Long eventId = 10L;
+    Long areaId = 5L;
+
+    Ticket ticket1 = new Ticket(1L, eventId, areaId, 0, 0, BigDecimal.valueOf(80));
+
+    when(order.getTickets()).thenReturn(List.of(ticket1));
+
+    // Act
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> reservation.removeStandingTicketsFromActiveOrder(order, event, areaId, 2)
+    );
+
+    // Assert
+    assertEquals("Not enough standing tickets in the order to remove", exception.getMessage());
+
+    verify(order, never()).deleteTicket(anyLong());
+    verify(event, never()).releaseSpot(anyLong(), anyInt());
+}
+
+@Test
+void GivenStandingTicketsFromDifferentArea_WhenRemoveStandingTicketsFromActiveOrder_ThenRemoveOnlyFromRequestedArea() {
+    // Arrange
+    Long eventId = 10L;
+    Long requestedAreaId = 5L;
+    Long otherAreaId = 6L;
+
+    Ticket ticketFromRequestedArea = new Ticket(1L, eventId, requestedAreaId, 0, 0, BigDecimal.valueOf(80));
+    Ticket ticketFromOtherArea = new Ticket(2L, eventId, otherAreaId, 0, 0, BigDecimal.valueOf(80));
+
+    when(order.getTickets()).thenReturn(List.of(ticketFromRequestedArea, ticketFromOtherArea));
+
+    // Act
+    reservation.removeStandingTicketsFromActiveOrder(order, event, requestedAreaId, 1);
+
+    // Assert
+    verify(order).deleteTicket(1L);
+    verify(order, never()).deleteTicket(2L);
+
+    verify(event).releaseSpot(requestedAreaId, 1);
+}
+
+@Test
+void GivenSeatTicketsInSameArea_WhenRemoveStandingTicketsFromActiveOrder_ThenIgnoreSeatTickets() {
+    // Arrange
+    Long eventId = 10L;
+    Long areaId = 5L;
+
+    Ticket standingTicket = new Ticket(1L, eventId, areaId, 0, 0, BigDecimal.valueOf(80));
+    Ticket seatTicket = new Ticket(2L, eventId, areaId, 3, 4, BigDecimal.valueOf(100));
+
+    when(order.getTickets()).thenReturn(List.of(standingTicket, seatTicket));
+
+    // Act
+    reservation.removeStandingTicketsFromActiveOrder(order, event, areaId, 1);
+
+    // Assert
+    verify(order).deleteTicket(1L);
+    verify(order, never()).deleteTicket(2L);
+
+    verify(event).releaseSpot(areaId, 1);
+
+}
+    
 }
