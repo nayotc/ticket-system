@@ -5,34 +5,39 @@ import java.util.List;
 
 
 public class Purchase {
-    private long purchaseId;
+    private Long purchaseId;
     private List<PurchasedTicket> tickets;
     private String eventName;
     private String location;
-    private long memberId;
-    private long companyId;
+    private Long memberId;
+    private Long companyId;
+    private Long managedByMemberId;
 
     public Purchase() {
     }
-    public Purchase(long purchaseId, List<PurchasedTicket> tickets, String eventName, String location, long memberId, long companyId) {
+    public Purchase(Long purchaseId, List<PurchasedTicket> tickets, String eventName, String location, Long memberId, Long companyId, Long managedByMemberId) {
         this.purchaseId = purchaseId;
         this.tickets = new ArrayList<>(tickets);
         this.eventName = eventName;
         this.location = location;
         this.memberId = memberId;
         this.companyId = companyId;
+        this.managedByMemberId = managedByMemberId;
     }
-    public long getPurchaseId() {
+    public Long getPurchaseId() {
         return purchaseId;
     }
-    public void setPurchaseId(long purchaseId) {
+    public void setPurchaseId(Long purchaseId) {
         this.purchaseId = purchaseId;
     }
-    public long getMemberId() {
+    public Long getMemberId() {
         return memberId;
     }
-    public long getCompanyId() {
+    public Long getCompanyId() {
         return companyId;
+    }
+    public Long getManagedByMemberId() {
+        return managedByMemberId;
     }
     public String getEventName() {
         return eventName;

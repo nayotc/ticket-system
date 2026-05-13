@@ -1,4 +1,5 @@
 package ticketsystem.DomainLayer;
+import java.util.HashSet;
 import java.util.Set;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
@@ -213,6 +214,41 @@ public class MembershipDomainService {
         // 8. If all validations pass, update manager's permissions
         ((Manager) managerRole).setPermissions(permissions);
         return true;
+    }
+    public Set<Long> getManagementSubTreeMemberIds(Long rootMemberId, Long companyId) {
+        Set<Long> result = new HashSet<>();
+        collectManagementSubTree(rootMemberId, companyId, result);
+        return result;
+    }
+
+    private void collectManagementSubTree(Long currentMemberId, Long companyId, Set<Long> result) {
+        if (currentMemberId == null || result.contains(currentMemberId)) {
+            return;
+        }
+
+        result.add(currentMemberId);
+
+        Member member = userRepository.getMemberById(currentMemberId);
+        if (member == null) {
+            return;
+        }
+
+        CompanyRole role = member.getRoleInCompany(companyId);
+        if (role == null || role.getStatus() != RoleStatus.ACTIVE) {
+            return;
+        }
+
+        if (role instanceof Founder) {
+            for (Long appointeeId : ((Founder) role).getAppointeesMemberIds()) {
+                collectManagementSubTree(appointeeId, companyId, result);
+            }
+        }
+
+        if (role instanceof Owner) {
+            for (Long appointeeId : ((Owner) role).getAppointeesMemberIds()) {
+                collectManagementSubTree(appointeeId, companyId, result);
+            }
+        }
     }
 
 }
