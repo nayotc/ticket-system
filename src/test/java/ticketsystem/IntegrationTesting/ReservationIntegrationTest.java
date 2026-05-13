@@ -180,6 +180,43 @@ public class ReservationIntegrationTest {
         );
         }
 
+        @Test
+        public void testExpireOrder_WhenSeatReserved_ThenSeatBecomesAvailableAndOrderCancelled() {
+        // Arrange
+        Long eventId = 100L;
+        Long areaId = 1L;
+
+        Reservation reservation = new Reservation();
+        Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
+
+        ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
+
+        reservation.selectSeatTicket(
+                order,
+                event,
+                areaId,
+                new seatPositionDTO(1, 1)
+        );
+
+        // Act
+        reservation.expire(event, order);
+
+        // Assert
+        assertEquals(
+                ActiveOrder.OrderStatus.CANCELLED,
+                order.getStatus()
+        );
+
+        assertTrue(order.getTickets().isEmpty());
+
+        assertEquals(
+                SeatStatus.AVAILABLE,
+                event.getSeatStatus(areaId, new SeatPosition(1, 1))
+        );
+        }
+
+       
+
    private Event createActiveEventWithSeatingAndStandingAreas(Long eventId) {
         Event event = new Event(
                 eventId,
