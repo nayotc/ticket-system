@@ -20,6 +20,7 @@ import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
@@ -416,6 +417,81 @@ public class HistoryServiceTest {
                 0,
                 new BigDecimal("200.0").compareTo(report.getTotalRevenue()),
                 "Guest purchase revenue should be counted"
+        );
+    }
+    /**
+     * 4.6 Generate sales report -
+     * Verify that order-completed flow stores managedByMemberId correctly
+     */
+    @Test
+    void GivenCompletedOrderWithEventCreator_WhenOnOrderCompleted_ThenPurchaseStoresManagedByMemberIdAndReportIncludesIt() {
+        // --- Given (Arrange) ---
+        String ownerToken = getValidMemberToken("sales_report_event_creator", "Pass123!");
+        long ownerId = tokenService.extractUserId(ownerToken);
+
+        Company company = createCompanyWithFounderRole(ownerId);
+
+        String buyerToken = getValidMemberToken("sales_report_buyer", "Pass123!");
+        long buyerId = tokenService.extractUserId(buyerToken);
+
+        List<PurchaseDTO> tickets = new ArrayList<>();
+        tickets.add(new PurchaseDTO(
+                10L,
+                20L,
+                1,
+                1,
+                new BigDecimal("100.0"),
+                "ACTIVE",
+                ""
+        ));
+        tickets.add(new PurchaseDTO(
+                11L,
+                20L,
+                1,
+                2,
+                new BigDecimal("150.0"),
+                "ACTIVE",
+                ""
+        ));
+
+        /*
+        * This simulates the production flow before onOrderCompleted:
+        * the completed order is populated with the event creator / event manager id.
+        */
+        OrderDTO completedOrder = new OrderDTO(
+                0L,
+                tickets,
+                "Event Created By Owner",
+                "HaYarkon Park",
+                buyerId,
+                company.getId(),
+                ownerId // managedByMemberId - should come from the event creator in the real flow
+        );
+
+        // --- When (Act) ---
+        historyService.onOrderCompleted(completedOrder);
+
+        // --- Then (Assert) ---
+        List<Purchase> purchases = historyRepository.getAllPurchases();
+
+        assertEquals(1, purchases.size(), "Exactly one purchase should be saved");
+
+        Purchase savedPurchase = purchases.get(0);
+
+        assertEquals(
+                ownerId,
+                savedPurchase.getManagedByMemberId(),
+                "Purchase should store the event creator as managedByMemberId"
+        );
+
+        SalesReportDTO report = historyService.generateSalesReport(ownerToken, company.getId());
+
+        assertNotNull(report, "Sales report should not be null");
+        assertEquals(2, report.getTotalTicketsSold(), "Report should include the completed order tickets");
+        assertEquals(
+                0,
+                new BigDecimal("250.0").compareTo(report.getTotalRevenue()),
+                "Report should include the completed order revenue"
         );
     }
 
