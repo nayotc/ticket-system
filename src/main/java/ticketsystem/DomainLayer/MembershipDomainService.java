@@ -347,39 +347,46 @@ public class MembershipDomainService {
         CompanyRole removedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
-        // 1. Validate the appointer exists
         if (appointerRole == null) {
             throw new Exception("You do not have a role in this company.");
         }
-
-        // 2. Validate the appointer's role status
         if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
             throw new Exception("Your role is not active yet. You cannot update others permissions.");
         }
-
-        // 3. Validate the removed role exists
+        if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
+            throw new Exception("Only Owners and Founders can remove manager assignment.");
+        }
         if (removedRole == null) {
             throw new Exception("The target user does not have a role in this company.");
         }
-
-        // 4. Validate the role to remove status
         if (removedRole.getStatus() != RoleStatus.ACTIVE) {
             throw new Exception("Your role is not active yet. You cannot remove it.");
         }
-
-        // 5. Validate the removed role type is specifically a Manager
         if (!(removedRole instanceof Manager)) {
             throw new Exception("The target user is not a Manager.");
         }
-
-        // 6. Validate the actor is the one who appointed this manager
         if (!java.util.Objects.equals(getAppointerId(appointee, companyId), appointer.getId())) {
             throw new Exception("You are not the appointer of the specified user");
         }
-        
-        // 7. Cleanup: delete from appointer's appointees list and remove role from member
+
         deleteAppointeeFromAppointer(appointerRole, appointee.getId());
         return appointee.deleteRoleInCompany(companyId);        
+    }
+
+    public boolean validateOwnerResignation(CompanyRole role) throws Exception {
+        if (role == null) {
+            throw new Exception("You do not have a role in this company.");
+        }
+        if (role.getStatus() != RoleStatus.ACTIVE) {
+            throw new Exception("Your role is not active yet. You cannot update others permissions.");
+        }
+        if (role instanceof Founder) {
+            throw new Exception("A Founder cannot resign from the company.");
+        }
+        if (!(role instanceof Owner)) {
+            throw new Exception("Only Owners can use this resignation process.");
+        }
+        return true;
     }
 
 }

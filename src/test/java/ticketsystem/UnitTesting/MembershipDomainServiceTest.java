@@ -500,7 +500,7 @@ public class MembershipDomainServiceTest {
         assertEquals("You are not the appointer of the specified user", ex.getMessage());
     }
 
-        // --- Remove Manager Assignment ---
+    // --- Remove Manager Assignment ---
 
     @Test
     public void GivenAuthorizedAppointer_WhenValidateRemoveManagerAssignment_ThenReturnsTrue() throws Exception {
@@ -537,5 +537,44 @@ public class MembershipDomainServiceTest {
             domainService.validateRemoveManagerAssignment(appointer, appointee, companyId);
         });
         assertEquals("You are not the appointer of the specified user", ex.getMessage());
+    }
+
+    // =========================================================================================
+    // Use Case 4.10: Resignation & Transfer (Unit Tests)
+    // =========================================================================================
+
+@Test
+    public void GivenOwnerWithSubordinates_WhenTransferAppointees_ThenSubordinatesMoveToFounder() throws Exception {
+        // Arrange: Founder(100) -> Owner(200) -> Manager(400)
+        appointer.addFounderRole(companyId); 
+        appointee.addOwnerRole(companyId, 100L);
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        
+        // --- התיקון: שימוש במזהה 400 כדי לא להתנגש עם הבעלים מה-setup ---
+        Member sub = new Member(400L, "SubManager");
+        sub.addManagerRole(companyId, 200L, new java.util.HashSet<>());
+        userRepository.addRegisteredMember(400L, sub, "pass");
+        ((Owner)appointee.getRoleInCompany(companyId)).addAppointee(400L);
+
+        // Act
+        domainService.transferAppointees(appointee, appointer, companyId);
+
+        // Assert
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+        assertTrue(founderRole.getAppointeesMemberIds().contains(400L), "Founder should inherit the subordinate.");
+        assertEquals(0, ((Owner)appointee.getRoleInCompany(companyId)).getAppointeesMemberIds().size(), "Resigning owner's appointee list should be empty.");
+        
+        Member updatedSub = userRepository.getMemberById(400L);
+        Manager transferredSubRole = (Manager) updatedSub.getRoleInCompany(companyId);
+        
+        assertEquals(100L, transferredSubRole.getAppointedByMemberId(), "The transferred subordinate's appointedByMemberId should be updated to the Founder's ID.");
+    }
+
+    @Test
+    public void GivenFounderRole_WhenValidateResignation_ThenThrowsException() {
+        appointer.addFounderRole(companyId);
+        assertThrows(Exception.class, () -> {
+            domainService.validateOwnerResignation(appointer.getRoleInCompany(companyId));
+        });
     }
 }

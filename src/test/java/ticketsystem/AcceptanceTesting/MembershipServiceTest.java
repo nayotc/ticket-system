@@ -437,5 +437,67 @@ public class MembershipServiceTest {
         assertTrue(exception.getMessage().contains("Invalid") || exception.getMessage().contains("Session authentication failed."));
     }
 
+    // =========================================================================================
+    // Use-case: Give up ownership
+    // =========================================================================================
+
+    @Test
+    public void GivenOwnerWithSubordinate_WhenResignFromOwnership_ThenReturnsTrueAndSubordinateIsTransferred() throws Exception {
+        // Arrange: Add a Manager appointed by the Owner (105L)
+        Member subManager = new Member(999L, "SubManager");
+        subManager.addManagerRole(companyId, ownerId, new HashSet<>());
+        subManager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(999L, subManager, "password123");
+        
+        // Update the Owner's list of appointees
+        ((Owner) ownerMember.getRoleInCompany(companyId)).addAppointee(999L);
+        userRepository.updateMember(ownerMember);
+
+        // Act: Owner resigns
+        boolean result = membershipService.giveUpOwnership(ownerToken, companyId);
+
+        // Assert: Resignation successful
+        assertTrue(result, "Service should return true upon successful resignation.");
+        assertNull(userRepository.getMemberById(ownerId).getRoleInCompany(companyId), "Owner's role should be removed.");
+        
+        // Assert: The subordinate (999L) should now belong to the Founder (100L)
+        Member updatedFounder = userRepository.getMemberById(founderId);
+        Founder founderRole = (Founder) updatedFounder.getRoleInCompany(companyId);
+        assertTrue(founderRole.getAppointeesMemberIds().contains(999L), "Founder should inherit the subordinate manager.");
+    }
     
+    @Test
+    public void GivenMemberWithNoRole_WhenResignFromOwnership_ThenThrowsException() {
+        // Act & Assert: 'appointeeToken' belongs to 'member' who has NO roles initially.
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.giveUpOwnership(appointeeToken, companyId);
+        });
+
+        assertEquals("You do not have a role in this company.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenInvalidSessionToken_WhenResignFromOwnership_ThenThrowsException() {
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.giveUpOwnership("fake-or-expired-token", companyId);
+        });
+
+        assertNotNull(exception, "Should throw an exception for invalid token.");
+        assertTrue(exception.getMessage().contains("Session authentication failed") || 
+                   exception.getMessage().toLowerCase().contains("token"));
+    }
+
+    @Test
+    public void GivenFakeCompanyId_WhenResignFromOwnership_ThenThrowsException() {
+        // Arrange: Make sure the member is an owner in the REAL company
+        member.addOwnerRole(companyId, founderId);
+        userRepository.updateMember(member);
+
+        // Act & Assert: Try to resign from a fake company ID (9999L)
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.giveUpOwnership(appointeeToken, 9999L);
+        });
+
+        assertEquals("You do not have a role in this company.", exception.getMessage());
+    }
 }
