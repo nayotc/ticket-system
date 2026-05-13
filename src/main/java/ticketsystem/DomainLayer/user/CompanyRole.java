@@ -22,10 +22,5 @@ public abstract class CompanyRole {
         this.status = status;
     }
 
-    public void activate() {
-        this.status = RoleStatus.ACTIVE;
-    }
-
     public abstract boolean hasPermission(Permission permission);
-
 }

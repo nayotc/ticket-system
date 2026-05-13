@@ -47,5 +47,4 @@ public class Manager extends CompanyRole {
                 .map(Permission::getKey)
                 .collect(Collectors.toSet());
     }
-
 }

@@ -64,7 +64,7 @@ public class MembershipDomainService {
         return null; // Default case
     }
 
-    public boolean ManagerAssignmentRequest(Member appointer, Member targetMember, Long companyId, Set<Permission> permissions) throws Exception {
+    public boolean managerAssignmentRequest(Member appointer, Member targetMember, Long companyId, Set<Permission> permissions) throws Exception {
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
         CompanyRole targetRole = targetMember.getRoleInCompany(companyId);
 
@@ -92,7 +92,7 @@ public class MembershipDomainService {
         return targetMember.addManagerRole(companyId, appointer.getId(), permissions) == true;
     }
 
-    public boolean OwnerAssignmentRequest(Member appointer, Member targetMember, Long companyId) throws Exception {
+    public boolean ownerAssignmentRequest(Member appointer, Member targetMember, Long companyId) throws Exception {
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
         CompanyRole targetRole = targetMember.getRoleInCompany(companyId);
 
@@ -135,7 +135,7 @@ public class MembershipDomainService {
         }
     }
 
-    public boolean ApproveAssignment(Member appointer, Member appointee, Company company) throws Exception {
+    public boolean approveAssignment(Member appointer, Member appointee, Company company) throws Exception {
         Long companyId = company.getId();
         CompanyRole approvedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
@@ -181,7 +181,7 @@ public class MembershipDomainService {
         }
     }
 
-    public boolean RejectAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
+    public boolean rejectAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
         CompanyRole rejectedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 

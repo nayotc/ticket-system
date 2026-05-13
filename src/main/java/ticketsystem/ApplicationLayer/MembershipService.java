@@ -65,7 +65,7 @@ public class MembershipService {
         }
 
         // Call the domain service to handle the business logic of creating the manager role
-        membershipDomain.ManagerAssignmentRequest(appointer, targetMember, companyId, permissions);
+        membershipDomain.managerAssignmentRequest(appointer, targetMember, companyId, permissions);
 
         // Update the repository with the changes to the target member
         userRepository.updateMember(targetMember);
@@ -100,17 +100,17 @@ public class MembershipService {
         }
 
         // Call the domain service to handle the business logic of creating the owner role
-        boolean isAssignmentSuccessful = membershipDomain.OwnerAssignmentRequest(appointer, targetMember, companyId);
+        if (!membershipDomain.ownerAssignmentRequest(appointer, targetMember, companyId)) {
+            return false;
+        }
 
         // Update the repository with the changes to the target member ONLY if successful
-        if (isAssignmentSuccessful) {
-            userRepository.updateMember(targetMember);
-        }
+        userRepository.updateMember(targetMember);
         
         // TODO: add notification to the target member about the pending assignment
         
         // Return the actual result from the domain layer
-        return isAssignmentSuccessful;
+        return true;
     }
 
     /**
@@ -207,7 +207,7 @@ public class MembershipService {
         }
 
         Company company = companyRepository.findById(companyId).orElseThrow(() -> new Exception("Company not found."));
-        membershipDomain.ApproveAssignment(appointer, appointee, company);
+        membershipDomain.approveAssignment(appointer, appointee, company);
 
         // Update the repository with the changes to both the appointee, appointer and company        
         userRepository.updateMember(appointee);
@@ -246,7 +246,7 @@ public class MembershipService {
             throw new Exception("Appointer not found.");
         }
 
-        membershipDomain.RejectAssignment(appointer, appointee, companyId);
+        membershipDomain.rejectAssignment(appointer, appointee, companyId);
 
         // Update the repository with the changes to the appointee, appointer
         userRepository.updateMember(appointee);

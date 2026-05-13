@@ -401,4 +401,6 @@ public class MembershipServiceTest {
 
         assertTrue(exception.getMessage().contains("Invalid") || exception.getMessage().contains("Session authentication failed."));
     }
+
+    
 }
