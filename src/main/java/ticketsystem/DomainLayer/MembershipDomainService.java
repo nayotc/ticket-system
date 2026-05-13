@@ -347,77 +347,38 @@ public class MembershipDomainService {
         CompanyRole removedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
-        // 1. Validate the appointer exists
         if (appointerRole == null) {
             throw new Exception("You do not have a role in this company.");
         }
-
-        // 2. Validate the appointer's role status
         if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
             throw new Exception("Your role is not active yet. You cannot update others permissions.");
         }
-
-        // 3. Validate the removed role exists
+        if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
+            throw new Exception("Only Owners and Founders can remove manager assignment.");
+        }
         if (removedRole == null) {
             throw new Exception("The target user does not have a role in this company.");
         }
-
-        // 4. Validate the role to remove status
         if (removedRole.getStatus() != RoleStatus.ACTIVE) {
             throw new Exception("Your role is not active yet. You cannot remove it.");
         }
-
-        // 5. Validate the removed role type is specifically a Manager
         if (!(removedRole instanceof Manager)) {
             throw new Exception("The target user is not a Manager.");
         }
-
-        // 6. Validate the actor is the one who appointed this manager
         if (!java.util.Objects.equals(getAppointerId(appointee, companyId), appointer.getId())) {
             throw new Exception("You are not the appointer of the specified user");
         }
-        
-        // 7. Cleanup: delete from appointer's appointees list and remove role from member
+
         deleteAppointeeFromAppointer(appointerRole, appointee.getId());
         return appointee.deleteRoleInCompany(companyId);        
-    }
-
-    public void transferAppointees(Member resigningMember, Member newAppointer, Long companyId) throws Exception {
-        CompanyRole resigningRole = resigningMember.getRoleInCompany(companyId);
-        CompanyRole newAppointerRole = newAppointer.getRoleInCompany(companyId);
-
-        if (resigningRole instanceof Owner) {
-            Owner resigningOwner = (Owner) resigningRole;
-            // Use a copy to avoid ConcurrentModificationException during iteration
-            Set<Long> appointeesIds = new java.util.HashSet<>(resigningOwner.getAppointeesMemberIds());
-
-            for (Long appointeeId : appointeesIds) {
-                Member appointee = userRepository.getMemberById(appointeeId);
-                if (appointee != null) {
-                    CompanyRole appointeeRole = appointee.getRoleInCompany(companyId);
-                    
-                    // Update the subordinate's record to point to the new appointer
-                    if (appointeeRole instanceof Manager) {
-                        ((Manager) appointeeRole).setAppointer(newAppointer.getId());
-                    } else if (appointeeRole instanceof Owner) {
-                        ((Owner) appointeeRole).setAppointer(newAppointer.getId());
-                    }
-                    
-                    // Add the subordinate to the new appointer's list using existing domain logic
-                    addNewAppointeeToAppointer(newAppointerRole, appointeeId);
-                    userRepository.updateMember(appointee);
-                }
-            }
-            resigningOwner.getAppointeesMemberIds().clear();
-        }
-        else {
-            throw new Exception("Only Owner's appointees can be transfer.");
-        }
     }
 
     public boolean validateOwnerResignation(CompanyRole role) throws Exception {
         if (role == null) {
             throw new Exception("You do not have a role in this company.");
+        }
+        if (role.getStatus() != RoleStatus.ACTIVE) {
+            throw new Exception("Your role is not active yet. You cannot update others permissions.");
         }
         if (role instanceof Founder) {
             throw new Exception("A Founder cannot resign from the company.");

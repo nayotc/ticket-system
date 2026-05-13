@@ -365,15 +365,21 @@ public class MembershipService {
         Long appointerId = membershipDomain.getAppointerId(targetMember, companyId);
         if (appointerId != null) {
             Member appointer = userRepository.getMemberById(appointerId);
-            CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
             if (appointer != null) {
+                CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
                 membershipDomain.transferAppointees(targetMember, appointer, companyId);
                 if (appointerRole != null) {
                     membershipDomain.deleteAppointeeFromAppointer(appointerRole, memberId);
                 }
+                else {
+                    throw new Exception("Appointer do not have a role in this company.");
+                }
                 targetMember.deleteRoleInCompany(companyId);
                 userRepository.updateMember(targetMember);
                 userRepository.updateMember(appointer);
+            }
+            else {
+                throw new Exception("Appointer not found.");
             }
         }
 
