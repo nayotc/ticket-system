@@ -78,7 +78,7 @@ public class MembershipDomainServiceTest {
     @Test
     public void GivenAppointerHasNoRole_WhenManagerAssignmentRequest_ThenThrowException() {
         Exception exception = assertThrows(Exception.class, () -> {
-            domainService.ManagerAssignmentRequest(appointer, appointee, companyId, new HashSet<>());
+            domainService.managerAssignmentRequest(appointer, appointee, companyId, new HashSet<>());
         });
         assertEquals("You do not have a role in this company.", exception.getMessage());
     }
@@ -88,7 +88,7 @@ public class MembershipDomainServiceTest {
         appointer.addOwnerRole(companyId, 999L); 
         
         Exception exception = assertThrows(Exception.class, () -> {
-            domainService.ManagerAssignmentRequest(appointer, appointee, companyId, new HashSet<>());
+            domainService.managerAssignmentRequest(appointer, appointee, companyId, new HashSet<>());
         });
         assertEquals("Your role is not active yet. You cannot appoint others.", exception.getMessage());
     }
@@ -99,7 +99,7 @@ public class MembershipDomainServiceTest {
         appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         
         Exception exception = assertThrows(Exception.class, () -> {
-            domainService.ManagerAssignmentRequest(appointer, appointee, companyId, new HashSet<>());
+            domainService.managerAssignmentRequest(appointer, appointee, companyId, new HashSet<>());
         });
         assertEquals("Only Owners and Founders can appoint others.", exception.getMessage());
     }
@@ -110,7 +110,7 @@ public class MembershipDomainServiceTest {
         appointee.addManagerRole(companyId, 100L, new HashSet<>()); 
         
         Exception exception = assertThrows(Exception.class, () -> {
-            domainService.ManagerAssignmentRequest(appointer, appointee, companyId, new HashSet<>());
+            domainService.managerAssignmentRequest(appointer, appointee, companyId, new HashSet<>());
         });
         assertEquals("This user already has an active or pending role in this company.", exception.getMessage());
     }
@@ -120,7 +120,7 @@ public class MembershipDomainServiceTest {
         appointer.addFounderRole(companyId);
         Set<Permission> perms = new HashSet<>();
         
-        boolean result = domainService.ManagerAssignmentRequest(appointer, appointee, companyId, perms);
+        boolean result = domainService.managerAssignmentRequest(appointer, appointee, companyId, perms);
         
         assertTrue(result);
         CompanyRole assignedRole = appointee.getRoleInCompany(companyId);
@@ -137,7 +137,7 @@ public class MembershipDomainServiceTest {
         appointer.addFounderRole(companyId);
         
         Exception exception = assertThrows(Exception.class, () -> {
-            domainService.ApproveAssignment(appointer, appointee, company);
+            domainService.approveAssignment(appointer, appointee, company);
         });
         assertEquals("No pending role invitation found.", exception.getMessage());
     }
@@ -149,7 +149,7 @@ public class MembershipDomainServiceTest {
         appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         
         Exception exception = assertThrows(Exception.class, () -> {
-            domainService.ApproveAssignment(appointer, appointee, company);
+            domainService.approveAssignment(appointer, appointee, company);
         });
         assertEquals("This role is already active.", exception.getMessage());
     }
@@ -159,7 +159,7 @@ public class MembershipDomainServiceTest {
         appointer.addFounderRole(companyId);
         appointee.addManagerRole(companyId, 100L, new HashSet<>());
 
-        domainService.ApproveAssignment(appointer, appointee, company);
+        domainService.approveAssignment(appointer, appointee, company);
 
         assertEquals(RoleStatus.ACTIVE, appointee.getRoleInCompany(companyId).getStatus());
         Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
@@ -173,7 +173,7 @@ public class MembershipDomainServiceTest {
         appointer.addFounderRole(companyId);
         
         Exception exception = assertThrows(Exception.class, () -> {
-            domainService.RejectAssignment(appointer, appointee, companyId);
+            domainService.rejectAssignment(appointer, appointee, companyId);
         });
         assertEquals("No pending role invitation found.", exception.getMessage());
     }
@@ -186,7 +186,7 @@ public class MembershipDomainServiceTest {
 
         appointee.addManagerRole(companyId, 100L, new HashSet<>());
 
-        domainService.RejectAssignment(appointer, appointee, companyId);
+        domainService.rejectAssignment(appointer, appointee, companyId);
 
         assertNull(appointee.getRoleInCompany(companyId));
         assertFalse(founderRole.getAppointeesMemberIds().contains(200L));
@@ -325,6 +325,119 @@ public class MembershipDomainServiceTest {
         assertEquals("Permissions set cannot be null or contain null values.", exception.getMessage());
     }
 
+    // --- Owner Assignment Request ---   
+
+    @Test
+    public void GivenValidOwner_WhenOwnerAssignmentRequest_ThenAddRole() throws Exception {
+        // Arrange
+        appointer.addFounderRole(companyId); // Founder is active and valid to appoint
+        
+        // Act
+        boolean result = domainService.ownerAssignmentRequest(appointer, appointee, companyId);
+        
+        // Assert: State verification on real objects
+        assertTrue(result);
+        CompanyRole assignedRole = appointee.getRoleInCompany(companyId);
+        assertNotNull(assignedRole);
+        assertTrue(assignedRole instanceof Owner);
+        assertEquals(RoleStatus.PENDING, assignedRole.getStatus());
+        assertEquals(100L, ((Owner) assignedRole).getAppointedByMemberId());
+    }
+
+    @Test
+    public void GivenAppointerHasNoRole_WhenOwnerAssignmentRequest_ThenThrowException() {
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.ownerAssignmentRequest(appointer, appointee, companyId);
+        });
+        assertEquals("You do not have a role in this company.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointerIsPending_WhenOwnerAssignmentRequest_ThenThrowException() {
+        // Arrange
+        appointer.addOwnerRole(companyId, 999L); // Owner starts as PENDING by default
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.ownerAssignmentRequest(appointer, appointee, companyId);
+        });
+        assertEquals("Your role is not active yet. You cannot appoint others.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointerIsManager_WhenOwnerAssignmentRequest_ThenThrowException() {
+        // Arrange
+        appointer.addManagerRole(companyId, 999L, new HashSet<>());
+        appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.ownerAssignmentRequest(appointer, appointee, companyId);
+        });
+        assertEquals("Only Owners and Founders can appoint others.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenAppointeeHasRole_WhenOwnerAssignmentRequest_ThenThrowException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+        appointee.addManagerRole(companyId, 100L, new HashSet<>()); // Appointee already has a role
+        
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.ownerAssignmentRequest(appointer, appointee, companyId);
+        });
+        assertEquals("This user already has an active or pending role in this company.", exception.getMessage());
+    }
+
+     @Test
+    public void GivenValidRequest_WhenApproveOwnerAssignment_ThenRoleBecomesActive() throws Exception {
+        // Arrange: Appointer is an active Founder
+        appointer.addFounderRole(companyId);
+        
+        // Act 1: Appointer requests the Owner assignment for the appointee
+        domainService.ownerAssignmentRequest(appointer, appointee, companyId);
+        
+        // Verify intermediate state: Role exists and is PENDING
+        assertEquals(RoleStatus.PENDING, appointee.getRoleInCompany(companyId).getStatus());
+        
+        // Act 2: Appointee approves the assignment
+        domainService.approveAssignment(appointer, appointee, company);
+        
+        // Assert: Role is now ACTIVE
+        CompanyRole assignedRole = appointee.getRoleInCompany(companyId);
+        assertNotNull(assignedRole, "Role should exist.");
+        assertTrue(assignedRole instanceof Owner, "Role should be of type Owner.");
+        assertEquals(RoleStatus.ACTIVE, assignedRole.getStatus(), "Role status should transition to ACTIVE.");
+        
+        // Assert: Appointer's tree was correctly updated with the new subordinate
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+        assertTrue(founderRole.getAppointeesMemberIds().contains(200L), "Founder should have the new Owner in their appointees list.");
+    }
+
+    @Test
+    public void GivenValidRequest_WhenRejectOwnerAssignment_ThenRoleIsDeleted() throws Exception {
+        // Arrange: Appointer is an active Founder
+        appointer.addFounderRole(companyId);
+        
+        // Act 1: Appointer requests the Owner assignment
+        domainService.ownerAssignmentRequest(appointer, appointee, companyId);
+        
+        // Verify intermediate state: Role exists and is PENDING
+        assertNotNull(appointee.getRoleInCompany(companyId));
+        
+        // Act 2: Appointee rejects the assignment
+        domainService.rejectAssignment(appointer, appointee, companyId);
+        
+        // Assert: Role is completely removed from the appointee's profile
+        assertNull(appointee.getRoleInCompany(companyId), "Role should be removed after rejection.");
+        
+        // Assert: Appointer's tree remains clean
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+        assertFalse(founderRole.getAppointeesMemberIds().contains(200L), "Founder's appointee list should not contain the rejected member.");
+    }
+
     // --- Remove Owner Assignment ---
 
     @Test
@@ -386,5 +499,4 @@ public class MembershipDomainServiceTest {
         });
         assertEquals("You are not the appointer of the specified user", ex.getMessage());
     }
-
 }

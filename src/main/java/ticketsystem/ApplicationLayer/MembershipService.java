@@ -65,7 +65,7 @@ public class MembershipService {
         }
 
         // Call the domain service to handle the business logic of creating the manager role
-        membershipDomain.ManagerAssignmentRequest(appointer, targetMember, companyId, permissions);
+        membershipDomain.managerAssignmentRequest(appointer, targetMember, companyId, permissions);
 
         // Update the repository with the changes to the target member
         userRepository.updateMember(targetMember);
@@ -73,6 +73,43 @@ public class MembershipService {
         // TODO: add notification to the target member about the pending assignment
         
         // Return true if the request was successfully processed
+        return true;
+    }
+
+/**
+     * Use Case 4.8: Request to assign an owner to a company
+     */
+    public boolean requestOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception {
+
+        // Authenticate session
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Session authentication failed.");
+        }
+        
+        // Extract user ID from token and retrieve member information
+        Long appointerId = tokenService.extractUserId(sessionToken);
+        Member appointer = userRepository.getMemberById(appointerId);
+        if (appointer == null) {
+            throw new Exception("Appointer not found.");
+        }
+
+        // Retrieve target member information
+        Member targetMember = userRepository.getMemberById(targetMemberId);
+        if (targetMember == null) {
+            throw new Exception("Target Member not found.");
+        }
+
+        // Call the domain service to handle the business logic of creating the owner role
+        if (!membershipDomain.ownerAssignmentRequest(appointer, targetMember, companyId)) {
+            return false;
+        }
+
+        // Update the repository with the changes to the target member ONLY if successful
+        userRepository.updateMember(targetMember);
+        
+        // TODO: add notification to the target member about the pending assignment
+        
+        // Return the actual result from the domain layer
         return true;
     }
 
@@ -170,7 +207,7 @@ public class MembershipService {
         }
 
         Company company = companyRepository.findById(companyId).orElseThrow(() -> new Exception("Company not found."));
-        membershipDomain.ApproveAssignment(appointer, appointee, company);
+        membershipDomain.approveAssignment(appointer, appointee, company);
 
         // Update the repository with the changes to both the appointee, appointer and company        
         userRepository.updateMember(appointee);
@@ -209,7 +246,7 @@ public class MembershipService {
             throw new Exception("Appointer not found.");
         }
 
-        membershipDomain.RejectAssignment(appointer, appointee, companyId);
+        membershipDomain.rejectAssignment(appointer, appointee, companyId);
 
         // Update the repository with the changes to the appointee, appointer
         userRepository.updateMember(appointee);

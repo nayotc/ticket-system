@@ -64,7 +64,7 @@ public class MembershipDomainService {
         return null; // Default case
     }
 
-    public boolean ManagerAssignmentRequest(Member appointer, Member targetMember, Long companyId, Set<Permission> permissions) throws Exception {
+    public boolean managerAssignmentRequest(Member appointer, Member targetMember, Long companyId, Set<Permission> permissions) throws Exception {
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
         CompanyRole targetRole = targetMember.getRoleInCompany(companyId);
 
@@ -92,6 +92,34 @@ public class MembershipDomainService {
         return targetMember.addManagerRole(companyId, appointer.getId(), permissions) == true;
     }
 
+    public boolean ownerAssignmentRequest(Member appointer, Member targetMember, Long companyId) throws Exception {
+        CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
+        CompanyRole targetRole = targetMember.getRoleInCompany(companyId);
+
+        // 1. Validate the appointer exists
+        if (appointerRole == null) {
+            throw new Exception("You do not have a role in this company.");
+        }
+        
+        // 2. Validate the appointer's role status
+        if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
+            throw new Exception("Your role is not active yet. You cannot appoint others.");
+        }
+
+        // 3. Validate the appointer's role type
+        if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
+            throw new Exception("Only Owners and Founders can appoint others.");
+        }
+
+        // 4. Validate the target is free
+        if (targetRole != null) {
+            throw new Exception("This user already has an active or pending role in this company.");
+        }
+
+        // 5. If all validations pass, add a pending Owner role
+        return targetMember.addOwnerRole(companyId, appointer.getId());
+    }
+
     public void addNewAppointeeToAppointer(CompanyRole appointerRole, Long appointeeId) throws Exception {
         if (appointerRole instanceof Owner) {
             ((Owner) appointerRole).addAppointee(appointeeId);
@@ -107,7 +135,7 @@ public class MembershipDomainService {
         }
     }
 
-    public boolean ApproveAssignment(Member appointer, Member appointee, Company company) throws Exception {
+    public boolean approveAssignment(Member appointer, Member appointee, Company company) throws Exception {
         Long companyId = company.getId();
         CompanyRole approvedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
@@ -153,7 +181,7 @@ public class MembershipDomainService {
         }
     }
 
-    public boolean RejectAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
+    public boolean rejectAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
         CompanyRole rejectedRole = appointee.getRoleInCompany(companyId);
         CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
 
