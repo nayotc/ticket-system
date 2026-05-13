@@ -1,6 +1,16 @@
 package ticketsystem.ApplicationLayer;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
@@ -9,18 +19,22 @@ import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import java.util.Map;
+
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
+import ticketsystem.DomainLayer.history.Purchase;
 
 public class SystemAdminService {
 
     private final ISystemAdminRepository adminRepository;
     private final IPaymentService paymentService;
     private final ISecureBarcode barcodeService;
-    private final ITokenService tokenService;
     private final IOrderRepository orderRepository;
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
     private final ISystemLogger logger;
-    private final CompanyService companyService;
+    private final IHistoryRepository historyRepository;
+    private final ObjectMapper objectMapper;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
@@ -29,17 +43,17 @@ public class SystemAdminService {
             IOrderRepository orderRepository,
             ITokenService tokenService,
             ICompanyRepository companyRepository,
-            ISystemLogger logger) {
+            ISystemLogger logger, IHistoryRepository historyRepository) {
 
         this.adminRepository = adminRepository;
         this.paymentService = paymentService;
         this.barcodeService = barcodeService;
         this.userRepository = userRepository;
         this.orderRepository = orderRepository;
-        this.tokenService = tokenService;
         this.companyRepository = companyRepository;
         this.logger = logger;
-        companyService = new CompanyService(companyRepository, tokenService);
+        this.historyRepository = historyRepository;
+        this.objectMapper = new ObjectMapper();
     }
 
 //Use Case: Ticket System Initialization
@@ -88,7 +102,7 @@ public class SystemAdminService {
         }
         try {
             orderRepository.deleteActiveOrdersByUserId(memberId);
-            companyService.removeUserFromAllCompanies(memberId);
+            removeUserFromAllCompanies(memberId);
             boolean userRemoved = userRepository.removeRegisteredMember(memberId);
             if (!userRemoved) {
                 logger.logEvent("ERROR: Failed to remove member from the system.", LogbackSystemLogger.LogLevel.INFO);
@@ -99,6 +113,49 @@ public class SystemAdminService {
         } catch (Exception e) {
             logger.logEvent("ERROR: An unexpected error occurred while deleting the member: " + e.getMessage(), LogbackSystemLogger.LogLevel.INFO);
             return "ERROR: An unexpected error occurred while deleting the member: " + e.getMessage();
+        }
+    }
+
+    public void removeUserFromAllCompanies(long memberIdToDelete) throws Exception {
+        logger.logEvent("Company role cleanup started for memberId=" + memberIdToDelete,
+                LogbackSystemLogger.LogLevel.INFO);
+
+        try {
+            boolean isFounderAnywhere = companyRepository.existsByFounderId(memberIdToDelete);
+
+            if (isFounderAnywhere) {
+                throw new Exception("Cannot delete user: The user is a Founder of one or more companies.");
+            }
+
+            List<Company> relevantCompanies
+                    = companyRepository.findByOwnersContainingOrManagersContaining(memberIdToDelete, memberIdToDelete);
+
+            logger.logEvent("Company role cleanup found " + relevantCompanies.size()
+                    + " relevant companies for memberId=" + memberIdToDelete,
+                    LogbackSystemLogger.LogLevel.DEBUG);
+
+            for (Company company : relevantCompanies) {
+                company.removeUserFromAllRoles(memberIdToDelete);
+                companyRepository.save(company);
+
+                logger.logEvent("Member removed from company roles, memberId=" + memberIdToDelete
+                        + ", companyId=" + company.getId(),
+                        LogbackSystemLogger.LogLevel.INFO);
+            }
+
+            logger.logEvent("Company role cleanup completed for memberId=" + memberIdToDelete,
+                    LogbackSystemLogger.LogLevel.INFO);
+
+        } catch (RuntimeException e) {
+            logger.logError("Company role cleanup failed due to an unexpected system error, memberId="
+                    + memberIdToDelete, e);
+            throw e;
+
+        } catch (Exception e) {
+            logger.logEvent("Company role cleanup rejected, memberId=" + memberIdToDelete
+                    + ", reason=" + e.getMessage(),
+                    LogbackSystemLogger.LogLevel.WARN);
+            throw new Exception("Failed to remove user from companies: " + e.getMessage(), e);
         }
     }
 
@@ -116,5 +173,97 @@ public class SystemAdminService {
         companyRepository.save(company);
         return new CompanyDTO(company);
     }
+    // Use Case: View Purchase History by Buyer 6.4
+    public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(long adminId) {
+            try{
+                SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+                if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                    throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
+                }
+                List<Purchase> allOrders = historyRepository.getAllPurchases();
+                if(allOrders == null || allOrders.isEmpty()){
+                    throw new IllegalStateException("No purchases have been made yet.");
+                }
+                checkIfHistoryIsEmpty(allOrders); 
+                return allOrders.stream()
+                    .collect(Collectors.groupingBy(
+                        Purchase::getMemberId, 
+                        Collectors.mapping(    
+                            purchase -> objectMapper.convertValue(purchase, OrderDTO.class), 
+                            Collectors.toList()
+                        )
+                    ));
+            } catch (Exception e) {
+                if (!(e instanceof IllegalStateException && "No purchase history is available.".equals(e.getMessage()))) {
+                    logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
+                }
+                throw e; 
+            } 
+        }
 
+    // Use Case: View Purchase History by Company and Event 6.4
+    public Map<Long, Map<String, List<OrderDTO>>> getPurchaseHistoryByCompanyAndEvent(long adminId) {
+            try {
+                SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+                if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                    throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
+                }
+                List<Purchase> allPurchases = historyRepository.getAllPurchases();
+                checkIfHistoryIsEmpty(allPurchases);
+                                if(allPurchases == null || allPurchases.isEmpty()){
+                    throw new IllegalStateException("No purchases have been made yet.");
+                }
+                return allPurchases.stream()
+                    .collect(Collectors.groupingBy(
+                        Purchase::getCompanyId, 
+                        Collectors.groupingBy(
+                            Purchase::getEventName, 
+                            Collectors.mapping(    
+                                purchase -> objectMapper.convertValue(purchase, OrderDTO.class),
+                                Collectors.toList()
+                            )
+                        ) 
+                    ));
+            } catch (Exception e) {
+                if (!(e instanceof IllegalStateException && "No purchase history is available.".equals(e.getMessage()))) {
+                    logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
+                }
+                throw e; 
+            } 
+        }
+
+
+
+    private void checkIfHistoryIsEmpty(List<Purchase> orders) {
+        if (orders == null || orders.isEmpty()) {
+            throw new IllegalStateException("No purchase history is available.");
+        }
+    }
+
+    // logs documentation of the system admin service
+    public List<String> viewEventLogs(long adminId) throws Exception {
+        SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+        if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+            logger.logError("Unauthorized access. Invalid admin credentials.", new Exception("Unauthorized access. Invalid admin credentials."));
+            throw new Exception("Unauthorized access. Invalid admin credentials.");
+        }
+        return readLastNLines(Paths.get("logs/events.log"), 100);
+    }
+
+    public List<String> viewErrorLogs(long adminId) throws Exception {
+        SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+        if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+            logger.logError("Unauthorized access. Invalid admin credentials.", new Exception("Unauthorized access. Invalid admin credentials."));
+            throw new Exception("Unauthorized access. Invalid admin credentials.");
+        }
+        return readLastNLines(Paths.get("logs/errors.log"), 100);
+    }
+
+    private List<String> readLastNLines(Path path, int maxLines) throws Exception {
+        try (Stream<String> lines = Files.lines(path)) {
+            List<String> allLines = lines.collect(Collectors.toList());
+            int start = Math.max(0, allLines.size() - maxLines);
+            return allLines.subList(start, allLines.size());
+        }
+    }
 }

@@ -3,16 +3,22 @@ package ticketsystem.ApplicationLayer;
 import java.util.List;
 
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+import ticketsystem.ApplicationLayer.Events.UserLoginListener;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.Ticket;
 
-public class OrderService implements EventUpdatesListener{
+public class OrderService implements UserLoginListener, EventUpdatesListener{
 
     private final IOrderRepository orderRepository;
+    private final TokenService tokenService;
+    private final ISystemLogger logger;
     private final NotificationsService notificationsService;
 
-    public OrderService(IOrderRepository orderRepository, NotificationsService notificationsService) {
+    public OrderService(IOrderRepository orderRepository,TokenService tokenService,ISystemLogger logger,NotificationsService notificationsService) {
         this.orderRepository = orderRepository;
+        this.tokenService = tokenService;
+        this.logger = logger;
         this.notificationsService = notificationsService;
     }
 

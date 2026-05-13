@@ -23,4 +23,6 @@ public interface IUserRepository {
     boolean updateRegisteredMemberUsername(String username, String newUsername);
 
     boolean updateRegisteredMemberPassword(String username, String newHashedPassword);
+
+    boolean updateMember(Member member);
 }

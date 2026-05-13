@@ -11,9 +11,14 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
+import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
@@ -27,6 +32,7 @@ public class HistoryServiceTest {
     private ITokenService tokenService;
     private UserService userService;
     private HistoryService historyService;
+    private ICompanyRepository companyRepository;
 
     @BeforeEach
     void setUp() {
@@ -39,8 +45,8 @@ public class HistoryServiceTest {
         
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         this.userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
-        
-        this.historyService = new HistoryService(historyRepository, tokenService);
+        this.companyRepository = new CompanyRepository();
+        this.historyService = new HistoryService(historyRepository, tokenService, new MembershipDomainService(userRepository), new LogbackSystemLogger()    );
     }
 
     /**
@@ -127,5 +133,93 @@ public class HistoryServiceTest {
         // --- Assert ---
         List<OrderDTO> history = historyService.getHistoryForUser(validToken);
         assertEquals(1, history.size(), "One purchase should be added to history");
+    }
+        private Company createCompanyWithFounderRole(long founderId) {
+        Company company = new Company(
+                "history_company_" + founderId,
+                founderId,
+                null,
+                null
+        );
+
+        companyRepository.save(company);
+
+        Member founder = userRepository.getMemberById(founderId);
+        assertNotNull(founder, "Founder member must exist before assigning company role");
+
+        boolean roleAdded = founder.addFounderRole(company.getId());
+        assertTrue(roleAdded, "Founder role should be added successfully");
+
+        return company;
+    }
+
+    private OrderDTO createOrderDTO(long userId, long companyId, String eventName) {
+        List<PurchaseDTO> purchases = new ArrayList<>();
+        purchases.add(new PurchaseDTO(
+                10L,
+                20L,
+                1,
+                1,
+                new BigDecimal("150.0"),
+                "ACTIVE",
+                ""
+        ));
+
+        return new OrderDTO(
+                0L,
+                purchases,
+                eventName,
+                "HaYarkon Park",
+                userId,
+                companyId
+        );
+    }
+    /**
+ * 4.5 View purchase and order history - Successful Scenario
+    */
+    @Test
+    void GivenOwnerAndExistingCompanyHistory_WhenGetHistoryForCompany_ThenReturnsCompanyHistory() {
+        // --- Given (Arrange) ---
+        String ownerToken = getValidMemberToken("company_history_owner", "Pass123!");
+        long ownerId = tokenService.extractUserId(ownerToken);
+
+        Company company = createCompanyWithFounderRole(ownerId);
+
+        OrderDTO orderDto = createOrderDTO(
+                ownerId,
+                company.getId(),
+                "Company History Concert"
+        );
+
+        historyService.onOrderCompleted(orderDto);
+
+        // --- When (Act) ---
+        List<OrderDTO> result = historyService.getHistoryForCompany(ownerToken, company.getId());
+
+        // --- Then (Assert) ---
+        assertNotNull(result, "The result should not be null");
+        assertFalse(result.isEmpty(), "Company history should not be empty when purchases exist");
+        assertEquals(1, result.size(), "Company history should contain exactly one order");
+        assertEquals("Company History Concert", result.get(0).getEventName(), "Event name should match");
+        assertEquals(company.getId(), result.get(0).getCompanyId(), "Company id should match");
+    }
+    @Test
+    void GivenMemberWithoutCompanyPermission_WhenGetHistoryForCompany_ThenThrowsIllegalArgumentException() {
+        // --- Given (Arrange) ---
+        String ownerToken = getValidMemberToken("real_company_owner", "Pass123!");
+        long ownerId = tokenService.extractUserId(ownerToken);
+        Company company = createCompanyWithFounderRole(ownerId);
+
+        String regularMemberToken = getValidMemberToken("regular_member_no_permission", "Pass123!");
+
+        // --- When & Then ---
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            historyService.getHistoryForCompany(regularMemberToken, company.getId());
+        });
+
+        assertTrue(
+                exception.getMessage().contains("permissions"),
+                "Error message should mention insufficient permissions"
+        );
     }
 }

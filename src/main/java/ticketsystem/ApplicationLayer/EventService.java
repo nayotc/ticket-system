@@ -12,6 +12,8 @@ import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.DomainLayer.event.PurchasePolicy;
+import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.DTO.Event.EventDTO;
@@ -40,8 +42,9 @@ public class EventService {
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
+            Long userId = tokenService.extractUserId(sessionId);
             // precondition: user has permission to create an event
-            if (!membershipDomain.validatePermission(sessionId, companyId, "event:create")) {
+            if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to create an event");
             }
 
@@ -54,7 +57,6 @@ public class EventService {
                 throw new IllegalArgumentException("Map size must be positive");
             }
             // main scenario: create and add event
-            Long userId = tokenService.extractUserId(sessionId);
             Long eventId = eventRepository.getNextId();
 
             Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,
@@ -170,7 +172,8 @@ public class EventService {
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
-            if (!membershipDomain.validatePermission(sessionId, event.getCompanyId(), "event:defineMap")) {
+            Long userId = tokenService.extractUserId(sessionId);
+            if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.CONFIGURE_HALL_AND_MAP)) {
                 throw new IllegalArgumentException("User does not have permission to define event map");
             }
 

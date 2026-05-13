@@ -114,4 +114,16 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
         return true;
     }
 
+    @Override
+    public synchronized boolean updateMember(Member targetMember) {
+        long id = targetMember.getId();
+        
+        if (!registeredMembersMap.containsKey(id)) {
+            return false;
+        }
+        
+        registeredMembersMap.put(id, targetMember);
+        return true;
+    }
+
 }

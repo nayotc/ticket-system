@@ -23,6 +23,8 @@ public interface IOrderRepository {
 
     void deleteActiveOrdersByUserId(Long userId);
 
+    ActiveOrder getActiveOrderBySessionToken(String sessionToken);
+    ActiveOrder getActiveOrderByUserId(Long userId);
     List<ActiveOrder> getActiveOrdersByEventId(Long eventId);
-
+    
 }
