@@ -85,21 +85,21 @@ public class MembershipServiceTest {
         managerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(managerId, managerMember, "password123");
         managerToken = tokenService.addActiveSession(managerMember);
-        
-        // SYNC WITH COMPANY TREE
-        testCompany.registerNewAppointment(founderId, managerId, "MANAGER");
 
-        // 5. Setup Owner - Specifically for UC 4.9 (Remove Owner) and 4.10
+        Founder founderRole = (Founder) founderMember.getRoleInCompany(companyId);
+        founderRole.addAppointee(managerId);
+
+        // 5. Setup Owner - Specifically for UC 4.9 and 4.10
         ownerMember = new Member(ownerId, "OwnerUser");
         ownerMember.addOwnerRole(companyId, founderId);
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password123");
         ownerToken = tokenService.addActiveSession(ownerMember);
-        
-        // SYNC WITH COMPANY TREE
-        testCompany.registerNewAppointment(founderId, ownerId, "OWNER");
 
-        // Save company after all initial appointments
+        founderRole.addAppointee(ownerId);
+        userRepository.updateMember(founderMember);
+
+        // Save company after setup
         companyRepository.save(testCompany);
 
         // 6. Setup Regular Member - Starting with no role (For UC 4.7, 4.8)

@@ -25,6 +25,7 @@ import java.util.Map;
 
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
+import ticketsystem.DomainLayer.MembershipDomainService;
 
 public class SystemAdminService {
 
@@ -37,6 +38,7 @@ public class SystemAdminService {
     private final ISystemLogger logger;
     private final IHistoryRepository historyRepository;
     private final ObjectMapper objectMapper;
+    private final MembershipDomainService membershipDomain;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
@@ -45,7 +47,8 @@ public class SystemAdminService {
             IOrderRepository orderRepository,
             ITokenService tokenService,
             ICompanyRepository companyRepository,
-            ISystemLogger logger, IHistoryRepository historyRepository) {
+            ISystemLogger logger, IHistoryRepository historyRepository,
+            MembershipDomainService membershipDomain) {
 
         this.adminRepository = adminRepository;
         this.paymentService = paymentService;
@@ -55,8 +58,10 @@ public class SystemAdminService {
         this.companyRepository = companyRepository;
         this.logger = logger;
         this.historyRepository = historyRepository;
+        this.membershipDomain = membershipDomain;
         this.objectMapper = new ObjectMapper();
-    }
+
+    }   
 
 //Use Case: Ticket System Initialization
     public boolean initSystem() {
@@ -123,27 +128,7 @@ public class SystemAdminService {
                 LogbackSystemLogger.LogLevel.INFO);
 
         try {
-            boolean isFounderAnywhere = companyRepository.existsByFounderId(memberIdToDelete);
-
-            if (isFounderAnywhere) {
-                throw new Exception("Cannot delete user: The user is a Founder of one or more companies.");
-            }
-
-            List<Company> relevantCompanies
-                    = companyRepository.findByOwnersContainingOrManagersContaining(memberIdToDelete, memberIdToDelete);
-
-            logger.logEvent("Company role cleanup found " + relevantCompanies.size()
-                    + " relevant companies for memberId=" + memberIdToDelete,
-                    LogbackSystemLogger.LogLevel.DEBUG);
-
-            for (Company company : relevantCompanies) {
-                company.removeUserFromAllRoles(memberIdToDelete);
-                companyRepository.save(company);
-
-                logger.logEvent("Member removed from company roles, memberId=" + memberIdToDelete
-                        + ", companyId=" + company.getId(),
-                        LogbackSystemLogger.LogLevel.INFO);
-            }
+            membershipDomain.cancelAllRolesForMember(memberIdToDelete);
 
             logger.logEvent("Company role cleanup completed for memberId=" + memberIdToDelete,
                     LogbackSystemLogger.LogLevel.INFO);
@@ -155,58 +140,37 @@ public class SystemAdminService {
 
         } catch (Exception e) {
             logger.logEvent("Company role cleanup rejected, memberId=" + memberIdToDelete
-                    + ", reason=" + e.getMessage(),
+                            + ", reason=" + e.getMessage(),
                     LogbackSystemLogger.LogLevel.WARN);
             throw new Exception("Failed to remove user from companies: " + e.getMessage(), e);
         }
     }
 
-    // Use Case: Close Production Company by System Admin
+    // Use Case 6.1: Close Production Company by System Admin
     public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) throws Exception {
         SystemAdmin admin = adminRepository.getAdminById("" + adminId);
-        if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
-            logger.logError("Unauthorized access. Invalid admin credentials.", new Exception("Unauthorized access. Invalid admin credentials."));
+
+        if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
+            logger.logEvent("Unauthorized access. Invalid admin credentials.",
+                    LogbackSystemLogger.LogLevel.WARN);
             throw new Exception("Unauthorized access. Invalid admin credentials.");
         }
+
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new Exception("Error: Company not found."));
-        company.closeBySystemAdmin(adminId);
-        logger.logEvent("Production company closed by System Admin.", LogbackSystemLogger.LogLevel.INFO);
+
+        membershipDomain.cancelAllRolesForCompany(companyId);
+
+        company.closeBySystemAdmin();
+
         companyRepository.save(company);
+
+        logger.logEvent("Production company closed by System Admin. companyId=" + companyId
+                        + ", adminId=" + adminId,
+                LogbackSystemLogger.LogLevel.INFO);
+
         return new CompanyDTO(company);
     }
-    // Use Case: View Purchase History by Buyer 6.4
-    public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(long adminId) {
-            try{
-                SystemAdmin admin = adminRepository.getAdminById("" + adminId);
-                if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
-                    throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
-                }
-                List<Purchase> allOrders = historyRepository.getAllPurchases();
-                if(allOrders == null || allOrders.isEmpty()){
-                    throw new IllegalStateException("No purchases have been made yet.");
-                }
-                checkIfHistoryIsEmpty(allOrders); 
-                Map<Long, List<OrderDTO>> result = new HashMap<>();
-
-                for (Purchase purchase : allOrders) {
-                    Long buyerMemberId = purchase.getMemberId(); // null means Guest
-
-                    OrderDTO orderDTO = objectMapper.convertValue(purchase, OrderDTO.class);
-
-                    result.computeIfAbsent(buyerMemberId, k -> new ArrayList<>())
-                        .add(orderDTO);
-                }
-
-                return result;
-            } catch (Exception e) {
-                if (!(e instanceof IllegalStateException && "No purchase history is available.".equals(e.getMessage()))) {
-                    logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
-                }
-                throw e; 
-            } 
-        }
-
     // Use Case: View Purchase History by Company and Event 6.4
     public Map<Long, Map<String, List<OrderDTO>>> getPurchaseHistoryByCompanyAndEvent(long adminId) {
             try {
@@ -238,7 +202,39 @@ public class SystemAdminService {
             } 
         }
 
+    // Use Case: View Purchase History by Buyer 6.4
+    public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(long adminId) {
+        try {
+            SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+            if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
+                throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
+            }
 
+            List<Purchase> allOrders = historyRepository.getAllPurchases();
+            if (allOrders == null || allOrders.isEmpty()) {
+                throw new IllegalStateException("No purchases have been made yet.");
+            }
+
+            Map<Long, List<OrderDTO>> result = new HashMap<>();
+
+            for (Purchase purchase : allOrders) {
+                Long buyerMemberId = purchase.getMemberId();
+                OrderDTO orderDTO = objectMapper.convertValue(purchase, OrderDTO.class);
+
+                result.computeIfAbsent(buyerMemberId, k -> new ArrayList<>())
+                        .add(orderDTO);
+            }
+
+            return result;
+
+        } catch (Exception e) {
+            if (!(e instanceof IllegalStateException && "No purchase history is available.".equals(e.getMessage()))) {
+                logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(),
+                        LogbackSystemLogger.LogLevel.WARN);
+            }
+            throw e;
+        }
+    }
 
     private void checkIfHistoryIsEmpty(List<Purchase> orders) {
         if (orders == null || orders.isEmpty()) {

@@ -12,12 +12,18 @@ import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Founder;
+import ticketsystem.DomainLayer.user.RoleStatus;
 
 public class CompanyServiceTest {
 
@@ -28,13 +34,15 @@ public class CompanyServiceTest {
 
     private String founderToken;
     private String nonFounderToken;
+    private IUserRepository userRepository;
+    private MembershipDomainService membershipDomain;
 
     private static final String VALID_COMPANY_NAME = "BGU Productions";
 
     @BeforeEach
     void setUp() throws Exception {
         ICompanyRepository companyRepository = new CompanyRepository();
-        IUserRepository userRepository = new UserRepository();
+        userRepository = new UserRepository();
         ITokenRepository tokenRepository = new TokenRepository();
 
         tokenService = new TokenService(
@@ -55,7 +63,9 @@ public class CompanyServiceTest {
         };
 
         userService = new UserService(userRepository, tokenService, testLogger);
-        companyService = new CompanyService(companyRepository, tokenService);
+        membershipDomain = new MembershipDomainService(userRepository);
+        userService = new UserService(userRepository, tokenService, testLogger);
+        companyService = new CompanyService(companyRepository, tokenService, membershipDomain, testLogger);
 
         founderToken = createLoggedInMember("noa_user", "password123");
         nonFounderToken = createLoggedInMember("other_user", "password123");
@@ -87,6 +97,11 @@ public class CompanyServiceTest {
 
         Long founderId = tokenService.extractUserId(founderToken);
         assertEquals(founderId, company.getFounderId(), "The logged-in member should become the company founder.");
+        CompanyRole founderRole = userRepository.getMemberById(founderId).getRoleInCompany(company.getId());
+
+        assertNotNull(founderRole, "Founder role should be assigned to the creating member.");
+        assertTrue(founderRole instanceof Founder, "The creating member should receive a Founder role.");
+        assertEquals(RoleStatus.ACTIVE, founderRole.getStatus(), "Founder role should be active immediately.");
     }
 
     @Test

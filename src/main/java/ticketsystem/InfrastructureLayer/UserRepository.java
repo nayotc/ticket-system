@@ -1,6 +1,8 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import ticketsystem.DomainLayer.user.Member;
@@ -126,4 +128,8 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
         return true;
     }
 
+    @Override
+    public List<Member> getAllMembers() {
+        return new ArrayList<>(registeredMembersMap.values());
+    }
 }

@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,11 +19,14 @@ import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.history.PurchasedTicket;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
@@ -33,6 +38,8 @@ import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
 
 public class SystemAdminServiceTest {
 
@@ -46,6 +53,7 @@ public class SystemAdminServiceTest {
     HistoryRepository historyRepo;
     OrderRepository orderRepo;
     LogbackSystemLogger logger = new LogbackSystemLogger();
+    private MembershipDomainService membershipDomain;
 
     @BeforeEach
     public void setUp() {
@@ -59,7 +67,8 @@ public class SystemAdminServiceTest {
         companyRepo = new CompanyRepository();
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
-        companyService = new CompanyService(companyRepo, tokenService);
+        membershipDomain = new MembershipDomainService(userRepo);
+        companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger);
         orderRepo = new OrderRepository();
         historyRepo = new HistoryRepository();
         systemAdminService = new SystemAdminService(
@@ -69,8 +78,8 @@ public class SystemAdminServiceTest {
                 userRepo,
                 orderRepo,
                 tokenService,
-                companyRepo, logger, historyRepo
-
+                companyRepo, logger, historyRepo,
+                membershipDomain
         );
     }
 
@@ -170,41 +179,59 @@ public class SystemAdminServiceTest {
         assertTrue(deletedUser == null, "Member should be removed from UserRepository.");
     }
 
-    // Use case: close production company by admin
-    @Test
-    void GivenActiveSystemAdminAndActiveCompany_WhenCloseProductionCompanyByAdmin_ThenCompanyIsClosedAndAppointmentsAreCancelled() throws Exception {
+        @Test
+    void GivenActiveSystemAdminAndActiveCompany_WhenCloseProductionCompanyByAdmin_ThenCompanyIsClosedAndRolesAreCancelled() throws Exception {
         // Arrange
         long adminId = 1L;
         long founderId = 2L;
         long ownerId = 3L;
         long managerId = 4L;
-        // Add active system admin to admin repository
+
         realAdminRepo.addAdmin(new SystemAdmin(String.valueOf(adminId), "admin", true));
 
-        // Create active company by founder
-        String founderSessionId = tokenService.addActiveSession(new Member(founderId, "founder"));
+        Member founder = new Member(founderId, "founder");
+        userRepo.addRegisteredMember(founderId, founder, "password123");
+        String founderSessionId = tokenService.addActiveSession(founder);
+
         CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
+        long companyId = createdCompany.getId();
 
-        // Add owner and manager appointments to the company
-        Company company = companyRepo.findById(createdCompany.getId())
-                .orElseThrow(() -> new Exception("Company was not created"));
+        Member owner = new Member(ownerId, "owner");
+        owner.addOwnerRole(companyId, founderId);
+        owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepo.addRegisteredMember(ownerId, owner, "password123");
 
-        company.registerNewAppointment(founderId, ownerId, "OWNER");
-        company.registerNewAppointment(founderId, managerId, "MANAGER");
-        companyRepo.save(company);
+        Set<Permission> managerPermissions = new HashSet<>();
+        managerPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
+
+        Member manager = new Member(managerId, "manager");
+        manager.addManagerRole(companyId, founderId, managerPermissions);
+        manager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepo.addRegisteredMember(managerId, manager, "password123");
+
+        Founder founderRole = (Founder) userRepo.getMemberById(founderId).getRoleInCompany(companyId);
+        founderRole.addAppointee(ownerId);
+        founderRole.addAppointee(managerId);
+        userRepo.updateMember(userRepo.getMemberById(founderId));
 
         // Act
-        CompanyDTO closedCompany = systemAdminService.closeProductionCompanyByAdmin(
-                adminId,
-                createdCompany.getId()
-        );
+        CompanyDTO closedCompany = systemAdminService.closeProductionCompanyByAdmin(adminId, companyId);
+
         // Assert
         assertNotNull(closedCompany);
-        Company savedCompany = companyRepo.findById(createdCompany.getId())
+
+        Company savedCompany = companyRepo.findById(companyId)
                 .orElseThrow(() -> new Exception("Company was not found after closing"));
-        assertFalse(savedCompany.isActive());
-        assertTrue(savedCompany.getOwners().isEmpty());
-        assertTrue(savedCompany.getManagers().isEmpty());
+
+        assertFalse(savedCompany.isActive(), "Company should become inactive.");
+
+        CompanyRole savedFounderRole = userRepo.getMemberById(founderId).getRoleInCompany(companyId);
+        CompanyRole savedOwnerRole = userRepo.getMemberById(ownerId).getRoleInCompany(companyId);
+        CompanyRole savedManagerRole = userRepo.getMemberById(managerId).getRoleInCompany(companyId);
+
+        assertEquals(RoleStatus.CANCELLED, savedFounderRole.getStatus(), "Founder role should be cancelled by admin company closure.");
+        assertEquals(RoleStatus.CANCELLED, savedOwnerRole.getStatus(), "Owner role should be cancelled by admin company closure.");
+        assertEquals(RoleStatus.CANCELLED, savedManagerRole.getStatus(), "Manager role should be cancelled by admin company closure.");
     }
 
     @Test
@@ -212,9 +239,11 @@ public class SystemAdminServiceTest {
         // Arrange
         long nonAdminId = 10L;
         long founderId = 20L;
-        String founderSessionId = tokenService.addActiveSession(new Member(founderId, "founder"));
-        CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
+        Member founder = new Member(founderId, "founder");
+        userRepo.addRegisteredMember(founderId, founder, "password123");
+        String founderSessionId = tokenService.addActiveSession(founder);
 
+        CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
         // Act + Assert
         Exception exception = assertThrows(Exception.class, ()
                 -> systemAdminService.closeProductionCompanyByAdmin(nonAdminId, createdCompany.getId())

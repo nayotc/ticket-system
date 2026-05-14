@@ -27,5 +27,20 @@ public abstract class CompanyRole {
     }
 
     public abstract boolean hasPermission(Permission permission);
+    public boolean isActive() {
+    return this.status == RoleStatus.ACTIVE;
+    }
+
+    public boolean isPending() {
+        return this.status == RoleStatus.PENDING;
+    }
+
+    public boolean isCancelled() {
+        return this.status == RoleStatus.CANCELLED;
+    }
+
+    public void cancel() {
+        this.status = RoleStatus.CANCELLED;
+    }
 
 }

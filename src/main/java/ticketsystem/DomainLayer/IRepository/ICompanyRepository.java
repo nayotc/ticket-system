@@ -15,10 +15,5 @@ public interface ICompanyRepository {
     Optional<Company> findById(long id);
     List<Company> findAll();
 
-    // Checks if there is ANY company where this user is the founder
-    boolean existsByFounderId(long founderId);
-    // Fetches ONLY the companies where the user is listed in the owners OR managers lists
-    List<Company> findByOwnersContainingOrManagersContaining(long ownerId, long managerId);
-
     List<Long> getCompanyIdsByCriteria(SearchCriteria criteria);
 }
