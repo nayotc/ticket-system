@@ -110,7 +110,7 @@ public class ActiveOrder {
             validateHasTickets();
             validateTicketLimit();
 
-            if (status != OrderStatus.ACTIVE) {
+            if (status != OrderStatus.ACTIVE && status != OrderStatus.PAYMENT_FAILED) {
                 throw new IllegalStateException("Order is not active");
             }
     }
@@ -150,6 +150,10 @@ public class ActiveOrder {
     PAYMENT_FAILED,
     COMPLETED,
     CANCELLED
+    }
+
+    public void activeOrder(){
+        this.status=OrderStatus.ACTIVE;
     }
 
     public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId, Long eventId) {

@@ -65,26 +65,28 @@ public class Reservation {
         }
         event.releaseSpot(areaId, quantity);
     }
+    //2.8 checkout
 
-
-    public void submitActiveOrderForCheckout(ActiveOrder order, Event event) {
+    public BigDecimal submitActiveOrderForCheckout(ActiveOrder order, Event event) {
+        if(order==null|| event==null) {
+            throw new IllegalStateException("No active order or event found");
+        }
         order.validateCanBeSubmittedBy();
         order.submitForCheckout();
-        
-    }
+        return calculateTotalPrice(order, event);
+        }
 
+    //in the service layer, after payment is successful, call order.completeCheckout(order,event) to finalize the order and mark tickets as sold in the event
     
     public void completeCheckout(ActiveOrder order, Event event) {
         order.completeOrder();       
         for (Ticket ticket : new ArrayList<>(order.getTickets())) {
-
             if(ticket.getRow()==0 && ticket.getChair()==0) {
                 event.sellSpot(ticket.getAreaId(), 1);
             } else {
                 event.sellSeat(ticket.getAreaId(),new SeatPosition(ticket.getRow(), ticket.getChair()));
             }
         }
-
     }
     
     public BigDecimal calculateTotalPrice(ActiveOrder order, Event event) {
@@ -93,6 +95,9 @@ public class Reservation {
         return total;
     }
 
+  
+
+    //expire order and release tickets back to event
     public void expire(Event event , ActiveOrder order) {
     for (Ticket ticket : new ArrayList<>(order.getTickets())) {
         releaseTicket(ticket, event);
