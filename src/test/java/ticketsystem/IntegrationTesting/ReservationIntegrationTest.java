@@ -104,32 +104,6 @@ public class ReservationIntegrationTest {
                                 event.getSeatStatus(areaId, new SeatPosition(1, 1)));
         }
 
-        @Test
-        public void testCompleteCheckout_WhenSeatReserved_ThenSeatStatusBecomesSold() {
-                // Arrange
-                Long eventId = 100L;
-                Long areaId = 1L;
-
-                Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
-
-                ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
-
-                reservation.selectSeatTicket(
-                                order,
-                                event,
-                                areaId,
-                                new seatPositionDTO(1, 1));
-
-                // Act
-                reservation.completeCheckout(order, event);
-
-                // Assert
-                assertEquals(ActiveOrder.OrderStatus.COMPLETED, order.getStatus());
-
-                assertEquals(
-                                SeatStatus.SOLD,
-                                event.getSeatStatus(areaId, new SeatPosition(1, 1)));
-        }
 
         @Test
         public void testRemoveSeatTicket_WhenSeatWasReserved_ThenTicketRemovedAndSeatStatusBecomesAvailable() {
@@ -305,12 +279,40 @@ public class ReservationIntegrationTest {
                 assertEquals(2, standingArea.getReserved());
 
         }
+         @Test
+        public void testCompleteCheckout_WhenSeatReserved_ThenSeatStatusBecomesSold() {
+                // Arrange
+                Long eventId = 100L;
+                Long areaId = 1L;
+
+                Event event = createActiveEventWithSeatingAndStandingAreas(eventId);
+
+                ActiveOrder order = new ActiveOrder(1L, "token-1", 1L, eventId);
+
+                reservation.selectSeatTicket(
+                                order,
+                                event,
+                                areaId,
+                                new seatPositionDTO(1, 1));
+
+                // Act
+                reservation.submitActiveOrderForCheckout(order, event);
+                reservation.completeCheckout(order, event);
+
+                // Assert
+                assertEquals(ActiveOrder.OrderStatus.COMPLETED, order.getStatus());
+
+                assertEquals(
+                                SeatStatus.SOLD,
+                                event.getSeatStatus(areaId, new SeatPosition(1, 1)));
+        }
 
         @Test
         public void completeCheckout_WhenSeatAlreadySold_ThenThrowsOrKeepsConsistentState() {
                 Long areaId = 1L;
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
+                reservation.submitActiveOrderForCheckout(order, event);
                 reservation.completeCheckout(order, event);
 
                 ActiveOrder secondOrder = new ActiveOrder(2L, "token-2", 2L, 100L);
@@ -324,6 +326,24 @@ public class ReservationIntegrationTest {
 
                 assertEquals(
                                 SeatStatus.SOLD,
+                                event.getSeatStatus(areaId, new SeatPosition(1, 1)));
+        }
+        @Test
+        public void completeCheckout_WhenTheTicketNotReserved_ThenThrowsExceptionAndOrderUnchanged() {
+                Long areaId = 1L;
+
+                reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
+                reservation.removeTicketFromActiveOrder(order, event, order.getTickets().get(0).getTicketId());
+
+                assertThrows(Exception.class, () -> {
+                        reservation.completeCheckout(order, event);
+                });
+
+                assertEquals(OrderStatus.ACTIVE, order.getStatus());
+                assertTrue(order.getTickets().isEmpty());
+
+                assertEquals(
+                                SeatStatus.AVAILABLE,
                                 event.getSeatStatus(areaId, new SeatPosition(1, 1)));
         }
 

@@ -79,6 +79,9 @@ public class Reservation {
     //in the service layer, after payment is successful, call order.completeCheckout(order,event) to finalize the order and mark tickets as sold in the event
     
     public void completeCheckout(ActiveOrder order, Event event) {
+       if(order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT) {
+           throw new IllegalStateException("Order is not in a state that can be completed");
+        }
         order.completeOrder();       
         for (Ticket ticket : new ArrayList<>(order.getTickets())) {
             if(ticket.getRow()==0 && ticket.getChair()==0) {

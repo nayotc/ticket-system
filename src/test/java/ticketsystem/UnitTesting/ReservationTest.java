@@ -146,10 +146,11 @@ public class ReservationTest {
 
         Ticket seatTicket = new Ticket(1L, eventId, 5L, 2, 3, BigDecimal.valueOf(100));
         Ticket standingTicket = new Ticket(2L, eventId, 6L, 0, 0, BigDecimal.valueOf(80));
-
+        when(order.getStatus()).thenReturn(ActiveOrder.OrderStatus.PENDING_CHECKOUT);
         when(order.getTickets()).thenReturn(List.of(seatTicket, standingTicket));
 
         // Act
+        
         reservation.completeCheckout(order, event);
 
         // Assert
