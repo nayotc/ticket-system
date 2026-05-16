@@ -1,5 +1,7 @@
 package ticketsystem.DomainLayer.IRepository;
 
+import java.util.List;
+
 import ticketsystem.DomainLayer.user.Member;
 
 public interface IUserRepository {
@@ -25,4 +27,6 @@ public interface IUserRepository {
     boolean updateRegisteredMemberPassword(String username, String newHashedPassword);
 
     boolean updateMember(Member member);
+
+    List<Member> getAllMembers();
 }

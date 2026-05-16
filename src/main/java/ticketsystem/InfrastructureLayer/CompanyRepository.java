@@ -68,20 +68,6 @@ public class CompanyRepository implements ICompanyRepository {
     }
 
     @Override
-    public boolean existsByFounderId(long founderId) {
-        return companies.values().stream()
-                .anyMatch(c -> c.getFounderId() == founderId);
-    }
-
-    @Override
-    public List<Company> findByOwnersContainingOrManagersContaining(long ownerId, long managerId) {
-        return companies.values().stream()
-                .filter(c -> c.getOwners().contains(ownerId) || c.getManagers().contains(managerId))
-                .map(Company::new) 
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public List<Long> getCompanyIdsByCriteria(SearchCriteria criteria) {
         if (criteria == null) {
             throw new IllegalArgumentException("Search criteria cannot be null");

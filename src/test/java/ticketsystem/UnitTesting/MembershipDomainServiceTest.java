@@ -49,9 +49,6 @@ public class MembershipDomainServiceTest {
         existingOwner.addOwnerRole(companyId, 100L); // Appointed by appointer
         existingOwner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(existingOwnerId, existingOwner, "password123");
-        
-        // SYNC WITH COMPANY TREE
-        company.registerNewAppointment(100L, existingOwnerId, "OWNER");
     }
 
     // --- Validate Permission ---
@@ -439,18 +436,22 @@ public class MembershipDomainServiceTest {
     }
 
     // --- Remove Owner Assignment ---
-
     @Test
     public void GivenValidOwner_WhenValidateRemoveOwnerAssignment_ThenReturnsTrueAndCleansUp() throws Exception {
-        // Arrange: appointer (100L) is Founder, existingOwner (300L) is already synced in Company tree.
+        // Arrange
         appointer.addFounderRole(companyId);
-        
+
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+        founderRole.addAppointee(existingOwnerId);
+
         // Act
         boolean result = domainService.validateRemoveOwnerAssignment(appointer, existingOwner, company);
 
         // Assert
         assertTrue(result, "Should return true on successful validation and removal.");
         assertNull(existingOwner.getRoleInCompany(companyId), "The Owner role should be deleted.");
+        assertFalse(founderRole.getAppointeesMemberIds().contains(existingOwnerId),
+                "Removed owner should also be removed from founder appointees list.");
     }
 
     @Test
@@ -475,14 +476,13 @@ public class MembershipDomainServiceTest {
     @Test
     public void GivenTargetIsNotOwner_WhenValidateRemoveOwnerAssignment_ThenThrowsException() {
         appointer.addFounderRole(companyId);
-        
-        // Arrange appointee as MANAGER
+
         appointee.addManagerRole(companyId, 100L, new HashSet<>());
-        company.registerNewAppointment(100L, 200L, "MANAGER");
-        
+
         Exception ex = assertThrows(Exception.class, () -> {
             domainService.validateRemoveOwnerAssignment(appointer, appointee, company);
         });
+
         assertEquals("The target user is not an Owner.", ex.getMessage());
     }
 
@@ -576,5 +576,214 @@ public class MembershipDomainServiceTest {
         assertThrows(Exception.class, () -> {
             domainService.validateOwnerResignation(appointer.getRoleInCompany(companyId));
         });
+    }
+
+    @Test
+    public void GivenMemberWithoutRole_WhenAssignFounderRole_ThenFounderRoleIsActive() throws Exception {
+        // Act
+        domainService.assignFounderRole(100L, companyId);
+
+        // Assert
+        CompanyRole role = appointer.getRoleInCompany(companyId);
+
+        assertNotNull(role, "Founder role should be assigned.");
+        assertTrue(role instanceof Founder, "Assigned role should be Founder.");
+        assertEquals(RoleStatus.ACTIVE, role.getStatus(), "Founder role should be active immediately.");
+    }
+
+    @Test
+    public void GivenActiveFounder_WhenValidateFounder_ThenDoesNotThrow() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+
+        // Act + Assert
+        assertDoesNotThrow(() -> domainService.validateFounder(100L, companyId));
+    }
+
+    @Test
+    public void GivenNonFounder_WhenValidateFounder_ThenThrowsException() {
+        // Arrange
+        appointer.addOwnerRole(companyId, 999L);
+        appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+        // Act + Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.validateFounder(100L, companyId);
+        });
+
+        assertEquals("Only the active Founder can perform this action.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenActiveOwner_WhenValidateOwnerOrFounder_ThenDoesNotThrow() {
+        // Arrange
+        appointer.addOwnerRole(companyId, 999L);
+        appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+        // Act + Assert
+        assertDoesNotThrow(() -> domainService.validateOwnerOrFounder(100L, companyId));
+    }
+
+    @Test
+    public void GivenManager_WhenValidateOwnerOrFounder_ThenThrowsException() {
+        // Arrange
+        appointer.addManagerRole(companyId, 999L, new HashSet<>());
+        appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+        // Act + Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.validateOwnerOrFounder(100L, companyId);
+        });
+
+        assertEquals("Only Owners or Founder can perform this action.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenActiveRole_WhenHasActiveRoleInCompany_ThenReturnsTrue() {
+        // Arrange
+        appointer.addOwnerRole(companyId, 999L);
+        appointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+        // Act + Assert
+        assertTrue(domainService.hasActiveRoleInCompany(100L, companyId));
+    }
+
+    @Test
+    public void GivenNoRole_WhenHasActiveRoleInCompany_ThenReturnsFalse() {
+        assertFalse(domainService.hasActiveRoleInCompany(100L, companyId));
+    }
+
+    @Test
+    public void GivenMemberWithNonFounderRoles_WhenCancelAllRolesForMember_ThenRolesAreCancelled() throws Exception {
+        // Arrange
+        Long secondCompanyId = 2L;
+
+        // Company 1: appointer is Founder, appointee is Owner
+        appointer.addFounderRole(companyId);
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+
+        appointee.addOwnerRole(companyId, 100L);
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        founderRole.addAppointee(200L);
+
+        // Company 2: appointer must also have an active role there,
+        // because appointee's manager role says appointerId = 100L.
+        appointer.addFounderRole(secondCompanyId);
+        Founder secondCompanyFounderRole = (Founder) appointer.getRoleInCompany(secondCompanyId);
+
+        appointee.addManagerRole(secondCompanyId, 100L, new HashSet<>());
+        appointee.getRoleInCompany(secondCompanyId).setStatus(RoleStatus.ACTIVE);
+        secondCompanyFounderRole.addAppointee(200L);
+
+        userRepository.updateMember(appointer);
+        userRepository.updateMember(appointee);
+
+        // Act
+        domainService.cancelAllRolesForMember(200L);
+
+        // Assert
+        assertEquals(RoleStatus.CANCELLED, appointee.getRoleInCompany(companyId).getStatus());
+        assertEquals(RoleStatus.CANCELLED, appointee.getRoleInCompany(secondCompanyId).getStatus());
+
+        assertFalse(founderRole.getAppointeesMemberIds().contains(200L),
+                "Cancelled member should be removed from the first appointer's appointees list.");
+
+        assertFalse(secondCompanyFounderRole.getAppointeesMemberIds().contains(200L),
+                "Cancelled member should be removed from the second appointer's appointees list.");
+    }
+
+    @Test
+    public void GivenMemberIsFounder_WhenCancelAllRolesForMember_ThenThrowsException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+
+        // Act + Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.cancelAllRolesForMember(100L);
+        });
+
+        assertEquals("Cannot delete user: The user is a Founder of one or more companies.",
+                exception.getMessage());
+    }
+
+    @Test
+    public void GivenCompanyHasActiveRoles_WhenCancelAllRolesForCompany_ThenAllCompanyRolesAreCancelled() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+
+        appointee.addManagerRole(companyId, 100L, new HashSet<>());
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+        existingOwner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+        // Act
+        domainService.cancelAllRolesForCompany(companyId);
+
+        // Assert
+        assertEquals(RoleStatus.CANCELLED, appointer.getRoleInCompany(companyId).getStatus());
+        assertEquals(RoleStatus.CANCELLED, appointee.getRoleInCompany(companyId).getStatus());
+        assertEquals(RoleStatus.CANCELLED, existingOwner.getRoleInCompany(companyId).getStatus());
+    }
+    // =========================================================================================
+// Use Case 4.15: Roles and permissions tree - Domain logic
+// =========================================================================================
+
+    @Test
+    public void GivenFounderWithOwnerAndManager_WhenBuildRolesAndPermissionsTree_ThenTreeContainsRolesAndPermissions() throws Exception {
+        // Arrange
+        appointer.addFounderRole(companyId);
+
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+
+        existingOwner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        founderRole.addAppointee(existingOwnerId);
+
+        Set<Permission> managerPermissions = new HashSet<>();
+        managerPermissions.add(Permission.MANAGE_INQUIRIES);
+
+        appointee.addManagerRole(companyId, 100L, managerPermissions);
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        founderRole.addAppointee(200L);
+
+        userRepository.updateMember(appointer);
+        userRepository.updateMember(appointee);
+        userRepository.updateMember(existingOwner);
+
+        // Act
+        String tree = domainService.buildRolesAndPermissionsTree(100L, companyId, 100L);
+
+        // Assert
+        assertNotNull(tree, "Tree should not be null.");
+
+        assertTrue(tree.contains("FOUNDER"), "Tree should include the founder role.");
+        assertTrue(tree.contains("100"), "Tree should include the founder id.");
+
+        assertTrue(tree.contains("OWNER"), "Tree should include the owner role.");
+        assertTrue(tree.contains(String.valueOf(existingOwnerId)), "Tree should include the owner id.");
+
+        assertTrue(tree.contains("MANAGER"), "Tree should include the manager role.");
+        assertTrue(tree.contains("200"), "Tree should include the manager id.");
+
+        assertTrue(tree.contains(Permission.MANAGE_INQUIRIES.getKey()),
+                "Tree should include manager permissions.");
+    }
+
+    @Test
+    public void GivenManager_WhenBuildRolesAndPermissionsTree_ThenThrowsException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+
+        Set<Permission> managerPermissions = new HashSet<>();
+        managerPermissions.add(Permission.MANAGE_INQUIRIES);
+
+        appointee.addManagerRole(companyId, 100L, managerPermissions);
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+        // Act + Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.buildRolesAndPermissionsTree(200L, companyId, 100L);
+        });
+
+        assertEquals("Only Owners or Founder can perform this action.", exception.getMessage());
     }
 }

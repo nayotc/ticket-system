@@ -5,31 +5,31 @@ import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.company.DiscountPolicy;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.MembershipDomainService;
 
 public class CompanyService {
 
     private final ICompanyRepository companyRepository;
     private final ITokenService tokenService;
     private final ISystemLogger logger;
-
+    private final MembershipDomainService membershipDomain;
     /**
      * Constructor without logger. Kept for backward compatibility with existing
      * tests and code.
      */
-    public CompanyService(ICompanyRepository repo, ITokenService tokenService) {
-        this(repo, tokenService, null);
+    public CompanyService(ICompanyRepository repo,
+                        ITokenService tokenService,
+                        MembershipDomainService membershipDomain) {
+        this(repo, tokenService, membershipDomain, null);
     }
 
-    /**
-     * Constructor with logger injection.
-     *
-     * @param repo company repository
-     * @param tokenService token service used for session validation
-     * @param logger system logger for event and error logs
-     */
-    public CompanyService(ICompanyRepository repo, ITokenService tokenService, ISystemLogger logger) {
+    public CompanyService(ICompanyRepository repo,
+                        ITokenService tokenService,
+                        MembershipDomainService membershipDomain,
+                        ISystemLogger logger) {
         this.companyRepository = repo;
         this.tokenService = tokenService;
+        this.membershipDomain = membershipDomain;
         this.logger = logger;
     }
 
@@ -89,14 +89,16 @@ public class CompanyService {
             logEvent("UC 3.2 validated member, memberId=" + memberId,
                     ISystemLogger.LogLevel.DEBUG);
 
-            Company newCompany = new Company(
-                    companyName,
-                    memberId,
-                    new PurchasePolicy(),
-                    new DiscountPolicy()
-            );
+        Company newCompany = new Company(
+                companyName,
+                memberId,
+                new PurchasePolicy(),
+                new DiscountPolicy()
+        );
 
-            companyRepository.save(newCompany);
+        membershipDomain.assignFounderRole(memberId, newCompany.getId());
+
+        companyRepository.save(newCompany);
 
             logEvent("UC 3.2 completed: company created, companyId=" + newCompany.getId()
                     + ", founderId=" + memberId,
@@ -137,7 +139,8 @@ public class CompanyService {
             Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
-            company.closeOrSuspend(memberId);
+            membershipDomain.validateFounder(memberId, companyId);
+            company.closeOrSuspend();
             companyRepository.save(company);
 
             logEvent("UC 4.13 completed: company closed, companyId=" + companyId
@@ -179,7 +182,8 @@ public class CompanyService {
             Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
-            company.reopenCompany(memberId);
+            membershipDomain.validateFounder(memberId, companyId);
+            company.reopenCompany();
             companyRepository.save(company);
 
             logEvent("UC 4.14 completed: company reopened, companyId=" + companyId
@@ -201,47 +205,6 @@ public class CompanyService {
         }
     }
 
-    /**
-     * Use Case 4.15: View roles and permissions tree. Allows a company owner to
-     * view the roles and permissions tree of the company.
-     *
-     * @param sessionId active session token of the requesting member
-     * @param companyId id of the production company
-     * @return textual representation of the roles and permissions tree
-     * @throws Exception if the company does not exist or the requester is not
-     * an owner
-     */
-    public String viewRolesAndPermissionsTree(String sessionId, long companyId) throws Exception {
-        logEvent("UC 4.15 started: view roles and permissions tree, companyId=" + companyId,
-                ISystemLogger.LogLevel.INFO);
-
-        try {
-            long memberId = getRegisteredMemberId(sessionId);
-
-            Company company = companyRepository.findById(companyId)
-                    .orElseThrow(() -> new Exception("Error: Company not found."));
-
-            String tree = company.getRolesTreeRepresentation(memberId, null);
-
-            logEvent("UC 4.15 completed: roles and permissions tree returned, companyId=" + companyId
-                    + ", requesterId=" + memberId,
-                    ISystemLogger.LogLevel.INFO);
-
-            return tree;
-
-        } catch (RuntimeException e) {
-            logError("UC 4.15 failed due to an unexpected system error while viewing roles tree, companyId="
-                    + companyId, e);
-            throw e;
-
-        } catch (Exception e) {
-            logEvent("UC 4.15 rejected: view roles and permissions tree failed, companyId=" + companyId
-                    + ", reason=" + e.getMessage(),
-                    ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
-    }
-//
 
     /**
      * Checks whether the current session is allowed to view the given company
@@ -268,9 +231,7 @@ public class CompanyService {
             return false;
         }
 
-        return company.getFounderId() == memberId
-                || company.getOwners().contains(memberId)
-                || company.getManagers().contains(memberId);
+        return membershipDomain.hasActiveRoleInCompany(memberId, company.getId());
     }
 
     /**

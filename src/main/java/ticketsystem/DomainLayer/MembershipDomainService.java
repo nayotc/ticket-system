@@ -1,5 +1,7 @@
 package ticketsystem.DomainLayer;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
@@ -84,8 +86,12 @@ public class MembershipDomainService {
         }
 
         // 4. Validate the target is free
-        if (targetRole != null) {
+        if (targetRole != null && targetRole.getStatus() != RoleStatus.CANCELLED) {
             throw new Exception("This user already has an active or pending role in this company.");
+        }
+
+        if (targetRole != null && targetRole.getStatus() == RoleStatus.CANCELLED) {
+            targetMember.deleteRoleInCompany(companyId);
         }
 
         // 5. If all validations pass, add a pending Manager role
@@ -111,9 +117,12 @@ public class MembershipDomainService {
             throw new Exception("Only Owners and Founders can appoint others.");
         }
 
-        // 4. Validate the target is free
-        if (targetRole != null) {
+        if (targetRole != null && targetRole.getStatus() != RoleStatus.CANCELLED) {
             throw new Exception("This user already has an active or pending role in this company.");
+        }
+
+        if (targetRole != null && targetRole.getStatus() == RoleStatus.CANCELLED) {
+            targetMember.deleteRoleInCompany(companyId);
         }
 
         // 5. If all validations pass, add a pending Owner role
@@ -149,6 +158,10 @@ public class MembershipDomainService {
         if (approvedRole.getStatus() == RoleStatus.ACTIVE) {
             throw new Exception("This role is already active.");
         }
+
+        if (approvedRole.getStatus() != RoleStatus.PENDING) {
+            throw new Exception("Only pending role invitations can be approved.");
+        }
         
         // 3. Validate the appointer still exists and is capable of having appointees
         if (appointerRole == null) {
@@ -161,10 +174,9 @@ public class MembershipDomainService {
         }
         
         // 5. If all validations pass, activate the pending role and update the appointer's list of appointees and the company's records
-        approvedRole.setStatus(RoleStatus.ACTIVE);
-        addNewAppointeeToAppointer(appointerRole, appointee.getId());
-        company.registerNewAppointment(appointer.getId(), appointee.getId(), approvedRole instanceof Manager ? "Manager" : "Owner");
-        return true;
+    approvedRole.setStatus(RoleStatus.ACTIVE);
+    addNewAppointeeToAppointer(appointerRole, appointee.getId());
+    return true;
     }
 
     public void deleteAppointeeFromAppointer(CompanyRole appointerRole, Long appointeeId) throws Exception {
@@ -193,6 +205,10 @@ public class MembershipDomainService {
         // 2. Ensure the role is in a PENDING state before allowing rejection
         if (rejectedRole.getStatus() == RoleStatus.ACTIVE) {
             throw new Exception("This role is already active and cannot be rejected.");
+        }
+
+        if (rejectedRole.getStatus() != RoleStatus.PENDING) {
+            throw new Exception("Only pending role invitations can be rejected.");
         }
 
         // 3. If validation passes, remove the pending role and update the appointer's list of appointees
@@ -338,9 +354,8 @@ public class MembershipDomainService {
         
         // Removed the company tree update. Only transferring appointees and deleting the role.
         transferAppointees(appointee, appointer, companyId);
-        company.removeUserFromAllRoles(appointee.getId());
         deleteAppointeeFromAppointer(appointerRole, appointee.getId());
-        return appointee.deleteRoleInCompany(companyId);        
+        return appointee.deleteRoleInCompany(companyId);       
     }
 
     public boolean validateRemoveManagerAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
@@ -389,4 +404,254 @@ public class MembershipDomainService {
         return true;
     }
 
+    public void assignFounderRole(Long memberId, Long companyId) throws Exception {
+        Member member = userRepository.getMemberById(memberId);
+        if (member == null) {
+            throw new Exception("Member not found.");
+        }
+
+        CompanyRole existingRole = member.getRoleInCompany(companyId);
+        if (existingRole != null && existingRole.getStatus() != RoleStatus.CANCELLED) {
+            throw new Exception("Member already has a role in this company.");
+        }
+
+        if (existingRole != null && existingRole.getStatus() == RoleStatus.CANCELLED) {
+            member.deleteRoleInCompany(companyId);
+        }
+
+        boolean added = member.addFounderRole(companyId);
+        if (!added) {
+            throw new Exception("Failed to assign founder role.");
+        }
+
+        userRepository.updateMember(member);
+    }
+
+    public void validateFounder(Long memberId, Long companyId) throws Exception {
+    Member member = userRepository.getMemberById(memberId);
+    if (member == null) {
+        throw new Exception("Member not found.");
+    }
+
+    CompanyRole role = member.getRoleInCompany(companyId);
+
+    if (!(role instanceof Founder) || role.getStatus() != RoleStatus.ACTIVE) {
+        throw new Exception("Only the active Founder can perform this action.");
+    }
+    }
+    public void validateOwnerOrFounder(Long memberId, Long companyId) throws Exception {
+        Member member = userRepository.getMemberById(memberId);
+        if (member == null) {
+            throw new Exception("Member not found.");
+        }
+
+        CompanyRole role = member.getRoleInCompany(companyId);
+
+        if (role == null || role.getStatus() != RoleStatus.ACTIVE) {
+            throw new Exception("Member does not have an active role in this company.");
+        }
+
+        if (!(role instanceof Owner) && !(role instanceof Founder)) {
+            throw new Exception("Only Owners or Founder can perform this action.");
+        }
+    }
+    public boolean hasActiveRoleInCompany(Long memberId, Long companyId) {
+    Member member = userRepository.getMemberById(memberId);
+    if (member == null) {
+        return false;
+    }
+
+    CompanyRole role = member.getRoleInCompany(companyId);
+    return role != null && role.getStatus() == RoleStatus.ACTIVE;
+    }
+    public void cancelAllRolesForCompany(Long companyId) {
+        for (Member member : userRepository.getAllMembers()) {
+            CompanyRole role = member.getRoleInCompany(companyId);
+
+            if (role != null && role.getStatus() != RoleStatus.CANCELLED) {
+                role.cancel();
+                userRepository.updateMember(member);
+            }
+        }
+    }
+    public String buildRolesAndPermissionsTree(Long requesterId, Long companyId, Long founderId) throws Exception {
+    validateOwnerOrFounder(requesterId, companyId);
+
+    StringBuilder sb = new StringBuilder();
+    buildRoleTreeString(founderId, companyId, 0, sb, new HashSet<>());
+
+    return sb.toString();
+    }
+    private void buildRoleTreeString(Long currentMemberId,
+                                    Long companyId,
+                                    int depth,
+                                    StringBuilder sb,
+                                    Set<Long> visited) {
+        if (currentMemberId == null || visited.contains(currentMemberId)) {
+            return;
+        }
+
+        visited.add(currentMemberId);
+
+        Member member = userRepository.getMemberById(currentMemberId);
+        if (member == null) {
+            return;
+        }
+
+        CompanyRole role = member.getRoleInCompany(companyId);
+        if (role == null || role.getStatus() != RoleStatus.ACTIVE) {
+            return;
+        }
+
+        for (int i = 0; i < depth; i++) {
+            sb.append("  ");
+        }
+
+        sb.append("- ID: ")
+                .append(currentMemberId)
+                .append(" (Role: ")
+                .append(getRoleName(role))
+                .append(")");
+
+        String permissions = getPermissionString(role);
+        if (permissions != null && !permissions.isBlank()) {
+            sb.append(" [Permissions: ").append(permissions).append("]");
+        }
+
+        sb.append("\n");
+
+        for (Long appointeeId : getAppointees(role)) {
+            buildRoleTreeString(appointeeId, companyId, depth + 1, sb, visited);
+        }
+    }
+
+    private String getRoleName(CompanyRole role) {
+        if (role instanceof Founder) {
+            return "FOUNDER";
+        }
+
+        if (role instanceof Owner) {
+            return "OWNER";
+        }
+
+        if (role instanceof Manager) {
+            return "MANAGER";
+        }
+
+        return "UNKNOWN";
+    }
+
+    private String getPermissionString(CompanyRole role) {
+        if (role instanceof Founder || role instanceof Owner) {
+            return "All Permissions";
+        }
+
+        if (role instanceof Manager) {
+            Set<String> permissions = ((Manager) role).getPermissionKeys();
+            return permissions.isEmpty() ? "None" : String.join(", ", permissions);
+        }
+
+        return "";
+    }
+
+    private List<Long> getAppointees(CompanyRole role) {
+        if (role instanceof Founder) {
+            return ((Founder) role).getAppointeesMemberIds();
+        }
+
+        if (role instanceof Owner) {
+            return ((Owner) role).getAppointeesMemberIds();
+        }
+
+        return new java.util.ArrayList<>();
+    }
+    /**
+ * Cancels all company roles held by a member.
+ * Used by SystemAdminService as part of deleting a registered member.
+ *
+ * Founder roles are not cancelled here, because deleting a founder may violate
+ * the invariant that an active company must have at least one owner/founder.
+ * Such a case should be handled by a dedicated company/admin flow.
+ *
+ * @param memberIdToDelete id of the member whose roles should be cancelled
+ * @throws Exception if the member does not exist or is a founder of any company
+ */
+public void cancelAllRolesForMember(long memberIdToDelete) throws Exception {
+    Member memberToDelete = userRepository.getMemberById(memberIdToDelete);
+
+    if (memberToDelete == null) {
+        throw new Exception("Member not found.");
+    }
+
+    List<CompanyRole> rolesToCancel = new ArrayList<>(memberToDelete.getAllRoles());
+
+    for (CompanyRole roleToCancel : rolesToCancel) {
+        if (roleToCancel == null || roleToCancel.getStatus() == RoleStatus.CANCELLED) {
+            continue;
+        }
+
+        Long companyId = roleToCancel.getCompanyId();
+
+        if (roleToCancel instanceof Founder) {
+            throw new Exception("Cannot delete user: The user is a Founder of one or more companies.");
+        }
+
+        removeCancelledMemberFromAppointer(memberToDelete, roleToCancel, companyId);
+
+        if (roleToCancel instanceof Owner) {
+            transferOwnerAppointeesBeforeCancellation(memberToDelete, companyId);
+        }
+
+        roleToCancel.setStatus(RoleStatus.CANCELLED);
+    }
+
+    userRepository.updateMember(memberToDelete);
+}
+/**
+ * Removes the cancelled member from the appointer's appointees list.
+ */
+private void removeCancelledMemberFromAppointer(Member memberToDelete,
+                                                CompanyRole roleToCancel,
+                                                Long companyId) throws Exception {
+    Long appointerId = getAppointerId(memberToDelete, companyId);
+
+    if (appointerId == null) {
+        return;
+    }
+
+    Member appointer = userRepository.getMemberById(appointerId);
+    if (appointer == null) {
+        throw new Exception("Appointer not found.");
+    }
+
+    CompanyRole appointerRole = appointer.getRoleInCompany(companyId);
+    if (appointerRole == null) {
+        throw new Exception("Appointer does not have a role in this company.");
+    }
+
+    deleteAppointeeFromAppointer(appointerRole, memberToDelete.getId());
+    userRepository.updateMember(appointer);
+}
+
+/**
+ * Before cancelling an Owner role, transfers the owner's appointees to the
+ * owner's appointer, so the management tree does not keep pointing to a
+ * cancelled role.
+ */
+private void transferOwnerAppointeesBeforeCancellation(Member ownerToCancel,
+                                                       Long companyId) throws Exception {
+    Long appointerId = getAppointerId(ownerToCancel, companyId);
+
+    if (appointerId == null) {
+        return;
+    }
+
+    Member appointer = userRepository.getMemberById(appointerId);
+    if (appointer == null) {
+        throw new Exception("Appointer not found.");
+    }
+
+    transferAppointees(ownerToCancel, appointer, companyId);
+    userRepository.updateMember(appointer);
+}
 }
