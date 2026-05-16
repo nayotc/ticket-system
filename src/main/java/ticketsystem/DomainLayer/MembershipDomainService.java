@@ -158,6 +158,10 @@ public class MembershipDomainService {
         if (approvedRole.getStatus() == RoleStatus.ACTIVE) {
             throw new Exception("This role is already active.");
         }
+
+        if (approvedRole.getStatus() != RoleStatus.PENDING) {
+            throw new Exception("Only pending role invitations can be approved.");
+        }
         
         // 3. Validate the appointer still exists and is capable of having appointees
         if (appointerRole == null) {
@@ -201,6 +205,10 @@ public class MembershipDomainService {
         // 2. Ensure the role is in a PENDING state before allowing rejection
         if (rejectedRole.getStatus() == RoleStatus.ACTIVE) {
             throw new Exception("This role is already active and cannot be rejected.");
+        }
+
+        if (rejectedRole.getStatus() != RoleStatus.PENDING) {
+            throw new Exception("Only pending role invitations can be rejected.");
         }
 
         // 3. If validation passes, remove the pending role and update the appointer's list of appointees

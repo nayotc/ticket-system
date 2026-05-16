@@ -500,4 +500,61 @@ public class MembershipServiceTest {
 
         assertEquals("You do not have a role in this company.", exception.getMessage());
     }
+    // =========================================================================================
+// Use Case 4.15: View roles and permissions tree
+// =========================================================================================
+
+    @Test
+    public void GivenCompanyAndFounder_WhenViewRolesAndPermissionsTree_ThenReturnsTreeWithRolesAndPermissions() throws Exception {
+        // Act
+        String tree = membershipService.viewRolesAndPermissionsTree(appointerToken, companyId);
+
+        // Assert
+        assertNotNull(tree, "Roles and permissions tree should not be null.");
+
+        assertTrue(tree.contains("FOUNDER"), "Tree should include the founder role.");
+        assertTrue(tree.contains(String.valueOf(founderId)), "Tree should include the founder member id.");
+
+        assertTrue(tree.contains("OWNER"), "Tree should include the owner role.");
+        assertTrue(tree.contains(String.valueOf(ownerId)), "Tree should include the owner member id.");
+
+        assertTrue(tree.contains("MANAGER"), "Tree should include the manager role.");
+        assertTrue(tree.contains(String.valueOf(managerId)), "Tree should include the manager member id.");
+
+        assertTrue(tree.contains(Permission.MANAGE_INQUIRIES.getKey()),
+                "Tree should include manager permissions.");
+    }
+
+    @Test
+    public void GivenCompanyAndOwner_WhenViewRolesAndPermissionsTree_ThenReturnsTreeWithRolesAndPermissions() throws Exception {
+        // Act
+        String tree = membershipService.viewRolesAndPermissionsTree(ownerToken, companyId);
+
+        // Assert
+        assertNotNull(tree, "Roles and permissions tree should not be null.");
+
+        assertTrue(tree.contains("FOUNDER"), "Tree should include the founder role.");
+        assertTrue(tree.contains(String.valueOf(founderId)), "Tree should include the founder member id.");
+
+        assertTrue(tree.contains("OWNER"), "Tree should include the owner role.");
+        assertTrue(tree.contains(String.valueOf(ownerId)), "Tree should include the owner member id.");
+
+        assertTrue(tree.contains("MANAGER"), "Tree should include the manager role.");
+        assertTrue(tree.contains(String.valueOf(managerId)), "Tree should include the manager member id.");
+
+        assertTrue(tree.contains(Permission.MANAGE_INQUIRIES.getKey()),
+                "Tree should include manager permissions.");
+    }
+
+    @Test
+    public void GivenManager_WhenViewRolesAndPermissionsTree_ThenThrowsException() {
+        // Act + Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            membershipService.viewRolesAndPermissionsTree(managerToken, companyId);
+        });
+
+        assertTrue(exception.getMessage().contains("Only Owners or Founder can perform this action.")
+                        || exception.getMessage().contains("Only Owners"),
+                "Manager should not be allowed to view the roles tree.");
+    }
 }

@@ -724,4 +724,66 @@ public class MembershipDomainServiceTest {
         assertEquals(RoleStatus.CANCELLED, appointee.getRoleInCompany(companyId).getStatus());
         assertEquals(RoleStatus.CANCELLED, existingOwner.getRoleInCompany(companyId).getStatus());
     }
+    // =========================================================================================
+// Use Case 4.15: Roles and permissions tree - Domain logic
+// =========================================================================================
+
+    @Test
+    public void GivenFounderWithOwnerAndManager_WhenBuildRolesAndPermissionsTree_ThenTreeContainsRolesAndPermissions() throws Exception {
+        // Arrange
+        appointer.addFounderRole(companyId);
+
+        Founder founderRole = (Founder) appointer.getRoleInCompany(companyId);
+
+        existingOwner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        founderRole.addAppointee(existingOwnerId);
+
+        Set<Permission> managerPermissions = new HashSet<>();
+        managerPermissions.add(Permission.MANAGE_INQUIRIES);
+
+        appointee.addManagerRole(companyId, 100L, managerPermissions);
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        founderRole.addAppointee(200L);
+
+        userRepository.updateMember(appointer);
+        userRepository.updateMember(appointee);
+        userRepository.updateMember(existingOwner);
+
+        // Act
+        String tree = domainService.buildRolesAndPermissionsTree(100L, companyId, 100L);
+
+        // Assert
+        assertNotNull(tree, "Tree should not be null.");
+
+        assertTrue(tree.contains("FOUNDER"), "Tree should include the founder role.");
+        assertTrue(tree.contains("100"), "Tree should include the founder id.");
+
+        assertTrue(tree.contains("OWNER"), "Tree should include the owner role.");
+        assertTrue(tree.contains(String.valueOf(existingOwnerId)), "Tree should include the owner id.");
+
+        assertTrue(tree.contains("MANAGER"), "Tree should include the manager role.");
+        assertTrue(tree.contains("200"), "Tree should include the manager id.");
+
+        assertTrue(tree.contains(Permission.MANAGE_INQUIRIES.getKey()),
+                "Tree should include manager permissions.");
+    }
+
+    @Test
+    public void GivenManager_WhenBuildRolesAndPermissionsTree_ThenThrowsException() {
+        // Arrange
+        appointer.addFounderRole(companyId);
+
+        Set<Permission> managerPermissions = new HashSet<>();
+        managerPermissions.add(Permission.MANAGE_INQUIRIES);
+
+        appointee.addManagerRole(companyId, 100L, managerPermissions);
+        appointee.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+        // Act + Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            domainService.buildRolesAndPermissionsTree(200L, companyId, 100L);
+        });
+
+        assertEquals("Only Owners or Founder can perform this action.", exception.getMessage());
+    }
 }
