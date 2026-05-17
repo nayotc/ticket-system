@@ -195,10 +195,7 @@ public class ReservationService {
     }
 
     // 2.8 checkout
-    public boolean enterUserDetails(String name, String Email) {
-        return true;
-    }
-
+   
     public boolean checkout(String token, Long eventId, PaymentDetails details) {
         expireOldOrders();
         try {
