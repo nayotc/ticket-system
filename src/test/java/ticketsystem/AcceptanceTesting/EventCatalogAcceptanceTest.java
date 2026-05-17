@@ -12,7 +12,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.EventCatalogService;
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.company.Company;
@@ -25,6 +27,7 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
 public class EventCatalogAcceptanceTest {
 
@@ -33,6 +36,7 @@ public class EventCatalogAcceptanceTest {
     private EventRepository eventRepository;
     private CompanyRepository companyRepository;
     private FakeTokenService tokenService;
+    private LogbackSystemLogger logger;
 
     private final String validSessionId = "valid-session";
     private final String invalidSessionId = "invalid-session";
@@ -50,6 +54,7 @@ public class EventCatalogAcceptanceTest {
         eventRepository = new EventRepository();
         companyRepository = new CompanyRepository();
         tokenService = new FakeTokenService();
+        logger = new LogbackSystemLogger();
 
         EventCatalogDomainService domainService = new EventCatalogDomainService();
 
@@ -57,7 +62,8 @@ public class EventCatalogAcceptanceTest {
                 domainService,
                 eventRepository,
                 companyRepository,
-                tokenService);
+                tokenService,
+                logger);
 
         tokenService.addValidSession(validSessionId);
 
@@ -139,7 +145,7 @@ public class EventCatalogAcceptanceTest {
         criteria.setSearchTerm("Rock");
 
         // Act
-        List<Event> results = eventCatalogService.globalSearch(validSessionId, criteria);
+        List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
 
         // Assert
         assertEquals(1, results.size());
@@ -157,7 +163,7 @@ public class EventCatalogAcceptanceTest {
         criteria.setLocation(EventLocation.HAIFA);
 
         // Act
-        List<Event> results = eventCatalogService.globalSearch(validSessionId, criteria);
+        List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
 
         // Assert
         assertEquals(1, results.size());
@@ -173,7 +179,7 @@ public class EventCatalogAcceptanceTest {
         criteria.setSearchTerm("Basketball");
 
         // Act
-        List<Event> results = eventCatalogService.globalSearch(validSessionId, criteria);
+        List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
 
         // Assert
         assertNotNull(results);
@@ -187,7 +193,7 @@ public class EventCatalogAcceptanceTest {
         criteria.setCompanyRate(4.5);
 
         // Act
-        List<Event> results = eventCatalogService.globalSearch(validSessionId, criteria);
+        List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
 
         // Assert
         assertEquals(2, results.size());
@@ -203,7 +209,7 @@ public class EventCatalogAcceptanceTest {
         criteria.setSearchTerm("Closed Company Event");
 
         // Act
-        List<Event> results = eventCatalogService.globalSearch(validSessionId, criteria);
+        List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
 
         // Assert
         assertNotNull(results);
@@ -243,7 +249,7 @@ public class EventCatalogAcceptanceTest {
         SearchCriteria criteria = new SearchCriteria();
 
         // Act
-        List<Event> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
+        List<EventSearchResultDTO> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
 
         // Assert
         assertEquals(2, results.size());
@@ -261,7 +267,7 @@ public class EventCatalogAcceptanceTest {
         criteria.setSearchTerm("Jazz");
 
         // Act
-        List<Event> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
+        List<EventSearchResultDTO> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
 
         // Assert
         assertEquals(1, results.size());
@@ -278,7 +284,7 @@ public class EventCatalogAcceptanceTest {
         criteria.setSearchTerm("Opera");
 
         // Act
-        List<Event> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
+        List<EventSearchResultDTO> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
 
         // Assert
         assertNotNull(results);
@@ -332,9 +338,9 @@ public class EventCatalogAcceptanceTest {
     }
 
     // Helper Methods
-    private boolean containsEventId(List<Event> events, Long eventId) {
+    private boolean containsEventId(List<EventSearchResultDTO> events, Long eventId) {
         return events.stream()
-                .anyMatch(event -> event.getId().equals(eventId));
+                .anyMatch(event -> event.id().equals(eventId));
     }
 
     /*

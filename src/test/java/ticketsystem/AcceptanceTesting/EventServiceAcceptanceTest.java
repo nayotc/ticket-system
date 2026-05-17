@@ -54,6 +54,7 @@ public class EventServiceAcceptanceTest {
     private UserRepository userRepository;
     private FakeTokenService tokenService;
     private MembershipDomainService membershipDomain;
+    private final ISystemLogger logger = new LogbackSystemLogger();
 
     private final String validOwnerSessionId = "owner-session";
     private final String invalidSessionId = "invalid-session";
@@ -100,7 +101,8 @@ public class EventServiceAcceptanceTest {
         eventService = new EventService(
                 eventRepository,
                 tokenService,
-                membershipDomain);
+                membershipDomain,
+                logger);
 
         // FIX: Setup a real Member with an ACTIVE Owner role in the DB
         Member ownerMember = new Member(ownerId, "EventOwnerUser");
@@ -1169,7 +1171,7 @@ public class EventServiceAcceptanceTest {
         }
 
         @Override
-        public void onEventUpdated(Long eventId, String updateMessage) {
+        public void onEventUpdated(Long eventId, LocalDateTime date, String location, String updateMessage) {
             receivedUpdateMessages.add(updateMessage);
         }
 

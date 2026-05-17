@@ -52,6 +52,9 @@ public class EventServiceTest {
     @Mock
     private EventUpdatesListener mockEventUpdatesListener;
 
+    @Mock 
+    private ISystemLogger logger;
+
     private EventService eventService;
 
     private final String validSessionId = "valid-session";
@@ -66,7 +69,8 @@ public class EventServiceTest {
         eventService = new EventService(
                 mockEventRepository,
                 mockTokenService,
-                mockMembershipDomainService
+                mockMembershipDomainService,
+                logger
         );
 
         when(mockTokenService.validateToken(validSessionId)).thenReturn(true);
@@ -621,11 +625,13 @@ public class EventServiceTest {
         Event existingEvent = createEvent(Event.eventStatus.DRAFT);
         eventService.addEventUpdatesListener(mockEventUpdatesListener);
 
+        LocalDateTime updatedDate = LocalDateTime.now().plusDays(20);
+
         EventDTO eventDTO = createEventDTO(
                 validEventId,
                 "Updated Event",
                 validCompanyId,
-                LocalDateTime.now().plusDays(20),
+                updatedDate,
                 EventLocation.NEW_YORK,
                 null,
                 null,
@@ -640,7 +646,11 @@ public class EventServiceTest {
 
         assertTrue(result);
 
-        verify(mockEventUpdatesListener).onEventUpdated(eq(validEventId), anyString());
+        verify(mockEventUpdatesListener).onEventUpdated(
+            eq(validEventId),
+            eq(updatedDate),
+            eq(EventLocation.NEW_YORK.name()),
+            anyString());
         verify(mockEventRepository).updateEvent(existingEvent);
     }
 
@@ -668,7 +678,7 @@ public class EventServiceTest {
 
         assertTrue(result);
 
-        verify(mockEventUpdatesListener, never()).onEventUpdated(anyLong(), anyString());
+        verify(mockEventUpdatesListener, never()).onEventUpdated(anyLong(), any(), anyString(), anyString());
         verify(mockEventRepository).updateEvent(existingEvent);
     }
 
