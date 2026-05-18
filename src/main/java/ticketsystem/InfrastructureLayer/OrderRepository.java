@@ -12,6 +12,7 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 public class OrderRepository implements IOrderRepository {
 
     private final AtomicLong counter;
+    
     private final ConcurrentHashMap<Long, ActiveOrder> orders;
 
     public OrderRepository() {

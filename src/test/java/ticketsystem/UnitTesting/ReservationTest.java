@@ -19,6 +19,7 @@ import org.mockito.InOrder;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
@@ -146,11 +147,11 @@ public class ReservationTest {
 
         Ticket seatTicket = new Ticket(1L, eventId, 5L, 2, 3, BigDecimal.valueOf(100));
         Ticket standingTicket = new Ticket(2L, eventId, 6L, 0, 0, BigDecimal.valueOf(80));
+        when(event.getSeatStatus(eq(5L), any(SeatPosition.class))).thenReturn(SeatStatus.RESERVED);
         when(order.getStatus()).thenReturn(ActiveOrder.OrderStatus.PENDING_CHECKOUT);
         when(order.getTickets()).thenReturn(List.of(seatTicket, standingTicket));
 
         // Act
-        
         reservation.completeCheckout(order, event);
 
         // Assert

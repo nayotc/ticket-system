@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.lottery.LotteryRegistration;
@@ -42,7 +43,6 @@ public class Reservation {
     public void removeTicketFromActiveOrder(ActiveOrder order, Event event,Long ticketId) {
         Ticket ticket= order.deleteTicket(ticketId);
         releaseTicket(ticket, event);
-        
     }
 
     public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event, Long areaId, int quantity) {
@@ -78,19 +78,37 @@ public class Reservation {
 
     //in the service layer, after payment is successful, call order.completeCheckout(order,event) to finalize the order and mark tickets as sold in the event
     
-    public void completeCheckout(ActiveOrder order, Event event) {
-       if(order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT) {
-           throw new IllegalStateException("Order is not in a state that can be completed");
-        }
-        order.completeOrder();       
-        for (Ticket ticket : new ArrayList<>(order.getTickets())) {
-            if(ticket.getRow()==0 && ticket.getChair()==0) {
-                event.sellSpot(ticket.getAreaId(), 1);
-            } else {
-                event.sellSeat(ticket.getAreaId(),new SeatPosition(ticket.getRow(), ticket.getChair()));
+     public void completeCheckout(ActiveOrder order, Event event) {
+        
+         if (order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT) {
+        throw new IllegalStateException("Order is not in a state that can be completed");
+    }
+            for (Ticket ticket : new ArrayList<>(order.getTickets())) {
+        if (ticket.getRow() == 0 && ticket.getChair() == 0) {
+            event.sellSpot(ticket.getAreaId(), 1);
+        } else {
+            SeatPosition position = new SeatPosition(ticket.getRow(), ticket.getChair());
+
+            if (event.getSeatStatus(ticket.getAreaId(), position) != SeatStatus.RESERVED) {
+                throw new IllegalStateException("Seat is not reserved");
             }
+
+            event.sellSeat(ticket.getAreaId(), position);
         }
     }
+
+    order.completeOrder();
+          
+    //     for (Ticket ticket : new ArrayList<>(order.getTickets())) {
+    //         if(ticket.getRow()==0 && ticket.getChair()==0) {
+    //             event.sellSpot(ticket.getAreaId(), 1);
+    //         } else {
+    //             event.sellSeat(ticket.getAreaId(),new SeatPosition(ticket.getRow(), ticket.getChair()));
+    //         }
+    //     }
+    //     order.completeOrder();    
+     }
+
     
     public BigDecimal calculateTotalPrice(ActiveOrder order, Event event) {
         BigDecimal total = order.calculateTotalPrice();
@@ -98,16 +116,25 @@ public class Reservation {
         return total;
     }
 
-  
+    public boolean timeExpire(Event event , ActiveOrder order) {
+        if ((order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT && order.isExpired()) ||
+                    (order.getStatus() == ActiveOrder.OrderStatus.CANCELLED)) {
+                        expire(event, order);
+                        return true;
+                    }
+                return false;
+            }
 
     //expire order and release tickets back to event
     public void expire(Event event , ActiveOrder order) {
-    for (Ticket ticket : new ArrayList<>(order.getTickets())) {
+      
+        for (Ticket ticket : new ArrayList<>(order.getTickets())) {
         releaseTicket(ticket, event);
         order.deleteTicket(ticket.getTicketId());
         }
         order.cancelOrder();
     }
+
 
 
     public void releaseTicket(Ticket ticket, Event event) {

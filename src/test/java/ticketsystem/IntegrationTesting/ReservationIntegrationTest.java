@@ -48,7 +48,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void testSelectSeatTicket_WhenSeatAvailable_ThenTicketAddedToOrderAndSeatStatusBecomesReserved() {
+        public void GivenSeatAvailable_WhenSelectSeatTicket_ThenTicketAddedToOrderAndSeatBecomesReserved() {
                 // Arrange
                 Long eventId = 100L;
                 Long areaId = 1L;
@@ -106,7 +106,7 @@ public class ReservationIntegrationTest {
 
 
         @Test
-        public void testRemoveSeatTicket_WhenSeatWasReserved_ThenTicketRemovedAndSeatStatusBecomesAvailable() {
+        public void GivenReservedSeatTicket_WhenRemoveSeatTicket_ThenTicketRemovedAndSeatBecomesAvailable() {
                 // Arrange
                 Long eventId = 100L;
                 Long areaId = 1L;
@@ -152,7 +152,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void testSelectSameSeatTwice_WhenSeatAlreadyReserved_ThenSecondSelectionFailsAndSeatRemainsReserved() {
+        public void GivenSeatAlreadyReserved_WhenSelectSameSeatAgain_ThenSecondSelectionFailsAndSeatRemainsReserved() {
                 // Arrange
                 Long eventId = 100L;
                 Long areaId = 1L;
@@ -203,7 +203,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void testExpireOrder_WhenSeatReserved_ThenSeatBecomesAvailableAndOrderCancelled() {
+        public void GivenReservedSeat_WhenExpireOrder_ThenSeatBecomesAvailableAndOrderCancelled() {
                 // Arrange
                 Long eventId = 100L;
                 Long areaId = 1L;
@@ -234,7 +234,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void testSelectStandingTickets_WhenTicketsReserved_ThenStandingAreaReservedCountIncreases() {
+        public void GivenStandingTicketsAvailable_WhenSelectStandingTickets_ThenReservedCountIncreases() {
                 // Arrange
                 Long eventId = 100L;
                 Long areaId = 2L;
@@ -254,7 +254,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void testRemoveStandingTickets_WhenStandingTicketsExist_ThenReservedCountDecreases() {
+        public void GivenStandingTicketsExist_WhenRemoveStandingTickets_ThenReservedCountDecreases() {
                 // Arrange
                 Long eventId = 100L;
                 Long areaId = 2L;
@@ -280,7 +280,7 @@ public class ReservationIntegrationTest {
 
         }
          @Test
-        public void testCompleteCheckout_WhenSeatReserved_ThenSeatStatusBecomesSold() {
+        public void GivenReservedSeat_WhenCompleteCheckout_ThenSeatStatusBecomesSold() {
                 // Arrange
                 Long eventId = 100L;
                 Long areaId = 1L;
@@ -308,7 +308,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void completeCheckout_WhenSeatAlreadySold_ThenThrowsOrKeepsConsistentState() {
+        public void GivenSeatAlreadySold_WhenSelectingSameSeat_ThenThrowsAndKeepsConsistentState() {
                 Long areaId = 1L;
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
@@ -329,7 +329,7 @@ public class ReservationIntegrationTest {
                                 event.getSeatStatus(areaId, new SeatPosition(1, 1)));
         }
         @Test
-        public void completeCheckout_WhenTheTicketNotReserved_ThenThrowsExceptionAndOrderUnchanged() {
+        public void GivenTicketNotReserved_WhenCompleteCheckout_ThenThrowsExceptionAndOrderRemainsUnchanged() {
                 Long areaId = 1L;
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
@@ -348,7 +348,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void submitActiveOrderForCheckout_WhenOrderValid_ThenStatusPendingCheckoutAndEventUnchanged() {
+        public void GivenValidOrder_WhenSubmitActiveOrderForCheckout_ThenStatusBecomesPendingCheckoutAndEventRemainsUnchanged() {
                 Long areaId = 1L;
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
@@ -364,7 +364,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void completeCheckout_WhenStandingTicketsReserved_ThenOrderCompletedAndStandingStateUpdated() {
+        public void GivenReservedStandingTickets_WhenCompleteCheckout_ThenOrderCompletedAndStandingStateUpdated() {
                 Long areaId = 2L;
 
                 StandingArea standingArea = getStandingArea(event, areaId);
@@ -382,7 +382,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void submitActiveOrderForCheckout_WhenOrderHasNoTickets_ThenThrowsException() {
+        public void GivenOrderWithoutTickets_WhenSubmitActiveOrderForCheckout_ThenThrowsException() {
                 // Arrange
 
                 Event event = createActiveEventWithSeatingAndStandingAreas(100L);
@@ -400,7 +400,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void failPayment_WhenCalled_ThenOrderIsRejected() {
+        public void GivenPaymentFails_WhenPaymentFailedCalled_ThenOrderStatusBecomesPaymentFailed() {
 
                 ActiveOrder order = new ActiveOrder(1L, "token-1", 10L, 100L);
 
@@ -410,7 +410,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void paymentFailed_WhenSeatWasReserved_ThenOrderPaymentFailedAndSeatStaysReserved() {
+        public void GivenReservedSeat_WhenPaymentFails_ThenOrderBecomesPaymentFailedAndSeatRemainsReserved() {
                 Long areaId = 1L;
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
@@ -427,7 +427,7 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void barcodeFailed_WhenPaymentFailedAfterReservation_ThenTicketsNotSoldAndSeatStillReserved() {
+        public void GivenPaymentFailedAfterReservation_WhenBarcodeFails_ThenTicketsNotSoldAndSeatRemainsReserved() {
                 Long areaId = 1L;
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
@@ -445,7 +445,44 @@ public class ReservationIntegrationTest {
         }
 
         @Test
-        public void checkLottery_WhenLotteryIsNull_ThenDoesNotChangeOrderOrEvent() {
+        public void GivenOrderIsActive_WhenCompleteCheckout_ThenThrowsAndDoesNotSellTickets() {
+                Long areaId = 1L;
+                SeatPosition seatPosition = new SeatPosition(1, 1);
+
+                reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
+
+                assertThrows(IllegalStateException.class, () -> {
+                        reservation.completeCheckout(order, event);
+                });
+
+                assertEquals(OrderStatus.ACTIVE, order.getStatus());
+
+                assertEquals(
+                                SeatStatus.RESERVED,
+                                event.getSeatStatus(areaId, seatPosition));
+        }
+        @Test
+        public void GivenReservedSeatWasReleased_WhenCompleteCheckout_ThenThrowsAndOrderRemainsNotCompleted() {
+                Long areaId = 1L;
+                SeatPosition seatPosition = new SeatPosition(1, 1);
+
+                reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
+                reservation.submitActiveOrderForCheckout(order, event);
+
+                event.releaseSeat(areaId, seatPosition);
+
+                assertThrows(Exception.class, () -> {
+                        reservation.completeCheckout(order, event);
+                });
+
+                assertEquals(OrderStatus.PENDING_CHECKOUT, order.getStatus());
+                assertEquals(
+                                SeatStatus.AVAILABLE,
+                                event.getSeatStatus(areaId, seatPosition));
+        }
+
+        @Test
+        public void GivenLotteryIsNull_WhenCheckLottery_ThenOrderAndEventRemainUnchanged() {
                 assertDoesNotThrow(() -> {
                         reservation.checkLottery(null, order.getUserId(), null);
                 });
@@ -464,6 +501,7 @@ public class ReservationIntegrationTest {
                 return null;
         }
 
+        
         private StandingArea getStandingArea(Event event, Long areaId) {
                 for (Element element : event.getMap().getElements()) {
                         if (element instanceof StandingArea
