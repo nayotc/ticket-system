@@ -13,27 +13,50 @@ public class LotteryService {
     private final ILotteryRepository lotteryRepository;
     private final ITokenService tokenService;
     //private final NotificationsService notificationsService;
+    //private IEventRepository eventRepository;
+    private ISystemLogger logger;
 
-    public LotteryService(ILotteryRepository lotteryRepository, ITokenService tokenService) {
+    public LotteryService(ILotteryRepository lotteryRepository, ITokenService tokenService, 
+                              ISystemLogger logger) {
         this.lotteryRepository = lotteryRepository;  
         this.tokenService = tokenService; 
         //this.notificationsService = notificationsService;
+        //this.eventRepository = eventRepository;
+        this.logger = logger;
     }
 
     // Method to create a new lottery
-    public long addLottery(String token, long eventId, int winnersNumber) {
+    public long addLottery(String token, long eventId, long companyId, int winnersNumber) {
         try {
-            //need to validate that this event id id exists in the system and premission of the member to create lottery for this event
             tokenService.validateToken(token);
             if (winnersNumber <= 0) {
                 throw new IllegalArgumentException("Number of winners must be greater than zero.");
             }
+            if(!tokenService.isMemberToken(token)){
+                throw new IllegalArgumentException("Only members can add lottery to event");
+            }
+            // TODO:
+            //need to ask to add func that check if eventid for this companyid or maybe to take companyid from there
+            //if(eventRepository.getEventById(eventId)==null){
+            //    throw new IllegalArgumentException("there is no such event");
+            //}
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId == null){
+                throw new IllegalArgumentException("Could not extract user id from token");
+            }
+            // TODO:
+            //add a check if memberID is assign to this company
+
             long lotteryId = lotteryRepository.generateNextLotteryId();
             lotteryRepository.addLottery(new Lottery(lotteryId, eventId, winnersNumber));
             return lotteryId;
 
         } catch (IllegalArgumentException e) {
-            throw(e);
+            logger.logEvent(
+                    "Failed to add lottery: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
         }
 
     }
@@ -42,6 +65,9 @@ public class LotteryService {
     public boolean registerMemberToLottery(String token, long lotteryId) {
         try{        
             tokenService.validateToken(token);
+            if(!tokenService.isMemberToken(token)){
+                throw new IllegalArgumentException("Only members can register to lottery");
+            }
             long memberId = tokenService.extractUserId(token);
             Lottery lottery =lotteryRepository.findById(lotteryId);
             if (lottery == null) {
@@ -52,7 +78,11 @@ public class LotteryService {
             //notificationsService.notifyUser(token, "You have successfully registered for the lottery!");
             return true; 
         } catch(IllegalArgumentException e){
-            throw(e);
+            logger.logEvent(
+                    "Failed to register Member To Lottery: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
         }
 
     }
@@ -61,7 +91,6 @@ public class LotteryService {
     public boolean closeLotteryRegistration(String token, long lotteryId) {
         try{
             tokenService.validateToken(token);
-            //need to validate that the user has permission to close the lottery registration
             Lottery lottery = lotteryRepository.findById(lotteryId);
             if (lottery == null) {
                 throw new IllegalArgumentException("Lottery with ID " + lotteryId + " not found.");
@@ -71,7 +100,11 @@ public class LotteryService {
             return true;
         }
         catch(IllegalArgumentException e){
-            throw(e);
+            logger.logEvent(
+                    "Failed to close Lottery Registration: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
         }
     }
 
@@ -79,6 +112,7 @@ public class LotteryService {
     public boolean conductLotteryDraw(String token, long lotteryId) {
         try{
             tokenService.validateToken(token);
+            // TODO:
             //need to validate that the user has permission to conduct the lottery draw 
             Lottery lottery = lotteryRepository.findById(lotteryId);
             if (lottery == null) {
@@ -106,7 +140,11 @@ public class LotteryService {
             return true;
         }
         catch(IllegalArgumentException e){
-            throw(e);
+            logger.logEvent(
+                    "Failed to conduct Lottery Draw: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
         }
     }
 
