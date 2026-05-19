@@ -15,6 +15,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
+import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
@@ -26,27 +27,42 @@ public class EventService {
     private final ITokenService tokenService;
     private final MembershipDomainService membershipDomain;
     private final List<EventUpdatesListener> eventUpdatesListeners = new ArrayList<>();
+    private final ISystemLogger logger;
 
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
-            MembershipDomainService membershipDomain) {
+            MembershipDomainService membershipDomain, ISystemLogger logger) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
+        this.logger = logger;
     }
 
-    public void insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
+    public Boolean insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
             EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
             Integer mapHigh, Integer mapWidth) {
+        
+        String context = "SessionId=" + sessionId
+                + ", companyId=" + companyId
+                + ", eventName=" + eventName
+                + ", date=" + date
+                + ", location=" + location
+                + ", category=" + category
+                + ", mapSize=" + mapHigh + "x" + mapWidth;
+
+        logger.logEvent("Started - insertEvent. " + context, LogLevel.INFO);
+
         try {
             // precondition: user logged in
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
             Long userId = tokenService.extractUserId(sessionId);
+            logger.logEvent("Authenticated actor - insertEvent. userId=" + userId + ", companyId=" + companyId, LogLevel.DEBUG);
             // precondition: user has permission to create an event
             if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to create an event");
             }
+            logger.logEvent("Checked permissions - insertEvent. userId=" + userId + ", companyId=" + companyId + "permission=" + Permission.MANAGE_EVENT_INVENTORY,  LogLevel.DEBUG);
 
             // main scenario: validate input
             validateEventDetails(eventName, date, location, trafficThreshold, category, artist, price);
@@ -62,10 +78,14 @@ public class EventService {
             Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,
                     artist, price, new Pair<>(mapHigh, mapWidth));
             eventRepository.addEvent(event);
-            // logger.servere("Event created successfully: " + event.getName());
-        } catch (Exception e) {
-            // TODO: handle exception
-            // logger.servere("create event failed: " + e.getMessage());
+            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId,LogLevel.INFO);
+            return true;
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Failed - insertEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+        catch (Exception e) {
+            logger.logError("Failed - insertEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
 
@@ -77,11 +97,15 @@ public class EventService {
         EventLocation location;
         BigDecimal ticketPrice;
         boolean notificateUsers = false;
+        String context = eventDTOContext(eventDTO);
+        logger.logEvent("Use-case started: updateEvent. " + context, LogLevel.INFO);
+
         try {
             // precondition: user logged in
             if (!tokenService.validateToken(SessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
+            logger.logEvent("Authenticated actor - updateEvent. " + context, LogLevel.DEBUG);
             // precondition: given data is not null and valid
             if (eventDTO == null) {
                 throw new IllegalArgumentException("Event data cannot be null");
@@ -92,17 +116,19 @@ public class EventService {
             if (eventDTO.companyId() == null) {
                 throw new IllegalArgumentException("Company ID cannot be null");
             }
+            logger.logEvent("Validated input - updateEvent. " + context, LogLevel.DEBUG);
             // precondition: user has permission to update event
             Long userId = tokenService.extractUserId(SessionId);
             if (!membershipDomain.validatePermission(userId, eventDTO.companyId(), Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to update event");
             }
+            logger.logEvent("Checked permissions - updateEvent. userId=" + userId + ", companyId=" + eventDTO.companyId() + "permission=" + Permission.MANAGE_EVENT_INVENTORY, LogLevel.DEBUG);
             // precondition: event exists
             Event existingEvent = eventRepository.getEventById(eventDTO.id());
             if (existingEvent == null) {
                 throw new IllegalArgumentException("Event not found");
             }
-
+            logger.logEvent("Found existing event - updateEvent. eventId=" + existingEvent.getId(), LogLevel.DEBUG);
             // validate that the event belongs to the same company and version matches
             if (!existingEvent.getCompanyId().equals(eventDTO.companyId())) {
                 throw new IllegalArgumentException("Cannot change event's company");
@@ -114,9 +140,10 @@ public class EventService {
             // main scenario: update event details and notify users if needed
             String message = "Event " + existingEvent.getName() + " has been updated. New details: /n";
             if (eventDTO.name() != null) {
+                if (existingEvent.getStatus() == eventStatus.ACTIVE) {
+                    throw new IllegalStateException("Cannot change name of an active event");
+                }
                 name = eventDTO.name();
-                message += "New Name: " + eventDTO.name() + "/n";
-                notificateUsers = true;
             }
             else {
                 name = existingEvent.getName();
@@ -150,33 +177,47 @@ public class EventService {
             Long trafficThreshold = eventDTO.trafficThreshold() != null ? eventDTO.trafficThreshold() : existingEvent.getTrafficThreshold();
             EventCategory category = eventDTO.category() != null ? EventMapper.toEventCategory(eventDTO.category()) : existingEvent.getCategory();
             String artistName = eventDTO.artistName() != null ? eventDTO.artistName() : existingEvent.getArtistName();
+            logger.logEvent("update values - updateEvent. " + context, LogLevel.DEBUG);
             validateEventDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
+            logger.logEvent("Validated details - updateEvent. " + context, LogLevel.DEBUG);
             if (notificateUsers) {
-                notifyEventUpdatedListeners(existingEvent.getId(), message);
+                notifyEventUpdatedListeners(existingEvent.getId(), eventDTO.date(), eventDTO.location(), message);
+                logger.logEvent("Notified users - updateEvent. " + context, LogLevel.DEBUG);
             }
             existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
             eventRepository.updateEvent(existingEvent);
+            logger.logEvent("Completed - updateEvent. " + context, LogLevel.INFO);
             return true;
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            logger.logEvent("Failed - updateEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+        catch (Exception e) {
+            logger.logError("Failed - updateEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
     }
 
     public Boolean defineEventMap(String sessionId, Long eventId, EventMapDTO mapDTO) {
+        String context = "eventId=" + eventId + ", mapProvided=" + (mapDTO != null);
+        logger.logEvent("Started - defineEventMap. " + context, LogLevel.INFO);
         try {
             // precondition: user logged in
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
+            logger.logEvent("Authenticated actor - defineEventMap. " + context, LogLevel.DEBUG);
             // precondition: user has permission to define event map
             Event event = eventRepository.getEventById(eventId);
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
+            logger.logEvent("Found event - defineEventMap. " + context, LogLevel.DEBUG);
             Long userId = tokenService.extractUserId(sessionId);
             if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.CONFIGURE_HALL_AND_MAP)) {
                 throw new IllegalArgumentException("User does not have permission to define event map");
             }
+            logger.logEvent("Validated permission - defineEventMap. " + context, LogLevel.DEBUG);
 
             // main scenario: create map
             if (mapDTO == null) {
@@ -186,28 +227,40 @@ public class EventService {
             event.setMap(map);
             event.setStatus(eventStatus.ACTIVE);
             eventRepository.updateEvent(event);
+            logger.logEvent("Completed - defineEventMap. " + context, LogLevel.INFO);
             return true;
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Failed - defineEventMap. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+        catch (Exception e) {
+            logger.logError("Failed - defineEventMap. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
     }
 
     public Boolean deleteEvent(String sessionId, Long eventId) {
+         String context = "eventId=" + eventId;
+        logger.logEvent("Started - deleteEvent. " + context, LogLevel.INFO);
+
         try {
             // precondition: user logged in
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
+            logger.logEvent("Authenticated actor - deleteEvent. " + context, LogLevel.DEBUG);
             Event event = eventRepository.getEventById(eventId);
             if (event == null) {
                 throw new IllegalArgumentException("Event does not exist");
             }
+            logger.logEvent("Found event - deleteEvent. " + context, LogLevel.DEBUG);
             Long companyId = event.getCompanyId();
             // precondition: user has permission to remove an event
             Long userId = tokenService.extractUserId(sessionId);
             if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to remove an event");
             }
+            logger.logEvent("Validated permission - deleteEvent. " + context, LogLevel.DEBUG);
             eventStatus status = event.getStatus();
             if (status == eventStatus.ACTIVE || status == eventStatus.DRAFT) {
                 throw new IllegalArgumentException("Only inactive or cancelled events can be removed");
@@ -215,40 +268,56 @@ public class EventService {
             long expectedVersion = eventRepository.getEventById(eventId).getVersion();
             // main scenario: remove event
             eventRepository.deleteEvent(eventId, expectedVersion);
-            // logger.servere("Event removed successfully: " + eventId);
+            logger.logEvent("Completed - deleteEvent. " + context, LogLevel.INFO);
             return true;
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Failed - deleteEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
         } catch (Exception e) {
-            // logger.servere("remove event failed: " + e.getMessage());
+            logger.logError("Failed - deleteEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
     }
 
     public EventMapDTO getEventMap(String sessionId, Long eventId) {
+        String context = "eventId=" + eventId;
+        logger.logEvent("Use-case started: getEventMap. " + context, LogLevel.INFO);
         try {
             // precondition: user logged in
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
+            logger.logEvent("Authenticated actor - getEventMap. " + context, LogLevel.DEBUG);
             // precondition: user has permission to view event map
             Event event = eventRepository.getEventById(eventId);
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
+            logger.logEvent("Found event - getEventMap. " + context, LogLevel.DEBUG);
 
             // main scenario: return map
             EventMap map = event.getMap();
+            logger.logEvent("Completed - getEventMap. " + context, LogLevel.DEBUG);
             return EventMapDTO.from(map);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Failed - getEventMap. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+        catch (Exception e) {
+            logger.logError("Failed - getEventMap. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
     }
 
     public Boolean cancelEvent(String sessionId, Long eventId) {
+        String context = "eventId=" + eventId;
+        logger.logEvent("Started - cancelEvent. " + context, LogLevel.INFO);
         try {
             // precondition: user logged in
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
+            logger.logEvent("Authenticated actor - cancelEvent. " + context, LogLevel.DEBUG);
             Event event = eventRepository.getEventById(eventId);
             if (event == null) {
                 throw new IllegalArgumentException("Event does not exist");
@@ -259,31 +328,40 @@ public class EventService {
             if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to cancel an event");
             }
+            logger.logEvent("Validated permission - cancelEvent. " + context, LogLevel.DEBUG);
             if (event.getStatus() == eventStatus.CANCELLED) {
                 throw new IllegalStateException("Event is already canceled");
             }
             event.cancel();
             eventRepository.updateEvent(event); // update event status to cancelled
             notifyEventCanceledListeners(eventId);
+            logger.logEvent("Completed - cancelEvent. " + context, LogLevel.INFO);
             return true;
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Failed - cancelEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
         } catch (Exception e) {
+            logger.logError("Failed - cancelEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
     }
 
     public void addEventUpdatesListener(EventUpdatesListener listener) {
         eventUpdatesListeners.add(listener);
+        logger.logEvent("Added event updates listener. Listener class: " + listener.getClass().getName(), LogLevel.DEBUG);
     }
 
     private void notifyEventCanceledListeners(Long eventId) {
         for (EventUpdatesListener listener : eventUpdatesListeners) {
             listener.onEventCanceled(eventId);
+            logger.logEvent("Notified event canceled listener. Listener class: " + listener.getClass().getName(), LogLevel.DEBUG);
         }
     }
 
-    private void notifyEventUpdatedListeners(Long eventId, String updateMessage) {
+    private void notifyEventUpdatedListeners(Long eventId, LocalDateTime date, String Location, String updateMessage) {
         for (EventUpdatesListener listener : eventUpdatesListeners) {
-            listener.onEventUpdated(eventId, updateMessage);
+            listener.onEventUpdated(eventId, date, Location, updateMessage);
+            logger.logEvent("Notified event updated listener. Listener class: " + listener.getClass().getName(), LogLevel.DEBUG);
         }
     }
 
@@ -322,6 +400,16 @@ public class EventService {
         if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Price must be a non-negative number");
         }
+    }
+
+    private String eventDTOContext(EventDTO eventDTO) {
+        if (eventDTO == null) {
+            return "eventDTO=null";
+        }
+
+        return "eventId=" + eventDTO.id()
+                + ", companyId=" + eventDTO.companyId()
+                + ", version=" + eventDTO.version();
     }
 
 }

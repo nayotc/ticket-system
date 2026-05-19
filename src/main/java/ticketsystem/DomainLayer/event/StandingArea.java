@@ -5,8 +5,13 @@ public class StandingArea extends Area {
     private long reserved;
     private long sold;
 
-    public StandingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size,long capacity) {
+    public StandingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, long capacity) {
         super(id, name, location, size);
+
+        if (capacity < 0) {
+            throw new IllegalArgumentException("Capacity cannot be negative");
+        }
+
         this.capacity = capacity;
     }
 
@@ -26,6 +31,10 @@ public class StandingArea extends Area {
     }
 
     public void setCapacity(long capacity) {
+        if (capacity < reserved + sold) {
+            throw new IllegalArgumentException("Capacity cannot be smaller than reserved and sold spots");
+        }
+
         this.capacity = capacity;
     }
 
@@ -34,6 +43,14 @@ public class StandingArea extends Area {
     }
 
     public void setReserved(long reserved) {
+        if (reserved < 0) {
+            throw new IllegalArgumentException("Reserved cannot be negative");
+        }
+
+        if (reserved + sold > capacity) {
+            throw new IllegalArgumentException("Reserved and sold spots cannot exceed capacity");
+        }
+
         this.reserved = reserved;
     }
 
@@ -42,28 +59,49 @@ public class StandingArea extends Area {
     }
 
     public void setSold(long sold) {
+        if (sold < 0) {
+            throw new IllegalArgumentException("Sold cannot be negative");
+        }
+
+        if (reserved + sold > capacity) {
+            throw new IllegalArgumentException("Reserved and sold spots cannot exceed capacity");
+        }
+
         this.sold = sold;
     }
 
     public void reserveSpot(int quantity) {
-        if (reserved + sold +quantity>= capacity) {
+        validatePositiveQuantity(quantity);
+
+        if (reserved + sold + quantity > capacity) {
             throw new IllegalStateException("No more spots available");
         }
+
         reserved += quantity;
     }
 
     public void releaseSpot(int quantity) {
+        validatePositiveQuantity(quantity);
+
         if (reserved < quantity) {
             throw new IllegalStateException("Not enough reserved spots to release");
         }
+
         reserved -= quantity;
     }
 
     public void sellSpot(int quantity) {
-        if (sold + quantity>= capacity) {
+        validatePositiveQuantity(quantity);
+
+        if (reserved < quantity) {
+            throw new IllegalStateException("Not enough reserved spots to sell");
+        }
+
+        if (sold + quantity > capacity) {
             throw new IllegalStateException("No more spots available");
         }
-        reserved -= quantity; // Assuming selling a spot that was reserved
+
+        reserved -= quantity;
         sold += quantity;
     }
 
@@ -71,4 +109,9 @@ public class StandingArea extends Area {
         return sold >= capacity;
     }
 
+    private void validatePositiveQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive");
+        }
+    }
 }

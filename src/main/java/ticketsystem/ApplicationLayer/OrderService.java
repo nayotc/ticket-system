@@ -1,5 +1,6 @@
 package ticketsystem.ApplicationLayer;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -74,7 +75,7 @@ public class OrderService implements UserLoginListener, EventUpdatesListener{
     }
 
     @Override
-    public void onEventUpdated(Long eventId, String updateMessage) {
+    public void onEventUpdated(Long eventId, LocalDateTime date, String Location, String updateMessage) {
         List<ActiveOrder> affectedOrders = orderRepository.getActiveOrdersByEventId(eventId);
         for (ActiveOrder order : affectedOrders) {
             notificationsService.notifyUser(order.getSessionToken(), "Update for your order number - " + order.getOrderId() + " :/n" + updateMessage);
