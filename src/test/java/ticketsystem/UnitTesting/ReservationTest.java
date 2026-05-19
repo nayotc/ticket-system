@@ -88,7 +88,6 @@ public class ReservationTest {
         verify(event).reserveSpot(areaId, quantity);
         verify(order, times(quantity)).addTicket(any(Ticket.class));
     }
-
     @Test
     void GivenSeatTicketInOrder_WhenRemoveTicketFromActiveOrder_ThenDeleteTicketAndReleaseSeat() {
         // Arrange
@@ -98,14 +97,14 @@ public class ReservationTest {
 
         Ticket ticket = new Ticket(ticketId, eventId, areaId, 2, 4, BigDecimal.valueOf(100));
 
-        when(order.deleteTicket(ticketId)).thenReturn(ticket);
+        when(order.getTickets()).thenReturn(List.of(ticket));
 
         // Act
         reservation.removeTicketFromActiveOrder(order, event, ticketId);
 
         // Assert
-        verify(order).deleteTicket(ticketId);
         verify(event).releaseSeat(eq(areaId), any(SeatPosition.class));
+        verify(order).deleteTicket(ticketId);
         verify(event, never()).releaseSpot(anyLong(), anyInt());
     }
 
@@ -118,16 +117,17 @@ public class ReservationTest {
 
         Ticket ticket = new Ticket(ticketId, eventId, areaId, 0, 0, BigDecimal.valueOf(80));
 
-        when(order.deleteTicket(ticketId)).thenReturn(ticket);
+        when(order.getTickets()).thenReturn(List.of(ticket));
 
         // Act
         reservation.removeTicketFromActiveOrder(order, event, ticketId);
 
         // Assert
+        verify(event).releaseSpot(areaId, 1);
         verify(order).deleteTicket(ticketId);
-        verify(event).releaseSpot(areaId,1);
         verify(event, never()).releaseSeat(anyLong(), any(SeatPosition.class));
     }
+
 
     @Test
     void GivenValidActiveOrder_WhenSubmitActiveOrderForCheckout_ThenValidateAndSubmitOrder() {

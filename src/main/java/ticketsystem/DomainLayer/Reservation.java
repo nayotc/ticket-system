@@ -39,32 +39,53 @@ public class Reservation {
       }
     }
 
-    //UC 2.7
-    public void removeTicketFromActiveOrder(ActiveOrder order, Event event,Long ticketId) {
-        Ticket ticket= order.deleteTicket(ticketId);
-        releaseTicket(ticket, event);
+  // UC 2.7
+public void removeTicketFromActiveOrder(ActiveOrder order, Event event, Long ticketId) {
+    Ticket ticket = order.getTickets().stream()
+            .filter(t -> t.getTicketId().equals(ticketId))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Ticket not found in active order"));
+
+    // First release from event inventory.
+    // If this throws, the order is not changed.
+    releaseTicket(ticket, event);
+
+    // Only after event release succeeded, mutate the order.
+    order.deleteTicket(ticketId);
+}
+
+public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event, Long areaId, int quantity) {
+    if (quantity <= 0) {
+        throw new IllegalArgumentException("Quantity must be positive");
     }
 
-    public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event, Long areaId, int quantity) {
-        List<Ticket> ticketsToRemove = new ArrayList<>();
-        for (Ticket ticket : order.getTickets()) {
-            if (ticket.getAreaId().equals(areaId) && ticket.getRow() == 0 && ticket.getChair() == 0) {
-                ticketsToRemove.add(ticket);
-                if (ticketsToRemove.size() == quantity) {
-                    break;
-                }
+    List<Ticket> ticketsToRemove = new ArrayList<>();
+
+    for (Ticket ticket : order.getTickets()) {
+        if (ticket.getAreaId().equals(areaId)
+                && ticket.getRow() == 0
+                && ticket.getChair() == 0) {
+            ticketsToRemove.add(ticket);
+
+            if (ticketsToRemove.size() == quantity) {
+                break;
             }
         }
-
-        if (ticketsToRemove.size() < quantity) {
-            throw new IllegalArgumentException("Not enough standing tickets in the order to remove");
-        }
-
-        for (Ticket ticket : ticketsToRemove) {
-            order.deleteTicket(ticket.getTicketId());
-        }
-        event.releaseSpot(areaId, quantity);
     }
+
+    if (ticketsToRemove.size() < quantity) {
+        throw new IllegalArgumentException("Not enough standing tickets in the order to remove");
+    }
+
+    // First release from event inventory.
+    // If this throws, the order is not changed.
+    event.releaseSpot(areaId, quantity);
+
+    // Only after event release succeeded, mutate the order.
+    for (Ticket ticket : ticketsToRemove) {
+        order.deleteTicket(ticket.getTicketId());
+    }
+}
     //2.8 checkout
 
     public BigDecimal submitActiveOrderForCheckout(ActiveOrder order, Event event) {
