@@ -45,8 +45,8 @@ public class OrderService implements UserLoginListener, EventUpdatesListener{
 
             // User already has an active order for another event
             if (!memberOrder.getEventId().equals(guestOrder.getEventId())) {
-                ActiveOrder guestActiveOrder= orderRepository.getActiveOrderBySessionToken(guestToken);
-                guestActiveOrder.cancelOrder();
+                guestOrder.cancelOrder();
+                orderRepository.updateOrder(guestOrder);
                 return;
             }
 

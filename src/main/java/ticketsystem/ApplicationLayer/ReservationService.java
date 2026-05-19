@@ -387,13 +387,13 @@ public class ReservationService {
     }
 
     private void saveAll(ActiveOrder order, Event event) {
-        eventRepository.updateEvent(event);
-
+        
         if (order.getStatus() == ActiveOrder.OrderStatus.COMPLETED) {
             orderRepository.deleteOrder(order.getOrderId());
         } else {
             orderRepository.updateOrder(order);
         }
+        eventRepository.updateEvent(event);
     }
 
     private void expireOldOrders() {

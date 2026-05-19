@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
+import ticketsystem.DomainLayer.exception.OptimisticLockException;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
 public class OrderRepository implements IOrderRepository {
@@ -21,30 +22,47 @@ public class OrderRepository implements IOrderRepository {
     }
 
     public synchronized void addOrder(ActiveOrder order) {
-    for (ActiveOrder existingOrder : orders.values()) {
+        if (order == null) {
+            throw new IllegalArgumentException("Order cannot be null");
+        }
 
-        boolean sameSession =
-                existingOrder.getSessionToken() != null
-                && order.getSessionToken() != null
-                && existingOrder.getSessionToken().equals(order.getSessionToken());
+        for (ActiveOrder existingOrder : orders.values()) {
 
-        boolean sameUser =
-                existingOrder.getUserId() != null
-                && order.getUserId() != null
-                && existingOrder.getUserId().equals(order.getUserId());
+            boolean sameSession =
+                    existingOrder.getSessionToken() != null
+                            && order.getSessionToken() != null
+                            && existingOrder.getSessionToken().equals(order.getSessionToken());
 
-        if (sameSession || sameUser) {
+            boolean sameUser =
+                    existingOrder.getUserId() != null
+                            && order.getUserId() != null
+                            && existingOrder.getUserId().equals(order.getUserId());
+
+            if (sameSession || sameUser) {
+                throw new IllegalArgumentException(
+                        "An active order already exists for this user to another event"
+                );
+            }
+        }
+
+        ActiveOrder copy = order.copy();
+        ActiveOrder existing = orders.putIfAbsent(order.getOrderId(), copy);
+
+        if (existing != null) {
             throw new IllegalArgumentException(
-                    "An active order already exists for this user to another event"
+                    "Order already exists with id: " + order.getOrderId()
             );
         }
     }
 
-    this.orders.put(order.getOrderId(), order);
-}
-
     public ActiveOrder findOrderById(Long orderId) {
-        return orders.get(orderId);
+        ActiveOrder order = orders.get(orderId);
+
+        if (order == null) {
+            return null;
+        }
+
+        return order.copy();
     }
 
     public synchronized void deleteOrder(Long orderId) {
@@ -58,9 +76,9 @@ public class OrderRepository implements IOrderRepository {
     }
 
     public synchronized void deleteOrderBySessionToken(String sessionToken) {
-        orders.values().removeIf(order
-                -> order.getSessionToken() != null
-                && order.getSessionToken().equals(sessionToken)
+        orders.values().removeIf(order ->
+                order.getSessionToken() != null
+                        && order.getSessionToken().equals(sessionToken)
         );
     }
 
@@ -68,7 +86,7 @@ public class OrderRepository implements IOrderRepository {
         List<ActiveOrder> activeOrders = new ArrayList<>();
 
         for (Map.Entry<Long, ActiveOrder> entry : orders.entrySet()) {
-            activeOrders.add(entry.getValue());
+            activeOrders.add(entry.getValue().copy());
         }
 
         return activeOrders;
@@ -76,12 +94,13 @@ public class OrderRepository implements IOrderRepository {
 
     public ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, Long eventId) {
         return orders.values().stream()
-                .filter(order
-                        -> order.getUserId() != null
-                && order.getUserId().equals(userId)
-                && order.getEventId().equals(eventId)
+                .filter(order ->
+                        order.getUserId() != null
+                                && order.getUserId().equals(userId)
+                                && order.getEventId().equals(eventId)
                 )
                 .findFirst()
+                .map(ActiveOrder::copy)
                 .orElse(null);
     }
 
@@ -95,24 +114,40 @@ public class OrderRepository implements IOrderRepository {
             throw new IllegalArgumentException("Order cannot be null");
         }
 
-        orders.put(order.getOrderId(), order);
+        orders.compute(order.getOrderId(), (id, currentOrder) -> {
+            if (currentOrder == null) {
+                throw new IllegalArgumentException("Order not found with id: " + id);
+            }
+
+            if (currentOrder.getVersion() != order.getVersion()) {
+                throw new OptimisticLockException(
+                        "Order was modified by another request. Order id: " + id
+                );
+            }
+
+            ActiveOrder copy = order.copy();
+            copy.incrementVersion();
+
+            return copy;
+        });
     }
 
     public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, Long eventId) {
         return orders.values().stream()
-                .filter(order
-                        -> order.getSessionToken() != null
-                && order.getSessionToken().equals(sessionToken)
-                && order.getEventId().equals(eventId)
+                .filter(order ->
+                        order.getSessionToken() != null
+                                && order.getSessionToken().equals(sessionToken)
+                                && order.getEventId().equals(eventId)
                 )
                 .findFirst()
+                .map(ActiveOrder::copy)
                 .orElse(null);
     }
 
     public synchronized void deleteActiveOrdersByUserId(Long userId) {
-        orders.values().removeIf(order
-                -> order.getUserId() != null
-                && order.getUserId().equals(userId)
+        orders.values().removeIf(order ->
+                order.getUserId() != null
+                        && order.getUserId().equals(userId)
         );
     }
 
@@ -123,8 +158,9 @@ public class OrderRepository implements IOrderRepository {
                                 && order.getSessionToken().equals(sessionToken)
                 )
                 .findFirst()
+                .map(ActiveOrder::copy)
                 .orElse(null);
-            }
+    }
 
     public ActiveOrder getActiveOrderByUserId(Long userId) {
         return orders.values().stream()
@@ -133,16 +169,19 @@ public class OrderRepository implements IOrderRepository {
                                 && order.getUserId().equals(userId)
                 )
                 .findFirst()
+                .map(ActiveOrder::copy)
                 .orElse(null);
-            }
-    
+    }
+
     public List<ActiveOrder> getActiveOrdersByEventId(Long eventId) {
         List<ActiveOrder> activeOrders = new ArrayList<>();
+
         for (ActiveOrder order : orders.values()) {
             if (order.getEventId() != null && order.getEventId().equals(eventId)) {
-                activeOrders.add(order);
+                activeOrders.add(order.copy());
             }
         }
+
         return activeOrders;
     }
 

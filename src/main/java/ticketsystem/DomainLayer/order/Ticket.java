@@ -21,6 +21,19 @@ public class Ticket {
         this.price = price;
       
     }
+    //copy constructor
+        public Ticket(Ticket other) {
+        this.ticketId = other.ticketId;
+        this.eventId = other.eventId;
+        this.areaId = other.areaId;
+        this.row = other.row;
+        this.chair = other.chair;
+        this.price = other.price;
+    }
+
+    public Ticket copy() {
+        return new Ticket(this);
+    }
 
     public Long getTicketId() {
         return this.ticketId;

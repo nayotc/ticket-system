@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
@@ -19,6 +20,7 @@ public class ActiveOrder {
     private List<Ticket> tickets;
     private OrderStatus status;
     private LocalDateTime expiresAt;
+    private int version;
     
 
     public ActiveOrder(Long orderId, String sessionToken, Long userId, Long eventId) {
@@ -29,8 +31,27 @@ public class ActiveOrder {
         this.tickets = new ArrayList<>();
         this.status = OrderStatus.ACTIVE;
         this.expiresAt = LocalDateTime.now().plusMinutes(15);
+        this.version = 0;
     }
 
+    //copy constructor
+    public ActiveOrder(ActiveOrder other){
+        this.orderId = other.orderId;
+        this.userId = other.userId;
+        this.sessionToken = other.sessionToken;
+        this.eventId = other.eventId;
+        this.tickets = other.tickets.stream()
+        .map(Ticket::copy)
+        .collect(Collectors.toList());
+        this.status = other.status;
+        this.expiresAt = other.expiresAt;
+        this.version = other.version;
+
+    }
+
+     public ActiveOrder copy() {
+        return new ActiveOrder(this);
+    }
 
     public void addTicket(Ticket ticket) {
         if(!ticket.getEventId().equals(eventId))
@@ -154,6 +175,13 @@ public class ActiveOrder {
 
     public void activeOrder(){
         this.status=OrderStatus.ACTIVE;
+    }
+    public int getVersion() {
+        return version;
+    }
+
+    public void incrementVersion() {
+        this.version++;
     }
 
     public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId, Long eventId) {
