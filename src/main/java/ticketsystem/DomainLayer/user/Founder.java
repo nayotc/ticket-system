@@ -12,6 +12,13 @@ public class Founder extends CompanyRole{
         this.status = RoleStatus.ACTIVE; // Founder is active immediately upon creation
     }
 
+    // Copy Constructor for Deep Copying
+    public Founder(Founder other, Long companyId) {
+        super(companyId);
+        this.status = other.status; 
+        this.appointeesMemberIds = new ArrayList<>(other.appointeesMemberIds);
+    }
+
     public List<Long> getAppointeesMemberIds() {
         return this.appointeesMemberIds; 
     }

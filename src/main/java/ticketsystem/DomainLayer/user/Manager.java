@@ -14,6 +14,14 @@ public class Manager extends CompanyRole {
         this.permissions = permissions;
     }
 
+    // Copy Constructor for Deep Copying
+    public Manager(Manager other, Long companyId) {
+        super(companyId);
+        this.status = other.status;
+        this.appointedByMemberId = other.appointedByMemberId;
+        this.permissions = new java.util.HashSet<>(other.permissions);
+    }
+
     public Long getAppointedByMemberId() {
         return this.appointedByMemberId; 
     }

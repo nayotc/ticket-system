@@ -14,6 +14,14 @@ public class Owner extends CompanyRole {
         this.status = RoleStatus.PENDING;
     }
 
+    // Copy Constructor for Deep Copying
+    public Owner(Owner other, Long companyId) {
+        super(companyId);
+        this.status = other.status;
+        this.appointedByMemberId = other.appointedByMemberId;
+        this.appointeesMemberIds = new ArrayList<>(other.appointeesMemberIds);
+    }
+
     public Long getAppointedByMemberId() {
         return this.appointedByMemberId;        
     }
