@@ -1,3 +1,7 @@
 /target
 .vscode/
 logs/
+.idea/
+*.iml
+src/main/frontend/generated/
+src/main/frontend/index.html
