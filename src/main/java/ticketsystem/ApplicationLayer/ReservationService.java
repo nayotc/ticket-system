@@ -30,7 +30,7 @@ import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
-public class ReservationService{
+public class ReservationService {
 
     private final IOrderRepository orderRepository;
     private final IEventRepository eventRepository;
@@ -38,87 +38,89 @@ public class ReservationService{
     private final IPaymentService paymentService;
     private final ISecureBarcode secureBarcode;
     private final ILotteryRepository lotteryRepository;
-    private final Reservation reservation;
+    private final Reservation reservationDomeinService;
     private final ISystemLogger logger;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
-
-
-
 
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
-            TokenService tokenService,IPaymentService paymentService, ISecureBarcode secureBarcode, ILotteryRepository lotteryRepository,ISystemLogger logger) {
+            TokenService tokenService, IPaymentService paymentService, ISecureBarcode secureBarcode,
+            ILotteryRepository lotteryRepository, ISystemLogger logger) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
-        this.paymentService=paymentService;
-        this.secureBarcode=secureBarcode;
-        this.lotteryRepository=lotteryRepository;
-        this.logger=logger;
-        this.reservation=new Reservation();
-        
+        this.paymentService = paymentService;
+        this.secureBarcode = secureBarcode;
+        this.lotteryRepository = lotteryRepository;
+        this.logger = logger;
+        this.reservationDomeinService = new Reservation();
+
     }
 
-//UC 2.5,2.4
-     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position,String lotteryCode) {
+    // UC 2.5,2.4
+    public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position,
+            String lotteryCode) {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
 
-            if(eventRepository.getEventById(eventId)==null) {
+            if (eventRepository.getEventById(eventId) == null) {
                 throw new IllegalArgumentException("Event not found");
             }
             Lottery lottery = lotteryRepository.findByEventId(eventId);
 
             if (lottery != null) {
                 Long userId = tokenService.extractUserId(token);
-                reservation.checkLottery(lottery, userId, lotteryCode);
+                reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
             }
 
             ActiveOrder order = getOrCreateOrder(token, eventId);
-            if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+            if (order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
 
             Event event = eventRepository.getEventById(eventId);
-            reservation.selectSeatTicket(order, event, areaId, position);
+            reservationDomeinService.selectSeatTicket(order, event, areaId, position);
 
             saveAll(order, event);
-            logger.logEvent("Seat ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId=" + areaId + ", position=" + position, LogLevel.INFO);
+            logger.logEvent("Seat ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId="
+                    + areaId + ", position=" + position, LogLevel.INFO);
             return true;
 
         } catch (Exception e) {
-            logger.logEvent("selectSeatTicket failed: " + e.getMessage(),LogLevel.WARN);
+            logger.logEvent("selectSeatTicket failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
     }
-    public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity,String lotteryCode) {
+
+    public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity, String lotteryCode) {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
-            if(eventRepository.getEventById(eventId)==null) {
-                    throw new IllegalArgumentException("Event not found");
+            if (eventRepository.getEventById(eventId) == null) {
+                throw new IllegalArgumentException("Event not found");
             }
 
             Lottery lottery = lotteryRepository.findByEventId(eventId);
 
             if (lottery != null) {
                 Long userId = tokenService.extractUserId(token);
-                reservation.checkLottery(lottery, userId, lotteryCode);
+                reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
             }
 
             ActiveOrder order = getOrCreateOrder(token, eventId);
-            if(order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+            if (order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
             if (quantity <= 0) {
                 throw new IllegalArgumentException("Quantity must be greater than zero");
             }
             Event event = eventRepository.getEventById(eventId);
-            reservation.selectStandingTicket(order, event, areaId, quantity);
+            reservationDomeinService.selectStandingTicket(order, event, areaId, quantity);
             saveAll(order, event);
-            logger.logEvent("Standing ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
+            logger.logEvent("Standing ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId
+                    + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
             return true;
         } catch (Exception e) {
             logger.logEvent("selectStandingTicket failed: " + e.getMessage(), LogLevel.WARN);
@@ -126,21 +128,21 @@ public class ReservationService{
         }
     }
 
-
-    //UC 2.7
+    // UC 2.7
     public boolean removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
             ActiveOrder order = findActiveOrder(token, eventId);
-            if (order==null|| order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
             Event event = eventRepository.getEventById(eventId);
-            reservation.removeTicketFromActiveOrder(order, event, ticketId);
+            reservationDomeinService.removeTicketFromActiveOrder(order, event, ticketId);
 
             saveAll(order, event);
-            logger.logEvent("Ticket removed from active order: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", ticketId=" + ticketId, LogLevel.INFO);
+            logger.logEvent("Ticket removed from active order: orderId=" + order.getOrderId() + ", eventId=" + eventId
+                    + ", ticketId=" + ticketId, LogLevel.INFO);
             return true;
 
         } catch (Exception e) {
@@ -155,142 +157,215 @@ public class ReservationService{
             tokenService.validateToken(token);
             ActiveOrder order = findActiveOrder(token, eventId);
 
-            if (order==null|| order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
-            
+
             Event event = eventRepository.getEventById(eventId);
-            reservation.removeStandingTicketsFromActiveOrder(order, event, areaId, quantity);
+            reservationDomeinService.removeStandingTicketsFromActiveOrder(order, event, areaId, quantity);
 
             saveAll(order, event);
-            logger.logEvent("Standing tickets removed from active order: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
+            logger.logEvent("Standing tickets removed from active order: orderId=" + order.getOrderId() + ", eventId="
+                    + eventId + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
             return true;
 
         } catch (Exception e) {
-            logger.logEvent("removeStandingTicketsFromActiveOrder failed: " + e.getMessage(), LogLevel.WARN );
+            logger.logEvent("removeStandingTicketsFromActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
     }
 
     public ActiveOrderDTO viewActiveOrder(String token, Long orderId) {
         expireOldOrders();
+
         try {
             tokenService.validateToken(token);
+
             ActiveOrder order = orderRepository.findOrderById(orderId);
-            if (order == null|| order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
-                throw new IllegalStateException("No active order found for this event");
+
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+                throw new IllegalStateException("No active order found");
             }
-            
-           ActiveOrderDTO activeOrderDTO = order.toDTO();
-            logger.logEvent("Active order viewed: orderId=" + order.getOrderId() + ", eventId=" + order.getEventId(), LogLevel.INFO);
+
+            if (!isOrderOwnedByToken(order, token)) {
+                throw new SecurityException("User is not allowed to view this order");
+            }
+
+            ActiveOrderDTO activeOrderDTO = order.toDTO();
+
+            logger.logEvent(
+                    "Active order viewed: orderId=" + order.getOrderId()
+                            + ", eventId=" + order.getEventId(),
+                    LogLevel.INFO
+            );
+
             return activeOrderDTO;
-        } 
-        catch (Exception e) {
+
+        } catch (Exception e) {
             logger.logEvent("viewActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
     }
 
-    // UC 2.8
-    private void submitActiveOrderForCheckout(String token, Long eventId) {
-            ActiveOrder order = findActiveOrder(token, eventId);
-            if(order==null) {
-                throw new IllegalStateException("No active order found for this event");
-            }
-            Event event = eventRepository.getEventById(eventId);
-            reservation.submitActiveOrderForCheckout(order, event);
-            saveAll(order, event);
-    }
-    //for testing purposes
-    public boolean enterUserDetails(String name, String Email){
-        return true;
-    }
+    // 2.8 checkout
    
-    public boolean checkout(String token, Long eventId, PaymentDetails details) {
+        public boolean checkout(String token, Long eventId, PaymentDetails details) {
         expireOldOrders();
-        try {    
+
+        try {
             tokenService.validateToken(token);
-            submitActiveOrderForCheckout(token, eventId);
+
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
-            BigDecimal amount = reservation.calculateTotalPrice(order, event);           
+
+            if (order == null || event == null) {
+                throw new IllegalStateException("No active order or event found");
+            }
+
+            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
 
             boolean paymentResult = paymentService.pay(amount, details);
 
             if (!paymentResult) {
                 order.paymentFailed();
+                saveAll(order, event);
                 throw new IllegalStateException("Payment failed");
             }
-    
+
+            OrderDTO orderDTO;
+
             try {
-                OrderDTO orderDTO = order.toDTO(event.getName(),event.getLocation().toString(), event.getCompanyId(), event.getOpenedBy(), event.getId());
-                for(PurchaseDTO purchesDTO : orderDTO.getTickets()) {
-                    String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(),order.getEventId(),order.getUserId());
-                    purchesDTO.setSecureBarcode(barcode);
-                
-                }
-                reservation.completeCheckout(order, event);
-                saveAll(order, event);
-                notifyListeners(orderDTO);
-                logger.logEvent("Checkout completed successfully: orderId=" + order.getOrderId() + ", eventId=" + eventId, LogLevel.INFO);
-                return true;
-
-            } catch (Exception issuingException) {
-                boolean refundResult = paymentService.refund(amount, details);
-                order.paymentFailed();
-                saveAll(order, event);
-
-                if (!refundResult) {
-                    throw new IllegalStateException(
-                            "Ticket issuing failed and refund failed",
-                            issuingException
-                    );
-                }
-
-                throw new IllegalStateException(
+                orderDTO = creaOrderDTOwithBarcode(order, event);
+            } catch (Exception barcodeException) {
+                handleRefundAfterCheckoutFailure(order, event, amount, details, eventId, barcodeException,
                         "Ticket issuing failed. Payment was refunded.",
-                        issuingException
+                        "Ticket issuing failed and refund failed.");
+                return false; // unreachable
+            }
+
+            try {
+                reservationDomeinService.completeCheckout(order, event);
+                saveAll(order, event);
+            } catch (Exception completeCheckoutException) {
+                handleRefundAfterCheckoutFailure(order, event, amount, details, eventId, completeCheckoutException,
+                        "Complete checkout failed. Payment was refunded.",
+                        "Complete checkout failed and refund failed.");
+                return false; // unreachable
+            }
+
+            boolean listenersNotified = notifyListeners(orderDTO);
+            if (!listenersNotified) {
+                logger.logEvent(
+                        "Order completed but notifying listeners failed: orderId="
+                                + order.getOrderId() + ", eventId=" + eventId,
+                        LogLevel.WARN
                 );
             }
+
+            logger.logEvent(
+                    "Checkout completed successfully: orderId="
+                            + order.getOrderId() + ", eventId=" + eventId,
+                    LogLevel.INFO
+            );
+
+            return true;
+
         } catch (Exception e) {
             logger.logEvent("checkout failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
-
     }
-    //listener
+
+    // listener
     public void addOrderListener(OrderCompletedListener listener) {
-            listeners.add(listener);
+        listeners.add(listener);
     }
 
-    private void notifyListeners(OrderDTO order) {
-        for (OrderCompletedListener listener : listeners) {
+    private boolean notifyListeners(OrderDTO order) {
+        try{
+              for (OrderCompletedListener listener : listeners) {
             listener.onOrderCompleted(order);
         }
+        return true;
+        }
+        catch(Exception e){
+            return false;
+        }
+      
     }
+    //refund
+        private void handleRefundAfterCheckoutFailure(
+            ActiveOrder order,
+            Event event,
+            BigDecimal amount,
+            PaymentDetails details,
+            Long eventId,
+            Exception originalException,
+            String refundSuccessMessage,
+            String refundFailureMessage) {
 
-    //Helper methods
+        boolean refundResult = paymentService.refund(amount, details);
 
-    private ActiveOrder getOrCreateOrder(String token, Long eventId) {
-         ActiveOrder order = findActiveOrder(token, eventId);
+        order.paymentFailed();
+        saveAll(order, event);
 
-    if (order == null) {
-        Long userId = tokenService.isMemberToken(token)
-                ? tokenService.extractUserId(token)
-                : null;
+        if (refundResult) {
+            logger.logEvent(
+                    refundSuccessMessage + " orderId=" + order.getOrderId() + ", eventId=" + eventId,
+                    LogLevel.INFO
+            );
 
-        order = new ActiveOrder(
-                orderRepository.getNextId(),token,
-                userId,
-                eventId
+            throw new IllegalStateException(refundSuccessMessage, originalException);
+        }
+
+        logger.logError(
+                refundFailureMessage + " orderId=" + order.getOrderId() + ", eventId=" + eventId,
+                originalException
         );
 
-        orderRepository.addOrder(order);
+        throw new IllegalStateException(refundFailureMessage, originalException);
     }
+
+    //secure barcode logic
+    private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event){
+          OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
+                        event.getOpenedBy(), event.getId());
+                for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
+                    String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(), order.getEventId(),
+                            order.getOrderId());
+                    purchesDTO.setSecureBarcode(barcode);
+                }
+         return orderDTO;       
+    }
+
+    // Helper methods
+    private boolean isOrderOwnedByToken(ActiveOrder order, String token) {
+    if (tokenService.isGuestToken(token)) {
+        return order.getSessionToken().equals(token);
+    }
+
+    Long userId = tokenService.extractUserId(token);
+    return order.getUserId() != null && order.getUserId().equals(userId);
+}
+
+    private ActiveOrder getOrCreateOrder(String token, Long eventId) {
+        ActiveOrder order = findActiveOrder(token, eventId);
+
+        if (order == null) {
+            Long userId = tokenService.isMemberToken(token)
+                    ? tokenService.extractUserId(token)
+                    : null;
+
+            order = new ActiveOrder(
+                    orderRepository.getNextId(), token,
+                    userId,
+                    eventId);
+
+            orderRepository.addOrder(order);
+        }
 
         return order;
     }
-    
 
     private ActiveOrder findActiveOrder(String token, Long eventId) {
 
@@ -299,41 +374,36 @@ public class ReservationService{
         if (tokenService.isGuestToken(token)) {
             order = orderRepository.getActiveOrderBySessionTokenAndEventId(
                     token,
-                    eventId
-            );
+                    eventId);
         } else {
             Long userId = tokenService.extractUserId(token);
 
             order = orderRepository.getActiveOrderByUserIdAndEventId(
                     userId,
-                    eventId
-            );
+                    eventId);
         }
 
         return order;
     }
+
     private void saveAll(ActiveOrder order, Event event) {
         eventRepository.updateEvent(event);
 
-        if (order.getStatus() == ActiveOrder.OrderStatus.CANCELLED
-                || order.getStatus() == ActiveOrder.OrderStatus.COMPLETED) {
+        if (order.getStatus() == ActiveOrder.OrderStatus.COMPLETED) {
             orderRepository.deleteOrder(order.getOrderId());
         } else {
             orderRepository.updateOrder(order);
         }
     }
 
-
     private void expireOldOrders() {
         List<ActiveOrder> allOrders = orderRepository.getAll();
         for (ActiveOrder order : allOrders) {
-            if ((order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT && order.isExpired())) {
                 Event event = eventRepository.getEventById(order.getEventId());
-                reservation.expire(event,order);
-                orderRepository.deleteOrder(order.getOrderId());
-                //logger.logEvent("Expired order cancelled: " + order.getOrderId(), LogLevel.WARN);
-         }
-    }
-    }
-
+                if(reservationDomeinService.timeExpire(event, order))
+                    orderRepository.deleteOrder(order.getOrderId());
+                // logger.logEvent("Expired order cancelled: " + order.getOrderId(),
+                // LogLevel.WARN);
+            }
+        }
 }

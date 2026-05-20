@@ -19,6 +19,7 @@ import org.mockito.InOrder;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
@@ -87,7 +88,6 @@ public class ReservationTest {
         verify(event).reserveSpot(areaId, quantity);
         verify(order, times(quantity)).addTicket(any(Ticket.class));
     }
-
     @Test
     void GivenSeatTicketInOrder_WhenRemoveTicketFromActiveOrder_ThenDeleteTicketAndReleaseSeat() {
         // Arrange
@@ -97,14 +97,14 @@ public class ReservationTest {
 
         Ticket ticket = new Ticket(ticketId, eventId, areaId, 2, 4, BigDecimal.valueOf(100));
 
-        when(order.deleteTicket(ticketId)).thenReturn(ticket);
+        when(order.getTickets()).thenReturn(List.of(ticket));
 
         // Act
         reservation.removeTicketFromActiveOrder(order, event, ticketId);
 
         // Assert
-        verify(order).deleteTicket(ticketId);
         verify(event).releaseSeat(eq(areaId), any(SeatPosition.class));
+        verify(order).deleteTicket(ticketId);
         verify(event, never()).releaseSpot(anyLong(), anyInt());
     }
 
@@ -117,16 +117,17 @@ public class ReservationTest {
 
         Ticket ticket = new Ticket(ticketId, eventId, areaId, 0, 0, BigDecimal.valueOf(80));
 
-        when(order.deleteTicket(ticketId)).thenReturn(ticket);
+        when(order.getTickets()).thenReturn(List.of(ticket));
 
         // Act
         reservation.removeTicketFromActiveOrder(order, event, ticketId);
 
         // Assert
+        verify(event).releaseSpot(areaId, 1);
         verify(order).deleteTicket(ticketId);
-        verify(event).releaseSpot(areaId,1);
         verify(event, never()).releaseSeat(anyLong(), any(SeatPosition.class));
     }
+
 
     @Test
     void GivenValidActiveOrder_WhenSubmitActiveOrderForCheckout_ThenValidateAndSubmitOrder() {
@@ -146,7 +147,8 @@ public class ReservationTest {
 
         Ticket seatTicket = new Ticket(1L, eventId, 5L, 2, 3, BigDecimal.valueOf(100));
         Ticket standingTicket = new Ticket(2L, eventId, 6L, 0, 0, BigDecimal.valueOf(80));
-
+        when(event.getSeatStatus(eq(5L), any(SeatPosition.class))).thenReturn(SeatStatus.RESERVED);
+        when(order.getStatus()).thenReturn(ActiveOrder.OrderStatus.PENDING_CHECKOUT);
         when(order.getTickets()).thenReturn(List.of(seatTicket, standingTicket));
 
         // Act

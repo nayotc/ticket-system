@@ -530,8 +530,9 @@ void AcceptanceTest_RemoveTicketFromActiveOrder_WhenSeatTicketExists_ThenTicketI
                 () -> reservationService.viewActiveOrder(token, nonExistingOrderId)
         );
 
-        assertEquals("No active order found for this event", exception.getMessage());
+        assertEquals("No active order found", exception.getMessage());
     }
+
     @Test
     void AcceptanceTest_Checkout_WhenPaymentAndTicketIssuingSucceed_ThenOrderIsCompletedAndBarcodeIssued() {
         Long eventId = 1L;
