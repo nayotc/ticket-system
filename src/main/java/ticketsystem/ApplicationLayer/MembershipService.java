@@ -14,9 +14,9 @@ public class MembershipService {
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
     private final MembershipDomainService membershipDomain;
-    private final NotificationsService notificationsService;
+    private final INotifier notificationsService;
 
-    public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService membershipDomain, NotificationsService notificationsService) {
+    public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService membershipDomain, INotifier notificationsService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;

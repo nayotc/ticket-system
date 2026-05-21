@@ -11,7 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.ISystemLogger;
-import ticketsystem.ApplicationLayer.NotificationsService;
+import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.ApplicationLayer.TokenService;
@@ -27,7 +27,7 @@ public class OrderServiceAcceptanceTest {
     private IOrderRepository orderRepository;
     private TokenService tokenService;
     private FakeSystemLogger logger;
-    private NotificationsService notification;
+    private INotifier notification;
 
     private final String guestToken = "guest-token-1";
     private final String memberToken = "member-token-1";

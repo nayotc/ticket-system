@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.ITokenService;
-import ticketsystem.ApplicationLayer.NotificationsService;
+import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
@@ -148,7 +148,7 @@ public class WaitingQueueServiceTest {
         assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
     }
 
-    private class FakeNotificationsService implements NotificationsService {
+    private class FakeNotificationsService implements INotifier {
 
         public List<String> notifiedUsers = new ArrayList<>();
 
