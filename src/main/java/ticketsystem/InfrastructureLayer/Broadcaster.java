@@ -11,8 +11,8 @@ import java.util.function.Consumer;
 public class Broadcaster {
 
     private static final Executor executor = Executors.newCachedThreadPool();
-    
-    private static final Map<String, List<Consumer<String>>> notifiers = new ConcurrentHashMap<>();    
+
+    private static final Map<String, List<Consumer<String>>> notifiers = new ConcurrentHashMap<>();
 
     public static synchronized Runnable registerListener(String sessionId, Consumer<String> notifier) {
         addListener(sessionId, notifier);
@@ -31,9 +31,9 @@ public class Broadcaster {
                 notifiers.remove(sessionId);
             }
         }
-    }  
+    }
 
-    public static void broadcast(String sessionId, String message) {
+    public static void broadcast(String sessionId, String message, NotificationsRepository repository) {
         List<Consumer<String>> listeners = notifiers.get(sessionId);
         if (listeners != null) {
             for (Consumer<String> listener : listeners) {
@@ -41,8 +41,17 @@ public class Broadcaster {
                     try {
                         listener.accept(message);
                     } catch (Exception e) {
-                        //TODO: Handle exception
-                        System.err.println("Failed to send message to listener: " + e.getMessage());
+                        // to avoid memory leak
+                        removeListener(sessionId, listener);
+
+                        // extract user id from session manager and save the message to the repository for later retrieval
+                        String userId = SessionManager.getUserIdForSession(sessionId);
+
+                        if (userId != null && repository != null) {
+                            repository.save(userId, message);
+                            // add log!
+                            //System.out.println("Listener disconnected. Message saved to fallback repository for user: " + userId);
+                        }
                     }
                 });
             }
