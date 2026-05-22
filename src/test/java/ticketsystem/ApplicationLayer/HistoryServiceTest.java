@@ -54,7 +54,7 @@ public class HistoryServiceTest {
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         this.userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
         this.companyRepository = new CompanyRepository();
-        this.historyService = new HistoryService(historyRepository, tokenService, new MembershipDomainService(userRepository), new LogbackSystemLogger()   );
+        this.historyService = new HistoryService(historyRepository, tokenService, new MembershipDomainService(userRepository), new LogbackSystemLogger()    );
     }
 
     /**

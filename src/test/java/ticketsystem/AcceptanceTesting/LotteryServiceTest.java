@@ -16,7 +16,7 @@ import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository; 
+import ticketsystem.InfrastructureLayer.UserRepository; // בהנחה שיש מחלקה כזו
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
 public class LotteryServiceTest {
@@ -36,7 +36,7 @@ public class LotteryServiceTest {
         lotteryRepository = repo; 
         
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository); 
-        lotteryService = new LotteryService(lotteryRepository, tokenService , new LogbackSystemLogger());
+        lotteryService = new LotteryService(lotteryRepository, tokenService);
         userRepository = new UserRepository(); 
         userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
     }
@@ -56,9 +56,10 @@ public class LotteryServiceTest {
         String user1Token = getValidMemberToken("winner", "Pass123!");
         long user1Id = tokenService.extractUserId(user1Token); 
 
-        String validTokenLotteryActions = getValidMemberToken("lottery_admin", "Pass123!");
+        String validTokenLotteryActions = tokenService.addActiveSession(new Guest()); 
+
         long eventId = 100L;
-        lotteryService.addLottery(validTokenLotteryActions, eventId, 1L, 1); //only 1 winner allowed
+        lotteryService.addLottery(validTokenLotteryActions, eventId, 1); //only 1 winner allowed
         long lotteryId = 1L; 
 
         // --- 2. Action (requests to register) ---
@@ -90,10 +91,10 @@ public class LotteryServiceTest {
         String user2Token = getValidMemberToken("user2", "Pass456!");
         long user2Id = tokenService.extractUserId(user2Token);
 
-        String validTokenLotteryActions = getValidMemberToken("lottery_admin", "Pass123!");
+        String validTokenLotteryActions = tokenService.addActiveSession(new Guest());
 
         long eventId = 200L;
-        lotteryService.addLottery(validTokenLotteryActions, eventId, 1L, 1); // only 1 winner allowed
+        lotteryService.addLottery(validTokenLotteryActions, eventId, 1); // only 1 winner allowed
         long lotteryId = 1L;
 
         // --- 2. Action (both users register) ---
@@ -123,9 +124,9 @@ public class LotteryServiceTest {
         long eventId = 100L;
         int winners = 5;
         
-        String validTokenLotteryActions = getValidMemberToken("lottery_admin", "Pass123!");
+        String validTokenLotteryActions = tokenService.addActiveSession(new Guest());
         
-        lotteryService.addLottery(validTokenLotteryActions, eventId, 1L, winners);
+        lotteryService.addLottery(validTokenLotteryActions, eventId, winners);
 
         Lottery savedLottery = lotteryRepository.findById(1L);
         assertNotNull(savedLottery, "Lottery should be saved in the repository");
@@ -138,7 +139,7 @@ public class LotteryServiceTest {
         String validTokenLotteryActions = tokenService.addActiveSession(new Guest());
         
         assertThrows(IllegalArgumentException.class, () -> {
-            lotteryService.addLottery(validTokenLotteryActions, 100L, 1L, 0);
+            lotteryService.addLottery(validTokenLotteryActions, 100L, 0);
         });
         
         Lottery notSavedLottery = lotteryRepository.findById(1L);
