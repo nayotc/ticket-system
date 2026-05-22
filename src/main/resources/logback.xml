@@ -9,7 +9,9 @@
         </rollingPolicy>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>ERROR</level>
-            <onMatch>DENY</onMatch> <onMismatch>ACCEPT</onMismatch> </filter>
+            <onMatch>DENY</onMatch>
+            <onMismatch>ACCEPT</onMismatch>
+        </filter>
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%level] %msg%n</pattern>
         </encoder>
@@ -23,7 +25,8 @@
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>ERROR</level> </filter>
+            <level>ERROR</level>
+        </filter>
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%level] %msg - %ex{short}%n</pattern>
         </encoder>
@@ -34,6 +37,13 @@
             <pattern>%d{HH:mm:ss.SSS} [%level] %msg%n</pattern>
         </encoder>
     </appender>
+
+    <!-- Disable DEBUG logs only for Spring / Spring Boot -->
+    <logger name="org.springframework" level="INFO" />
+
+    <!-- Disable DEBUG logs only for Vaadin -->
+    <logger name="com.vaadin" level="INFO" />
+    <logger name="org.vaadin" level="INFO" />
 
     <root level="DEBUG">
         <appender-ref ref="EVENT_FILE" />
