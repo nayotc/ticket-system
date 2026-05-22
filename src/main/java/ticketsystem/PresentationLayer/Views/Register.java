@@ -45,8 +45,6 @@ public class Register extends PageContainer {
                 null,
                 createBrandBlock(),
                 createForm(),
-                createDivider(),
-                createSocialActions(),
                 createLoginLink()
         );
 
@@ -118,34 +116,6 @@ public class Register extends PageContainer {
         return row;
     }
 
-    private Div createDivider() {
-        Div divider = new Div();
-        divider.addClassName("auth-divider");
-
-        Div line = new Div();
-        line.addClassName("auth-divider-line");
-
-        Span label = new Span("או המשך עם");
-        label.addClassName("auth-divider-label");
-
-        divider.add(line, label);
-        return divider;
-    }
-
-    private ActionBar createSocialActions() {
-        Button googleButton = new Button("Google", VaadinIcon.GLOBE.create());
-        googleButton.addClassName("auth-social-button");
-        googleButton.setWidthFull();
-
-        Button facebookButton = new Button("Facebook", VaadinIcon.USERS.create());
-        facebookButton.addClassName("auth-social-button");
-        facebookButton.setWidthFull();
-
-        ActionBar actions = new ActionBar(googleButton, facebookButton);
-        actions.addClassName("auth-social-actions");
-
-        return actions;
-    }
 
     private Paragraph createLoginLink() {
         Paragraph paragraph = new Paragraph();
