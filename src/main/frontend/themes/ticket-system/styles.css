@@ -1231,6 +1231,24 @@ vaadin-button[theme~="tertiary-inline"] {
     align-items: stretch;
 }
 
+.auth-view-title {
+    margin: 8px 0 0;
+    color: var(--tn-text);
+    font-size: 24px;
+    line-height: 1.3;
+    font-weight: 800;
+}
+
+.auth-field-header-row {
+    margin-bottom: -10px;
+}
+
+.auth-field-label {
+    color: var(--tn-text-muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
 /* =========================
    Responsive
    ========================= */
