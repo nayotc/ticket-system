@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.ApplicationLayer.NotificationsService;
+import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
@@ -40,7 +40,7 @@ public class QueueConcurrencyTest {
     public void testHighConcurrencyLoadOnQueue() throws InterruptedException {
         // fake implementations for testing until we have real ones
         IEventRepository eventRepo = new EventRepository();
-        NotificationsService fakeNotifications = createFakeNotifications();
+        INotifier fakeNotifications = createFakeNotifications();
         TokenRepository tokenRepo = new TokenRepository();
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
@@ -119,7 +119,7 @@ public class QueueConcurrencyTest {
     @Test
     public void testConcurrentDuplicateRequests_ShouldOnlyQueueOnce() throws InterruptedException {
         IEventRepository fakeEventRepo = createFakeEventRepo();
-        NotificationsService fakeNotifications = createFakeNotifications();
+        INotifier fakeNotifications = createFakeNotifications();
         ITokenRepository tokenRepo = new TokenRepository();
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
@@ -178,7 +178,7 @@ public class QueueConcurrencyTest {
     @Test
     public void testConcurrentReleases_ShouldProcessBatchesCorrectly() throws InterruptedException {
         IEventRepository fakeEventRepo = createFakeEventRepo();
-        NotificationsService fakeNotifications = createFakeNotifications();
+        INotifier fakeNotifications = createFakeNotifications();
         TokenRepository tokenRepo = new TokenRepository();
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
@@ -282,7 +282,7 @@ public class QueueConcurrencyTest {
         };
     }
 
-    private NotificationsService createFakeNotifications() {
+    private INotifier createFakeNotifications() {
         return (sessionId, message) -> {
             // Do nothing
         };

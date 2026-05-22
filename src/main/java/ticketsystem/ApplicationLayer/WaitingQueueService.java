@@ -12,14 +12,14 @@ public class WaitingQueueService {
 
     private final IEventRepository eventRepository;
     private final IWaitingQueueRepository queueRepository;
-    private final NotificationsService notificationsService;
+    private final INotifier notificationsService;
     private final ITokenService tokenService;
     private final ConcurrentHashMap<Long, Object> eventLocks = new ConcurrentHashMap<>();
     private final ISystemLogger logger;
 
     public WaitingQueueService(IEventRepository eventRepository,
             IWaitingQueueRepository queueRepository,
-            NotificationsService notificationsService, ITokenService tokenService, ISystemLogger logger) {
+            INotifier notificationsService, ITokenService tokenService, ISystemLogger logger) {
         this.eventRepository = eventRepository;
         this.queueRepository = queueRepository;
         this.notificationsService = notificationsService;

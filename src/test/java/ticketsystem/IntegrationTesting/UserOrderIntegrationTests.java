@@ -7,9 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.internal.matchers.Not;
 
-import ticketsystem.ApplicationLayer.NotificationsService;
+import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
@@ -32,7 +31,7 @@ public class UserOrderIntegrationTests {
     private LogbackSystemLogger logger;
     private OrderRepository orderRepository;
     private OrderService orderService;
-    private NotificationsService notification;
+    private INotifier notification;
 
     @BeforeEach
     public void setup() {
@@ -53,7 +52,7 @@ public class UserOrderIntegrationTests {
         userService.signUp(guestToken, "member", "password");
         String memberToken = userService.login(guestToken, "member", "password");
         // doesn't have any orders
-        guestToken= userService.logOut(memberToken);
+        guestToken = userService.logOut(memberToken);
         // Act - login again
         userService.login(guestToken, "member", "password");
         // Assert - no active orders
@@ -69,7 +68,7 @@ public class UserOrderIntegrationTests {
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");
         // doesn't have any orders
-        guestToken= userService.logOut(memberToken);
+        guestToken = userService.logOut(memberToken);
         ActiveOrder GuestOrder = new ActiveOrder(
                 orderRepository.getNextId(),
                 guestToken,
@@ -97,7 +96,7 @@ public class UserOrderIntegrationTests {
                 member.getId(),
                 200L);
         orderRepository.addOrder(memberOrder);
-        guestToken= userService.logOut(memberToken);        
+        guestToken = userService.logOut(memberToken);
         // Act - login again
         userService.login(guestToken, "member", "password");
         // Assert - member order remains unchanged
@@ -113,7 +112,7 @@ public class UserOrderIntegrationTests {
         userService.signUp(guestToken, "member", "password");
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");
-        
+
         ActiveOrder memberOrder = new ActiveOrder(
                 orderRepository.getNextId(),
                 memberToken,
@@ -121,7 +120,7 @@ public class UserOrderIntegrationTests {
                 100L);
         memberOrder.addTicket(new Ticket(1L, 100L, 1L, 0, 0, BigDecimal.TEN));
         orderRepository.addOrder(memberOrder);
-        guestToken= userService.logOut(memberToken);
+        guestToken = userService.logOut(memberToken);
         ActiveOrder guestOrder = new ActiveOrder(
                 orderRepository.getNextId(),
                 guestToken,
@@ -149,7 +148,7 @@ public class UserOrderIntegrationTests {
                 memberToken,
                 member.getId(), 200L);
         orderRepository.addOrder(memberOrder);
-        guestToken= userService.logOut(memberToken);
+        guestToken = userService.logOut(memberToken);
         ActiveOrder guestOrder = new ActiveOrder(
                 orderRepository.getNextId(),
                 guestToken,
@@ -162,6 +161,6 @@ public class UserOrderIntegrationTests {
         assertEquals(memberOrder.getOrderId(), orderRepository.getActiveOrderByUserId(member.getId()).getOrderId());
         assertEquals(OrderStatus.CANCELLED, orderRepository.getActiveOrderBySessionToken(guestToken).getStatus());
         assertEquals(OrderStatus.CANCELLED, orderRepository.findOrderById(guestOrder.getOrderId()).getStatus());
-   
+
     }
 }

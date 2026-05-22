@@ -15,9 +15,9 @@ public class OrderService implements UserLoginListener, EventUpdatesListener{
     private final IOrderRepository orderRepository;
     private final TokenService tokenService;
     private final ISystemLogger logger;
-    private final NotificationsService notificationsService;
+    private final INotifier notificationsService;
 
-    public OrderService(IOrderRepository orderRepository,TokenService tokenService,ISystemLogger logger,NotificationsService notificationsService) {
+    public OrderService(IOrderRepository orderRepository,TokenService tokenService,ISystemLogger logger,INotifier notificationsService) {
         this.orderRepository = orderRepository;
         this.tokenService = tokenService;
         this.logger = logger;

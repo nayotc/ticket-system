@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.ITokenService;
-import ticketsystem.ApplicationLayer.NotificationsService;
+import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventDTO;
@@ -1184,7 +1184,7 @@ public class EventServiceAcceptanceTest {
         }
     }
 
-    private static class FakeNotificationsService implements NotificationsService {
+    private static class FakeNotificationsService implements INotifier {
 
         private final Map<String, List<String>> messagesBySession = new HashMap<>();
 
