@@ -1,0 +1,237 @@
+package ticketsystem.PresentationLayer.Views;
+
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.component.textfield.PasswordField;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.Route;
+import ticketsystem.PresentationLayer.Components.ActionBar;
+import ticketsystem.PresentationLayer.Components.FormCard;
+import ticketsystem.PresentationLayer.Components.PageContainer;
+import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Layouts.AuthLayout;
+
+@PageTitle("TixNow | Registration")
+@Route(value = UiRoutes.REGISTRATION, layout = AuthLayout.class)
+public class Register extends PageContainer {
+
+    private final TextField fullName = createTextField("שם מלא", "לדוגמה: ישראל ישראלי", VaadinIcon.USER);
+    private final EmailField email = createEmailField();
+    private final TextField phone = createTextField("טלפון", "לדוגמה: 050-0000000", VaadinIcon.PHONE);
+    private final PasswordField password = createPasswordField("סיסמה");
+    private final PasswordField confirmPassword = createPasswordField("אימות סיסמה");
+    private final Checkbox termsAccepted = new Checkbox();
+
+    public Register() {
+        addClassName("auth-page");
+        setSpacing(false);
+
+        FormCard card = new FormCard(
+                null,
+                null,
+                createBrandBlock(),
+                createForm(),
+                createDivider(),
+                createSocialActions(),
+                createLoginLink()
+        );
+
+        card.addClassName("auth-card");
+
+        add(card);
+    }
+
+    private Div createBrandBlock() {
+        Div block = new Div();
+        block.addClassName("auth-brand-block");
+
+        H1 title = new H1("TixNow");
+        title.addClassName("auth-brand-title");
+
+        Paragraph subtitle = new Paragraph("צרו חשבון כדי להמשיך לרכישת כרטיסים וניהול אירועים");
+        subtitle.addClassName("auth-brand-subtitle");
+
+        block.add(title, subtitle);
+        return block;
+    }
+
+    private VerticalLayout createForm() {
+        VerticalLayout form = new VerticalLayout();
+        form.addClassName("auth-form");
+        form.setPadding(false);
+        form.setSpacing(false);
+        form.setWidthFull();
+
+        Button registerButton = new Button("הרשמה", VaadinIcon.ARROW_LEFT.create());
+        registerButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        registerButton.addClassName("auth-submit-button");
+        registerButton.setIconAfterText(true);
+        registerButton.setWidthFull();
+        registerButton.addClickListener(event -> handleRegister());
+
+        form.add(
+                fullName,
+                email,
+                phone,
+                password,
+                confirmPassword,
+                createTermsRow(),
+                registerButton
+        );
+
+        return form;
+    }
+
+    private HorizontalLayout createTermsRow() {
+        HorizontalLayout row = new HorizontalLayout();
+        row.addClassName("auth-terms-row");
+        row.setPadding(false);
+        row.setSpacing(false);
+        row.setWidthFull();
+        row.setAlignItems(Alignment.CENTER);
+
+        Anchor terms = new Anchor("#", "תנאי השימוש");
+        terms.addClassName("auth-link");
+
+        Anchor privacy = new Anchor("#", "מדיניות הפרטיות");
+        privacy.addClassName("auth-link");
+
+        Span text = new Span();
+        text.addClassName("auth-terms-text");
+        text.add(new Span("אני מאשר/ת את "), terms, new Span(" ואת "), privacy);
+
+        row.add(termsAccepted, text);
+        return row;
+    }
+
+    private Div createDivider() {
+        Div divider = new Div();
+        divider.addClassName("auth-divider");
+
+        Div line = new Div();
+        line.addClassName("auth-divider-line");
+
+        Span label = new Span("או המשך עם");
+        label.addClassName("auth-divider-label");
+
+        divider.add(line, label);
+        return divider;
+    }
+
+    private ActionBar createSocialActions() {
+        Button googleButton = new Button("Google", VaadinIcon.GLOBE.create());
+        googleButton.addClassName("auth-social-button");
+        googleButton.setWidthFull();
+
+        Button facebookButton = new Button("Facebook", VaadinIcon.USERS.create());
+        facebookButton.addClassName("auth-social-button");
+        facebookButton.setWidthFull();
+
+        ActionBar actions = new ActionBar(googleButton, facebookButton);
+        actions.addClassName("auth-social-actions");
+
+        return actions;
+    }
+
+    private Paragraph createLoginLink() {
+        Paragraph paragraph = new Paragraph();
+        paragraph.addClassName("auth-switch-text");
+
+        Anchor login = new Anchor("/" + UiRoutes.LOGIN, "התחברות");
+        login.addClassName("auth-link");
+
+        paragraph.add(new Span("כבר יש לך חשבון? "), login);
+        return paragraph;
+    }
+
+    private TextField createTextField(String label, String placeholder, VaadinIcon icon) {
+        TextField field = new TextField(label);
+        field.setPlaceholder(placeholder);
+        field.setPrefixComponent(icon.create());
+        field.setRequiredIndicatorVisible(true);
+        field.setWidthFull();
+        field.addClassName("auth-field");
+        return field;
+    }
+
+    private EmailField createEmailField() {
+        EmailField field = new EmailField("אימייל");
+        field.setPlaceholder("you@example.com");
+        field.setPrefixComponent(VaadinIcon.ENVELOPE.create());
+        field.setRequiredIndicatorVisible(true);
+        field.setErrorMessage("יש להזין כתובת אימייל תקינה");
+        field.setWidthFull();
+        field.addClassName("auth-field");
+        return field;
+    }
+
+    private PasswordField createPasswordField(String label) {
+        PasswordField field = new PasswordField(label);
+        field.setPlaceholder("••••••••");
+        field.setPrefixComponent(VaadinIcon.LOCK.create());
+        field.setRequiredIndicatorVisible(true);
+        field.setRevealButtonVisible(false);
+        field.setWidthFull();
+        field.addClassName("auth-field");
+        return field;
+    }
+
+    private void handleRegister() {
+        if (isBlank(fullName.getValue()) || isBlank(email.getValue())
+                || isBlank(password.getValue()) || isBlank(confirmPassword.getValue())) {
+            showError("יש למלא את כל שדות החובה");
+            return;
+        }
+
+        if (!password.getValue().equals(confirmPassword.getValue())) {
+            showError("הסיסמאות אינן תואמות");
+            return;
+        }
+
+        if (!termsAccepted.getValue()) {
+            showError("יש לאשר את תנאי השימוש ומדיניות הפרטיות");
+            return;
+        }
+
+        /*
+         * TODO:
+         * לחבר כאן ל-Presenter או ל-UserService.
+         *
+         * לדוגמה בהמשך:
+         * userService.register(
+         *     fullName.getValue(),
+         *     email.getValue(),
+         *     phone.getValue(),
+         *     password.getValue()
+         * );
+         */
+
+        Notification notification = Notification.show("ההרשמה נקלטה בהצלחה");
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+        UI.getCurrent().navigate(UiRoutes.LOGIN);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private void showError(String message) {
+        Notification notification = Notification.show(message);
+        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+    }
+}
