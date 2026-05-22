@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
-import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.SalesReportDTO;
@@ -18,16 +17,14 @@ import ticketsystem.DomainLayer.user.Permission;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 
-public class HistoryService implements OrderCompletedListener, EventUpdatesListener{
+public class HistoryService implements OrderCompletedListener {
     private final IHistoryRepository historyRepository;
     private final ITokenService tokenService;
     private ObjectMapper objectMapper = new ObjectMapper();
     private MembershipDomainService membershipDomainService;
     private ISystemLogger logger;
-    //private NotificationsService notificationsService;
 
-    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService,
-         ISystemLogger logger) {
+    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
@@ -41,14 +38,11 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
             //we don't need to validate the token here because this method is called after the order is completed, and we assume that the order completion process has already validated the token. However, if you want to add an extra layer of security, you can validate the token here as well before processing the order details.
             long newPurchaseId = historyRepository.generateNextId();
             order.setPurchaseId(newPurchaseId);
+            ObjectMapper objectMapper = new ObjectMapper();
             Purchase purchase = objectMapper.convertValue(order, Purchase.class);
             historyRepository.addPurchase(purchase);     //purchase is the object after you pay 
         } 
         catch (IllegalArgumentException e) {
-            logger.logEvent(
-                    "Failed to create purchase " + e.getMessage(),
-                    ISystemLogger.LogLevel.WARN
-            );
             throw e;
         }
     }
@@ -80,10 +74,6 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
             return historyDtoList;
         }
         catch (IllegalArgumentException e) {
-                        logger.logEvent(
-                    "Failed to retrieve user purchase history: " + e.getMessage(),
-                    ISystemLogger.LogLevel.WARN
-            );
             throw e;
         }
     }
@@ -109,7 +99,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
             }
             List<Purchase> purchases = historyRepository.getPurchasesByCompanyId(companyId);
             if(purchases.isEmpty()){
-                //TODO notification
+                //notification
             }
             List<OrderDTO> historyDtoList = objectMapper.convertValue(
                 purchases, 
@@ -193,52 +183,22 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         }
     }
 
-    @Override
     public void onEventCanceled(Long eventId) {
-        try{
-            List<Purchase> purchases =
-                    historyRepository.getAllPurchases();
-            List<PurchasedTicket> purchasedTickets; 
+        List<Purchase> purchases =
+                historyRepository.getAllPurchases();
+        List<PurchasedTicket> purchasedTickets; 
 
-            for (Purchase purchase : purchases) {
-                if (purchase.getEventId().equals(eventId)) {
-                    purchasedTickets =purchase.getTickets();
-                    //TODO:
-                    //send notification
-                    // for(PurchasedTicket ticket : purchasedTickets){ //check later if needed
-                    //     ticket.setStatus(TicketStatus.CANCELED);
-                    // }
+        for (Purchase purchase : purchases) {
+            if (purchase.getEventId().equals(eventId)) {
+                purchasedTickets =purchase.getTickets();
+                for(PurchasedTicket ticket : purchasedTickets){
+                    ticket.setStatus(TicketStatus.CANCELED);
                 }
             }
-        } catch (IllegalArgumentException e) {
-            logger.logEvent(
-                    "Failed to modify purchase: " + e.getMessage(),
-                    ISystemLogger.LogLevel.WARN
-            );
-            throw e;  
-        }      
-    }
-
-    @Override
-    public void onEventUpdated(Long eventId, String updateMessage) {
-        try{
-            List<Purchase> purchases = historyRepository.getAllPurchases();
-            for (Purchase purchase : purchases) {
-                if (purchase.getEventId().equals(eventId)) {
-                    // notificationsService.notifyUser(purchase.getSessionToken(), "Update for your order number - " + purchase.getPurchaseId() + " :/n" + updateMessage);
-                }
-            }
-            //TODO after the sig will change - i will add logic to change the ticket itself?
-        }
-        catch(IllegalArgumentException e){
-            logger.logEvent(
-                    "Failed to modify purchase: " + e.getMessage(),
-                    ISystemLogger.LogLevel.WARN
-            );
-            throw e; 
-
         }
     }
+
+
 
 
 }
