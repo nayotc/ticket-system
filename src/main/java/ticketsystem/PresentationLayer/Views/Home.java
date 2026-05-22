@@ -8,7 +8,6 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import ticketsystem.PresentationLayer.Components.EventCard;
-import ticketsystem.PresentationLayer.Components.FooterBar;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.PageHeader;
 import ticketsystem.PresentationLayer.Components.SearchPanel;
@@ -25,8 +24,7 @@ public class Home extends PageContainer {
 
         add(
                 createHero(),
-                createPopularEventsSection(),
-                new FooterBar()
+                createPopularEventsSection()
         );
     }
 
@@ -116,31 +114,6 @@ public class Home extends PageContainer {
         );
 
         sectionInner.add(titleRow, grid);
-        section.add(sectionInner);
-
-        return section;
-    }
-
-    private Div createSpecialExperiencesSection() {
-        Div section = new Div();
-        section.addClassName("highlight-section");
-
-        Div sectionInner = new Div();
-        sectionInner.addClassName("section-inner");
-
-        H2 title = new H2("חוויות מיוחדות");
-        title.addClassName("section-title");
-
-        Div grid = new Div();
-        grid.addClassName("highlight-grid");
-
-        Div vipCard = createVipCard();
-        Div sportsCard = createSmallHighlightCard("⚽", "משחקי עונה", "כרטיסים למשחקים המרכזיים");
-        Div theaterCard = createSmallHighlightCard("🎭", "הצגות בכורה", "שורות ראשונות בתיאטרון");
-
-        grid.add(vipCard, sportsCard, theaterCard);
-
-        sectionInner.add(title, grid);
         section.add(sectionInner);
 
         return section;
