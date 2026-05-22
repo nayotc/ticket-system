@@ -398,7 +398,7 @@ void AcceptanceTest_RemoveTicketFromActiveOrder_WhenSeatTicketExists_ThenTicketI
             eventId,
             ticketId
     );
-
+    order = orderRepository.getActiveOrderByUserId(1L);
     assertTrue(result);
     assertTrue(order.getTickets().isEmpty());
 }
@@ -450,8 +450,9 @@ void AcceptanceTest_RemoveTicketFromActiveOrder_WhenSeatTicketExists_ThenTicketI
                 2
         );
 
+        ActiveOrder updatedOrder = orderRepository.getActiveOrderByUserId(1L);
         assertTrue(result);
-        assertEquals(1, order.getTickets().size());
+        assertEquals(1, updatedOrder.getTickets().size());
     }
 
     @Test
