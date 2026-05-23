@@ -22,7 +22,7 @@ public class AuthPresenter {
             String guestToken = userService.visitSystem();
 
             if (guestToken == null || guestToken.isBlank()) {
-                throw new PresentationException("Failed to start guest session. Please try again.");
+                throw new IllegalStateException("Failed to start guest session. Please try again.");
             }
 
             UiSession.startGuestSession(guestToken);
@@ -47,12 +47,7 @@ public class AuthPresenter {
                 throw new PresentationException("Guest session is missing. Please refresh and try again.");
             }
 
-            boolean signedUp = userService.signUp(guestToken, username, password);
-
-            if (!signedUp) {
-                throw new PresentationException("Registration failed. Please check your details and try again.");
-            }
-
+            userService.signUp(guestToken, username, password);
             return true;
 
         } catch (PresentationException e) {
@@ -77,7 +72,7 @@ public class AuthPresenter {
             String memberToken = userService.login(guestToken, username, password);
 
             if (memberToken == null || memberToken.isBlank()) {
-                throw new PresentationException("Login failed. Please check your username and password.");
+                throw new IllegalStateException("Login failed. Please try again.");
             }
 
             UiSession.login(memberToken);
@@ -105,7 +100,7 @@ public class AuthPresenter {
             String guestToken = userService.logOut(memberToken);
 
             if (guestToken == null || guestToken.isBlank()) {
-                throw new PresentationException("Logout failed. Please try again.");
+                throw new IllegalStateException("Logout failed. Please try again.");
             }
 
             UiSession.logoutToGuest(guestToken);
@@ -130,12 +125,7 @@ public class AuthPresenter {
                 throw new PresentationException("No active session found.");
             }
 
-            boolean exited = userService.exit(currentToken);
-
-            if (!exited) {
-                throw new PresentationException("Exit failed. Please try again.");
-            }
-
+            userService.exit(currentToken);
             UiSession.exit();
             return true;
 
