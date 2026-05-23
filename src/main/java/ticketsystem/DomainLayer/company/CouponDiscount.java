@@ -1,4 +1,5 @@
 package ticketsystem.DomainLayer.company;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class CouponDiscount extends DiscountTypes{
@@ -12,14 +13,13 @@ public class CouponDiscount extends DiscountTypes{
                           LocalDateTime endTime,
                           String couponCode,
                           Double percentage,
-                          Double fixedAmount,
-                          String targetEventName) {
+                          Double fixedAmount
+                          ) {
         super(name, startTime, endTime);
 
         this.couponCode = couponCode;
         this.percentage = percentage;
         this.fixedAmount = fixedAmount;
-        this.targetEventName = targetEventName;
     }
     public String getCouponCode() {
         return couponCode;
@@ -51,5 +51,10 @@ public class CouponDiscount extends DiscountTypes{
 
     public void setTargetEventName(String targetEventName) {
         this.targetEventName = targetEventName;
+    }
+    @Override
+    public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String eventName, String couponCode) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'calculateDiscount'");
     }
 }

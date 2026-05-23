@@ -1,6 +1,9 @@
 package ticketsystem.ApplicationLayer;
 
+import java.time.LocalDateTime;
+
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.DiscountRequestDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.company.DiscountPolicy;
@@ -303,6 +306,33 @@ public class CompanyService {
     private void logError(String message, Throwable exception) {
         if (logger != null) {
             logger.logError(message, exception);
+        }
+    }
+
+    public void addDiscountToCompany(
+            String token,
+            Long companyId,DiscountRequestDTO discountDTO ) throws Exception{
+        try {
+
+            tokenService.validateToken(token);
+
+            Long userId = tokenService.extractUserId(token);
+
+            Company company = companyRepository.findById(companyId)
+                            .orElseThrow(() -> new Exception("Error: Company not found."));;
+
+
+            if (company.getFounderId() != userId) {
+                throw new IllegalArgumentException(
+                        "User is not allowed to manage company discount policy");
+            }
+            company.addDiscountToCompany(discountDTO);
+            companyRepository.save(company);
+
+        } catch (Exception e) {
+
+            logger.logEvent( "Failed to add visible discount to company",ISystemLogger.LogLevel.WARN);
+            throw e;
         }
     }
 }

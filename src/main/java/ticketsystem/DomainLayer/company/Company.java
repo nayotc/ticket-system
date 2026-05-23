@@ -1,34 +1,35 @@
 package ticketsystem.DomainLayer.company;
 
+import java.time.LocalDateTime;
 
+import ticketsystem.DTO.DiscountRequestDTO;
 
 public class Company {
-    private static long idCounter = 1; 
-    
-    private long id; 
+    private static long idCounter = 1;
+
+    private long id;
     private String name;
     private final long founderId;
     private boolean isActive;
-    private PurchasePolicy purchasePolicy; 
-    private DiscountPolicy discountPolicy; 
+    private PurchasePolicy purchasePolicy;
+    private DiscountPolicy discountPolicy;
     private Double rate = 0.0; // for search and filtering
     private Double totalRating = 0.0; // for calculating average rating
     private Integer ratingCount = 0; // for calculating average rating
 
-    //Version field for Optimistic Locking
+    // Version field for Optimistic Locking
     private long version;
 
     public Company(String name, long founderId, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
-        this.id = idCounter++; 
-        
+        this.id = idCounter++;
+
         this.name = name;
         this.founderId = founderId;
-        this.isActive = true; 
+        this.isActive = true;
         this.purchasePolicy = purchasePolicy;
         this.discountPolicy = discountPolicy;
         this.version = 0; // Initialize version
 
-        
     }
 
     // Copy Constructor
@@ -69,6 +70,7 @@ public class Company {
     public boolean isActive() {
         return isActive;
     }
+
     public PurchasePolicy getPurchasePolicy() {
         return purchasePolicy;
     }
@@ -97,8 +99,7 @@ public class Company {
         return this.founderId == memberId;
     }
 
-    public long getFounderId()
-    {
+    public long getFounderId() {
         return this.founderId;
     }
 
@@ -126,7 +127,6 @@ public class Company {
         this.isActive = false;
     }
 
-
     public void reopenCompany() throws Exception {
         if (this.isActive) {
             throw new Exception("The company is already Active. No action needed.");
@@ -142,4 +142,50 @@ public class Company {
 
         this.isActive = false;
     }
+
+    public boolean addDiscountToCompany(DiscountRequestDTO discountDTO) {
+
+    DiscountTypes discount;
+
+    switch (discountDTO.getDiscountKind()) {
+
+        case VISIBLE:
+            discount = new VisibleDiscount(
+                    discountDTO.getName(),
+                    discountDTO.getStartTime(),
+                    discountDTO.getEndTime(),
+                    discountDTO.getPercentage(),
+                    discountDTO.getTargetTicketType()
+            );
+            break;
+
+        case CONDITIONAL:
+            discount = new ConditionalDiscount(
+                    discountDTO.getName(),
+                    discountDTO.getStartTime(),
+                    discountDTO.getEndTime(),
+                    discountDTO.getPercentage(),
+                    discountDTO.getTargetTicketType(),
+                    discountDTO.getCondition()
+            );
+            break;
+
+        case COUPON:
+            discount = new CouponDiscount(
+                    discountDTO.getName(),
+                    discountDTO.getStartTime(),
+                    discountDTO.getEndTime(),
+                    discountDTO.getCouponCode(),
+                    discountDTO.getPercentage(),
+                    discountDTO.getFixedAmount(),
+                    
+            );
+            break;
+
+        default:
+            throw new IllegalArgumentException("Unsupported discount type");
+    }
+    getDiscountPolicy().addDiscount(discount);
+    return true;
+}
 }
