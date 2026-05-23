@@ -1310,6 +1310,18 @@ vaadin-button[theme~="tertiary-inline"] {
     pointer-events: auto;
 }
 
+.hero-centered-header {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+.hero-centered-header .page-title,
+.hero-centered-header .page-description {
+    width: 100%;
+    text-align: center;
+}
+
 /* =========================
    Responsive
    ========================= */
