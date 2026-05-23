@@ -153,22 +153,28 @@ public class UserService {
     public String logOut(String sessionToken) {
         try {
             tokenService.validateToken(sessionToken);
+
             if (tokenService.isGuestToken(sessionToken)) {
                 logger.logEvent(
                         "Logout rejected: guest session cannot use member logout (use exit to end session)",
                         LogLevel.WARN);
-                return null;
+                throw new IllegalStateException("Only logged-in members can log out.");
             }
+
             Long memberId = tokenService.extractUserId(sessionToken);
             tokenService.removeActiveSession(sessionToken);
+
             String guestToken = visitSystem();
             logger.logEvent("Logout succeeded: new guest session issued, memberId=" + memberId, LogLevel.INFO);
             return guestToken;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
             logger.logError("Logout failed", e);
             throw e;
         }
-
     }
 
     // 6. Update Member Username: Allows a member to update their username by

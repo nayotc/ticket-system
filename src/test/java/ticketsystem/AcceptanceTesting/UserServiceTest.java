@@ -395,12 +395,11 @@ public class UserServiceTest {
         // Arrange: simulate a guest visiting the system
         String sessionToken = userService.visitSystem();
 
-        // Act: logout with a guest token
-        String newSessionToken = userService.logOut(sessionToken);
+        // Act & Assert: logout with a guest token
+        assertThrows(IllegalStateException.class, () -> {
+            userService.logOut(sessionToken);
+        }, "Logout should throw for a guest token");
 
-        // Assert: check that the logout attempt fails and the original guest token is
-        // still active
-        assertNull(newSessionToken, "Logout should return null for a guest token");
         assertTrue(tokenService.isActiveSession(sessionToken),
                 "Original guest token should still be active after failed logout");
     }
