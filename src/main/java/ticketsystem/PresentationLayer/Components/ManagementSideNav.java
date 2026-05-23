@@ -4,6 +4,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 
 public class ManagementSideNav extends Div {
@@ -42,7 +43,7 @@ public class ManagementSideNav extends Div {
     }
 
     private Button createCreateEventButton() {
-        Button button = new Button("יצירת אירוע חדש");
+        Button button = new Button( "אירוע חדש", VaadinIcon.PLUS.create());
         button.addClassName("management-create-button");
         button.addClickListener(event -> navigate(UiRoutes.CREATE_EVENT));
         return button;
@@ -55,8 +56,7 @@ public class ManagementSideNav extends Div {
                 navButton("ניהול חברה", UiRoutes.COMPANY_MANAGEMENT),
                 navButton("עורך מדיניות", UiRoutes.POLICIES_EDITOR),
                 navButton("דוח מכירות", UiRoutes.SALES_REPORT),
-                navButton("עץ תפקידים והרשאות", UiRoutes.ROLES_AND_PERMISSIONS_TREE),
-                navButton("יצירת אירוע", UiRoutes.CREATE_EVENT)
+                navButton("עץ תפקידים והרשאות", UiRoutes.ROLES_AND_PERMISSIONS_TREE)
         );
     }
 

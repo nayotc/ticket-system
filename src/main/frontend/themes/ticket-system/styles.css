@@ -3228,3 +3228,384 @@ vaadin-button.header-icon-button vaadin-icon {
     }
 }
 
+/* =========================
+   Company management fixes
+   Append this section at the end of styles.css
+   ========================= */
+
+.company-management-page {
+    width: 100%;
+}
+
+.company-selector-wrapper {
+    min-width: 260px;
+}
+
+.company-selector-wrapper vaadin-combo-box,
+.company-selector {
+    width: 100%;
+}
+
+.company-single-label {
+    display: block;
+    color: var(--tn-text-muted);
+    font-size: 12px;
+    font-weight: 800;
+    margin-bottom: 4px;
+}
+
+.company-single-name {
+    display: block;
+    color: var(--tn-primary-fixed);
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.company-management-metrics-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.company-management-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 24px;
+    align-items: start;
+}
+
+.company-management-card {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-height: 100%;
+}
+
+.company-card-half {
+    grid-column: span 6;
+}
+
+.company-card-team {
+    grid-column: span 9;
+}
+
+.company-card-owner-zone {
+    grid-column: span 3;
+    border-color: rgba(255, 180, 171, 0.30);
+    box-shadow: 0 0 28px rgba(255, 180, 171, 0.10), 0 20px 50px rgba(0, 0, 0, 0.32);
+}
+
+.company-card-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.company-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    color: var(--tn-secondary);
+    background: rgba(68, 226, 205, 0.10);
+    flex: 0 0 auto;
+}
+
+.company-card-title {
+    margin: 0;
+    color: var(--tn-text);
+    font-size: 24px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.company-card-description {
+    margin: 6px 0 0;
+    color: var(--tn-text-muted);
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.company-secondary-button,
+.company-danger-soft-button,
+.company-danger-button,
+.management-create-button,
+.management-nav-item {
+    gap: 8px;
+}
+
+.company-secondary-button > vaadin-icon,
+.company-danger-soft-button > vaadin-icon,
+.company-danger-button > vaadin-icon,
+.management-create-button > vaadin-icon,
+.management-nav-item > vaadin-icon {
+    margin-inline-start: 4px;
+    margin-inline-end: 8px;
+}
+
+.company-secondary-button {
+    background: rgba(45, 52, 73, 0.86);
+    color: var(--tn-text);
+    border: 1px solid rgba(149, 142, 160, 0.24);
+    border-radius: 14px;
+    font-weight: 800;
+}
+
+.company-secondary-button:hover {
+    background: var(--tn-surface-highest);
+    color: var(--tn-secondary);
+    border-color: rgba(208, 188, 255, 0.45);
+}
+
+.company-danger-soft-button {
+    background: rgba(147, 0, 10, 0.22);
+    color: var(--tn-error);
+    border: 1px solid rgba(255, 180, 171, 0.28);
+    border-radius: 14px;
+    font-weight: 800;
+}
+
+.company-danger-soft-button:hover {
+    background: #ffdad6;
+    color: #690005;
+}
+
+.company-danger-button {
+    background: #ffdad6;
+    color: #690005;
+    border-radius: 14px;
+    font-weight: 800;
+}
+
+.policy-summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.policy-summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(34, 42, 61, 0.72);
+    border: 1px solid rgba(149, 142, 160, 0.18);
+}
+
+.policy-summary-row span:first-child {
+    color: var(--tn-text-muted);
+    font-weight: 700;
+}
+
+.policy-summary-row span:last-child {
+    color: var(--tn-text);
+    font-weight: 800;
+    text-align: left;
+}
+
+.event-management-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.event-management-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(34, 42, 61, 0.72);
+    border: 1px solid rgba(149, 142, 160, 0.18);
+}
+
+.event-management-details {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.event-management-title {
+    color: var(--tn-text);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.event-management-meta {
+    color: var(--tn-text-muted);
+    font-size: 13px;
+}
+
+.event-management-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-start;
+}
+
+.team-management-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.65fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.team-form-card,
+.team-list,
+.owner-assignment-section {
+    padding: 18px;
+    border-radius: 18px;
+    background: rgba(34, 42, 61, 0.70);
+    border: 1px solid rgba(149, 142, 160, 0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.team-form-title {
+    margin: 0;
+    color: var(--tn-primary-fixed);
+    font-size: 18px;
+    line-height: 1.3;
+    font-weight: 800;
+}
+
+.manager-permissions-group {
+    color: var(--tn-text-muted);
+}
+
+.company-form-actions,
+.team-member-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.team-list {
+    max-height: 520px;
+    overflow: auto;
+}
+
+.team-member-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(19, 27, 46, 0.74);
+    border: 1px solid rgba(149, 142, 160, 0.16);
+}
+
+.team-member-details {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.team-member-name {
+    color: var(--tn-text);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.team-member-meta,
+.team-member-permissions,
+.muted-text {
+    color: var(--tn-text-muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.team-member-actions {
+    justify-content: flex-start;
+}
+
+.owner-zone-content,
+.owner-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.owner-actions vaadin-button,
+.owner-assignment-section vaadin-button {
+    width: 100%;
+}
+
+/* =========================
+   Global RTL overlay fix
+   Keep this at the end of styles.css
+   ========================= */
+
+html {
+    direction: ltr;
+}
+
+body,
+[dir="rtl"],
+.public-layout,
+.management-layout,
+.admin-layout {
+    direction: rtl;
+}
+
+vaadin-combo-box-overlay,
+vaadin-select-overlay,
+vaadin-date-picker-overlay {
+    direction: ltr;
+}
+
+vaadin-combo-box-overlay::part(content),
+vaadin-select-overlay::part(content),
+vaadin-date-picker-overlay::part(content),
+vaadin-combo-box-item,
+vaadin-select-item,
+vaadin-date-picker-month-calendar {
+    direction: rtl;
+    text-align: right;
+}
+
+@media (max-width: 1100px) {
+    .company-management-metrics-grid {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+    }
+
+    .company-card-half,
+    .company-card-team,
+    .company-card-owner-zone {
+        grid-column: span 12;
+    }
+
+    .team-management-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .company-management-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .policy-summary-row,
+    .event-management-row {
+        grid-template-columns: 1fr;
+    }
+
+    .company-selector-wrapper {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+
+
