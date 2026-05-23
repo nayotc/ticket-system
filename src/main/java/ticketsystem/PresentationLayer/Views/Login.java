@@ -19,11 +19,16 @@ import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ticketsystem.PresentationLayer.Components.FormCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.AuthLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.ApplicationLayer.UserService;
+import ticketsystem.PresentationLayer.Presenters.AuthPresenter;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 
 @PageTitle("TixNow | התחברות")
 @Route(value = UiRoutes.LOGIN, layout = AuthLayout.class)
@@ -31,8 +36,16 @@ public class Login extends PageContainer {
 
     private final EmailField email = createEmailField();
     private final PasswordField password = createPasswordField();
+    private final AuthPresenter authPresenter;
 
-    public Login() {
+    @Autowired
+    public Login(UserService userService) {
+        this(new AuthPresenter(userService));
+    }
+
+    Login(AuthPresenter authPresenter) {
+        this.authPresenter = authPresenter;
+
         addClassName("auth-page");
         setSpacing(false);
 
@@ -144,28 +157,35 @@ public class Login extends PageContainer {
     }
 
     private void handleLogin() {
+
         if (isBlank(email.getValue()) || isBlank(password.getValue())) {
             showError("יש למלא אימייל וסיסמה");
             return;
         }
 
-        /*
-         * TODO:
-         * לחבר כאן ל-Presenter או ל-UserService.
-         *
-         * דוגמה עתידית:
-         * String memberToken = userService.login(email.getValue(), password.getValue());
-         * UiSession.login(memberToken);
-         * במקום ה temporary
-         */
+        try {
+            if (UiSession.getGuestToken() == null) {
+                authPresenter.visitSystem();
+            }
 
-        String temporaryDevToken = "dev-member-token";
-        UiSession.login(temporaryDevToken);
+            authPresenter.login(email.getValue(), password.getValue());
 
-        Notification notification = Notification.show("התחברת בהצלחה");
-        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            /*
+             * Previous temporary development flow:
+             * String temporaryDevToken = "dev-member-token";
+             * UiSession.login(temporaryDevToken);
+             *
+             * Replaced with real authentication through AuthPresenter.
+             */
 
-        UI.getCurrent().navigate(UiRoutes.HOME);
+            Notification notification = Notification.show("התחברת בהצלחה");
+            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+            UI.getCurrent().navigate(UiRoutes.HOME);
+
+        } catch (PresentationException e) {
+            showError(e.getMessage());
+        }
     }
 
     private boolean isBlank(String value) {
