@@ -43,7 +43,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     private final Div emptySelection = new Div();
     private final Span totalTickets = new Span("0 כרטיסים");
     private final Span totalPrice = new Span("₪0");
-    private final Button continueButton = new Button("המשך להזנת פרטים");
+    private final Button continueButton = new Button("המשך לסיכום הזמנה");
 
     private EventTicketSelectionDto eventData;
 
