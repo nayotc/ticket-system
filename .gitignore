@@ -1,7 +1,9 @@
-/target
+/target/
+node_modules/
 .vscode/
 logs/
 .idea/
 *.iml
+*.log
+.DS_Store
 src/main/frontend/generated/
-src/main/frontend/index.html
