@@ -141,8 +141,13 @@ public class UserService {
         try {
             tokenService.validateToken(sessionToken);
             tokenService.removeActiveSession(sessionToken);
+
             logger.logEvent("Exit: session closed", LogLevel.INFO);
             return true;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
             logger.logError("Exit failed", e);
             throw e;
