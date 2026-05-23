@@ -1,0 +1,658 @@
+package ticketsystem.PresentationLayer.Views;
+
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.component.textfield.PasswordField;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.Route;
+import ticketsystem.DTO.OrderDTO;
+import ticketsystem.PresentationLayer.Components.AppCard;
+import ticketsystem.PresentationLayer.Components.PageContainer;
+import ticketsystem.PresentationLayer.Components.StatusBadge;
+import ticketsystem.PresentationLayer.Components.ViewHeader;
+import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Layouts.MainLayout;
+import ticketsystem.PresentationLayer.Session.UiSession;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+
+@Route(value = UiRoutes.MY_ACCOUNT, layout = MainLayout.class)
+public class MyAccount extends PageContainer implements BeforeEnterObserver {
+
+    private MyAccountPresenter presenter;
+
+    private final Span avatarInitials = new Span("מש");
+    private final H3 profileName = new H3("משתמש מערכת");
+
+    private final TextField fullNameField = new TextField("שם מלא");
+    private final EmailField emailField = new EmailField("כתובת אימייל");
+    private final TextField phoneField = new TextField("מספר טלפון");
+    private final TextField usernameField = new TextField("שם משתמש");
+    private final PasswordField currentPasswordField = new PasswordField("סיסמה נוכחית");
+    private final PasswordField newPasswordField = new PasswordField("סיסמה חדשה");
+    private final PasswordField confirmPasswordField = new PasswordField("אימות סיסמה חדשה");
+
+    private final Grid<MyPurchaseRow> historyGrid = new Grid<>(MyPurchaseRow.class, false);
+    private final Div emptyHistoryState = new Div();
+
+    public MyAccount() {
+        addClassName("my-account-page");
+
+        configureFields();
+        configureHistoryGrid();
+
+        add(
+                new ViewHeader(
+                        "אזור אישי",
+                        "ניהול פרטי החשבון והיסטוריית הרכישות שלך."
+                ),
+                createContent()
+        );
+
+        showDemoProfile();
+        showDemoHistory();
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        //if (!UiSession.isLoggedIn()) {
+            //event.rerouteTo(UiRoutes.LOGIN);
+            //return;
+        //}
+
+        loadDataFromPresenter();
+    }
+
+    public void setPresenter(MyAccountPresenter presenter) {
+        this.presenter = presenter;
+        loadDataFromPresenter();
+    }
+
+    private Component createContent() {
+        Div content = new Div();
+        content.addClassName("my-account-content");
+        content.add(createProfileCard(), createHistoryCard());
+        return content;
+    }
+
+    private Component createProfileCard() {
+        AppCard card = new AppCard();
+        card.addClassName("my-account-profile-card");
+
+        Div glow = new Div();
+        glow.addClassName("my-account-profile-glow");
+
+        Div identityRow = new Div();
+        identityRow.addClassName("my-account-profile-identity");
+
+        avatarInitials.addClassName("my-account-avatar");
+
+        Div identityText = new Div();
+        identityText.addClassName("my-account-identity-text");
+
+        profileName.addClassName("my-account-profile-name");
+
+
+        identityText.add(profileName);
+        identityRow.add(avatarInitials, identityText);
+
+        Div form = new Div();
+        form.addClassName("my-account-profile-form");
+
+        Button saveButton = new Button("שמור שינויים", VaadinIcon.CHECK.create());
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveButton.addClassName("my-account-save-button");
+        saveButton.addClickListener(event -> savePersonalDetails());
+
+        form.add(
+                fullNameField,
+                emailField,
+                phoneField,
+                usernameField,
+                currentPasswordField,
+                newPasswordField,
+                confirmPasswordField,
+                saveButton
+        );
+
+        card.add(glow, identityRow, form);
+        return card;
+    }
+
+    private Component createHistoryCard() {
+        AppCard card = new AppCard();
+        card.addClassName("my-account-history-card");
+
+        Div header = new Div();
+        header.addClassName("my-account-history-header");
+
+        Div titleBlock = new Div();
+
+        H2 title = new H2("היסטוריית רכישות");
+        title.addClassName("my-account-card-title");
+
+        Paragraph subtitle = new Paragraph("רכישות שבוצעו דרך החשבון שלך.");
+        subtitle.addClassName("my-account-card-subtitle");
+
+        titleBlock.add(title, subtitle);
+
+        Button refreshButton = new Button("רענן", VaadinIcon.REFRESH.create());
+        refreshButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        refreshButton.addClassName("my-account-refresh-button");
+        refreshButton.addClickListener(event -> loadDataFromPresenter());
+
+        header.add(titleBlock, refreshButton);
+
+        emptyHistoryState.addClassName("my-account-empty-history");
+        emptyHistoryState.add(
+                new Span(""),
+                new H3("אין רכישות להצגה"),
+                new Paragraph("ברגע שתבצע רכישה, היא תופיע כאן.")
+        );
+
+        card.add(header, historyGrid, emptyHistoryState);
+        return card;
+    }
+
+    private void configureFields() {
+        fullNameField.setPlaceholder("לדוגמה: ישראל ישראלי");
+        emailField.setPlaceholder("name@example.com");
+        phoneField.setPlaceholder("050-0000000");
+        usernameField.setPlaceholder("שם המשתמש במערכת");
+
+        currentPasswordField.setPlaceholder("נדרש לשמירת שינויי חשבון");
+        newPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
+        confirmPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
+
+        fullNameField.addClassName("my-account-field");
+        emailField.addClassName("my-account-field");
+        phoneField.addClassName("my-account-field");
+        usernameField.addClassName("my-account-field");
+        currentPasswordField.addClassName("my-account-field");
+        newPasswordField.addClassName("my-account-field");
+        confirmPasswordField.addClassName("my-account-field");
+
+        emailField.getElement().setAttribute("dir", "ltr");
+        phoneField.getElement().setAttribute("dir", "ltr");
+
+        emailField.getElement().getStyle().set("text-align", "right");
+        phoneField.getElement().getStyle().set("text-align", "right");
+    }
+
+    private void configureHistoryGrid() {
+        historyGrid.addClassName("my-account-history-grid");
+        historyGrid.setWidthFull();
+        historyGrid.setAllRowsVisible(true);
+
+        historyGrid.addColumn(MyPurchaseRow::getPurchaseId)
+                .setHeader("מס' הזמנה")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        historyGrid.addColumn(MyPurchaseRow::getPurchaseDate)
+                .setHeader("תאריך רכישה")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        historyGrid.addColumn(MyPurchaseRow::getEventName)
+                .setHeader("אירוע")
+                .setAutoWidth(true)
+                .setFlexGrow(1);
+
+        historyGrid.addColumn(MyPurchaseRow::getTicketsCount)
+                .setHeader("כרטיסים")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        historyGrid.addColumn(MyPurchaseRow::getTotalAmount)
+                .setHeader("סה\"כ")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        historyGrid.addComponentColumn(row -> new StatusBadge(row.getStatusLabel(), row.getStatusType()))
+                .setHeader("סטטוס")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+
+        historyGrid.addComponentColumn(this::createPurchaseAction)
+                .setHeader("")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+    }
+
+    private Button createPurchaseAction(MyPurchaseRow row) {
+        Button button = new Button(row.getActionText(), VaadinIcon.EYE.create());
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.addClassName("my-account-table-action");
+
+        button.addClickListener(event -> {
+            if (presenter == null) {
+                return;
+            }
+
+            presenter.openPurchaseDetails(row.getPurchaseId());
+        });
+
+        return button;
+    }
+
+    private void savePersonalDetails() {
+        if (presenter == null) {
+            return;
+        }
+
+        if (!Objects.equals(newPasswordField.getValue(), confirmPasswordField.getValue())) {
+            showError("הסיסמה החדשה ואימות הסיסמה אינם זהים.");
+            return;
+        }
+
+        AccountProfileEditData data = new AccountProfileEditData(
+                fullNameField.getValue(),
+                emailField.getValue(),
+                phoneField.getValue(),
+                usernameField.getValue(),
+                currentPasswordField.getValue(),
+                newPasswordField.getValue()
+        );
+
+        try {
+            presenter.updatePersonalDetails(UiSession.getMemberToken(), data);
+
+            currentPasswordField.clear();
+            newPasswordField.clear();
+            confirmPasswordField.clear();
+
+            profileName.setText(data.fullName().isBlank() ? data.username() : data.fullName());
+            avatarInitials.setText(createInitials(profileName.getText()));
+
+            showSuccess("הפרטים עודכנו בהצלחה.");
+        } catch (RuntimeException ex) {
+            showError(ex.getMessage() == null ? "שמירת הפרטים נכשלה." : ex.getMessage());
+        }
+    }
+
+    private void loadDataFromPresenter() {
+        if (presenter == null || UiSession.getMemberToken() == null) {
+            return;
+        }
+
+        try {
+            AccountProfileViewData profile = presenter.loadProfile(UiSession.getMemberToken());
+            if (profile != null) {
+                setProfile(profile);
+            }
+
+            List<OrderDTO> orders = presenter.loadPurchaseHistory(UiSession.getMemberToken());
+            setPurchaseHistory(orders);
+        } catch (RuntimeException ex) {
+            showError(ex.getMessage() == null ? "טעינת האזור האישי נכשלה." : ex.getMessage());
+        }
+    }
+
+    public void setProfile(AccountProfileViewData profile) {
+        fullNameField.setValue(nullToEmpty(profile.fullName()));
+        emailField.setValue(nullToEmpty(profile.email()));
+        phoneField.setValue(nullToEmpty(profile.phone()));
+        usernameField.setValue(nullToEmpty(profile.username()));
+
+        String displayName = !nullToEmpty(profile.fullName()).isBlank()
+                ? profile.fullName()
+                : profile.username();
+
+        profileName.setText(nullToEmpty(displayName));
+        avatarInitials.setText(createInitials(displayName));
+    }
+
+    public void setPurchaseHistory(List<OrderDTO> orders) {
+        List<MyPurchaseRow> rows = orders == null
+                ? List.of()
+                : orders.stream()
+                .filter(Objects::nonNull)
+                .map(this::mapOrderDtoToRow)
+                .toList();
+
+        setHistoryRows(rows);
+    }
+
+    private void setHistoryRows(List<MyPurchaseRow> rows) {
+        historyGrid.setItems(rows);
+        boolean empty = rows == null || rows.isEmpty();
+        historyGrid.setVisible(!empty);
+        emptyHistoryState.setVisible(empty);
+    }
+
+    private MyPurchaseRow mapOrderDtoToRow(OrderDTO order) {
+        String purchaseId = firstNonBlank(
+                asText(readRaw(order, "purchaseId", "id", "orderId")),
+                "לא זמין"
+        );
+
+        Object eventId = readRaw(order, "eventId");
+        String eventName = firstNonBlank(
+                asText(readRaw(order, "eventName", "name")),
+                eventId == null ? "אירוע" : "אירוע #" + eventId
+        );
+
+        String date = firstNonBlank(
+                asText(readRaw(order, "purchaseDate", "createdAt", "orderDate", "date")),
+                "לא זמין"
+        );
+
+        String tickets = firstNonBlank(
+                countTickets(order),
+                "0"
+        );
+
+        String total = formatMoney(readRaw(order, "totalPrice", "totalAmount", "price", "total"));
+
+        String status = firstNonBlank(
+                asText(readRaw(order, "status", "orderStatus", "purchaseStatus")),
+                "הושלם"
+        );
+
+        return new MyPurchaseRow(
+                "#" + purchaseId,
+                date,
+                eventName,
+                tickets,
+                total,
+                translateStatus(status),
+                statusType(status),
+                "צפה"
+        );
+    }
+
+    private void showDemoProfile() {
+        setProfile(new AccountProfileViewData(
+                "israel",
+                "ישראל ישראלי",
+                "israel@example.co.il",
+                "050-1234567"
+        ));
+    }
+
+    private void showDemoHistory() {
+        setHistoryRows(List.of(
+                new MyPurchaseRow("#TX-98231", "12.10.2024", "פסטיבל חלל עמוק 2024", "2", "₪450", "מאושר", StatusBadge.Type.SUCCESS, "כרטיסים"),
+                new MyPurchaseRow("#TX-87442", "05.09.2024", "הופעת רוק אינדי מרכזית", "1", "₪120", "הושלם", StatusBadge.Type.NEUTRAL, "קבלה"),
+                new MyPurchaseRow("#TX-75502", "15.07.2024", "הצגת תיאטרון: הסופה", "2", "₪280", "בוטל", StatusBadge.Type.ERROR, "פירוט")
+        ));
+    }
+
+    private String countTickets(OrderDTO order) {
+        Object tickets = readRaw(order, "tickets", "purchasedTickets", "orderTickets");
+
+        if (tickets instanceof Collection<?> collection) {
+            return String.valueOf(collection.size());
+        }
+
+        return firstNonBlank(
+                asText(readRaw(order, "ticketCount", "ticketsCount", "quantity")),
+                null
+        );
+    }
+
+    private Object readRaw(Object source, String... propertyNames) {
+        if (source == null || propertyNames == null) {
+            return null;
+        }
+
+        for (String propertyName : propertyNames) {
+            Object value = invokeGetter(source, propertyName);
+            if (value != null) {
+                return value;
+            }
+
+            value = readField(source, propertyName);
+            if (value != null) {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    private Object invokeGetter(Object source, String propertyName) {
+        String capitalized = propertyName.substring(0, 1).toUpperCase() + propertyName.substring(1);
+        String[] methodNames = {"get" + capitalized, "is" + capitalized, propertyName};
+
+        for (String methodName : methodNames) {
+            try {
+                Method method = source.getClass().getMethod(methodName);
+                return method.invoke(source);
+            } catch (Exception ignored) {
+            }
+        }
+
+        return null;
+    }
+
+    private Object readField(Object source, String propertyName) {
+        try {
+            Field field = source.getClass().getDeclaredField(propertyName);
+            field.setAccessible(true);
+            return field.get(source);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String asText(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        if (value instanceof LocalDate localDate) {
+            return localDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+        }
+
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+        }
+
+        return String.valueOf(value);
+    }
+
+    private String formatMoney(Object value) {
+        if (value == null) {
+            return "₪0";
+        }
+
+        try {
+            BigDecimal amount = new BigDecimal(String.valueOf(value));
+            return "₪" + amount.stripTrailingZeros().toPlainString();
+        } catch (NumberFormatException ignored) {
+            return String.valueOf(value);
+        }
+    }
+
+    private StatusBadge.Type statusType(String status) {
+        String normalized = nullToEmpty(status).toLowerCase();
+
+        if (normalized.contains("cancel") || normalized.contains("בוטל")) {
+            return StatusBadge.Type.ERROR;
+        }
+
+        if (normalized.contains("pending") || normalized.contains("wait") || normalized.contains("ממתין")) {
+            return StatusBadge.Type.INFO;
+        }
+
+        if (normalized.contains("success")
+                || normalized.contains("complete")
+                || normalized.contains("approved")
+                || normalized.contains("מאושר")
+                || normalized.contains("הושלם")) {
+            return StatusBadge.Type.SUCCESS;
+        }
+
+        return StatusBadge.Type.NEUTRAL;
+    }
+
+    private String translateStatus(String status) {
+        String normalized = nullToEmpty(status).toLowerCase();
+
+        if (normalized.contains("cancel")) {
+            return "בוטל";
+        }
+
+        if (normalized.contains("pending") || normalized.contains("wait")) {
+            return "ממתין";
+        }
+
+        if (normalized.contains("approved") || normalized.contains("success")) {
+            return "מאושר";
+        }
+
+        if (normalized.contains("complete")) {
+            return "הושלם";
+        }
+
+        return firstNonBlank(status, "הושלם");
+    }
+
+    private String createInitials(String text) {
+        String value = nullToEmpty(text).trim();
+
+        if (value.isBlank()) {
+            return "מש";
+        }
+
+        String[] parts = value.split("\\s+");
+
+        if (parts.length == 1) {
+            return parts[0].substring(0, Math.min(2, parts[0].length()));
+        }
+
+        return parts[0].substring(0, 1) + parts[1].substring(0, 1);
+    }
+
+    private String firstNonBlank(String first, String fallback) {
+        return first == null || first.isBlank() ? fallback : first;
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private void showSuccess(String message) {
+        Notification notification = Notification.show(message, 3000, Notification.Position.TOP_CENTER);
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    private void showError(String message) {
+        Notification notification = Notification.show(message, 4000, Notification.Position.TOP_CENTER);
+        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+    }
+
+    public interface MyAccountPresenter {
+        AccountProfileViewData loadProfile(String token);
+
+        List<OrderDTO> loadPurchaseHistory(String token);
+
+        void updatePersonalDetails(String token, AccountProfileEditData data);
+
+        void openPurchaseDetails(String purchaseId);
+    }
+
+    public record AccountProfileViewData(
+            String username,
+            String fullName,
+            String email,
+            String phone
+    ) {
+    }
+
+    public record AccountProfileEditData(
+            String fullName,
+            String email,
+            String phone,
+            String username,
+            String currentPassword,
+            String newPassword
+    ) {
+    }
+
+    public static final class MyPurchaseRow {
+        private final String purchaseId;
+        private final String purchaseDate;
+        private final String eventName;
+        private final String ticketsCount;
+        private final String totalAmount;
+        private final String statusLabel;
+        private final StatusBadge.Type statusType;
+        private final String actionText;
+
+        public MyPurchaseRow(
+                String purchaseId,
+                String purchaseDate,
+                String eventName,
+                String ticketsCount,
+                String totalAmount,
+                String statusLabel,
+                StatusBadge.Type statusType,
+                String actionText
+        ) {
+            this.purchaseId = purchaseId;
+            this.purchaseDate = purchaseDate;
+            this.eventName = eventName;
+            this.ticketsCount = ticketsCount;
+            this.totalAmount = totalAmount;
+            this.statusLabel = statusLabel;
+            this.statusType = statusType;
+            this.actionText = actionText;
+        }
+
+        public String getPurchaseId() {
+            return purchaseId;
+        }
+
+        public String getPurchaseDate() {
+            return purchaseDate;
+        }
+
+        public String getEventName() {
+            return eventName;
+        }
+
+        public String getTicketsCount() {
+            return ticketsCount;
+        }
+
+        public String getTotalAmount() {
+            return totalAmount;
+        }
+
+        public String getStatusLabel() {
+            return statusLabel;
+        }
+
+        public StatusBadge.Type getStatusType() {
+            return statusType;
+        }
+
+        public String getActionText() {
+            return actionText;
+        }
+    }
+}

@@ -3543,6 +3543,505 @@ vaadin-button.header-icon-button vaadin-icon {
 }
 
 /* =========================
+   Policies editor
+   Paste this block before the Global RTL overlay fix at the end of styles.css
+   ========================= */
+
+.policy-editor-page {
+    width: 100%;
+    color: var(--tn-text);
+}
+
+.policy-editor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    width: 100%;
+    align-items: start;
+}
+
+.policy-card.app-card {
+    position: relative;
+    overflow: hidden;
+    padding: 24px;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.policy-card-accent {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 4px;
+}
+
+.policy-card-accent-purchase {
+    background: linear-gradient(270deg, var(--tn-primary), transparent);
+}
+
+.policy-card-accent-discount {
+    background: linear-gradient(270deg, var(--tn-secondary), transparent);
+}
+
+.policy-card-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.policy-card-icon,
+.discount-row-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: rgba(208, 188, 255, 0.14);
+    color: var(--tn-primary);
+    font-size: 22px;
+    font-weight: 900;
+    box-shadow: inset 0 0 18px rgba(208, 188, 255, 0.08);
+}
+
+.policy-card-discount .policy-card-icon,
+.discount-row-icon {
+    background: rgba(68, 226, 205, 0.12);
+    color: var(--tn-secondary-fixed);
+}
+
+.policy-card-title {
+    margin: 0;
+    color: var(--tn-text);
+    font-size: 24px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.policy-card-description,
+.policy-small-text {
+    margin: 0;
+    color: var(--tn-text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.purchase-rule-builder {
+    position: relative;
+    min-height: 150px;
+    padding: 16px 38px 16px 16px;
+    border-radius: 18px;
+    background: rgba(6, 14, 32, 0.76);
+    border: 1px solid rgba(149, 142, 160, 0.24);
+}
+
+.purchase-root-operator-wrapper {
+    position: relative;
+    z-index: 2;
+    width: 150px;
+    margin: 0 0 18px auto;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--tn-surface-container);
+    border: 1px solid rgba(149, 142, 160, 0.34);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.purchase-root-operator {
+    width: 100%;
+}
+
+.purchase-root-operator vaadin-combo-box::part(input-field),
+.purchase-root-operator::part(input-field) {
+    min-height: 38px;
+    border-radius: 10px;
+    background: transparent;
+    border: none;
+    color: var(--tn-secondary-fixed);
+    box-shadow: none;
+}
+
+.policy-tree-line {
+    position: absolute;
+    top: 88px;
+    bottom: 26px;
+    right: 24px;
+    width: 2px;
+    background: rgba(73, 68, 84, 0.76);
+}
+
+.purchase-rules-list,
+.discounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.purchase-rule-row {
+    position: relative;
+    margin-right: 18px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(23, 31, 51, 0.78);
+    border: 1px solid rgba(149, 142, 160, 0.22);
+    backdrop-filter: blur(16px);
+}
+
+.purchase-rule-row::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -18px;
+    width: 18px;
+    height: 2px;
+    background: rgba(73, 68, 84, 0.76);
+}
+
+.policy-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    color: var(--tn-text-muted);
+    background: rgba(45, 52, 73, 0.72);
+    border: 1px solid rgba(149, 142, 160, 0.24);
+    cursor: move;
+    letter-spacing: -4px;
+}
+
+.purchase-rule-text,
+.discount-row-title-block,
+.discount-composition-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.purchase-rule-text > span:first-child {
+    color: var(--tn-text);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.policy-row-actions,
+.discount-row-labels {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.policy-primary-button,
+.policy-secondary-button,
+.policy-danger-button,
+.policy-dashed-button {
+    gap: 8px;
+    font-weight: 800;
+    border-radius: 14px;
+}
+
+.policy-secondary-button {
+    background: rgba(45, 52, 73, 0.86);
+    color: var(--tn-text);
+    border: 1px solid rgba(149, 142, 160, 0.24);
+}
+
+.policy-secondary-button:hover {
+    color: var(--tn-secondary-fixed);
+    border-color: rgba(68, 226, 205, 0.36);
+    background: var(--tn-surface-highest);
+}
+
+.policy-danger-button {
+    background: #ffdad6;
+    color: #690005;
+}
+
+.policy-dashed-button {
+    width: 100%;
+    min-height: 48px;
+    border: 1px dashed rgba(208, 188, 255, 0.56);
+    background: rgba(208, 188, 255, 0.06);
+    color: var(--tn-primary);
+}
+
+.policy-dashed-button:hover {
+    background: rgba(208, 188, 255, 0.12);
+    border-color: var(--tn-primary);
+}
+
+.policy-add-discount-button.policy-dashed-button {
+    border-color: rgba(68, 226, 205, 0.56);
+    background: rgba(68, 226, 205, 0.06);
+    color: var(--tn-secondary-fixed);
+}
+
+.policy-add-discount-button.policy-dashed-button:hover {
+    background: rgba(68, 226, 205, 0.12);
+    border-color: var(--tn-secondary-fixed);
+}
+
+.policy-button-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-inline-end: 8px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.policy-primary-button::part(prefix),
+.policy-secondary-button::part(prefix),
+.policy-danger-button::part(prefix),
+.policy-dashed-button::part(prefix) {
+    margin-inline-end: 8px;
+}
+
+.policy-icon-button {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 999px;
+    color: var(--tn-primary);
+    background: transparent;
+}
+
+.policy-icon-button:hover {
+    background: rgba(208, 188, 255, 0.12);
+    color: var(--tn-primary-fixed);
+}
+
+.policy-icon-danger-button {
+    color: var(--tn-error);
+}
+
+.policy-icon-danger-button:hover {
+    background: rgba(255, 180, 171, 0.14);
+    color: #ffdad6;
+}
+
+.discount-composition-selector {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(19, 27, 46, 0.76);
+    border: 1px solid rgba(149, 142, 160, 0.18);
+}
+
+.discount-composition-text > span:first-child {
+    color: var(--tn-text);
+    font-weight: 800;
+}
+
+.discount-composition-actions {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    border-radius: 14px;
+    background: rgba(23, 31, 51, 0.88);
+    border: 1px solid rgba(149, 142, 160, 0.20);
+}
+
+.discount-composition-button {
+    border-radius: 10px;
+    color: var(--tn-text-muted);
+    background: transparent;
+    font-weight: 800;
+}
+
+.discount-composition-button:hover {
+    background: var(--tn-surface-highest);
+    color: var(--tn-text);
+}
+
+.discount-composition-button-selected,
+.discount-composition-button-selected:hover {
+    background: var(--tn-secondary);
+    color: var(--tn-on-secondary);
+    box-shadow: 0 0 14px rgba(68, 226, 205, 0.22);
+}
+
+.discount-row {
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(6, 14, 32, 0.74);
+    border: 1px solid rgba(149, 142, 160, 0.22);
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.discount-row:hover {
+    background: rgba(19, 27, 46, 0.86);
+    border-color: rgba(68, 226, 205, 0.45);
+}
+
+.discount-row-top {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: start;
+    margin-bottom: 16px;
+}
+
+.discount-row-title {
+    margin: 0;
+    color: var(--tn-text);
+    font-size: 17px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.discount-coupon-badge,
+.discount-condition-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 5px 9px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.discount-coupon-badge {
+    background: rgba(68, 226, 205, 0.12);
+    color: var(--tn-secondary-fixed);
+    font-family: monospace;
+}
+
+.discount-condition-badge {
+    background: var(--tn-surface-highest);
+    color: var(--tn-text-muted);
+}
+
+.discount-data-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.discount-data-box {
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(23, 31, 51, 0.86);
+    border: 1px solid rgba(149, 142, 160, 0.14);
+}
+
+.discount-data-label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--tn-text-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.discount-data-value {
+    color: var(--tn-secondary-fixed);
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.policy-empty-state-inline {
+    padding: 18px;
+    border-radius: 16px;
+    background: rgba(45, 52, 73, 0.42);
+    border: 1px solid rgba(149, 142, 160, 0.18);
+    color: var(--tn-text-muted);
+    text-align: center;
+    font-size: 14px;
+}
+
+.policy-editor-dialog {
+    direction: rtl;
+}
+
+.policy-dialog-form {
+    width: min(620px, calc(100vw - 48px));
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding-top: 8px;
+}
+
+.policy-dialog-form vaadin-text-field,
+.policy-dialog-form vaadin-number-field,
+.policy-dialog-form vaadin-combo-box,
+.policy-dialog-form vaadin-date-picker {
+    width: 100%;
+}
+
+@media (max-width: 1100px) {
+    .policy-editor-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .policy-card.app-card {
+        padding: 20px;
+    }
+
+    .discount-composition-selector,
+    .discount-row-top,
+    .purchase-rule-row {
+        grid-template-columns: 1fr;
+    }
+
+    .discount-composition-selector {
+        align-items: stretch;
+    }
+
+    .discount-composition-actions,
+    .policy-row-actions,
+    .discount-row-labels {
+        width: 100%;
+    }
+
+    .discount-composition-actions vaadin-button,
+    .policy-row-actions vaadin-button {
+        flex: 1;
+    }
+
+    .purchase-root-operator-wrapper {
+        position: relative;
+        width: 100%;
+        margin: 0 0 14px 0;
+    }
+
+    .purchase-rule-builder {
+        padding: 16px;
+    }
+
+    .policy-tree-line,
+    .purchase-rule-row::before,
+    .policy-drag-handle {
+        display: none;
+    }
+
+    .purchase-rule-row {
+        margin-right: 0;
+    }
+
+    .policy-dialog-form,
+    .discount-data-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================
    Global RTL overlay fix
    Keep this at the end of styles.css
    ========================= */
@@ -4233,6 +4732,256 @@ vaadin-date-picker-month-calendar {
 
     .sales-report-card-header {
         flex-direction: column;
+    }
+}
+
+/* =========================
+   My account
+   ========================= */
+
+.my-account-page {
+    min-height: 100%;
+    padding: 48px var(--app-page-padding);
+    box-sizing: border-box;
+    background:
+        radial-gradient(circle at 12% 0%, rgba(208, 188, 255, 0.14), transparent 28%),
+        radial-gradient(circle at 90% 90%, rgba(68, 226, 205, 0.08), transparent 30%),
+        var(--tn-background);
+}
+
+.my-account-page > .view-header,
+.my-account-content {
+    width: 100%;
+    max-width: var(--app-max-width);
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.my-account-content {
+    display: grid;
+    grid-template-columns: 390px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.my-account-profile-card.app-card,
+.my-account-history-card.app-card {
+    position: relative;
+    overflow: hidden;
+    background: rgba(23, 31, 51, 0.72);
+}
+
+.my-account-profile-card.app-card {
+    padding: 24px;
+}
+
+.my-account-profile-glow {
+    position: absolute;
+    top: -56px;
+    right: -56px;
+    width: 150px;
+    height: 150px;
+    border-radius: 999px;
+    background: var(--tn-primary);
+    filter: blur(70px);
+    opacity: 0.18;
+    pointer-events: none;
+}
+
+.my-account-profile-identity {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.my-account-avatar {
+    width: 68px;
+    height: 68px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(circle at 30% 20%, rgba(208, 188, 255, 0.34), transparent 34%),
+        var(--tn-surface-high);
+    border: 1px solid rgba(208, 188, 255, 0.36);
+    color: var(--tn-primary-fixed);
+    font-size: 24px;
+    font-weight: 800;
+    box-shadow: inset 0 0 24px rgba(208, 188, 255, 0.08);
+}
+
+.my-account-identity-text {
+    min-width: 0;
+}
+
+.my-account-profile-name {
+    margin: 0 0 8px;
+    color: var(--tn-text);
+    font-size: 20px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.my-account-verified-badge {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(68, 226, 205, 0.10);
+    border: 1px solid rgba(68, 226, 205, 0.24);
+    color: var(--tn-secondary-fixed);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.my-account-verified-badge vaadin-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.my-account-profile-form {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.my-account-field {
+    width: 100%;
+}
+
+.my-account-page vaadin-text-field::part(input-field),
+.my-account-page vaadin-email-field::part(input-field),
+.my-account-page vaadin-password-field::part(input-field) {
+    min-height: 48px;
+    border-radius: 14px;
+    background: rgba(19, 27, 46, 0.78);
+    border: 1px solid rgba(149, 142, 160, 0.30);
+}
+
+.my-account-save-button {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 6px;
+}
+
+.my-account-save-button vaadin-icon,
+.my-account-refresh-button vaadin-icon,
+.my-account-table-action vaadin-icon {
+    margin-left: 8px;
+}
+
+.my-account-history-card.app-card {
+    padding: 0;
+}
+
+.my-account-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 24px;
+    border-bottom: 1px solid rgba(73, 68, 84, 0.45);
+    background: rgba(19, 27, 46, 0.52);
+}
+
+.my-account-card-title {
+    margin: 0;
+    color: var(--tn-text);
+    font-size: 24px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.my-account-card-subtitle {
+    margin: 6px 0 0;
+    color: var(--tn-text-muted);
+    font-size: 14px;
+}
+
+.my-account-refresh-button {
+    color: var(--tn-secondary);
+    font-weight: 800;
+}
+
+.my-account-history-grid {
+    background: transparent;
+}
+
+.my-account-history-grid::part(header-cell) {
+    background: rgba(45, 52, 73, 0.42);
+    color: var(--tn-text-muted);
+    font-weight: 800;
+    border-bottom: 1px solid rgba(73, 68, 84, 0.45);
+}
+
+.my-account-history-grid::part(body-cell) {
+    background: rgba(23, 31, 51, 0.30);
+    color: var(--tn-text);
+    border-bottom: 1px solid rgba(73, 68, 84, 0.30);
+}
+
+.my-account-history-grid::part(row):hover > ::part(body-cell) {
+    background: rgba(34, 42, 61, 0.62);
+}
+
+.my-account-table-action {
+    color: var(--tn-primary);
+    font-weight: 800;
+}
+
+.my-account-empty-history {
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 32px;
+    box-sizing: border-box;
+    text-align: center;
+    color: var(--tn-text-muted);
+}
+
+.my-account-empty-history span {
+    font-size: 38px;
+}
+
+.my-account-empty-history h3 {
+    margin: 0;
+    color: var(--tn-text);
+}
+
+.my-account-empty-history p {
+    margin: 0;
+    max-width: 420px;
+}
+
+@media (max-width: 1000px) {
+    .my-account-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .my-account-page {
+        padding: 32px 16px;
+    }
+
+    .my-account-history-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .my-account-refresh-button {
+        width: 100%;
     }
 }
 
