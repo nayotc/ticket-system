@@ -46,25 +46,35 @@ public class UserService {
         try {
             if (username == null || username.isBlank() || password == null || password.isBlank()) {
                 logger.logEvent("Sign-up rejected: blank username or password", LogLevel.WARN);
-                return false;
+                throw new IllegalArgumentException("Username and password are required.");
             }
+
             tokenService.validateToken(sessionToken);
+
             if (!tokenService.isGuestToken(sessionToken)) {
                 logger.logEvent("Sign-up rejected: session is not a guest token", LogLevel.WARN);
-                return false;
+                throw new IllegalStateException("Only guests can sign up.");
             }
+
             if (userRepository.isUsernameTaken(username)) {
                 logger.logEvent("Sign-up rejected: username already taken, username=" + username, LogLevel.INFO);
-                return false;
+                throw new IllegalArgumentException("Username is already taken.");
             }
+
             Long newId = new SecureRandom().nextLong();
             while (userRepository.isIDTaken(newId)) {
                 newId = new SecureRandom().nextLong();
             }
+
             String hashedPassword = passwordService.hashPassword(password);
             userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
+
             logger.logEvent("Sign-up succeeded: new member registered, username=" + username, LogLevel.INFO);
             return true;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
             logger.logError("Sign-up failed with unexpected error", e);
             throw e;

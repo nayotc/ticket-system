@@ -66,13 +66,12 @@ public class UserServiceTest {
         String sessionToken1 = userService.visitSystem();
         userService.signUp(sessionToken1, "existingUser", "password123");
 
-        // Act: attempt to sign up with the same username
+        // Act & Assert: attempt to sign up with the same username
         String sessionToken2 = userService.visitSystem();
-        boolean answer = userService.signUp(sessionToken2, "existingUser", "password456");
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.signUp(sessionToken2, "existingUser", "password456");
+        }, "Sign up should throw when the username is already taken");
 
-        // Assert: check that the second sign-up attempt fails due to username being
-        // taken
-        assertFalse(answer, "Sign up should fail with a taken username");
         assertTrue(userRepository.isUsernameTaken("existingUser"), "Username should be taken");
         assertEquals(userRepository.getAllRegisteredMembersCount(), 1,
                 "There should still be only one registered member");
