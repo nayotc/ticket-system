@@ -14,6 +14,7 @@ import ticketsystem.PresentationLayer.Components.SearchPanel;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 
 @PageTitle("TixNow")
 @Route(value = UiRoutes.HOME, layout = MainLayout.class)
@@ -42,17 +43,55 @@ public class Home extends PageContainer {
         Div content = new Div();
         content.addClassName("hero-content");
 
+        content.getStyle()
+                .set("width", "100%")
+                .set("max-width", "100%")
+                .set("box-sizing", "border-box")
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("align-items", "center");
+
         PageHeader header = new PageHeader(
                 "החוויה הבאה שלך מתחילה כאן",
                 "מצא את הכרטיסים הטובים ביותר להופעות, פסטיבלים ואירועי ספורט. חיפוש מהיר, רכישה מאובטחת."
         );
+        header.addClassName("hero-centered-header");
+        header.setAlignItems(FlexComponent.Alignment.CENTER);
 
-        SearchPanel searchPanel = new SearchPanel();
+        header.getStyle()
+                .set("width", "100%")
+                .set("max-width", "900px")
+                .set("margin", "0 auto")
+                .set("text-align", "center");
 
-        content.add(header, searchPanel);
+        Div searchPanelWrapper = createCenteredSearchPanel();
+
+        content.add(header, searchPanelWrapper);
         hero.add(background, gradient, content);
 
         return hero;
+    }
+
+    private Div createCenteredSearchPanel() {
+        SearchPanel searchPanel = new SearchPanel();
+
+        searchPanel.getStyle()
+                .set("margin-left", "auto")
+                .set("margin-right", "auto");
+
+        Div wrapper = new Div(searchPanel);
+        wrapper.addClassName("home-search-panel-wrapper");
+
+        wrapper.getStyle()
+                .set("width", "100%")
+                .set("max-width", "1240px")
+                .set("margin", "0 auto")
+                .set("display", "flex")
+                .set("justify-content", "center")
+                .set("align-items", "center")
+                .set("box-sizing", "border-box");
+
+        return wrapper;
     }
 
     private Div createPopularEventsSection() {
