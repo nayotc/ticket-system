@@ -157,27 +157,46 @@ public class UserService {
     // providing their current username, password, and new username.
     public boolean updateMemberUsername(String sessionToken, String password, String username, String newUsername) {
         try {
+            if (username == null || username.isBlank()) {
+                logger.logEvent("Update username rejected: current username is blank", LogLevel.WARN);
+                throw new IllegalArgumentException("Current username cannot be blank.");
+            }
+
             if (newUsername == null || newUsername.isBlank()) {
                 logger.logEvent("Update username rejected: new username is blank", LogLevel.WARN);
-                return false;
+                throw new IllegalArgumentException("New username cannot be blank.");
             }
+
             if (authenticateMemberForUpdate(sessionToken, password, username) == null) {
                 logger.logEvent(
                         "Update username rejected: authentication failed, username=" + username,
                         LogLevel.WARN);
-                return false;
+                throw new IllegalArgumentException("Invalid username or password.");
             }
-            boolean ok = userRepository.updateRegisteredMemberUsername(username, newUsername);
-            if (ok) {
+
+            if (!username.equals(newUsername) && userRepository.isUsernameTaken(newUsername)) {
                 logger.logEvent(
-                        "Member username updated: oldUsername=" + username + ", newUsername=" + newUsername,
-                        LogLevel.INFO);
-            } else {
+                        "Update username rejected: new username already taken, newUsername=" + newUsername,
+                        LogLevel.WARN);
+                throw new IllegalArgumentException("Username is already taken.");
+            }
+
+            boolean ok = userRepository.updateRegisteredMemberUsername(username, newUsername);
+            if (!ok) {
                 logger.logEvent(
                         "Update username rejected: repository update failed, username=" + username,
                         LogLevel.WARN);
+                throw new IllegalStateException("Username update failed. Please try again.");
             }
-            return ok;
+
+            logger.logEvent(
+                    "Member username updated: oldUsername=" + username + ", newUsername=" + newUsername,
+                    LogLevel.INFO);
+            return true;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
             logger.logError("Update member username failed", e);
             throw e;
