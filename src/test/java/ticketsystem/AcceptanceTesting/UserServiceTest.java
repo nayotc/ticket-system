@@ -113,11 +113,10 @@ public class UserServiceTest {
         // Arange: visit and signup a new Member
         String sessionToken1 = userService.visitSystem();
         userService.signUp(sessionToken1, "newUser", "password123");
-        // Act: login with the wrong username
-        String loginToken = userService.login(sessionToken1, "wrongUser", "password123");
-        // Assert: check that the login attempt fails due to incorrect username
-        assertNull(loginToken, "Login token should be null for wrong username");
-        assertFalse(tokenService.isActiveSession(loginToken), "Login token should not be active for wrong username");
+        // Act & Assert: login with the wrong username
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.login(sessionToken1, "wrongUser", "password123");
+        }, "Login should throw with wrong username");
         assertTrue(tokenService.isActiveSession(sessionToken1),
                 "Original session token should still be active after failed login");
     }
@@ -127,11 +126,14 @@ public class UserServiceTest {
         // Arange: visit and signup a new Member
         String sessionToken1 = userService.visitSystem();
         userService.signUp(sessionToken1, "newUser", "password123");
-        // Act: login with the wrong password
-        String loginToken = userService.login(sessionToken1, "newUser", "password1234");
-        // Assert: check that the login attempt fails due to incorrect password
-        assertNull(loginToken, "Login token should be null for wrong password");
-        assertFalse(tokenService.isActiveSession(loginToken), "Login token should not be active for wrong password");
+
+        // Act & Assert: login with the wrong password
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.login(sessionToken1, "newUser", "password1234");
+        }, "Login should throw with wrong password");
+
+        assertTrue(tokenService.isActiveSession(sessionToken1),
+                "Original session token should still be active after failed login");
     }
 
     @Test
@@ -154,12 +156,17 @@ public class UserServiceTest {
         // Arange: visit and signup for 2 new Members
         String sessionToken1 = userService.visitSystem();
         userService.signUp(sessionToken1, "newUser1", "password1");
+
         String sessionToken2 = userService.visitSystem();
         userService.signUp(sessionToken2, "newUser2", "password2");
-        // Act: login with the wrong password
-        String loginToken = userService.login(sessionToken1, "newUser1", "password2");
-        // Assert: check that the login attempt fails due to incorrect password
-        assertNull(loginToken, "Login token should be null for wrong password");
+
+        // Act & Assert: login with the wrong password
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.login(sessionToken1, "newUser1", "password2");
+        }, "Login should throw with wrong password");
+
+        assertTrue(tokenService.isActiveSession(sessionToken1),
+                "Original session token should still be active after failed login");
     }
 
     @Test

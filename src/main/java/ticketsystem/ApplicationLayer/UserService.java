@@ -86,44 +86,52 @@ public class UserService {
     public String login(String sessionToken, String username, String password) {
         try {
             tokenService.validateToken(sessionToken);
-        } catch (RuntimeException e) {
-            logger.logError("Login failed: token validation failed", e);
-            throw e;
-        }
-        // Only guests can log in with credentials; members already have a member token.
-        if (!tokenService.isGuestToken(sessionToken)) {
-            logger.logEvent("Login rejected: session is not a guest token", LogLevel.WARN);
-            return null;
-        }
-        if (username == null || username.isBlank() || password == null || password.isBlank()) {
-            logger.logEvent("Login rejected: blank username or password", LogLevel.WARN);
-            return null;
-        }
-        String hashedPassword = userRepository.getHashedPasswordByUsername(username);
-        if (hashedPassword == null || !passwordService.verifyPassword(password, hashedPassword)) {
-            // Single message avoids distinguishing unknown user vs wrong password (user enumeration).
-            logger.logEvent("Login rejected: invalid credentials, username=" + username, LogLevel.WARN);
-            return null;
-        }
-        Member member = userRepository.getMemberByUsername(username);
-        if (member == null) {
-            logger.logEvent(
-                    "Login rejected: member missing after successful password check, username=" + username,
-                    LogLevel.WARN);
-            return null;
-        }
-        String memberToken = tokenService.addActiveSession(member);
 
-        try {
-            notifyListeners(sessionToken, memberToken);
-            tokenService.removeActiveSession(sessionToken);
-            logger.logEvent("Login succeeded: username=" + username, LogLevel.INFO);
-            return memberToken;
+            if (!tokenService.isGuestToken(sessionToken)) {
+                logger.logEvent("Login rejected: session is not a guest token", LogLevel.WARN);
+                throw new IllegalStateException("Only guests can log in.");
+            }
+
+            if (username == null || username.isBlank() || password == null || password.isBlank()) {
+                logger.logEvent("Login rejected: blank username or password", LogLevel.WARN);
+                throw new IllegalArgumentException("Username and password are required.");
+            }
+
+            String hashedPassword = userRepository.getHashedPasswordByUsername(username);
+            if (hashedPassword == null || !passwordService.verifyPassword(password, hashedPassword)) {
+                // Single message avoids distinguishing unknown user vs wrong password (user enumeration).
+                logger.logEvent("Login rejected: invalid credentials, username=" + username, LogLevel.WARN);
+                throw new IllegalArgumentException("Invalid username or password.");
+            }
+
+            Member member = userRepository.getMemberByUsername(username);
+            if (member == null) {
+                logger.logEvent(
+                        "Login rejected: member missing after successful password check, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Login failed. Please try again.");
+            }
+
+            String memberToken = tokenService.addActiveSession(member);
+
+            try {
+                notifyListeners(sessionToken, memberToken);
+                tokenService.removeActiveSession(sessionToken);
+                logger.logEvent("Login succeeded: username=" + username, LogLevel.INFO);
+                return memberToken;
+            } catch (Exception e) {
+                tokenService.removeActiveSession(memberToken);
+                logger.logError(
+                        "Login aborted: post-login listener failed; member session rolled back, username=" + username,
+                        e);
+                throw new IllegalStateException("Login failed. Please try again.");
+            }
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
-            tokenService.removeActiveSession(memberToken);
-            logger.logError(
-                    "Login aborted: post-login listener failed; member session rolled back, username=" + username,
-                    e);
+            logger.logError("Login failed with unexpected error", e);
             throw e;
         }
     }
