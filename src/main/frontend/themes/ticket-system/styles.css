@@ -3607,5 +3607,632 @@ vaadin-date-picker-month-calendar {
     }
 }
 
+.role-tree-view {
+    width: 100%;
+    min-height: 100%;
+    padding: 32px;
+    box-sizing: border-box;
+    color: var(--lumo-body-text-color);
+}
 
+.role-tree-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 24px;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.role-tree-header-text {
+    max-width: 760px;
+}
+
+.role-tree-live-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    margin-bottom: 12px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(68, 226, 205, 0.12);
+    color: #62fae3;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.role-tree-header h1 {
+    margin: 0 0 8px;
+    font-size: 40px;
+    line-height: 1.15;
+    font-weight: 800;
+    color: #dae2fd;
+}
+
+.role-tree-header p {
+    margin: 0;
+    color: #cbc3d7;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.role-tree-company-card {
+    min-width: 220px;
+    padding: 18px;
+    border-radius: 18px;
+    background: rgba(23, 31, 51, 0.82);
+    border: 1px solid rgba(149, 142, 160, 0.28);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.role-tree-company-label {
+    display: block;
+    margin-bottom: 6px;
+    color: #cbc3d7;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.role-tree-company-name {
+    display: block;
+    color: #dae2fd;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.role-tree-company-status {
+    display: inline-flex;
+    margin-top: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(68, 226, 205, 0.12);
+    color: #62fae3;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.role-tree-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.role-tree-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 18px;
+    border-radius: 20px;
+    background: rgba(23, 31, 51, 0.72);
+    border: 1px solid rgba(149, 142, 160, 0.22);
+}
+
+.role-tree-filters {
+    display: grid;
+    grid-template-columns: minmax(240px, 1.4fr) minmax(180px, 1fr) minmax(220px, 1fr);
+    gap: 14px;
+    flex: 1;
+}
+
+.role-tree-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.role-tree-action-button {
+    min-width: 112px;
+    border-radius: 14px;
+    background: rgba(34, 42, 61, 0.9);
+    color: #dae2fd;
+    border: 1px solid rgba(149, 142, 160, 0.28);
+    font-weight: 700;
+}
+
+.role-tree-action-button:hover {
+    color: #d0bcff;
+    border-color: rgba(208, 188, 255, 0.5);
+}
+
+.role-tree-panel {
+    position: relative;
+    min-height: 520px;
+    border-radius: 24px;
+    background:
+            radial-gradient(circle at top right, rgba(208, 188, 255, 0.10), transparent 34%),
+            radial-gradient(circle at bottom left, rgba(68, 226, 205, 0.07), transparent 30%),
+            rgba(6, 14, 32, 0.82);
+    border: 1px solid rgba(149, 142, 160, 0.22);
+    overflow: hidden;
+}
+
+.role-tree-canvas {
+    min-height: 520px;
+    overflow: auto;
+    padding: 38px;
+}
+
+.role-tree-canvas::-webkit-scrollbar {
+    height: 12px;
+    width: 12px;
+}
+
+.role-tree-canvas::-webkit-scrollbar-track {
+    background: rgba(19, 27, 46, 0.7);
+    border-radius: 6px;
+}
+
+.role-tree-canvas::-webkit-scrollbar-thumb {
+    background: rgba(73, 68, 84, 0.9);
+    border-radius: 6px;
+}
+
+.role-tree-canvas::-webkit-scrollbar-thumb:hover {
+    background: rgba(208, 188, 255, 0.62);
+}
+
+.role-tree-structure {
+    display: inline-flex;
+    min-width: max-content;
+    padding: 12px;
+}
+
+.role-tree-branch {
+    display: flex;
+    align-items: center;
+    gap: 34px;
+    position: relative;
+}
+
+.role-tree-children {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 24px;
+    padding-inline-start: 34px;
+    border-inline-start: 2px dashed rgba(149, 142, 160, 0.28);
+    position: relative;
+}
+
+.role-tree-children::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: -34px;
+    width: 34px;
+    height: 2px;
+    background: rgba(149, 142, 160, 0.35);
+}
+
+.role-tree-node-card {
+    width: 310px;
+    padding: 20px;
+    border-radius: 20px;
+    background: rgba(23, 31, 51, 0.88);
+    border: 1px solid rgba(149, 142, 160, 0.22);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.role-tree-node-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(208, 188, 255, 0.56);
+    box-shadow: 0 22px 54px rgba(0, 0, 0, 0.32);
+}
+
+.role-tree-node-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+    background: #d0bcff;
+}
+
+.role-tree-node-founder::before {
+    background: #d0bcff;
+}
+
+.role-tree-node-owner::before {
+    background: #44e2cd;
+}
+
+.role-tree-node-manager::before {
+    background: #ffafd3;
+}
+
+.role-tree-node-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.role-tree-node-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 900;
+    color: #23005c;
+    background: linear-gradient(135deg, #d0bcff, #62fae3);
+    box-shadow: 0 0 18px rgba(208, 188, 255, 0.28);
+}
+
+.role-tree-node-identity {
+    min-width: 0;
+}
+
+.role-tree-node-name {
+    margin: 0;
+    color: #dae2fd;
+    font-size: 19px;
+    line-height: 1.2;
+    font-weight: 800;
+}
+
+.role-tree-node-role {
+    display: block;
+    margin-top: 4px;
+    color: #d0bcff;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.role-tree-node-description {
+    min-height: 44px;
+    margin: 0 0 14px;
+    color: #cbc3d7;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.role-tree-node-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 12px;
+    margin-bottom: 12px;
+    border-top: 1px solid rgba(149, 142, 160, 0.18);
+    color: #958ea0;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.role-tree-permissions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.role-tree-permission-chip {
+    padding: 5px 9px;
+    border-radius: 10px;
+    background: rgba(49, 57, 77, 0.92);
+    color: #dae2fd;
+    border: 1px solid rgba(149, 142, 160, 0.16);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.role-tree-empty {
+    width: 520px;
+    max-width: 100%;
+    margin: 80px auto;
+    padding: 28px;
+    text-align: center;
+    border-radius: 20px;
+    background: rgba(23, 31, 51, 0.8);
+    border: 1px solid rgba(149, 142, 160, 0.22);
+    color: #cbc3d7;
+    font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+    .role-tree-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .role-tree-metrics {
+        grid-template-columns: repeat(2, minmax(160px, 1fr));
+    }
+
+    .role-tree-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .role-tree-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .role-tree-actions {
+        justify-content: stretch;
+    }
+
+    .role-tree-action-button {
+        flex: 1;
+    }
+}
+
+/* =========================
+   Sales report view
+   ========================= */
+
+.sales-report-page {
+    gap: 24px;
+}
+
+.sales-report-header-button {
+    min-height: 42px;
+    border-radius: 999px;
+    font-weight: 800;
+}
+
+.sales-report-header-button vaadin-icon {
+    margin-inline-end: 6px;
+}
+
+.sales-report-metrics-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(190px, 1fr));
+    gap: 16px;
+}
+
+.sales-report-metric-card.app-card {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+    overflow: hidden;
+}
+
+.sales-report-metric-card.app-card::before {
+    content: "";
+    position: absolute;
+    top: -36px;
+    right: -36px;
+    width: 110px;
+    height: 110px;
+    border-radius: 999px;
+    background: rgba(68, 226, 205, 0.10);
+    filter: blur(22px);
+    pointer-events: none;
+}
+
+.sales-report-metric-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+.sales-report-metric-label {
+    color: var(--tn-text-muted);
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.sales-report-metric-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: rgba(208, 188, 255, 0.12);
+    color: var(--tn-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sales-report-metric-icon vaadin-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.sales-report-metric-value {
+    color: var(--tn-text);
+    font-size: 32px;
+    line-height: 1.2;
+    font-weight: 800;
+    position: relative;
+    z-index: 1;
+}
+
+.sales-report-metric-helper {
+    color: var(--tn-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+    position: relative;
+    z-index: 1;
+}
+
+.sales-report-content-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.sales-report-chart-card.app-card,
+.sales-report-transactions-card.app-card {
+    padding: 24px;
+}
+
+.sales-report-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.sales-report-card-title {
+    margin: 0;
+    color: var(--tn-text);
+    font-size: 22px;
+    line-height: 1.3;
+    font-weight: 800;
+}
+
+.sales-report-card-helper,
+.sales-report-summary-text {
+    color: var(--tn-text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.sales-report-chart {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 22px;
+}
+
+.sales-report-chart-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sales-report-chart-labels {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sales-report-chart-event {
+    color: var(--tn-text);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.sales-report-chart-value {
+    color: var(--tn-secondary-fixed);
+    font-size: 14px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.sales-report-chart-track {
+    width: 100%;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--tn-surface-highest);
+    overflow: hidden;
+}
+
+.sales-report-chart-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--tn-secondary), var(--tn-primary));
+    box-shadow: 0 0 18px rgba(68, 226, 205, 0.22);
+}
+
+.sales-report-summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sales-report-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sales-report-step {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(208, 188, 255, 0.08);
+    border: 1px solid rgba(208, 188, 255, 0.14);
+}
+
+.sales-report-step-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: rgba(68, 226, 205, 0.14);
+    color: var(--tn-secondary-fixed);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.sales-report-step-text {
+    color: var(--tn-text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.sales-report-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.sales-report-grid {
+    min-width: 780px;
+    background: transparent;
+}
+
+.sales-report-grid::part(header-cell) {
+    background: rgba(6, 14, 32, 0.58);
+    color: var(--tn-text-muted);
+    font-weight: 800;
+    border-bottom: 1px solid rgba(73, 68, 84, 0.45);
+}
+
+.sales-report-grid::part(body-cell) {
+    background: rgba(23, 31, 51, 0.26);
+    color: var(--tn-text);
+    border-bottom: 1px solid rgba(73, 68, 84, 0.24);
+}
+
+.sales-report-grid::part(row):hover ::part(body-cell) {
+    background: rgba(34, 42, 61, 0.58);
+}
+
+@media (max-width: 1100px) {
+    .sales-report-metrics-grid {
+        grid-template-columns: repeat(2, minmax(190px, 1fr));
+    }
+
+    .sales-report-content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .sales-report-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sales-report-card-header {
+        flex-direction: column;
+    }
+}
 
