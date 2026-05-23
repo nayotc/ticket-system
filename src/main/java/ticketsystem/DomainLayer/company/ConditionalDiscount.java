@@ -8,10 +8,9 @@ public class ConditionalDiscount extends VisibleDiscount{
                                LocalDateTime endTime,
                                double percentage,
                                String targetTicketType,
-                               String targetEventName,
                                String condition) {
         
-        super(name, startTime, endTime, percentage, targetTicketType, targetEventName);
+        super(name, startTime, endTime, percentage, targetTicketType);
         
         this.condition = condition;
     }
