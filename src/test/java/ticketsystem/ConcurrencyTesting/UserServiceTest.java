@@ -197,6 +197,11 @@ public class UserServiceTest {
                     startLatch.await();
                     userService.updateMemberUsername(memberTokens[userIndex], "password" + userIndex,
                             "user" + userIndex, collisionUsername);
+                } catch (IllegalArgumentException e) {
+                    // Expected for users who lose the race after another thread already took the username.
+                    if (!"Username is already taken.".equals(e.getMessage())) {
+                        exceptions.add(e);
+                    }
                 } catch (Throwable t) {
                     exceptions.add(t);
                     if (t instanceof InterruptedException) {
