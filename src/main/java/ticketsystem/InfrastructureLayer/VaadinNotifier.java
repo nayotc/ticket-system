@@ -1,9 +1,9 @@
 package ticketsystem.InfrastructureLayer;
 
 import java.util.List;
-import java.util.Set;
 
 import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.DomainLayer.notifications.Notification;
 
 public class VaadinNotifier implements INotifier {
 
@@ -16,26 +16,25 @@ public class VaadinNotifier implements INotifier {
     }
 
     @Override
-    public void notifyUser(String userId, String message) {
+    public void notifyUser(String sessionId, String message) {
+        String userId = SessionManager.getUserIdForSession(sessionId);
         if (SessionManager.isUserOnline(userId)) {
-            // user logged in:send notification immediately to all active sessions of the user
-            Set<String> sessionIds = SessionManager.getUserSessions(userId);
-            for (String sessionId : sessionIds) {
-                broadcaster.broadcast(sessionId, message);
-            }
+            // user logged in:send notification immediately to user
+            broadcaster.broadcast(sessionId, message, notificationRepository);
         } else {
             // user not logged in: save the notification for later delivery when the user logs in
-            notificationRepository.save(userId, message);
+            Notification notification = new Notification(Long.parseLong(userId), sessionId, message);
+            notificationRepository.save(notification);
         }
     }
 
     //called when a user logs in and becomes a subscribed user
     public void handleUserLogin(String userId, String sessionId) {
         SessionManager.registerSession(userId, sessionId);
-        List<String> delayedMessages = notificationRepository.getAndClear(userId);
+        List<Notification> delayedMessages = notificationRepository.getAndClear(userId);
         if (delayedMessages != null) {
-            for (String msg : delayedMessages) {
-                broadcaster.broadcast(sessionId, msg);
+            for (Notification msg : delayedMessages) {
+                broadcaster.broadcast(sessionId, msg.getMessage(), notificationRepository);
             }
         }
     }

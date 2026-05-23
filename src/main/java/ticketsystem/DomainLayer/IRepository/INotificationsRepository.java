@@ -2,9 +2,23 @@ package ticketsystem.DomainLayer.IRepository;
 
 import java.util.List;
 
+import ticketsystem.DomainLayer.notifications.Notification;
+
 public interface INotificationsRepository {
 
-    void save(String userId, String message);
+    void save(Notification notification);
 
-    List<String> getAndClear(String userId);
+    List<Notification> getAndClear(String memberId);
+
+    long generateNotificationId();
+
+    Notification getById(long notificationId);
+
+    List<Notification> findPendingByMemberId(long memberId);
+
+    List<Notification> findAllByMemberId(long memberId);
+
+    void markAsDelivered(long notificationId);
+
+    void markAsRead(long notificationId);
 }

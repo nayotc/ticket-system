@@ -40,4 +40,12 @@ public class SessionManager {
     public static String getUserIdForSession(String sessionId) {
         return sessionUserMap.get(sessionId);
     }
+
+    public static String getSessionIdForUser(String userId) {
+        Set<String> sessions = userSessions.get(userId);
+        if (sessions != null && !sessions.isEmpty()) {
+            return sessions.iterator().next(); // return any active session id for the user
+        }
+        return null;
+    }
 }
