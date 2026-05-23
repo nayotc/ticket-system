@@ -4,9 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Repository;
 
 import ticketsystem.DomainLayer.user.Member;
 
+@Repository
 public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUserRepository {
 
     private Map<Long, Member> registeredMembersMap;

@@ -3,6 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -10,6 +11,7 @@ import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
 
+@Service
 public class UserService {
     
     private final IUserRepository userRepository;
