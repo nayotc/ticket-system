@@ -208,11 +208,10 @@ public class UserServiceTest {
             userService.updateMemberUsername(loginToken2, "password1", "user1", "newUser1");
         }, "Updating member username should throw when the token does not belong to the user");
 
-        // Act: attempt to update user1's password using user2's token
-        boolean result2 = userService.updateMemberPassword(loginToken2, "password1", "user1", "newPassword1");
-
-        // Assert: password update still returns false because updateMemberPassword was not changed yet
-        assertFalse(result2, "Updating member password should fail when the token does not belong to the user");
+        // Act & Assert: attempt to update user1's password using user2's token
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.updateMemberPassword(loginToken2, "password1", "user1", "newPassword1");
+        }, "Updating member password should throw when the token does not belong to the user");
     }
 
     @Test
@@ -227,11 +226,10 @@ public class UserServiceTest {
             userService.updateMemberUsername(loginToken, "oldPassword", "WrongUserToUpdate", "updatedUser");
         }, "Updating member username should throw with incorrect current username");
 
-        // Act: attempt to update password with incorrect current username
-        boolean result2 = userService.updateMemberPassword(loginToken, "oldPassword", "WrongUserToUpdate", "newPassword");
-
-        // Assert: password update still returns false because updateMemberPassword was not changed yet
-        assertFalse(result2, "Updating member password should fail with incorrect current username");
+        // Act & Assert: attempt to update password with incorrect current username
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.updateMemberPassword(loginToken, "oldPassword", "WrongUserToUpdate", "newPassword");
+        }, "Updating member password should throw with incorrect current username");
     }
 
     @Test
@@ -246,11 +244,10 @@ public class UserServiceTest {
             userService.updateMemberUsername(loginToken, "wrongPassword", "userToUpdate", "updatedUser");
         }, "Updating member username should throw with incorrect current password");
 
-        // Act: attempt to update password with incorrect current password
-        boolean result2 = userService.updateMemberPassword(loginToken, "wrongPassword", "userToUpdate", "newPassword");
-
-        // Assert: password update still returns false because updateMemberPassword was not changed yet
-        assertFalse(result2, "Updating member password should fail with incorrect current password");
+        // Act & Assert: attempt to update password with incorrect current password
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.updateMemberPassword(loginToken, "wrongPassword", "userToUpdate", "newPassword");
+        }, "Updating member password should throw with incorrect current password");
     }
 
     @Test

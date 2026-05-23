@@ -207,26 +207,38 @@ public class UserService {
     // providing their current username, password, and new password.
     public boolean updateMemberPassword(String sessionToken, String password, String username, String newPassword) {
         try {
+            if (username == null || username.isBlank()) {
+                logger.logEvent("Update password rejected: username is blank", LogLevel.WARN);
+                throw new IllegalArgumentException("Username cannot be blank.");
+            }
+
             if (newPassword == null || newPassword.isBlank()) {
                 logger.logEvent("Update password rejected: new password is blank", LogLevel.WARN);
-                return false;
+                throw new IllegalArgumentException("New password cannot be blank.");
             }
+
             if (authenticateMemberForUpdate(sessionToken, password, username) == null) {
                 logger.logEvent(
                         "Update password rejected: authentication failed, username=" + username,
                         LogLevel.WARN);
-                return false;
+                throw new IllegalArgumentException("Invalid username or password.");
             }
+
             String newHashedPassword = passwordService.hashPassword(newPassword);
             boolean ok = userRepository.updateRegisteredMemberPassword(username, newHashedPassword);
-            if (ok) {
-                logger.logEvent("Member password updated: username=" + username, LogLevel.INFO);
-            } else {
+            if (!ok) {
                 logger.logEvent(
                         "Update password rejected: repository update failed, username=" + username,
                         LogLevel.WARN);
+                throw new IllegalStateException("Password update failed. Please try again.");
             }
-            return ok;
+
+            logger.logEvent("Member password updated: username=" + username, LogLevel.INFO);
+            return true;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
             logger.logError("Update member password failed", e);
             throw e;
