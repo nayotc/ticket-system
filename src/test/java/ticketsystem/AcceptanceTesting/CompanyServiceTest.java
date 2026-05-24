@@ -214,7 +214,7 @@ public class CompanyServiceTest {
         DiscountRequestDTO discountDTO = createVisibleDiscountDTO();
 
         // Act
-        companyService.addDiscountPolicyToCompany(founderToken, companyDTO.getId(), discountDTO);
+        companyService.addDiscountToCompany(founderToken, companyDTO.getId(), discountDTO);
 
         // Assert
         Company company = companyRepository.findById(companyDTO.getId())
@@ -231,7 +231,7 @@ public class CompanyServiceTest {
         DiscountRequestDTO discountDTO = createConditionalDiscountDTO();
 
         // Act
-        companyService.addDiscountPolicyToCompany(founderToken, companyDTO.getId(), discountDTO);
+        companyService.addDiscountToCompany(founderToken, companyDTO.getId(), discountDTO);
 
         // Assert
         Company company = companyRepository.findById(companyDTO.getId())
@@ -248,7 +248,7 @@ public class CompanyServiceTest {
         DiscountRequestDTO discountDTO = createCouponDiscountDTO();
 
         // Act
-        companyService.addDiscountPolicyToCompany(founderToken, companyDTO.getId(), discountDTO);
+        companyService.addDiscountToCompany(founderToken, companyDTO.getId(), discountDTO);
 
         // Assert
         Company company = companyRepository.findById(companyDTO.getId())
@@ -266,7 +266,7 @@ public class CompanyServiceTest {
 
         // Act + Assert
         assertThrows(IllegalArgumentException.class, () ->
-                companyService.addDiscountPolicyToCompany(nonFounderToken, companyDTO.getId(), discountDTO)
+                companyService.addDiscountToCompany(nonFounderToken, companyDTO.getId(), discountDTO)
         );
     }
 
@@ -277,7 +277,7 @@ public class CompanyServiceTest {
 
         // Act + Assert
         assertThrows(Exception.class, () ->
-                companyService.addDiscountPolicyToCompany(founderToken, 999999L, discountDTO)
+                companyService.addDiscountToCompany(founderToken, 999999L, discountDTO)
         );
     }
 
@@ -288,7 +288,7 @@ public class CompanyServiceTest {
 
         // Act + Assert
         assertThrows(Exception.class, () ->
-                companyService.addDiscountPolicyToCompany(founderToken, companyDTO.getId(), null)
+                companyService.addDiscountToCompany(founderToken, companyDTO.getId(), null)
         );
     }
     //helper
