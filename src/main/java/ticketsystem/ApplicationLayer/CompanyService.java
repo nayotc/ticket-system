@@ -1,9 +1,5 @@
 package ticketsystem.ApplicationLayer;
 
-import java.time.LocalDateTime;
-
-import org.hibernate.validator.constraints.CompositionType;
-
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.DiscountRequestDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -333,7 +329,7 @@ public class CompanyService {
 
         } catch (Exception e) {
 
-            logger.logEvent( "Failed to add visible discount to company",ISystemLogger.LogLevel.WARN);
+            logger.logEvent( "Failed to add discount to company",ISystemLogger.LogLevel.WARN);
             throw e;
         }
     }

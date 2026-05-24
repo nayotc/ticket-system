@@ -28,8 +28,8 @@ class CouponDiscountTest {
         assertEquals(0, BigDecimal.valueOf(20).compareTo(result));
     }
 
-    @Test
-    void GivenIncorrectCouponCode_WhenCalculateDiscount_ThenThrowException() {
+   @Test
+    void GivenIncorrectCouponCode_WhenCalculateDiscount_ThenReturnZero() {
         CouponDiscount discount = new CouponDiscount(
                 "Coupon BGU10",
                 1L,
@@ -37,15 +37,30 @@ class CouponDiscountTest {
                 BigDecimal.valueOf(10)
         );
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () ->
-                discount.calculateDiscount(
-                        BigDecimal.valueOf(200),
-                        1,
-                        "WRONG"
-                )
+        BigDecimal result = discount.calculateDiscount(
+                BigDecimal.valueOf(200),
+                1,
+                "WRONG"
         );
 
-        assertTrue(exception.getMessage().contains("Incorrect coupon"));
+        assertEquals(0, BigDecimal.ZERO.compareTo(result));
+    }
+    @Test
+    void GivenNullCouponCode_WhenCalculateDiscount_ThenReturnZero() {
+        CouponDiscount discount = new CouponDiscount(
+                "Coupon BGU10",
+                1L,
+                "BGU10",
+                BigDecimal.valueOf(10)
+        );
+
+        BigDecimal result = discount.calculateDiscount(
+                BigDecimal.valueOf(200),
+                1,
+                null
+        );
+
+        assertEquals(0, BigDecimal.ZERO.compareTo(result));
     }
 
     @Test

@@ -48,7 +48,7 @@ public class Company {
         this.ratingCount = other.ratingCount;
         this.purchasePolicy = other.purchasePolicy;
         this.discountPolicy = other.discountPolicy;
-        this.discountId=other.discountId;
+        this.discountId = new AtomicLong(other.discountId.get());
     }
     // --- Getters & Setters ---
 
@@ -164,6 +164,9 @@ public class Company {
     public void addDiscountToCompany(DiscountRequestDTO discountDTO) {
 
     DiscountTypes discount;
+    if (discountDTO == null) {
+        throw new IllegalArgumentException("Discount details cannot be null");
+    }
 
     switch (discountDTO.getDiscountKind()) {
 

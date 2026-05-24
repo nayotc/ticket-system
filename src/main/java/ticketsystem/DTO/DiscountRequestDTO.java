@@ -19,7 +19,6 @@ public class DiscountRequestDTO {
 
     // for coupun
     private String couponCode;
-    private Double fixedAmount;
 
     public DiscountKind  getDiscountKind(){
         return discountType;
@@ -47,9 +46,6 @@ public String getCouponCode() {
     return couponCode;
 }
 
-public Double getFixedAmount() {
-    return fixedAmount;
-}
 public Integer getTicketThreshold() {
     return ticketThreshold;
 }
@@ -85,9 +81,6 @@ public void setCouponCode(String couponCode) {
     this.couponCode = couponCode;
 }
 
-public void setFixedAmount(Double fixedAmount) {
-    this.fixedAmount = fixedAmount;
-}
 public void setTicketThreshold(Integer ticketThreshold) {
     this.ticketThreshold = ticketThreshold;
 }

@@ -35,11 +35,12 @@ public class CouponDiscount extends DiscountTypes{
 
     @Override
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
-        if(!couponCode.equals(this.couponCode))
-             throw new IllegalArgumentException ("Incorrect coupon");
-        
+        if (couponCode == null || !couponCode.equals(this.couponCode)) {
+            return BigDecimal.ZERO;
+        }
+
         return totalPrice
-            .multiply(percentage)
-            .divide(BigDecimal.valueOf(100));
+                .multiply(percentage)
+                .divide(BigDecimal.valueOf(100));
     }
 }

@@ -327,7 +327,6 @@ public class CompanyServiceTest {
         dto.setEndTime(LocalDateTime.now().plusDays(7));
         dto.setCouponCode("BGU10");
         dto.setPercentage(new BigDecimal(10));
-        dto.setFixedAmount(0.0);
 
         return dto;
     }

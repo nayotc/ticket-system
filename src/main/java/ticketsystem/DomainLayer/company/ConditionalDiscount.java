@@ -74,7 +74,6 @@ public class ConditionalDiscount extends VisibleDiscount{
         return super.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 
-
     public enum Condition {
     MIN_TICKET,
     MAX_TICKET,

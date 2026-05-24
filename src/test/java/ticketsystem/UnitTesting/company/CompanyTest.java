@@ -157,7 +157,11 @@ class CompanyTest {
 
     @Test
     void GivenNullDiscountDTO_WhenAddDiscountToCompany_ThenExceptionIsThrown() {
-        assertThrows(NullPointerException.class, () -> company.addDiscountToCompany(null));
+        Exception exception = assertThrows(IllegalArgumentException.class, () ->
+                company.addDiscountToCompany(null)
+        );
+
+        assertTrue(exception.getMessage().contains("Discount details cannot be null"));
     }
 
     private DiscountRequestDTO createVisibleDiscountDTO() {
@@ -195,7 +199,6 @@ class CompanyTest {
         dto.setEndTime(LocalDateTime.now().plusDays(7));
         dto.setCouponCode("BGU10");
         dto.setPercentage(new BigDecimal(10));
-        dto.setFixedAmount(0.0);
 
         return dto;
     }
