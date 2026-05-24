@@ -4,7 +4,6 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Anchor;
-import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -31,9 +30,9 @@ public class PublicHeader extends Header {
         brand.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.HOME));
 
         HorizontalLayout navLinks = new HorizontalLayout(
-                navLink("אירועים", UiRoutes.EVENTS),
-                navLink("הפקות", UiRoutes.OWNER),
-                navLink("עזרה", UiRoutes.HELP)
+                createEventsButton(),
+                createProductionsButton()
+                //navLink("עזרה", UiRoutes.HELP)
         );
         navLinks.addClassName("nav-links");
 
@@ -45,12 +44,6 @@ public class PublicHeader extends Header {
         HorizontalLayout actions = new HorizontalLayout();
         actions.addClassName("top-actions");
 
-        actions.add(createCartButton());
-
-        if (UiSession.isLoggedIn()) {
-            actions.add(createAccountButton());
-        }
-
         if (showAuthAction) {
             actions.add(createAuthButton());
         }
@@ -58,40 +51,54 @@ public class PublicHeader extends Header {
         add(brand, navLinks, search, actions);
     }
 
-    private Div createCartButton() {
-        Div wrapper = new Div();
-        wrapper.addClassName("header-icon-wrapper");
-
-        Button button = new Button(VaadinIcon.CART.create());
+    private Button createEventsButton() {
+        Button button = new Button("אירועים");
         button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        button.addClassName("header-icon-button");
-        button.getElement().setAttribute("aria-label", "עגלת קניות");
-        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.ACTIVE_ORDER_CART));
-
-        Span badge = new Span(String.valueOf(getCartItemsCount()));
-        badge.addClassName("header-cart-badge");
-
-        wrapper.add(button, badge);
-        return wrapper;
-    }
-
-    private Button createAccountButton() {
-        Button button = new Button(VaadinIcon.USER.create());
-        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        button.addClassName("header-icon-button");
-        button.getElement().setAttribute("aria-label", "אזור אישי");
-        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT));
-
+        button.addClassName("nav-link");
+        button.addClassName("nav-link-button");
+        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.EVENTS));
         return button;
     }
 
-    private int getCartItemsCount() {
-        try {
-            int count = presenter.getActiveCartItemsCount(UiSession.getMemberToken());
-            return Math.max(count, 0);
-        } catch (Exception exception) {
-            return 0;
+    private Button createProductionsButton() {
+        Button button = new Button("הפקות");
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.addClassName("nav-link");
+        button.addClassName("nav-link-button");
+        button.addClickListener(event -> navigateToProductions());
+        return button;
+    }
+
+    private void navigateToProductions() {
+        if (!UiSession.isLoggedIn()) {
+            UI.getCurrent().navigate(UiRoutes.LOGIN);
+            return;
         }
+
+        try {
+            Long managedCompanyId = presenter.getFirstManagedCompanyId(UiSession.getMemberToken());
+
+            if (managedCompanyId == null || managedCompanyId <= 0) {
+                UI.getCurrent().navigate(UiRoutes.CREATE_PRODUCTION_COMPANY);
+                return;
+            }
+
+            UI.getCurrent().navigate(routeForCompanyManagement(managedCompanyId));
+        } catch (Exception exception) {
+            /*
+             * Temporary safe fallback for UI stage.
+             *
+             * Later, the real presenter should decide whether the error means:
+             * 1. invalid session -> navigate to login
+             * 2. no managed company -> navigate to create company
+             * 3. system error -> show error popup
+             */
+            UI.getCurrent().navigate(UiRoutes.CREATE_PRODUCTION_COMPANY);
+        }
+    }
+
+    private String routeForCompanyManagement(long companyId) {
+        return UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(companyId));
     }
 
     private Button createAuthButton() {
@@ -122,13 +129,21 @@ public class PublicHeader extends Header {
     }
 
     public interface HeaderPresenter {
-        int getActiveCartItemsCount(String sessionToken);
+        /*
+         * Return the id of one company the user can manage.
+         *
+         * Expected behavior:
+         * - return company id when the member is owner/founder/manager of at least one company
+         * - return null when the member is not linked to any production company
+         * - throw exception only for real failures, for example invalid session or system error
+         */
+        Long getFirstManagedCompanyId(String sessionToken) throws Exception;
     }
 
-    private static final class EmptyHeaderPresenter implements HeaderPresenter {
+    private static class EmptyHeaderPresenter implements HeaderPresenter {
         @Override
-        public int getActiveCartItemsCount(String sessionToken) {
-            return 0;
+        public Long getFirstManagedCompanyId(String sessionToken) {
+            return null;
         }
     }
 }

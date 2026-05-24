@@ -4985,3 +4985,296 @@ vaadin-date-picker-month-calendar {
     }
 }
 
+
+/* =========================
+   Create production company and management header updates
+   ========================= */
+
+.management-header {
+    min-height: 72px;
+    width: 100%;
+    padding: 0 var(--app-page-padding);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    position: sticky;
+    top: 0;
+    z-index: 35;
+    background: rgba(11, 19, 38, 0.78);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid rgba(73, 68, 84, 0.35);
+}
+
+.management-header-title {
+    color: var(--tn-primary);
+    font-size: 22px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.management-header-actions,
+.management-mobile-actions {
+    align-items: center;
+    gap: 12px;
+}
+
+.management-header-account-button {
+    background: rgba(45, 52, 73, 0.86);
+    color: var(--tn-text);
+    border: 1px solid rgba(149, 142, 160, 0.24);
+    border-radius: 999px;
+    font-weight: 800;
+    gap: 8px;
+}
+
+.management-header-account-button:hover {
+    background: var(--tn-surface-highest);
+    color: var(--tn-secondary);
+    border-color: rgba(208, 188, 255, 0.45);
+}
+
+.management-header-logout-button,
+.management-mobile-logout-button {
+    min-height: 40px;
+    padding: 0 18px;
+}
+
+.management-side-nav-links {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.management-side-nav-bottom {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(73, 68, 84, 0.35);
+}
+
+.management-create-company-button {
+    width: 100%;
+    min-height: 46px;
+    background: var(--tn-primary-container);
+    color: var(--tn-on-primary);
+    border-radius: 999px;
+    font-weight: 800;
+    box-shadow: 0 0 18px rgba(160, 120, 255, 0.28);
+    gap: 8px;
+}
+
+.management-create-company-button:hover {
+    background: var(--tn-primary-fixed);
+    color: var(--tn-on-primary);
+    box-shadow: 0 0 24px rgba(208, 188, 255, 0.42);
+}
+
+.create-company-dialog-card {
+    width: min(440px, calc(100vw - 32px));
+    padding: 28px;
+    box-sizing: border-box;
+    border-radius: 24px;
+    background: rgba(23, 31, 51, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    color: var(--tn-text);
+}
+
+.create-company-dialog-title {
+    margin: 0;
+    color: var(--tn-primary-fixed);
+    font-size: 26px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.create-company-dialog-description {
+    margin: -6px 0 2px;
+    color: var(--tn-text-muted);
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.create-company-dialog-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.create-company-dialog-actions vaadin-button {
+    width: 100%;
+}
+
+.create-company-dialog-submit {
+    min-height: 44px;
+}
+
+.create-production-company-page {
+    position: relative;
+    width: 100%;
+    min-height: calc(100vh - 72px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 72px var(--app-page-padding);
+    box-sizing: border-box;
+    overflow: hidden;
+    background: var(--tn-background);
+    color: var(--tn-text);
+}
+
+.create-production-company-background {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.create-production-company-glow {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(90px);
+    opacity: 0.24;
+}
+
+.create-production-company-glow-primary {
+    width: 420px;
+    height: 420px;
+    top: -140px;
+    left: -120px;
+    background: var(--tn-primary);
+}
+
+.create-production-company-glow-secondary {
+    width: 500px;
+    height: 500px;
+    right: 10%;
+    bottom: 8%;
+    background: var(--tn-secondary);
+    opacity: 0.12;
+}
+
+.create-production-company-card.app-card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 540px;
+    padding: 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    border-radius: 28px;
+    background: rgba(45, 52, 73, 0.70);
+    border-color: rgba(149, 142, 160, 0.30);
+    box-shadow: 0 0 40px rgba(3, 198, 178, 0.05), 0 24px 70px rgba(0, 0, 0, 0.38);
+}
+
+.create-production-company-icon-circle {
+    width: 96px;
+    height: 96px;
+    margin-bottom: 24px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tn-surface);
+    border: 2px solid rgba(149, 142, 160, 0.40);
+    color: var(--tn-primary);
+    box-shadow: 0 0 22px rgba(208, 188, 255, 0.14);
+}
+
+.create-production-company-icon-circle vaadin-icon {
+    width: 46px;
+    height: 46px;
+}
+
+.create-production-company-title {
+    margin: 0;
+    color: var(--tn-text);
+    font-size: 32px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.create-production-company-description {
+    margin: 10px 0 28px;
+    color: var(--tn-text-muted);
+    font-size: 18px;
+    line-height: 1.55;
+}
+
+.create-production-company-reveal-button {
+    min-height: 48px;
+    padding: 0 24px;
+    border-radius: 14px;
+    gap: 8px;
+}
+
+.create-production-company-form {
+    width: 100%;
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: create-company-form-in 0.24s ease-out;
+}
+
+.create-production-company-submit-button {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 14px;
+    gap: 8px;
+}
+
+@keyframes create-company-form-in {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .management-header {
+        display: none;
+    }
+
+    .management-mobile-actions {
+        display: flex;
+    }
+
+    .create-production-company-page {
+        min-height: calc(100vh - 64px);
+        padding-top: 48px;
+        padding-bottom: 48px;
+    }
+}
+
+@media (max-width: 600px) {
+    .create-production-company-card.app-card {
+        padding: 26px 20px;
+    }
+
+    .create-production-company-title {
+        font-size: 28px;
+    }
+
+    .create-production-company-description {
+        font-size: 16px;
+    }
+
+    .create-company-dialog-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
