@@ -2,6 +2,7 @@ package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -299,8 +300,7 @@ public class CompanyServiceTest {
         dto.setName("Visible Discount");
         dto.setStartTime(LocalDateTime.now().minusDays(1));
         dto.setEndTime(LocalDateTime.now().plusDays(7));
-        dto.setPercentage(10.0);
-        dto.setTargetTicketType("REGULAR");
+        dto.setPercentage(new BigDecimal(10));
 
         return dto;
     }
@@ -312,8 +312,7 @@ public class CompanyServiceTest {
         dto.setName("Conditional Discount");
         dto.setStartTime(LocalDateTime.now().minusDays(1));
         dto.setEndTime(LocalDateTime.now().plusDays(7));
-        dto.setPercentage(15.0);
-        dto.setTargetTicketType("REGULAR");
+        dto.setPercentage(new BigDecimal(15));
         dto.setCondition(Condition.MIN_TICKET);
         dto.setTicketThreshold(2);
         return dto;
@@ -327,7 +326,7 @@ public class CompanyServiceTest {
         dto.setStartTime(LocalDateTime.now().minusDays(1));
         dto.setEndTime(LocalDateTime.now().plusDays(7));
         dto.setCouponCode("BGU10");
-        dto.setPercentage(10.0);
+        dto.setPercentage(new BigDecimal(10));
         dto.setFixedAmount(0.0);
 
         return dto;

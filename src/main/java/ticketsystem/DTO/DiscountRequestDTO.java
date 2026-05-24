@@ -1,5 +1,6 @@
 package ticketsystem.DTO;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import ticketsystem.DomainLayer.company.ConditionalDiscount.Condition;
@@ -9,10 +10,7 @@ public class DiscountRequestDTO {
 
     private String name;
     private DiscountKind discountType;
-    private Double percentage;
-
-    private String targetTicketType;
-    
+    private BigDecimal percentage;    
     // for condition
     private Condition condition;
     private Integer ticketThreshold;
@@ -37,12 +35,8 @@ public LocalDateTime getEndTime() {
     return endTime;
 }
 
-public Double getPercentage() {
+public BigDecimal getPercentage() {
     return percentage;
-}
-
-public String getTargetTicketType() {
-    return targetTicketType;
 }
 
 public Condition getCondition() {
@@ -79,14 +73,9 @@ public void setEndTime(LocalDateTime endTime) {
     this.endTime = endTime;
 }
 
-public void setPercentage(Double percentage) {
+public void setPercentage(BigDecimal percentage) {
     this.percentage = percentage;
 }
-
-public void setTargetTicketType(String targetTicketType) {
-    this.targetTicketType = targetTicketType;
-}
-
 
 public void setCondition(Condition condition) {
     this.condition = condition;

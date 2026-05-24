@@ -159,7 +159,7 @@ public class Company {
     }
 
 
-    public boolean addDiscountToCompany(DiscountRequestDTO discountDTO) {
+    public void addDiscountToCompany(DiscountRequestDTO discountDTO) {
 
     DiscountTypes discount;
 
@@ -168,9 +168,7 @@ public class Company {
         case VISIBLE:
             discount = new VisibleDiscount(
                     discountDTO.getName(),getNextId(),
-                    discountDTO.getPercentage(),
-                    discountDTO.getTargetTicketType()
-            );
+                    discountDTO.getPercentage());
             break;
 
         case CONDITIONAL:
@@ -178,7 +176,6 @@ public class Company {
                     discountDTO.getStartTime(),
                     discountDTO.getEndTime(),
                     discountDTO.getPercentage(),
-                    discountDTO.getTargetTicketType(),
                     discountDTO.getCondition(),discountDTO.getTicketThreshold()
             );
             break;
@@ -187,9 +184,7 @@ public class Company {
             discount = new CouponDiscount(
                     discountDTO.getName(),getNextId(),
                     discountDTO.getCouponCode(),
-                    discountDTO.getPercentage(),
-                    discountDTO.getFixedAmount()
-                    
+                    discountDTO.getPercentage()                    
             );
            break;
 
@@ -197,6 +192,7 @@ public class Company {
             throw new IllegalArgumentException("Unsupported discount type");
     }
     getDiscountPolicy().addDiscount(discount);
-    return true;
-}
+    }
+
+   
 }

@@ -11,11 +11,10 @@ public class ConditionalDiscount extends VisibleDiscount{
         public ConditionalDiscount(String name,Long id,
                                LocalDateTime startTime,
                                LocalDateTime endTime,
-                               double percentage,
-                               String targetTicketType,
+                               BigDecimal percentage,
                                Condition condition, Integer ticketThreshold) {
         
-        super(name,id,percentage, targetTicketType);
+        super(name,id,percentage);
         
         this.condition = condition;
         this.ticketThreshold = ticketThreshold;
@@ -72,7 +71,6 @@ public class ConditionalDiscount extends VisibleDiscount{
         if (!isConditionSatisfied(ticketCount)) {
             return BigDecimal.ZERO;
         }
-
         return super.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 

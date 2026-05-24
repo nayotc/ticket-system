@@ -4,48 +4,42 @@ import java.time.LocalDateTime;
 
 public class CouponDiscount extends DiscountTypes{
     private String couponCode;
-    private Double percentage;
-    private Double fixedAmount;
-    private String targetEventName;
+    private BigDecimal percentage;
+    
 
     public CouponDiscount(String name,Long id,
                           String couponCode,
-                          Double percentage,
-                          Double fixedAmount
+                          BigDecimal percentage
                           ) {
         super(id,name);
 
         this.couponCode = couponCode;
         this.percentage = percentage;
-        this.fixedAmount = fixedAmount;
     }
     public String getCouponCode() {
         return couponCode;
     }
 
-    public Double getPercentage() {
+    public BigDecimal getPercentage() {
         return percentage;
     }
 
-    public Double getFixedAmount() {
-        return fixedAmount;
-    }
 
     public void setCouponCode(String couponCode) {
         this.couponCode = couponCode;
     }
 
-    public void setPercentage(Double percentage) {
+    public void setPercentage(BigDecimal percentage) {
         this.percentage = percentage;
-    }
-
-    public void setFixedAmount(Double fixedAmount) {
-        this.fixedAmount = fixedAmount;
     }
 
     @Override
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'calculateDiscount'");
+        if(!couponCode.equals(this.couponCode))
+             throw new IllegalArgumentException ("Incorrect coupon");
+        
+        return totalPrice
+            .multiply(percentage)
+            .divide(BigDecimal.valueOf(100));
     }
 }

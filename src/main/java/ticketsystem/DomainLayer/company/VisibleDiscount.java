@@ -3,19 +3,17 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class VisibleDiscount extends DiscountTypes {
-    private double percentage;
+    private BigDecimal percentage;
     private String targetTicketType; 
     
 
     public VisibleDiscount(String name,Long id,
-                           double percentage,
-                           String targetTicketType
+                           BigDecimal percentage
                           ) {
         super(id,name);
         this.percentage = percentage;
-        this.targetTicketType = targetTicketType;
     }
-public double getPercentage() {
+public BigDecimal getPercentage() {
         return percentage;
     }
 
@@ -23,7 +21,7 @@ public double getPercentage() {
         return targetTicketType;
     }
 
-    public void setPercentage(double percentage) {
+    public void setPercentage(BigDecimal percentage) {
         this.percentage = percentage;
     }
 
@@ -34,7 +32,8 @@ public double getPercentage() {
  
     @Override
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'calculateDiscount'");
+         return totalPrice
+            .multiply(percentage)
+            .divide(BigDecimal.valueOf(100));
     }
 }

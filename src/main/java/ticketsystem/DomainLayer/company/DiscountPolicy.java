@@ -33,7 +33,16 @@ public class DiscountPolicy {
         return compositionType;
     }
 
-    //
+    /**
+     * Calculates the total discount amount that should be deducted
+     * from the original price according to the discount composition policy.
+     *
+     * SUM  -> all applicable discounts are accumulated together.
+     * MAX  -> only the highest applicable discount is applied.
+     *
+     * The method returns the discount amount itself,
+     * not the final price after discount.
+     */
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {       
         
         if (discounts.isEmpty()) {
@@ -41,9 +50,27 @@ public class DiscountPolicy {
         }
  
         if (compositionType == DiscountCompositionType.SUM) {
-            return discounts.stream()
-                    .map(d -> d.calculateDiscount(totalPrice, ticketCount, couponCode))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal currentPrice = totalPrice;
+
+            for (DiscountTypes discount : discounts) {
+
+                BigDecimal discountAmount =
+                        discount.calculateDiscount(
+                                currentPrice,
+                                ticketCount,
+                                couponCode
+                        );
+
+                currentPrice = currentPrice.subtract(discountAmount);
+
+                if (currentPrice.compareTo(BigDecimal.ZERO) < 0) {
+                    currentPrice = BigDecimal.ZERO;
+                    break;
+                }
+            }
+
+            return totalPrice.subtract(currentPrice);
         }
 
         return discounts.stream()

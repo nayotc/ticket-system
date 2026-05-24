@@ -339,7 +339,7 @@ public class CompanyService {
     }
 
 
-        public void removeDiscounFromCompany(
+    public void removeDiscountFromCompany(
             String token,Long companyId /*ID?? */ ) throws Exception{
         //TO DO
     }

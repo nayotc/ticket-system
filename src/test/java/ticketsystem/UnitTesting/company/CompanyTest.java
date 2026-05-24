@@ -1,7 +1,8 @@
-package ticketsystem.UnitTesting;
+package ticketsystem.UnitTesting.company;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -128,9 +129,8 @@ class CompanyTest {
     void GivenVisibleDiscountDTO_WhenAddDiscountToCompany_ThenVisibleDiscountIsAdded() {
         DiscountRequestDTO dto = createVisibleDiscountDTO();
 
-        boolean result = company.addDiscountToCompany(dto);
+        company.addDiscountToCompany(dto);
 
-        assertTrue(result);
         assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
         assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof VisibleDiscount);
     }
@@ -139,9 +139,8 @@ class CompanyTest {
     void GivenConditionalDiscountDTO_WhenAddDiscountToCompany_ThenConditionalDiscountIsAdded() {
         DiscountRequestDTO dto = createConditionalDiscountDTO();
 
-        boolean result = company.addDiscountToCompany(dto);
+        company.addDiscountToCompany(dto);
 
-        assertTrue(result);
         assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
         assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
     }
@@ -150,9 +149,8 @@ class CompanyTest {
     void GivenCouponDiscountDTO_WhenAddDiscountToCompany_ThenCouponDiscountIsAdded() {
         DiscountRequestDTO dto = createCouponDiscountDTO();
 
-        boolean result = company.addDiscountToCompany(dto);
+        company.addDiscountToCompany(dto);
 
-        assertTrue(result);
         assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
         assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof CouponDiscount);
     }
@@ -169,8 +167,7 @@ class CompanyTest {
         dto.setName("Summer Sale");
         dto.setStartTime(LocalDateTime.now().minusDays(1));
         dto.setEndTime(LocalDateTime.now().plusDays(7));
-        dto.setPercentage(10.0);
-        dto.setTargetTicketType("REGULAR");
+        dto.setPercentage(new BigDecimal(10));
 
         return dto;
     }
@@ -182,8 +179,7 @@ class CompanyTest {
         dto.setName("Buy 2 Tickets Discount");
         dto.setStartTime(LocalDateTime.now().minusDays(1));
         dto.setEndTime(LocalDateTime.now().plusDays(7));
-        dto.setPercentage(15.0);
-        dto.setTargetTicketType("REGULAR");
+        dto.setPercentage(new BigDecimal(15));
         dto.setCondition(Condition.MIN_TICKET);
         dto.setTicketThreshold(2);
 
@@ -198,7 +194,7 @@ class CompanyTest {
         dto.setStartTime(LocalDateTime.now().minusDays(1));
         dto.setEndTime(LocalDateTime.now().plusDays(7));
         dto.setCouponCode("BGU10");
-        dto.setPercentage(10.0);
+        dto.setPercentage(new BigDecimal(10));
         dto.setFixedAmount(0.0);
 
         return dto;
