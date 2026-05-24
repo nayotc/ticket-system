@@ -9,9 +9,6 @@ public class DiscountRequestDTO {
 
     private String name;
     private DiscountKind discountType;
-
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
     private Double percentage;
 
     private String targetTicketType;
@@ -19,7 +16,8 @@ public class DiscountRequestDTO {
     // for condition
     private Condition condition;
     private Integer ticketThreshold;
-    private LocalDateTime dateThreshold;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
 
     // for coupun
     private String couponCode;
@@ -62,9 +60,6 @@ public Integer getTicketThreshold() {
     return ticketThreshold;
 }
 
-public LocalDateTime getDateThreshold() {
-    return dateThreshold;
-}
 
 
 //for test
@@ -108,8 +103,4 @@ public void setTicketThreshold(Integer ticketThreshold) {
     this.ticketThreshold = ticketThreshold;
 }
 
-
-public void setDateThreshold(LocalDateTime dateThreshold) {
-    this.dateThreshold = dateThreshold;
-}
 }

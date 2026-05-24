@@ -9,13 +9,11 @@ public class CouponDiscount extends DiscountTypes{
     private String targetEventName;
 
     public CouponDiscount(String name,
-                          LocalDateTime startTime,
-                          LocalDateTime endTime,
                           String couponCode,
                           Double percentage,
                           Double fixedAmount
                           ) {
-        super(name, startTime, endTime);
+        super(name);
 
         this.couponCode = couponCode;
         this.percentage = percentage;

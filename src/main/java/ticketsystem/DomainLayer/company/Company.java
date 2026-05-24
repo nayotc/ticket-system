@@ -152,8 +152,6 @@ public class Company {
         case VISIBLE:
             discount = new VisibleDiscount(
                     discountDTO.getName(),
-                    discountDTO.getStartTime(),
-                    discountDTO.getEndTime(),
                     discountDTO.getPercentage(),
                     discountDTO.getTargetTicketType()
             );
@@ -165,15 +163,13 @@ public class Company {
                     discountDTO.getEndTime(),
                     discountDTO.getPercentage(),
                     discountDTO.getTargetTicketType(),
-                    discountDTO.getCondition(),discountDTO.getTicketThreshold(),discountDTO.getDateThreshold()
+                    discountDTO.getCondition(),discountDTO.getTicketThreshold()
             );
             break;
 
         case COUPON:
             discount = new CouponDiscount(
                     discountDTO.getName(),
-                    discountDTO.getStartTime(),
-                    discountDTO.getEndTime(),
                     discountDTO.getCouponCode(),
                     discountDTO.getPercentage(),
                     discountDTO.getFixedAmount()
