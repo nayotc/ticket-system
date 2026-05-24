@@ -14,8 +14,6 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.IntegerField;
-import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.timepicker.TimePicker;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -51,8 +49,8 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
     private final DatePicker eventDate = new DatePicker("תאריך");
     private final TimePicker eventTime = new TimePicker("שעה");
     private final ComboBox<EventLocation> location = new ComboBox<>("מיקום");
-    private final NumberField ticketPrice = new NumberField("מחיר כרטיס");
-    private final IntegerField trafficThreshold = new IntegerField("רף עומס");
+    private final TextField ticketPrice = new TextField("מחיר כרטיס");
+    private final TextField trafficThreshold = new TextField("רף עומס");
     private final ComboBox<MapSizeOption> mapSize = new ComboBox<>("גודל מפה");
 
     private final Span selectedMapSizeText = new Span();
@@ -104,8 +102,18 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
 
         eventName.setPrefixComponent(VaadinIcon.TICKET.create());
         artistName.setPrefixComponent(VaadinIcon.MICROPHONE.create());
+        ticketPrice.addClassName("create-event-price-field");
+        trafficThreshold.addClassName("create-event-traffic-field");
+
         ticketPrice.setPrefixComponent(VaadinIcon.MONEY.create());
         trafficThreshold.setPrefixComponent(VaadinIcon.USERS.create());
+
+        Span shekel = new Span("₪");
+        shekel.addClassName("create-event-price-currency");
+        ticketPrice.setSuffixComponent(shekel);
+
+        ticketPrice.getElement().setAttribute("inputmode", "decimal");
+        trafficThreshold.getElement().setAttribute("inputmode", "numeric");
 
         category.setItems(EventCategory.values());
         category.setItemLabelGenerator(this::prettyEnum);
@@ -115,13 +123,6 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
 
         eventDate.setMin(LocalDate.now());
         eventTime.setStep(Duration.ofMinutes(15));
-
-        ticketPrice.setMin(0);
-        ticketPrice.setStep(1);
-        ticketPrice.setSuffixComponent(new Span("₪"));
-
-        trafficThreshold.setMin(1);
-        trafficThreshold.setStepButtonsVisible(true);
 
         mapSize.setItems(mapSizeOptions());
         mapSize.setItemLabelGenerator(MapSizeOption::label);
@@ -259,15 +260,9 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         Div previewOverlay = new Div();
         previewOverlay.addClassName("create-event-map-preview-overlay");
 
-        Div locationBadge = new Div();
-        locationBadge.addClassName("create-event-location-badge");
-        locationBadge.add(VaadinIcon.EXPAND_SQUARE.create(), new Span("קנבס ראשוני לבניית מפה"));
-
-        selectedMapSizeText.addClassName("create-event-map-size-text");
-
         mapGridPreview.addClassName("create-event-map-grid-preview");
 
-        previewOverlay.add(locationBadge, selectedMapSizeText, mapGridPreview);
+        previewOverlay.add(mapGridPreview);
         preview.add(previewOverlay);
 
         section.add(title, subtitle, mapSize, preview, createMapInfoCard());
@@ -423,27 +418,43 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
     }
 
     private BigDecimal readPrice() {
-        Double value = ticketPrice.getValue();
+        String rawValue = ticketPrice.getValue();
 
-        if (value == null) {
+        if (rawValue == null || rawValue.isBlank()) {
             throw new IllegalArgumentException("חובה להזין מחיר כרטיס.");
         }
 
-        if (value < 0) {
-            throw new IllegalArgumentException("מחיר כרטיס לא יכול להיות שלילי.");
-        }
+        try {
+            BigDecimal price = new BigDecimal(rawValue.trim());
 
-        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP);
+            if (price.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("מחיר כרטיס לא יכול להיות שלילי.");
+            }
+
+            return price.setScale(2, RoundingMode.HALF_UP);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("מחיר כרטיס חייב להיות מספר תקין.");
+        }
     }
 
     private Long readTrafficThreshold() {
-        Integer value = trafficThreshold.getValue();
+        String rawValue = trafficThreshold.getValue();
 
-        if (value == null || value <= 0) {
-            throw new IllegalArgumentException("רף עומס חייב להיות מספר חיובי.");
+        if (rawValue == null || rawValue.isBlank()) {
+            throw new IllegalArgumentException("חובה להזין רף עומס.");
         }
 
-        return value.longValue();
+        try {
+            long value = Long.parseLong(rawValue.trim());
+
+            if (value <= 0) {
+                throw new IllegalArgumentException("רף עומס חייב להיות מספר חיובי.");
+            }
+
+            return value;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("רף עומס חייב להיות מספר שלם תקין.");
+        }
     }
 
     private void refreshMapPreview() {
@@ -455,31 +466,39 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
             return;
         }
 
-        selectedMapSizeText.setText(selected.label() + " · " + selected.height() + "x" + selected.width());
-
+        selectedMapSizeText.setText("");
         mapGridPreview.removeAll();
 
         Div canvas = new Div();
-        canvas.addClassName("create-event-clean-canvas");
+        canvas.addClassName("create-event-proportional-canvas");
+
+        int height = selected.height();
+        int width = selected.width();
+
+        double ratio = width / (double) height;
+
+        int previewHeight = switch (selected.name()) {
+            case "קטנה" -> 150;
+            case "בינונית" -> 180;
+            case "גדולה" -> 215;
+            default -> 235;
+        };
+
+        int previewWidth = (int) Math.round(previewHeight * ratio);
+
+        canvas.getStyle().set("width", previewWidth + "px");
+        canvas.getStyle().set("height", previewHeight + "px");
 
         Div stage = new Div();
-        stage.addClassName("create-event-clean-stage");
-        stage.add(VaadinIcon.MUSIC.create(), new Span("במה"));
+        stage.addClassName("create-event-proportional-stage");
+        stage.setText("במה");
 
-        Div centerText = new Div();
-        centerText.addClassName("create-event-clean-center-text");
-        centerText.setText("אזורים, מושבים וכניסות יוגדרו בשלב הבא");
+        Div dimensions = new Div();
+        dimensions.addClassName("create-event-proportional-dimensions");
+        dimensions.setText(height + "X" + width);
 
-        canvas.add(stage, centerText);
-
-        Div helper = new Div();
-        helper.addClassName("create-event-clean-helper");
-        helper.add(
-                VaadinIcon.INFO_CIRCLE.create(),
-                new Span("זהו שטח העבודה הראשוני של המפה. כרגע מוצגת רק הבמה כעוגן לבנייה.")
-        );
-
-        mapGridPreview.add(canvas, helper);
+        canvas.add(stage, dimensions);
+        mapGridPreview.add(canvas);
     }
 
     private List<MapSizeOption> mapSizeOptions() {

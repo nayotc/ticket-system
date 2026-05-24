@@ -6770,6 +6770,190 @@ vaadin-button.pre-sale-code-submit-button[theme~="primary"]:hover {
 }
 
 /* =========================
+   Create event proportional map preview
+   ========================= */
+
+.create-event-map-preview {
+    min-height: 300px;
+    overflow: hidden;
+}
+
+.create-event-map-preview-overlay {
+    position: relative;
+    inset: auto;
+    min-height: 300px;
+    padding: 22px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.create-event-map-grid-preview {
+    width: 100%;
+    min-height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.create-event-proportional-canvas {
+    position: relative;
+    max-width: 100%;
+    border-radius: 22px;
+    background:
+        linear-gradient(rgba(208, 188, 255, 0.10) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(208, 188, 255, 0.10) 1px, transparent 1px),
+        radial-gradient(circle at 50% 18%, rgba(208, 188, 255, 0.16), transparent 34%),
+        rgba(6, 14, 32, 0.58);
+    background-size: 28px 28px, 28px 28px, auto, auto;
+    border: 1px dashed rgba(208, 188, 255, 0.46);
+    box-shadow:
+        inset 0 0 30px rgba(208, 188, 255, 0.08),
+        0 18px 36px rgba(0, 0, 0, 0.24);
+    transition: width 0.22s ease, height 0.22s ease;
+    overflow: hidden;
+}
+
+.create-event-proportional-stage {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26%;
+    min-width: 72px;
+    max-width: 130px;
+    height: 30px;
+    border-radius: 999px 999px 14px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(208, 188, 255, 0.24);
+    border: 1px solid rgba(208, 188, 255, 0.48);
+    color: var(--tn-primary-fixed);
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 0 16px rgba(208, 188, 255, 0.18);
+}
+
+.create-event-proportional-dimensions {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tn-secondary-fixed);
+    font-size: 28px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 16px rgba(68, 226, 205, 0.28);
+}
+
+/* Hide old preview labels and old helper elements */
+.create-event-location-badge,
+.create-event-map-size-text,
+.create-event-clean-helper,
+.create-event-blueprint-helper,
+.create-event-blueprint-width,
+.create-event-blueprint-height,
+.create-event-blueprint-center,
+.create-event-blueprint-grid,
+.create-event-blueprint-cell,
+.create-event-clean-center-text,
+.create-event-clean-stage,
+.create-event-blueprint-stage {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .create-event-map-preview {
+        min-height: 250px;
+    }
+
+    .create-event-map-preview-overlay {
+        min-height: 250px;
+        padding: 16px;
+    }
+
+    .create-event-map-grid-preview {
+        min-height: 200px;
+    }
+
+    .create-event-proportional-dimensions {
+        font-size: 22px;
+    }
+}
+
+/* Step indicator */
+.create-event-progress {
+    gap: 16px;
+}
+
+.create-event-step-label {
+    font-size: 14px;
+    line-height: 18px;
+    font-weight: 900;
+}
+
+.create-event-step-title {
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 700;
+}
+
+.create-event-progress-bars {
+    gap: 10px;
+}
+
+.create-event-progress-bar {
+    width: 42px;
+    height: 10px;
+    border-radius: 999px;
+}
+
+.create-event-progress-bar-active {
+    box-shadow: 0 0 16px rgba(68, 226, 205, 0.48);
+}
+
+/* =========================
+   Create event text-based numeric fields
+   ========================= */
+
+.create-event-price-field,
+.create-event-traffic-field {
+    direction: rtl;
+}
+
+.create-event-price-field::part(input-field),
+.create-event-traffic-field::part(input-field) {
+    direction: rtl;
+}
+
+.create-event-price-field::part(input),
+.create-event-traffic-field::part(input) {
+    direction: rtl;
+    text-align: right;
+}
+
+.create-event-price-field::part(prefix),
+.create-event-traffic-field::part(prefix) {
+    color: var(--tn-primary);
+    margin-inline-end: 10px;
+}
+
+.create-event-price-field::part(suffix) {
+    color: var(--tn-text-muted);
+    font-weight: 800;
+    margin-inline-start: auto;
+}
+
+.create-event-price-currency {
+    color: var(--tn-text-muted);
+    font-weight: 800;
+}
+
+/* =========================
    Waiting queue
    ========================= */
 
