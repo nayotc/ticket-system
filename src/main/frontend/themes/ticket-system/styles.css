@@ -5207,6 +5207,7 @@ vaadin-date-picker-month-calendar {
     border: 1px solid rgba(149, 142, 160, 0.24);
     border-radius: 999px;
     font-weight: 800;
+    gap: 8px;
 }
 
 .management-header-account-button:hover {
@@ -5975,6 +5976,796 @@ vaadin-button.pre-sale-code-submit-button[theme~="primary"]:hover {
 @media (max-width: 600px) {
     .pre-sale-code-actions {
         grid-template-columns: 1fr;
+    }
+}
+
+/* =========================
+   Create event view
+   ========================= */
+
+.create-event-page {
+    position: relative;
+    width: 100%;
+    gap: 28px;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.create-event-background {
+    position: absolute;
+    top: -48px;
+    left: calc(-1 * var(--app-page-padding));
+    right: calc(-1 * var(--app-page-padding));
+    height: 420px;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.create-event-background-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: min(620px, 58vw);
+    height: 100%;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(208, 188, 255, 0.28), transparent 34%),
+        radial-gradient(circle at 38% 46%, rgba(68, 226, 205, 0.18), transparent 32%),
+        linear-gradient(135deg, rgba(160, 120, 255, 0.16), rgba(11, 19, 38, 0));
+    filter: blur(2px);
+    opacity: 0.95;
+}
+
+.create-event-background-fade {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(11, 19, 38, 0.05), var(--tn-background) 62%),
+        linear-gradient(180deg, rgba(11, 19, 38, 0.05), var(--tn-background) 92%);
+}
+
+.create-event-progress {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.create-event-progress-labels {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.create-event-step-label {
+    color: var(--tn-secondary);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.create-event-step-title {
+    color: var(--tn-text-muted);
+    font-size: 14px;
+}
+
+.create-event-progress-bars {
+    display: flex;
+    gap: 8px;
+}
+
+.create-event-progress-bar {
+    width: 34px;
+    height: 8px;
+    border-radius: 999px;
+}
+
+.create-event-progress-bar-active {
+    background: var(--tn-secondary);
+    box-shadow: 0 0 12px rgba(68, 226, 205, 0.38);
+}
+
+.create-event-progress-bar-inactive {
+    background: var(--tn-surface-highest);
+}
+
+.create-event-card.app-card {
+    position: relative;
+    padding: 32px;
+    overflow: hidden;
+    border-radius: 28px;
+    background: rgba(23, 31, 51, 0.82);
+}
+
+.create-event-card-top-border {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 4px;
+    background: linear-gradient(270deg, var(--tn-primary), var(--tn-secondary), transparent);
+    opacity: 0.78;
+}
+
+.create-event-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+    gap: 32px;
+    align-items: start;
+}
+
+.create-event-section {
+    gap: 16px;
+    min-width: 0;
+}
+
+.create-event-section-title {
+    margin: 0;
+    color: var(--tn-primary-fixed);
+    font-size: 24px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.create-event-section-subtitle {
+    margin: -6px 0 8px;
+    color: var(--tn-text-muted);
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.create-event-two-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    width: 100%;
+}
+
+.create-event-page vaadin-text-field::part(input-field),
+.create-event-page vaadin-number-field::part(input-field),
+.create-event-page vaadin-integer-field::part(input-field),
+.create-event-page vaadin-date-picker::part(input-field),
+.create-event-page vaadin-time-picker::part(input-field),
+.create-event-page vaadin-combo-box::part(input-field) {
+    min-height: 50px;
+    border-radius: 14px;
+    background: rgba(23, 31, 51, 0.78);
+    border: 1px solid rgba(149, 142, 160, 0.30);
+}
+
+.create-event-map-preview {
+    position: relative;
+    width: 100%;
+    min-height: 340px;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(149, 142, 160, 0.34);
+    background:
+        radial-gradient(circle at 24% 18%, rgba(208, 188, 255, 0.24), transparent 30%),
+        radial-gradient(circle at 72% 78%, rgba(68, 226, 205, 0.18), transparent 34%),
+        linear-gradient(145deg, rgba(6, 14, 32, 0.98), rgba(34, 42, 61, 0.90));
+    box-shadow: inset 0 0 34px rgba(208, 188, 255, 0.08), 0 18px 42px rgba(0, 0, 0, 0.26);
+}
+
+.create-event-map-preview-overlay {
+    position: absolute;
+    inset: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background:
+        linear-gradient(180deg, rgba(11, 19, 38, 0.04), rgba(11, 19, 38, 0.68));
+}
+
+.create-event-location-badge {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    background: rgba(23, 31, 51, 0.82);
+    border: 1px solid rgba(208, 188, 255, 0.30);
+    color: var(--tn-primary-fixed);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.create-event-location-badge vaadin-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--tn-secondary);
+}
+
+.create-event-map-size-text {
+    color: var(--tn-text);
+    font-size: 18px;
+    line-height: 1.4;
+    font-weight: 800;
+}
+
+.create-event-map-grid-preview {
+    flex: 1;
+    min-height: 210px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    justify-content: center;
+}
+
+.create-event-preview-stage {
+    width: 72%;
+    min-height: 34px;
+    margin: 0 auto;
+    border-radius: 999px 999px 18px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(208, 188, 255, 0.26);
+    border: 1px solid rgba(208, 188, 255, 0.44);
+    color: var(--tn-primary-fixed);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    box-shadow: 0 0 18px rgba(208, 188, 255, 0.18);
+}
+
+.create-event-preview-seating-area {
+    display: grid;
+    gap: 7px;
+    width: min(360px, 100%);
+    margin: 0 auto;
+    padding: 14px;
+    box-sizing: border-box;
+    border-radius: 18px;
+    background: rgba(11, 19, 38, 0.46);
+    border: 1px solid rgba(149, 142, 160, 0.22);
+}
+
+.create-event-preview-seat {
+    aspect-ratio: 1;
+    min-height: 14px;
+    border-radius: 5px;
+    background: var(--tn-primary);
+    border: 1px solid rgba(233, 221, 255, 0.42);
+    box-shadow: 0 0 10px rgba(208, 188, 255, 0.18);
+}
+
+.create-event-preview-seat-special {
+    background: var(--tn-secondary);
+    border-color: rgba(98, 250, 227, 0.50);
+    box-shadow: 0 0 12px rgba(68, 226, 205, 0.22);
+}
+
+.create-event-preview-standing-area {
+    width: min(300px, 92%);
+    min-height: 42px;
+    margin: 0 auto;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(68, 226, 205, 0.12);
+    border: 1px dashed rgba(68, 226, 205, 0.42);
+    color: var(--tn-secondary-fixed);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.create-event-map-info-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    box-sizing: border-box;
+    border-radius: 18px;
+    background: rgba(19, 27, 46, 0.72);
+    border: 1px solid rgba(149, 142, 160, 0.18);
+}
+
+.create-event-info-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--tn-text-muted);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.create-event-info-row vaadin-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--tn-primary);
+    flex: 0 0 auto;
+}
+
+.create-event-actions {
+    margin-top: 30px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(73, 68, 84, 0.55);
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+}
+
+.create-event-primary-button {
+    min-height: 48px;
+    padding: 0 24px;
+    border-radius: 14px;
+    gap: 8px;
+}
+
+.create-event-secondary-button {
+    color: var(--tn-primary);
+    font-weight: 800;
+}
+
+@media (max-width: 1000px) {
+    .create-event-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .create-event-map-preview {
+        min-height: 310px;
+    }
+}
+
+@media (max-width: 640px) {
+    .create-event-background {
+        top: -24px;
+        height: 320px;
+    }
+
+    .create-event-background-image {
+        width: 100%;
+    }
+
+    .create-event-card.app-card {
+        padding: 24px 18px;
+        border-radius: 22px;
+    }
+
+    .create-event-two-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .create-event-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .create-event-primary-button,
+    .create-event-secondary-button {
+        width: 100%;
+    }
+
+    .create-event-progress {
+        align-items: flex-start;
+    }
+}
+
+/* =========================
+   Create event corrections
+   ========================= */
+
+.create-event-page {
+    overflow: visible;
+    isolation: auto;
+}
+
+.create-event-background {
+    position: fixed;
+    top: 72px;
+    left: 0;
+    right: 256px;
+    height: 390px;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.create-event-background-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: auto;
+    width: min(680px, 52vw);
+    height: 100%;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(208, 188, 255, 0.34), transparent 34%),
+        radial-gradient(circle at 24% 42%, rgba(68, 226, 205, 0.18), transparent 34%),
+        linear-gradient(135deg, rgba(160, 120, 255, 0.18), rgba(11, 19, 38, 0));
+    filter: blur(1px);
+    opacity: 1;
+}
+
+.create-event-background-fade {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(11, 19, 38, 0.04) 0%, rgba(11, 19, 38, 0.88) 58%, var(--tn-background) 100%),
+        linear-gradient(180deg, rgba(11, 19, 38, 0.02) 0%, var(--tn-background) 96%);
+}
+
+.create-event-page > .view-header,
+.create-event-page > .create-event-card {
+    position: relative;
+    z-index: 1;
+}
+
+.create-event-map-preview {
+    min-height: 300px;
+}
+
+.create-event-map-grid-preview {
+    flex: 1;
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+}
+
+.create-event-blueprint-canvas {
+    position: relative;
+    width: min(420px, 100%);
+    min-height: 190px;
+    margin: 0 auto;
+    border-radius: 20px;
+    background:
+        linear-gradient(rgba(208, 188, 255, 0.10) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(208, 188, 255, 0.10) 1px, transparent 1px),
+        rgba(6, 14, 32, 0.52);
+    background-size: 28px 28px;
+    border: 1px dashed rgba(208, 188, 255, 0.46);
+    box-shadow: inset 0 0 28px rgba(208, 188, 255, 0.08);
+    overflow: hidden;
+}
+
+.create-event-blueprint-grid {
+    position: absolute;
+    inset: 18px;
+    display: grid;
+    gap: 8px;
+    opacity: 0.42;
+}
+
+.create-event-blueprint-cell {
+    min-height: 18px;
+    border-radius: 7px;
+    border: 1px solid rgba(149, 142, 160, 0.24);
+    background: rgba(23, 31, 51, 0.44);
+}
+
+.create-event-blueprint-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: fit-content;
+    max-width: calc(100% - 48px);
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 999px;
+    background: rgba(23, 31, 51, 0.88);
+    border: 1px solid rgba(68, 226, 205, 0.30);
+    color: var(--tn-secondary-fixed);
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+    box-shadow: 0 0 18px rgba(68, 226, 205, 0.12);
+}
+
+.create-event-blueprint-center vaadin-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--tn-secondary);
+    margin-left: 8px;
+}
+
+.create-event-blueprint-width,
+.create-event-blueprint-height {
+    position: absolute;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(45, 52, 73, 0.90);
+    border: 1px solid rgba(149, 142, 160, 0.28);
+    color: var(--tn-text-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.create-event-blueprint-width {
+    left: 16px;
+    bottom: 14px;
+}
+
+.create-event-blueprint-height {
+    right: 16px;
+    top: 14px;
+}
+
+.create-event-blueprint-helper {
+    width: min(420px, 100%);
+    margin: 0 auto;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    border-radius: 14px;
+    background: rgba(208, 188, 255, 0.08);
+    border: 1px solid rgba(208, 188, 255, 0.16);
+    color: var(--tn-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.create-event-blueprint-helper vaadin-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--tn-primary);
+    margin-left: 8px;
+    flex: 0 0 auto;
+}
+
+.create-event-actions {
+    justify-content: flex-end;
+    direction: ltr;
+}
+
+.create-event-actions vaadin-button {
+    direction: rtl;
+}
+
+.create-event-primary-button vaadin-icon,
+.create-event-secondary-button vaadin-icon,
+.create-event-actions vaadin-button vaadin-icon {
+    margin-left: 8px;
+    margin-right: 0;
+}
+
+.create-event-primary-button::part(prefix),
+.create-event-secondary-button::part(prefix) {
+    margin-inline-end: 8px;
+}
+
+@media (max-width: 768px) {
+    .create-event-background {
+        top: 64px;
+        right: 0;
+        height: 320px;
+    }
+
+    .create-event-background-image {
+        width: 120%;
+    }
+}
+
+@media (max-width: 640px) {
+    .create-event-actions {
+        justify-content: stretch;
+        direction: rtl;
+    }
+
+    .create-event-blueprint-center {
+        white-space: normal;
+        text-align: center;
+        border-radius: 16px;
+    }
+}
+
+.create-event-blueprint-stage {
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(260px, 70%);
+    min-height: 38px;
+    border-radius: 999px 999px 18px 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(208, 188, 255, 0.22);
+    border: 1px solid rgba(208, 188, 255, 0.46);
+    color: var(--tn-primary-fixed);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    box-shadow: 0 0 18px rgba(208, 188, 255, 0.18);
+    z-index: 2;
+}
+
+.create-event-blueprint-stage vaadin-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--tn-primary-fixed);
+    margin-left: 8px;
+}
+
+.create-event-blueprint-center {
+    top: 60%;
+}
+
+/* =========================
+   Create event final preview fixes
+   ========================= */
+
+.create-event-map-preview {
+    min-height: 310px;
+    overflow: visible;
+}
+
+.create-event-map-preview-overlay {
+    position: relative;
+    inset: auto;
+    min-height: 310px;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.create-event-location-badge,
+.create-event-map-size-text {
+    position: relative;
+    z-index: 3;
+}
+
+.create-event-map-size-text {
+    display: block;
+    margin: 0;
+    padding: 0 4px;
+    color: var(--tn-text);
+    font-size: 16px;
+    line-height: 1.4;
+    font-weight: 800;
+}
+
+.create-event-map-grid-preview {
+    position: relative;
+    z-index: 2;
+    min-height: 185px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    justify-content: flex-start;
+}
+
+.create-event-clean-canvas {
+    position: relative;
+    width: min(430px, 100%);
+    min-height: 178px;
+    margin: 0 auto;
+    border-radius: 20px;
+    background:
+        linear-gradient(rgba(208, 188, 255, 0.10) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(208, 188, 255, 0.10) 1px, transparent 1px),
+        rgba(6, 14, 32, 0.54);
+    background-size: 28px 28px;
+    border: 1px dashed rgba(208, 188, 255, 0.44);
+    box-shadow: inset 0 0 28px rgba(208, 188, 255, 0.08);
+    overflow: hidden;
+}
+
+.create-event-clean-stage {
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(250px, 72%);
+    min-height: 38px;
+    border-radius: 999px 999px 18px 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(208, 188, 255, 0.22);
+    border: 1px solid rgba(208, 188, 255, 0.46);
+    color: var(--tn-primary-fixed);
+    font-size: 14px;
+    font-weight: 800;
+    box-shadow: 0 0 18px rgba(208, 188, 255, 0.18);
+}
+
+.create-event-clean-stage vaadin-icon {
+    width: 18px;
+    height: 18px;
+    margin-left: 8px;
+}
+
+.create-event-clean-center-text {
+    position: absolute;
+    right: 24px;
+    left: 24px;
+    bottom: 28px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(23, 31, 51, 0.78);
+    border: 1px solid rgba(68, 226, 205, 0.24);
+    color: var(--tn-secondary-fixed);
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.45;
+    font-weight: 800;
+}
+
+.create-event-clean-helper {
+    width: min(430px, 100%);
+    margin: 0 auto;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    border-radius: 14px;
+    background: rgba(208, 188, 255, 0.08);
+    border: 1px solid rgba(208, 188, 255, 0.16);
+    color: var(--tn-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.create-event-clean-helper vaadin-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--tn-primary);
+    margin-left: 8px;
+    flex: 0 0 auto;
+}
+
+/* Hide old preview parts if old CSS is still loaded */
+.create-event-blueprint-width,
+.create-event-blueprint-height,
+.create-event-blueprint-grid,
+.create-event-blueprint-cell,
+.create-event-preview-stage,
+.create-event-preview-seating-area,
+.create-event-preview-standing-area,
+.create-event-preview-seat {
+    display: none;
+}
+
+/* Buttons on the visual left side */
+.create-event-actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    direction: ltr;
+}
+
+.create-event-actions vaadin-button {
+    direction: rtl;
+}
+
+.create-event-actions vaadin-button vaadin-icon {
+    margin-left: 8px;
+    margin-right: 0;
+}
+
+.create-event-primary-button::part(prefix),
+.create-event-secondary-button::part(prefix) {
+    margin-inline-end: 8px;
+}
+
+@media (max-width: 640px) {
+    .create-event-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        direction: rtl;
+    }
+
+    .create-event-clean-canvas {
+        min-height: 165px;
     }
 }
 
