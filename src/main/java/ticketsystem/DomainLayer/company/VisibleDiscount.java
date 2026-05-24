@@ -8,12 +8,10 @@ public class VisibleDiscount extends DiscountTypes {
     
 
     public VisibleDiscount(String name,
-                           LocalDateTime startTime,
-                           LocalDateTime endTime,
                            double percentage,
                            String targetTicketType
                           ) {
-        super(name, startTime, endTime);
+        super(name);
         this.percentage = percentage;
         this.targetTicketType = targetTicketType;
     }

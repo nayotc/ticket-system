@@ -5,21 +5,18 @@ import java.time.LocalDateTime;
 public class ConditionalDiscount extends VisibleDiscount{
         private Condition condition;
         private Integer ticketThreshold;
-        private LocalDateTime dateThreshold;
 
         public ConditionalDiscount(String name,
                                LocalDateTime startTime,
                                LocalDateTime endTime,
                                double percentage,
                                String targetTicketType,
-                               Condition condition, Integer ticketThreshold,
-                               LocalDateTime dateThreshold) {
+                               Condition condition, Integer ticketThreshold) {
         
-        super(name, startTime, endTime, percentage, targetTicketType);
+        super(name,percentage, targetTicketType);
         
         this.condition = condition;
         this.ticketThreshold = ticketThreshold;
-        this.dateThreshold = dateThreshold;
     }
     public Condition getCondition() {
         return condition;
@@ -36,14 +33,6 @@ public class ConditionalDiscount extends VisibleDiscount{
     public void setTicketThreshold(Integer ticketThreshold) {
         this.ticketThreshold = ticketThreshold;
     }
-
-    public LocalDateTime getDateThreshold() {
-        return dateThreshold;
-    }
-
-    public void setDateThreshold(LocalDateTime dateThreshold) {
-        this.dateThreshold = dateThreshold;
-    }
     
     public boolean isConditionSatisfied(int ticketCount) {
         switch (condition) {
@@ -54,11 +43,24 @@ public class ConditionalDiscount extends VisibleDiscount{
                 return ticketThreshold != null && ticketCount <= ticketThreshold;
 
             case DATE:
-                return dateThreshold != null && LocalDateTime.now().isBefore(dateThreshold);
-
+                return isActiveNow();
             default:
                 return false;
         }
+    }
+
+    protected boolean isActiveNow() {
+        LocalDateTime now = LocalDateTime.now();
+
+        if (startTime != null && now.isBefore(startTime)) {
+            return false;
+        }
+
+        if (endTime != null && now.isAfter(endTime)) {
+            return false;
+        }
+
+        return true;
     }
 
     @Override

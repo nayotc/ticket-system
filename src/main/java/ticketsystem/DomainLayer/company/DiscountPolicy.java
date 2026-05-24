@@ -21,6 +21,7 @@ public class DiscountPolicy {
         discounts.add(discount);
     }
 
+    //return
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {       
         
         if (discounts.isEmpty()) {
