@@ -2,6 +2,7 @@ package ticketsystem.DTO;
 
 import java.time.LocalDateTime;
 
+import ticketsystem.DomainLayer.company.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountKind;
 
 public class DiscountRequestDTO {
@@ -16,7 +17,9 @@ public class DiscountRequestDTO {
     private String targetTicketType;
     
     // for condition
-    private String condition;
+    private Condition condition;
+    private Integer ticketThreshold;
+    private LocalDateTime dateThreshold;
 
     // for coupun
     private String couponCode;
@@ -44,9 +47,7 @@ public String getTargetTicketType() {
     return targetTicketType;
 }
 
-
-
-public String getCondition() {
+public Condition getCondition() {
     return condition;
 }
 
@@ -57,6 +58,14 @@ public String getCouponCode() {
 public Double getFixedAmount() {
     return fixedAmount;
 }
+public Integer getTicketThreshold() {
+    return ticketThreshold;
+}
+
+public LocalDateTime getDateThreshold() {
+    return dateThreshold;
+}
+
 
 //for test
 public void setName(String name) {
@@ -84,7 +93,7 @@ public void setTargetTicketType(String targetTicketType) {
 }
 
 
-public void setCondition(String condition) {
+public void setCondition(Condition condition) {
     this.condition = condition;
 }
 
@@ -94,5 +103,13 @@ public void setCouponCode(String couponCode) {
 
 public void setFixedAmount(Double fixedAmount) {
     this.fixedAmount = fixedAmount;
+}
+public void setTicketThreshold(Integer ticketThreshold) {
+    this.ticketThreshold = ticketThreshold;
+}
+
+
+public void setDateThreshold(LocalDateTime dateThreshold) {
+    this.dateThreshold = dateThreshold;
 }
 }

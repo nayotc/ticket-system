@@ -33,10 +33,6 @@ public class CouponDiscount extends DiscountTypes{
         return fixedAmount;
     }
 
-    public String getTargetEventName() {
-        return targetEventName;
-    }
-
     public void setCouponCode(String couponCode) {
         this.couponCode = couponCode;
     }
@@ -49,9 +45,6 @@ public class CouponDiscount extends DiscountTypes{
         this.fixedAmount = fixedAmount;
     }
 
-    public void setTargetEventName(String targetEventName) {
-        this.targetEventName = targetEventName;
-    }
     @Override
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
         // TODO Auto-generated method stub

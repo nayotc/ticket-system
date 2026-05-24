@@ -14,6 +14,7 @@ import ticketsystem.DomainLayer.company.CouponDiscount;
 import ticketsystem.DomainLayer.company.DiscountPolicy;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.company.VisibleDiscount;
+import ticketsystem.DomainLayer.company.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
 import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountKind;
 
@@ -183,7 +184,8 @@ class CompanyTest {
         dto.setEndTime(LocalDateTime.now().plusDays(7));
         dto.setPercentage(15.0);
         dto.setTargetTicketType("REGULAR");
-        dto.setCondition("MIN_TICKETS:2");
+        dto.setCondition(Condition.MIN_TICKET);
+        dto.setTicketThreshold(2);
 
         return dto;
     }

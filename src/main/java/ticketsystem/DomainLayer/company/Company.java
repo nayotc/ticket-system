@@ -160,13 +160,12 @@ public class Company {
             break;
 
         case CONDITIONAL:
-            discount = new ConditionalDiscount(
-                    discountDTO.getName(),
+            discount = new ConditionalDiscount(discountDTO.getName(),
                     discountDTO.getStartTime(),
                     discountDTO.getEndTime(),
                     discountDTO.getPercentage(),
                     discountDTO.getTargetTicketType(),
-                    discountDTO.getCondition()
+                    discountDTO.getCondition(),discountDTO.getTicketThreshold(),discountDTO.getDateThreshold()
             );
             break;
 

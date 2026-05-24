@@ -22,6 +22,7 @@ import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.company.ConditionalDiscount;
+import ticketsystem.DomainLayer.company.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.company.CouponDiscount;
 import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
 import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountKind;
@@ -313,8 +314,8 @@ public class CompanyServiceTest {
         dto.setEndTime(LocalDateTime.now().plusDays(7));
         dto.setPercentage(15.0);
         dto.setTargetTicketType("REGULAR");
-        dto.setCondition("MIN_TICKETS:2");
-
+        dto.setCondition(Condition.MIN_TICKET);
+        dto.setTicketThreshold(2);
         return dto;
     }
 

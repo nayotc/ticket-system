@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 public class VisibleDiscount extends DiscountTypes {
     private double percentage;
     private String targetTicketType; 
-    private String targetEventName;
     
 
     public VisibleDiscount(String name,
@@ -26,10 +25,6 @@ public double getPercentage() {
         return targetTicketType;
     }
 
-    public String getTargetEventName() {
-        return targetEventName;
-    }
-
     public void setPercentage(double percentage) {
         this.percentage = percentage;
     }
@@ -38,9 +33,7 @@ public double getPercentage() {
         this.targetTicketType = targetTicketType;
     }
 
-    public void setTargetEventName(String targetEventName) {
-        this.targetEventName = targetEventName;
-    }
+ 
     @Override
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
         // TODO Auto-generated method stub
