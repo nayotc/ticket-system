@@ -1,6 +1,7 @@
 package ticketsystem.DomainLayer.company;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DTO.DiscountRequestDTO;
 import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
@@ -17,6 +18,7 @@ public class Company {
     private Double rate = 0.0; // for search and filtering
     private Double totalRating = 0.0; // for calculating average rating
     private Integer ratingCount = 0; // for calculating average rating
+    private AtomicLong discountId=new AtomicLong(0L);
 
     // Version field for Optimistic Locking
     private long version;
@@ -152,6 +154,11 @@ public class Company {
 
     }
 
+    public Long getNextId() {
+        return discountId.incrementAndGet();
+    }
+
+
     public boolean addDiscountToCompany(DiscountRequestDTO discountDTO) {
 
     DiscountTypes discount;
@@ -160,14 +167,14 @@ public class Company {
 
         case VISIBLE:
             discount = new VisibleDiscount(
-                    discountDTO.getName(),
+                    discountDTO.getName(),getNextId(),
                     discountDTO.getPercentage(),
                     discountDTO.getTargetTicketType()
             );
             break;
 
         case CONDITIONAL:
-            discount = new ConditionalDiscount(discountDTO.getName(),
+            discount = new ConditionalDiscount(discountDTO.getName(),getNextId(),
                     discountDTO.getStartTime(),
                     discountDTO.getEndTime(),
                     discountDTO.getPercentage(),
@@ -178,7 +185,7 @@ public class Company {
 
         case COUPON:
             discount = new CouponDiscount(
-                    discountDTO.getName(),
+                    discountDTO.getName(),getNextId(),
                     discountDTO.getCouponCode(),
                     discountDTO.getPercentage(),
                     discountDTO.getFixedAmount()

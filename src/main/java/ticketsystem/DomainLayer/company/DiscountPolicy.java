@@ -4,11 +4,14 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DiscountPolicy {
 
     private List<DiscountTypes> discounts = new ArrayList<>();
     private DiscountCompositionType compositionType;
+   
 
     public DiscountPolicy(DiscountCompositionType compositionType) {
         this.compositionType = compositionType;
@@ -30,7 +33,7 @@ public class DiscountPolicy {
         return compositionType;
     }
 
-    //return
+    //
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {       
         
         if (discounts.isEmpty()) {

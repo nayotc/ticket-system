@@ -7,11 +7,11 @@ public class VisibleDiscount extends DiscountTypes {
     private String targetTicketType; 
     
 
-    public VisibleDiscount(String name,
+    public VisibleDiscount(String name,Long id,
                            double percentage,
                            String targetTicketType
                           ) {
-        super(name);
+        super(id,name);
         this.percentage = percentage;
         this.targetTicketType = targetTicketType;
     }

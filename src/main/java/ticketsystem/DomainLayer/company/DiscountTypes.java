@@ -1,21 +1,19 @@
 package ticketsystem.DomainLayer.company;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.DomainLayer.order.ActiveOrder;
 
 public abstract class DiscountTypes {
     protected String name;
-    protected LocalDateTime startTime;
-    protected LocalDateTime endTime;
-
-    public DiscountTypes(String name) {
+    private Long discountId;
+    public DiscountTypes(Long discountId,String name) {
+        this.discountId=discountId;
         this.name = name;
 
     }
 
+    public Long getDiscountId(){
+        return discountId;
+    }
     public String getName() {
         return name;
     }

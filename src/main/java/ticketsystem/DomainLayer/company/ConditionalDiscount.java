@@ -5,18 +5,22 @@ import java.time.LocalDateTime;
 public class ConditionalDiscount extends VisibleDiscount{
         private Condition condition;
         private Integer ticketThreshold;
+        private LocalDateTime startTime;
+        private LocalDateTime endTime;
 
-        public ConditionalDiscount(String name,
+        public ConditionalDiscount(String name,Long id,
                                LocalDateTime startTime,
                                LocalDateTime endTime,
                                double percentage,
                                String targetTicketType,
                                Condition condition, Integer ticketThreshold) {
         
-        super(name,percentage, targetTicketType);
+        super(name,id,percentage, targetTicketType);
         
         this.condition = condition;
         this.ticketThreshold = ticketThreshold;
+        this.startTime=startTime;
+        this.endTime=endTime;
     }
     public Condition getCondition() {
         return condition;

@@ -8,12 +8,12 @@ public class CouponDiscount extends DiscountTypes{
     private Double fixedAmount;
     private String targetEventName;
 
-    public CouponDiscount(String name,
+    public CouponDiscount(String name,Long id,
                           String couponCode,
                           Double percentage,
                           Double fixedAmount
                           ) {
-        super(name);
+        super(id,name);
 
         this.couponCode = couponCode;
         this.percentage = percentage;
