@@ -313,8 +313,7 @@ public class CompanyService {
     }
 
     public void addDiscountPolicyToCompany(
-            String token,
-            Long companyId,DiscountRequestDTO discountDTO ) throws Exception{
+            String token,Long companyId,DiscountRequestDTO discountDTO ) throws Exception{
         try {
 
             tokenService.validateToken(token);

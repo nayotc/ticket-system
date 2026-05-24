@@ -11,12 +11,10 @@ public class DiscountRequestDTO {
 
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-
     private Double percentage;
 
     private String targetTicketType;
-    private String targetEventName;
-
+    
     // for condition
     private String condition;
 
@@ -46,9 +44,7 @@ public String getTargetTicketType() {
     return targetTicketType;
 }
 
-public String getTargetEventName() {
-    return targetEventName;
-}
+
 
 public String getCondition() {
     return condition;
@@ -87,9 +83,6 @@ public void setTargetTicketType(String targetTicketType) {
     this.targetTicketType = targetTicketType;
 }
 
-public void setTargetEventName(String targetEventName) {
-    this.targetEventName = targetEventName;
-}
 
 public void setCondition(String condition) {
     this.condition = condition;
