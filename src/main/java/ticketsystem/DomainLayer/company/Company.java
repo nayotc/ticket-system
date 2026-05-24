@@ -177,10 +177,10 @@ public class Company {
                     discountDTO.getEndTime(),
                     discountDTO.getCouponCode(),
                     discountDTO.getPercentage(),
-                    discountDTO.getFixedAmount(),
+                    discountDTO.getFixedAmount()
                     
             );
-            break;
+           break;
 
         default:
             throw new IllegalArgumentException("Unsupported discount type");

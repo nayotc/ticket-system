@@ -85,7 +85,7 @@ public class CompanyService {
      * @throws Exception if the session is invalid, belongs to a guest, or
      * company creation fails
      */
-    public CompanyDTO createProductionCompany(String sessionId, String companyName,DiscountCompositionType compositionType) throws Exception {
+    public CompanyDTO createProductionCompany(String sessionId, String companyName) throws Exception {
         logEvent("UC 3.2 started: create production company, companyName=" + companyName,
                 ISystemLogger.LogLevel.INFO);
 
@@ -99,7 +99,7 @@ public class CompanyService {
                 companyName,
                 memberId,
                 new PurchasePolicy(),
-                new DiscountPolicy(compositionType)
+                new DiscountPolicy(DiscountCompositionType.MAX)//defult
         );
 
         membershipDomain.assignFounderRole(memberId, newCompany.getId());

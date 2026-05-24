@@ -21,30 +21,27 @@ public class DiscountPolicy {
         discounts.add(discount);
     }
 
-    public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
-        if(compositionType==DiscountCompositionType.SUM){
-                
+    public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {       
+        
+        if (discounts.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+ 
+        if (compositionType == DiscountCompositionType.SUM) {
             return discounts.stream()
                     .map(d -> d.calculateDiscount(totalPrice, ticketCount, couponCode))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
-        }
-        
-        // if (discounts.isEmpty()) {
-        //     return BigDecimal.ZERO;
-        // }
 
-        // if (compositionType == DiscountCompositionType.SUM) {
-        //     return discounts.stream()
-        //             .map(d -> d.calculateDiscount(totalPrice, ticketCount, eventName, couponCode))
-        //             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        // }
+        return discounts.stream()
+                .map(d -> d.calculateDiscount(totalPrice, ticketCount, couponCode))
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+    }
 
-        // return discounts.stream()
-        //         .map(d -> d.calculateDiscount(totalPrice, ticketCount, eventName, couponCode))
-        //         .max(BigDecimal::compareTo)
-        //         .orElse(BigDecimal.ZERO);
-    //}
+    public List<DiscountTypes> getDiscounts(){
+        return discounts;
+    }
 
     public enum DiscountCompositionType {
         SUM,

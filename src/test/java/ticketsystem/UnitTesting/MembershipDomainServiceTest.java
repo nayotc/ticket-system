@@ -9,6 +9,7 @@ import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.company.DiscountPolicy;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.*;
 
 import java.util.HashSet;
@@ -41,7 +42,7 @@ public class MembershipDomainServiceTest {
         userRepository.addRegisteredMember(100L, appointer, "password123");
         userRepository.addRegisteredMember(200L, appointee, "password123");
         
-        company = new Company("BGU Productions", 100L, new PurchasePolicy(), new DiscountPolicy());
+        company = new Company("BGU Productions", 100L, new PurchasePolicy(), new DiscountPolicy(DiscountCompositionType.MAX));
         try { company.setId(companyId); } catch (Exception e) {}
 
         // Setup a pre-existing Owner specifically for UC 4.9 & 4.10 tests
