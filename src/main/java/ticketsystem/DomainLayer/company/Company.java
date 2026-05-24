@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer.company;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -47,6 +48,7 @@ public class Company {
         this.ratingCount = other.ratingCount;
         this.purchasePolicy = other.purchasePolicy;
         this.discountPolicy = other.discountPolicy;
+        this.discountId=other.discountId;
     }
     // --- Getters & Setters ---
 
@@ -192,7 +194,11 @@ public class Company {
             throw new IllegalArgumentException("Unsupported discount type");
     }
     getDiscountPolicy().addDiscount(discount);
-    }
+    
+}
 
+public BigDecimal calculateDiscountCompany(BigDecimal totalPrice, int ticketCount, String couponCode){
+    return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
+}
    
 }
