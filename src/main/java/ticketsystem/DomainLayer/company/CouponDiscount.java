@@ -53,7 +53,7 @@ public class CouponDiscount extends DiscountTypes{
         this.targetEventName = targetEventName;
     }
     @Override
-    public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String eventName, String couponCode) {
+    public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'calculateDiscount'");
     }

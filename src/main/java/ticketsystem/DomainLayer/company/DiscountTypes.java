@@ -35,5 +35,5 @@ public abstract class DiscountTypes {
         return true;
     }
 
-    public abstract BigDecimal calculateDiscount(BigDecimal totalPrice,int ticketCount,String eventName,String couponCode);
+    public abstract BigDecimal calculateDiscount(BigDecimal totalPrice,int ticketCount,String couponCode);
 }
