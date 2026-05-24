@@ -3,6 +3,7 @@ package ticketsystem.DomainLayer.company;
 import java.time.LocalDateTime;
 
 import ticketsystem.DTO.DiscountRequestDTO;
+import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
 
 public class Company {
     private static long idCounter = 1;
@@ -141,6 +142,14 @@ public class Company {
         }
 
         this.isActive = false;
+    }
+    public void setDiscountCompositionType(DiscountCompositionType compositionType){
+        getDiscountPolicy().setDiscountCompositionType(compositionType);
+
+    }
+    public DiscountCompositionType getDiscountCompositionType(){
+        return getDiscountPolicy().getDiscountCompositionType();
+
     }
 
     public boolean addDiscountToCompany(DiscountRequestDTO discountDTO) {

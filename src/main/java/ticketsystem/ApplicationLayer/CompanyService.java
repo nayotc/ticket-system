@@ -312,7 +312,7 @@ public class CompanyService {
         }
     }
 
-    public void addDiscountPolicyToCompany(
+    public void addDiscountToCompany(
             String token,Long companyId,DiscountRequestDTO discountDTO ) throws Exception{
         try {
 
@@ -334,6 +334,35 @@ public class CompanyService {
         } catch (Exception e) {
 
             logger.logEvent( "Failed to add visible discount to company",ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
+    }
+
+
+        public void removeDiscounFromCompany(
+            String token,Long companyId /*ID?? */ ) throws Exception{
+        //TO DO
+    }
+
+
+    public void setCompositionType(String token,Long companyId,DiscountCompositionType compositionType)
+    throws Exception{
+        try{
+             tokenService.validateToken(token);
+
+            Long userId = tokenService.extractUserId(token);
+
+            Company company = companyRepository.findById(companyId)
+                            .orElseThrow(() -> new Exception("Error: Company not found."));;
+
+        if (company.getFounderId() != userId) {
+                throw new IllegalArgumentException(
+                        "User is not allowed to manage company discount policy");
+            }
+        company.setDiscountCompositionType(compositionType);
+        companyRepository.save(company);
+        }catch(Exception e){
+            logger.logEvent( "Failed to set composition Type discount to company",ISystemLogger.LogLevel.WARN);
             throw e;
         }
     }

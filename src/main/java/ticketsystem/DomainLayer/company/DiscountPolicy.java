@@ -21,6 +21,15 @@ public class DiscountPolicy {
         discounts.add(discount);
     }
 
+    public void setDiscountCompositionType(DiscountCompositionType compositionType){
+        this.compositionType=compositionType;
+    }
+
+    
+    public DiscountCompositionType getDiscountCompositionType(){
+        return compositionType;
+    }
+
     //return
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {       
         
