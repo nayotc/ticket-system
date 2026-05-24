@@ -61,4 +61,45 @@ public String getCouponCode() {
 public Double getFixedAmount() {
     return fixedAmount;
 }
+
+//for test
+public void setName(String name) {
+    this.name = name;
+}
+
+public void setDiscountType(DiscountKind discountType) {
+    this.discountType = discountType;
+}
+
+public void setStartTime(LocalDateTime startTime) {
+    this.startTime = startTime;
+}
+
+public void setEndTime(LocalDateTime endTime) {
+    this.endTime = endTime;
+}
+
+public void setPercentage(Double percentage) {
+    this.percentage = percentage;
+}
+
+public void setTargetTicketType(String targetTicketType) {
+    this.targetTicketType = targetTicketType;
+}
+
+public void setTargetEventName(String targetEventName) {
+    this.targetEventName = targetEventName;
+}
+
+public void setCondition(String condition) {
+    this.condition = condition;
+}
+
+public void setCouponCode(String couponCode) {
+    this.couponCode = couponCode;
+}
+
+public void setFixedAmount(Double fixedAmount) {
+    this.fixedAmount = fixedAmount;
+}
 }

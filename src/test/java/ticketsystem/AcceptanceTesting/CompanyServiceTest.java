@@ -12,11 +12,13 @@ import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.DiscountRequestDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
@@ -36,6 +38,9 @@ public class CompanyServiceTest {
     private String nonFounderToken;
     private IUserRepository userRepository;
     private MembershipDomainService membershipDomain;
+    private DiscountRequestDTO discountRequestDTO;
+    private DiscountCompositionType discountCompositionType;  
+
 
     private static final String VALID_COMPANY_NAME = "BGU Productions";
 
