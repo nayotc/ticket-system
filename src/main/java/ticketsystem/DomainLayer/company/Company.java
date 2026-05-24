@@ -203,5 +203,9 @@ public class Company {
 public BigDecimal calculateDiscountCompany(BigDecimal totalPrice, int ticketCount, String couponCode){
     return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
 }
+
+public void removeDiscountFromCompany(Long discountId) {
+    discountPolicy.removeDiscountFromCompany(discountId);
+}
    
 }

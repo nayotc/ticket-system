@@ -292,6 +292,72 @@ public class CompanyServiceTest {
                 companyService.addDiscountToCompany(founderToken, companyDTO.getId(), null)
         );
     }
+
+    @Test
+void GivenFounderAndExistingDiscount_WhenRemoveDiscountFromCompany_ThenDiscountIsRemoved() throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    DiscountRequestDTO discountDTO = createVisibleDiscountDTO();
+    companyService.addDiscountToCompany(founderToken, companyDTO.getId(), discountDTO);
+
+    Company companyBeforeRemove = companyRepository.findById(companyDTO.getId())
+            .orElseThrow(() -> new Exception("Company not found in test"));
+
+    assertEquals(1, companyBeforeRemove.getDiscountPolicy().getDiscounts().size());
+
+    Long discountId = companyBeforeRemove.getDiscountPolicy()
+            .getDiscounts()
+            .get(0)
+            .getDiscountId();
+
+    // Act
+    companyService.removeDiscountFromCompany(founderToken, companyDTO.getId(), discountId);
+
+    // Assert
+    Company companyAfterRemove = companyRepository.findById(companyDTO.getId())
+            .orElseThrow(() -> new Exception("Company not found in test"));
+
+    assertEquals(0, companyAfterRemove.getDiscountPolicy().getDiscounts().size());
+}
+    @Test
+    void GivenNonFounder_WhenRemoveDiscountFromCompany_ThenThrowsException() throws Exception {
+        // Arrange
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        DiscountRequestDTO discountDTO = createVisibleDiscountDTO();
+        companyService.addDiscountToCompany(founderToken, companyDTO.getId(), discountDTO);
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        Long discountId = company.getDiscountPolicy()
+                .getDiscounts()
+                .get(0)
+                .getDiscountId();
+
+        // Act + Assert
+        assertThrows(IllegalArgumentException.class, () ->
+                companyService.removeDiscountFromCompany(nonFounderToken, companyDTO.getId(), discountId)
+        );
+    }
+    @Test
+    void GivenFounderAndNonExistingCompany_WhenRemoveDiscountFromCompany_ThenThrowsException() {
+        // Act + Assert
+        assertThrows(Exception.class, () ->
+                companyService.removeDiscountFromCompany(founderToken, 999999L, 1L)
+        );
+    }
+    @Test
+    void GivenFounderAndNonExistingDiscount_WhenRemoveDiscountFromCompany_ThenThrowsException() throws Exception {
+        // Arrange
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        // Act + Assert
+        assertThrows(Exception.class, () ->
+                companyService.removeDiscountFromCompany(founderToken, companyDTO.getId(), 999999L)
+        );
+    }
     //helper
     private DiscountRequestDTO createVisibleDiscountDTO() {
         DiscountRequestDTO dto = new DiscountRequestDTO();

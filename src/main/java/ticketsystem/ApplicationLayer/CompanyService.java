@@ -307,23 +307,12 @@ public class CompanyService {
             logger.logError(message, exception);
         }
     }
-
+    //add discount
     public void addDiscountToCompany(
             String token,Long companyId,DiscountRequestDTO discountDTO ) throws Exception{
         try {
 
-            tokenService.validateToken(token);
-
-            Long userId = tokenService.extractUserId(token);
-
-            Company company = companyRepository.findById(companyId)
-                            .orElseThrow(() -> new Exception("Error: Company not found."));;
-
-
-            if (company.getFounderId() != userId) {
-                throw new IllegalArgumentException(
-                        "User is not allowed to manage company discount policy");
-            }
+            Company company = canEditDiscount(token,companyId);
             company.addDiscountToCompany(discountDTO);
             companyRepository.save(company);
 
@@ -334,17 +323,33 @@ public class CompanyService {
         }
     }
 
-
-    public void removeDiscountFromCompany(
-            String token,Long companyId /*ID?? */ ) throws Exception{
-        //TO DO
+    //remove discount
+    public void removeDiscountFromCompany(String token,Long companyId,Long discountId ) throws Exception{
+        try{
+        Company company = canEditDiscount(token,companyId);
+        company.removeDiscountFromCompany(discountId);
+        companyRepository.save(company);
+        } catch (Exception e){
+              logger.logEvent( "Failed to remove discount, id:"+discountId ,ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
     }
 
-
+    //set composition type
     public void setCompositionType(String token,Long companyId,DiscountCompositionType compositionType)
     throws Exception{
         try{
-             tokenService.validateToken(token);
+        Company company = canEditDiscount(token,companyId);
+        company.setDiscountCompositionType(compositionType);
+        companyRepository.save(company);
+        }catch(Exception e){
+            logger.logEvent( "Failed to set composition Type discount to company",ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
+    }
+
+    private Company canEditDiscount(String token,Long companyId) throws Exception{
+        tokenService.validateToken(token);
 
             Long userId = tokenService.extractUserId(token);
 
@@ -355,11 +360,6 @@ public class CompanyService {
                 throw new IllegalArgumentException(
                         "User is not allowed to manage company discount policy");
             }
-        company.setDiscountCompositionType(compositionType);
-        companyRepository.save(company);
-        }catch(Exception e){
-            logger.logEvent( "Failed to set composition Type discount to company",ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
+            return company;
     }
 }

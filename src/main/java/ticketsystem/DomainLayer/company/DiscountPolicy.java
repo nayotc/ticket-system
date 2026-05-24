@@ -11,7 +11,6 @@ public class DiscountPolicy {
 
     private List<DiscountTypes> discounts = new ArrayList<>();
     private DiscountCompositionType compositionType;
-   
 
     public DiscountPolicy(DiscountCompositionType compositionType) {
         this.compositionType = compositionType;
@@ -24,43 +23,48 @@ public class DiscountPolicy {
         discounts.add(discount);
     }
 
-    public void setDiscountCompositionType(DiscountCompositionType compositionType){
-        this.compositionType=compositionType;
+    public void setDiscountCompositionType(DiscountCompositionType compositionType) {
+        this.compositionType = compositionType;
     }
 
-    
-    public DiscountCompositionType getDiscountCompositionType(){
+    public DiscountCompositionType getDiscountCompositionType() {
         return compositionType;
+    }
+
+    public void removeDiscountFromCompany(Long discountId) {
+        boolean removed = discounts.removeIf(discount -> discount.getDiscountId().equals(discountId));
+
+        if (!removed) {
+            throw new IllegalArgumentException("Discount not found");
+        }
     }
 
     /**
      * Calculates the total discount amount that should be deducted
      * from the original price according to the discount composition policy.
      *
-     * SUM  -> all applicable discounts are accumulated together.
-     * MAX  -> only the highest applicable discount is applied.
+     * SUM -> all applicable discounts are accumulated together.
+     * MAX -> only the highest applicable discount is applied.
      *
      * The method returns the discount amount itself,
      * not the final price after discount.
      */
-    public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {       
-        
+    public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
+
         if (discounts.isEmpty()) {
             return BigDecimal.ZERO;
         }
- 
+
         if (compositionType == DiscountCompositionType.SUM) {
 
             BigDecimal currentPrice = totalPrice;
 
             for (DiscountTypes discount : discounts) {
 
-                BigDecimal discountAmount =
-                        discount.calculateDiscount(
-                                currentPrice,
-                                ticketCount,
-                                couponCode
-                        );
+                BigDecimal discountAmount = discount.calculateDiscount(
+                        currentPrice,
+                        ticketCount,
+                        couponCode);
 
                 currentPrice = currentPrice.subtract(discountAmount);
 
@@ -79,7 +83,7 @@ public class DiscountPolicy {
                 .orElse(BigDecimal.ZERO);
     }
 
-    public List<DiscountTypes> getDiscounts(){
+    public List<DiscountTypes> getDiscounts() {
         return discounts;
     }
 
@@ -93,5 +97,7 @@ public class DiscountPolicy {
         CONDITIONAL,
         COUPON
     }
+
+  
 
 }
