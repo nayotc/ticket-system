@@ -2,11 +2,14 @@ package ticketsystem.ApplicationLayer;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.validator.constraints.CompositionType;
+
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.DiscountRequestDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.company.DiscountPolicy;
+import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
 
@@ -82,7 +85,7 @@ public class CompanyService {
      * @throws Exception if the session is invalid, belongs to a guest, or
      * company creation fails
      */
-    public CompanyDTO createProductionCompany(String sessionId, String companyName) throws Exception {
+    public CompanyDTO createProductionCompany(String sessionId, String companyName,DiscountCompositionType compositionType) throws Exception {
         logEvent("UC 3.2 started: create production company, companyName=" + companyName,
                 ISystemLogger.LogLevel.INFO);
 
@@ -96,7 +99,7 @@ public class CompanyService {
                 companyName,
                 memberId,
                 new PurchasePolicy(),
-                new DiscountPolicy()
+                new DiscountPolicy(compositionType)
         );
 
         membershipDomain.assignFounderRole(memberId, newCompany.getId());
@@ -309,7 +312,7 @@ public class CompanyService {
         }
     }
 
-    public void addDiscountToCompany(
+    public void addDiscountPolicyToCompany(
             String token,
             Long companyId,DiscountRequestDTO discountDTO ) throws Exception{
         try {

@@ -5,16 +5,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DiscountPolicy extends DiscountTypes {
+public class DiscountPolicy {
 
     private List<DiscountTypes> discounts = new ArrayList<>();
     private DiscountCompositionType compositionType;
 
-    public DiscountPolicy(String name,
-                          LocalDateTime startTime,
-                          LocalDateTime endTime,
-                          DiscountCompositionType compositionType) {
-        super(name, startTime, endTime);
+    public DiscountPolicy(DiscountCompositionType compositionType) {
         this.compositionType = compositionType;
     }
 
@@ -25,32 +21,30 @@ public class DiscountPolicy extends DiscountTypes {
         discounts.add(discount);
     }
 
-    @Override
-    public BigDecimal calculateDiscount(
-            BigDecimal totalPrice,
-            int ticketCount,
-            String eventName,
-            String couponCode
-    ) {
-        if (!isActiveNow()) {
-            return BigDecimal.ZERO;
-        }
-
-        if (discounts.isEmpty()) {
-            return BigDecimal.ZERO;
-        }
-
-        if (compositionType == DiscountCompositionType.SUM) {
+    public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
+        if(compositionType==DiscountCompositionType.SUM){
+                
             return discounts.stream()
-                    .map(d -> d.calculateDiscount(totalPrice, ticketCount, eventName, couponCode))
+                    .map(d -> d.calculateDiscount(totalPrice, ticketCount, couponCode))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
+        }
+        
+        // if (discounts.isEmpty()) {
+        //     return BigDecimal.ZERO;
+        // }
 
-        return discounts.stream()
-                .map(d -> d.calculateDiscount(totalPrice, ticketCount, eventName, couponCode))
-                .max(BigDecimal::compareTo)
-                .orElse(BigDecimal.ZERO);
-    }
+        // if (compositionType == DiscountCompositionType.SUM) {
+        //     return discounts.stream()
+        //             .map(d -> d.calculateDiscount(totalPrice, ticketCount, eventName, couponCode))
+        //             .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // }
+
+        // return discounts.stream()
+        //         .map(d -> d.calculateDiscount(totalPrice, ticketCount, eventName, couponCode))
+        //         .max(BigDecimal::compareTo)
+        //         .orElse(BigDecimal.ZERO);
+    //}
 
     public enum DiscountCompositionType {
         SUM,
@@ -62,4 +56,5 @@ public class DiscountPolicy extends DiscountTypes {
         CONDITIONAL,
         COUPON
     }
+
 }
