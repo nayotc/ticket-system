@@ -8,9 +8,6 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 
 public abstract class DiscountTypes {
     protected String name;
-    protected LocalDateTime startTime;
-    protected LocalDateTime endTime;
-
     public DiscountTypes(String name) {
         this.name = name;
 

@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 public class ConditionalDiscount extends VisibleDiscount{
         private Condition condition;
         private Integer ticketThreshold;
+        protected LocalDateTime startTime;
+        protected LocalDateTime endTime;
 
         public ConditionalDiscount(String name,
                                LocalDateTime startTime,
@@ -17,6 +19,8 @@ public class ConditionalDiscount extends VisibleDiscount{
         
         this.condition = condition;
         this.ticketThreshold = ticketThreshold;
+        this.startTime=startTime;
+        this.endTime=endTime;
     }
     public Condition getCondition() {
         return condition;
