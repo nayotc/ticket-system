@@ -1,5 +1,6 @@
 package ticketsystem.PresentationLayer.Presenters;
 
+import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
@@ -10,6 +11,7 @@ import ticketsystem.PresentationLayer.Session.UiSession;
  * This presenter translates UserService failures into PresentationException,
  * and updates UiSession when the active UI token changes.
  */
+@Component
 public class AuthPresenter {
     private final UserService userService;
 

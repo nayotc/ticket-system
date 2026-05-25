@@ -1,5 +1,6 @@
 package ticketsystem.PresentationLayer.Presenters;
 
+import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.UserService;
 
 /**
@@ -12,6 +13,7 @@ import ticketsystem.ApplicationLayer.UserService;
  * so the View can display user-facing messages without interpreting service
  * return values directly.
  */
+@Component
 public class UserPresenter {
     private final UserService userService;
 

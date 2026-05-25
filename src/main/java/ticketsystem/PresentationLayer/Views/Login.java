@@ -26,7 +26,6 @@ import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.AuthLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
-import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.PresentationLayer.Presenters.AuthPresenter;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
 
@@ -39,11 +38,7 @@ public class Login extends PageContainer {
     private final AuthPresenter authPresenter;
 
     @Autowired
-    public Login(UserService userService) {
-        this(new AuthPresenter(userService));
-    }
-
-    Login(AuthPresenter authPresenter) {
+    public Login(AuthPresenter authPresenter) {
         this.authPresenter = authPresenter;
 
         addClassName("auth-page");
