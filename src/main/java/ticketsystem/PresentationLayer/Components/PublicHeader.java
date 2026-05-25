@@ -4,9 +4,12 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
@@ -44,6 +47,12 @@ public class PublicHeader extends Header {
         HorizontalLayout actions = new HorizontalLayout();
         actions.addClassName("top-actions");
 
+        if (UiSession.isLoggedIn()) {
+            actions.add(createAccountButton());
+        }
+
+        actions.add(createCartButton());
+
         if (showAuthAction) {
             actions.add(createAuthButton());
         }
@@ -69,8 +78,45 @@ public class PublicHeader extends Header {
         return button;
     }
 
+    private Div createCartButton() {
+        Div wrapper = new Div();
+        wrapper.addClassName("header-icon-wrapper");
+
+        Button button = new Button(VaadinIcon.CART.create());
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.addClassName("header-icon-button");
+        button.getElement().setAttribute("aria-label", "עגלת קניות");
+        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.ACTIVE_ORDER_CART));
+
+        Span badge = new Span(String.valueOf(getCartItemsCount()));
+        badge.addClassName("header-cart-badge");
+
+        wrapper.add(button, badge);
+        return wrapper;
+    }
+
+    private Button createAccountButton() {
+        Button button = new Button(VaadinIcon.USER.create());
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.addClassName("header-icon-button");
+        button.getElement().setAttribute("aria-label", "אזור אישי");
+        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT));
+        return button;
+    }
+
+    private int getCartItemsCount() {
+        try {
+            int count = presenter.getActiveCartItemsCount(UiSession.getMemberToken());
+            return Math.max(count, 0);
+        } catch (Exception exception) {
+            return 0;
+        }
+    }
+
     private void navigateToProductions() {
         if (!UiSession.isLoggedIn()) {
+            Notification notification = Notification.show("כדי לגשת לעמוד הפקות יש להתחבר למערכת", 3500, Notification.Position.TOP_CENTER);
+            notification.addThemeVariants(NotificationVariant.LUMO_WARNING);
             UI.getCurrent().navigate(UiRoutes.LOGIN);
             return;
         }
@@ -129,6 +175,7 @@ public class PublicHeader extends Header {
     }
 
     public interface HeaderPresenter {
+        int getActiveCartItemsCount(String sessionToken);
         /*
          * Return the id of one company the user can manage.
          *
@@ -144,6 +191,10 @@ public class PublicHeader extends Header {
         @Override
         public Long getFirstManagedCompanyId(String sessionToken) {
             return null;
+        }
+        @Override
+        public int getActiveCartItemsCount(String sessionToken) {
+            return 0;
         }
     }
 }

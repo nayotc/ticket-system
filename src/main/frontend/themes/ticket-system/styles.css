@@ -977,6 +977,9 @@ vaadin-button[theme~="tertiary-inline"] {
     gap: 4px;
     padding: 16px 8px 20px;
     border-bottom: 1px solid rgba(73, 68, 84, 0.35);
+    align-items: center;
+    text-align: center;
+    width = 100%;
 }
 
 .management-side-nav-title {

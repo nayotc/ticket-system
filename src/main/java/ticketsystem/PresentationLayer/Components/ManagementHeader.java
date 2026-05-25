@@ -34,8 +34,10 @@ public class ManagementHeader extends Header {
     }
 
     private Button createAccountButton() {
-        Button button = new Button("אזור אישי", VaadinIcon.USER.create());
-        button.addClassName("management-header-account-button");
+        Button button = new Button(VaadinIcon.USER.create());
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.addClassName("header-icon-button");
+        button.getElement().setAttribute("aria-label", "אזור אישי");
         button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT));
         return button;
     }
