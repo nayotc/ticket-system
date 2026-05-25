@@ -65,7 +65,8 @@ public class EventCatalogDomainService {
     }
     
      public BigDecimal calculateFinalPrice(Long companyId,Event event,BigDecimal totalPrice,int ticketCount,String couponCode) {
-         if (event == null) throw new IllegalArgumentException("Event cannot be null");
+        if (companyId == null)  throw new IllegalArgumentException("Company id cannot be null");
+        if (event == null) throw new IllegalArgumentException("Event cannot be null");
         if (totalPrice == null) throw new IllegalArgumentException("Total price cannot be null");
         if (ticketCount < 0) throw new IllegalArgumentException("Ticket count cannot be negative");
            Company company=companyRepository.findById(companyId).orElseThrow(() -> new IllegalArgumentException("Company not found"));
