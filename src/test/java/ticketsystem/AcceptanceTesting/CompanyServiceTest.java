@@ -2,9 +2,18 @@ package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
+import ticketsystem.DomainLayer.discount.CouponDiscount;
+import ticketsystem.DomainLayer.discount.VisibleDiscount;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountKind;
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -17,6 +26,7 @@ import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
@@ -36,12 +46,15 @@ public class CompanyServiceTest {
     private String nonFounderToken;
     private IUserRepository userRepository;
     private MembershipDomainService membershipDomain;
+    private ICompanyRepository companyRepository;
+    
+
 
     private static final String VALID_COMPANY_NAME = "BGU Productions";
 
     @BeforeEach
     void setUp() throws Exception {
-        ICompanyRepository companyRepository = new CompanyRepository();
+        companyRepository = new CompanyRepository();
         userRepository = new UserRepository();
         ITokenRepository tokenRepository = new TokenRepository();
 
@@ -192,33 +205,146 @@ public class CompanyServiceTest {
         );
     }
 
-    // UC 4.15: View roles and permissions tree
-    // Keep these tests commented out until viewRolesAndPermissionsTree is available
-    // in this branch's CompanyService API.
+    // UC 4.3: Add discount policy to company
 
-    // @Test
-    // void GivenCompanyAndFounder_WhenViewRolesAndPermissionsTree_ThenReturnsTreeWithFounder() throws Exception {
-    //     // Arrange
-    //     CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-    //
-    //     // Act
-    //     String tree = companyService.viewRolesAndPermissionsTree(founderToken, company.getId());
-    //
-    //     // Assert
-    //     assertNotNull(tree, "Roles and permissions tree should not be null.");
-    //     assertTrue(tree.contains("FOUNDER"), "Roles tree should include the founder role.");
-    //     assertTrue(tree.contains(String.valueOf(tokenService.extractUserId(founderToken)),
-    //             "Roles tree should include the founder member id.");
-    // }
+    @Test
+    void GivenFounder_WhenAddVisibleDiscountToCompany_ThenDiscountIsAddedToCompany() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
-    // @Test
-    // void GivenCompanyAndNonOwner_WhenViewRolesAndPermissionsTree_ThenThrowsException() throws Exception {
-    //     // Arrange
-    //     CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-    //
-    //     // Act + Assert
-    //     assertThrows(Exception.class, () ->
-    //             companyService.viewRolesAndPermissionsTree(nonFounderToken, company.getId())
-    //     );
-    // }
+        companyService.addVisibleDiscountToCompany(
+                founderToken,
+                companyDTO.getId(),
+                "Visible Discount",
+                new BigDecimal(10)
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof VisibleDiscount);
+    }
+
+    @Test
+    void GivenFounder_WhenAddConditionalDiscountToCompany_ThenDiscountIsAddedToCompany() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        companyService.addConditionalDiscountToCompany(
+                founderToken,
+                companyDTO.getId(),
+                "Conditional Discount",
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(7),
+                new BigDecimal(15),
+                Condition.MIN_TICKET,
+                2
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
+    }
+
+    @Test
+    void GivenFounder_WhenAddCouponDiscountToCompany_ThenDiscountIsAddedToCompany() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        companyService.addCouponDiscountToCompany(
+                founderToken,
+                companyDTO.getId(),
+                "Coupon Discount",
+                "BGU10",
+                new BigDecimal(10),
+                LocalDateTime.now().plusDays(7)
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof CouponDiscount);
+    }
+
+   @Test
+    void GivenUserWithoutDiscountPermission_WhenAddVisibleDiscountToCompany_ThenThrowsException() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                companyService.addVisibleDiscountToCompany(
+                        nonFounderToken,
+                        companyDTO.getId(),
+                        "Visible Discount",
+                        new BigDecimal(10)
+                )
+        );
+    }
+    @Test
+    void GivenUserWithoutDiscountPermission_WhenRemoveDiscountFromCompany_ThenThrowsException() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        companyService.addVisibleDiscountToCompany(
+                founderToken,
+                companyDTO.getId(),
+                "Visible Discount",
+                new BigDecimal(10)
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        Long discountId = company.getDiscountPolicy()
+                .getDiscounts()
+                .get(0)
+                .getDiscountId();
+
+        assertThrows(IllegalArgumentException.class, () ->
+                companyService.removeDiscountFromCompany(nonFounderToken, companyDTO.getId(), discountId)
+        );
+    }
+
+    @Test
+    void GivenFounderAndNonExistingCompany_WhenAddVisibleDiscountToCompany_ThenThrowsException() {
+        assertThrows(Exception.class, () ->
+                companyService.addVisibleDiscountToCompany(
+                        founderToken,
+                        999999L,
+                        "Visible Discount",
+                        new BigDecimal(10)
+                )
+        );
+    }
+
+    @Test
+    void GivenFounderAndNullDiscountName_WhenAddVisibleDiscountToCompany_ThenThrowsException() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        assertThrows(Exception.class, () ->
+                companyService.addVisibleDiscountToCompany(
+                        founderToken,
+                        companyDTO.getId(),
+                        null,
+                        new BigDecimal(10)
+                )
+        );
+    }
+
+    @Test
+    void GivenFounderAndNonExistingCompany_WhenRemoveDiscountFromCompany_ThenThrowsException() {
+        // Act + Assert
+        assertThrows(Exception.class, () ->
+                companyService.removeDiscountFromCompany(founderToken, 999999L, 1L)
+        );
+    }
+    @Test
+    void GivenFounderAndNonExistingDiscount_WhenRemoveDiscountFromCompany_ThenThrowsException() throws Exception {
+        // Arrange
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        // Act + Assert
+        assertThrows(Exception.class, () ->
+                companyService.removeDiscountFromCompany(founderToken, companyDTO.getId(), 999999L)
+        );
+    }    
 }

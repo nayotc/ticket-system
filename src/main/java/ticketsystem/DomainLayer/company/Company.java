@@ -1,34 +1,44 @@
 package ticketsystem.DomainLayer.company;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicLong;
 
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.CouponDiscount;
+import ticketsystem.DomainLayer.discount.DiscountTypes;
+import ticketsystem.DomainLayer.discount.VisibleDiscount;
 
 public class Company {
-    private static long idCounter = 1; 
-    
-    private long id; 
+    private static long idCounter = 1;
+
+    private long id;
     private String name;
     private final long founderId;
     private boolean isActive;
-    private PurchasePolicy purchasePolicy; 
-    private DiscountPolicy discountPolicy; 
+    private PurchasePolicy purchasePolicy;
+    private DiscountPolicy discountPolicy;
     private Double rate = 0.0; // for search and filtering
     private Double totalRating = 0.0; // for calculating average rating
     private Integer ratingCount = 0; // for calculating average rating
+    private AtomicLong discountId=new AtomicLong(0L);
 
-    //Version field for Optimistic Locking
+    // Version field for Optimistic Locking
     private long version;
 
     public Company(String name, long founderId, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
-        this.id = idCounter++; 
-        
+        this.id = idCounter++;
+
         this.name = name;
         this.founderId = founderId;
-        this.isActive = true; 
+        this.isActive = true;
         this.purchasePolicy = purchasePolicy;
         this.discountPolicy = discountPolicy;
         this.version = 0; // Initialize version
 
-        
     }
 
     // Copy Constructor
@@ -43,6 +53,7 @@ public class Company {
         this.ratingCount = other.ratingCount;
         this.purchasePolicy = other.purchasePolicy;
         this.discountPolicy = other.discountPolicy;
+        this.discountId = new AtomicLong(other.discountId.get());
     }
     // --- Getters & Setters ---
 
@@ -69,6 +80,7 @@ public class Company {
     public boolean isActive() {
         return isActive;
     }
+
     public PurchasePolicy getPurchasePolicy() {
         return purchasePolicy;
     }
@@ -93,12 +105,7 @@ public class Company {
         this.version = version;
     }
 
-    private boolean isFounder(long memberId) {
-        return this.founderId == memberId;
-    }
-
-    public long getFounderId()
-    {
+    public long getFounderId() {
         return this.founderId;
     }
 
@@ -126,7 +133,6 @@ public class Company {
         this.isActive = false;
     }
 
-
     public void reopenCompany() throws Exception {
         if (this.isActive) {
             throw new Exception("The company is already Active. No action needed.");
@@ -142,4 +148,78 @@ public class Company {
 
         this.isActive = false;
     }
+    public void setDiscountCompositionType(DiscountCompositionType compositionType){
+        getDiscountPolicy().setDiscountCompositionType(compositionType);
+
+    }
+    public DiscountCompositionType getDiscountCompositionType(){
+        return getDiscountPolicy().getDiscountCompositionType();
+
+    }
+
+    public Long getNextId() {
+        return discountId.incrementAndGet();
+    }
+    
+// visible discount
+    public void addVisibleDiscountToCompany(String name, BigDecimal percentage) {
+
+        DiscountTypes discount = new VisibleDiscount(
+                name,
+                getNextId(),
+                percentage
+        );
+
+        discountPolicy.addDiscount(discount);
+    }
+
+
+    // conditional discount
+    public void addConditionalDiscountToCompany(String name,
+            LocalDateTime startTime, LocalDateTime endTime,
+            BigDecimal percentage, Condition condition,
+            Integer ticketThreshold) {
+
+        DiscountTypes discount = new ConditionalDiscount(
+                name,
+                getNextId(),
+                startTime,
+                endTime,
+                percentage,
+                condition,
+                ticketThreshold);
+    
+        discountPolicy.addDiscount(discount);
+    }
+
+
+
+    // coupon discount
+    public void addCouponDiscountToCompany(
+            String name,
+            String couponCode,
+            BigDecimal percentage,LocalDateTime endTime
+    ) {
+
+        DiscountTypes discount = new CouponDiscount(
+                name,
+                getNextId(),
+                couponCode,
+                percentage,endTime
+        );
+
+        discountPolicy.addDiscount(discount);
+    }
+    
+   
+
+    public BigDecimal calculateDiscountCompany(BigDecimal totalPrice, int ticketCount, String couponCode){
+        return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
+    }
+
+    public void removeDiscountFromCompany(Long discountId) {
+        discountPolicy.removeDiscountFromCompany(discountId);
+    }
+   
+    
 }
