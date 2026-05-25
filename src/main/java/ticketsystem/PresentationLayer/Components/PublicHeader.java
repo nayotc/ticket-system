@@ -14,7 +14,15 @@ import ticketsystem.PresentationLayer.Session.UiSession;
 
 public class PublicHeader extends Header {
 
+    private final HeaderPresenter presenter;
+
     public PublicHeader(boolean showAuthAction) {
+        this(showAuthAction, new EmptyHeaderPresenter());
+    }
+
+    public PublicHeader(boolean showAuthAction, HeaderPresenter presenter) {
+        this.presenter = presenter == null ? new EmptyHeaderPresenter() : presenter;
+
         addClassName("top-nav");
 
         Span brand = new Span("TixNow");
@@ -22,9 +30,9 @@ public class PublicHeader extends Header {
         brand.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.HOME));
 
         HorizontalLayout navLinks = new HorizontalLayout(
-                navLink("אירועים", UiRoutes.EVENTS),
-                navLink("הפקות", UiRoutes.OWNER),
-                navLink("עזרה", UiRoutes.HELP)
+                createEventsButton(),
+                createProductionsButton()
+                //navLink("עזרה", UiRoutes.HELP)
         );
         navLinks.addClassName("nav-links");
 
@@ -41,6 +49,56 @@ public class PublicHeader extends Header {
         }
 
         add(brand, navLinks, search, actions);
+    }
+
+    private Button createEventsButton() {
+        Button button = new Button("אירועים");
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.addClassName("nav-link");
+        button.addClassName("nav-link-button");
+        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.EVENTS));
+        return button;
+    }
+
+    private Button createProductionsButton() {
+        Button button = new Button("הפקות");
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.addClassName("nav-link");
+        button.addClassName("nav-link-button");
+        button.addClickListener(event -> navigateToProductions());
+        return button;
+    }
+
+    private void navigateToProductions() {
+        if (!UiSession.isLoggedIn()) {
+            UI.getCurrent().navigate(UiRoutes.LOGIN);
+            return;
+        }
+
+        try {
+            Long managedCompanyId = presenter.getFirstManagedCompanyId(UiSession.getMemberToken());
+
+            if (managedCompanyId == null || managedCompanyId <= 0) {
+                UI.getCurrent().navigate(UiRoutes.CREATE_PRODUCTION_COMPANY);
+                return;
+            }
+
+            UI.getCurrent().navigate(routeForCompanyManagement(managedCompanyId));
+        } catch (Exception exception) {
+            /*
+             * Temporary safe fallback for UI stage.
+             *
+             * Later, the real presenter should decide whether the error means:
+             * 1. invalid session -> navigate to login
+             * 2. no managed company -> navigate to create company
+             * 3. system error -> show error popup
+             */
+            UI.getCurrent().navigate(UiRoutes.CREATE_PRODUCTION_COMPANY);
+        }
+    }
+
+    private String routeForCompanyManagement(long companyId) {
+        return UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(companyId));
     }
 
     private Button createAuthButton() {
@@ -68,5 +126,24 @@ public class PublicHeader extends Header {
         anchor.addClassName("nav-link");
 
         return anchor;
+    }
+
+    public interface HeaderPresenter {
+        /*
+         * Return the id of one company the user can manage.
+         *
+         * Expected behavior:
+         * - return company id when the member is owner/founder/manager of at least one company
+         * - return null when the member is not linked to any production company
+         * - throw exception only for real failures, for example invalid session or system error
+         */
+        Long getFirstManagedCompanyId(String sessionToken) throws Exception;
+    }
+
+    private static class EmptyHeaderPresenter implements HeaderPresenter {
+        @Override
+        public Long getFirstManagedCompanyId(String sessionToken) {
+            return null;
+        }
     }
 }
