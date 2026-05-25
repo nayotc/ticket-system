@@ -12,7 +12,6 @@ import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;

@@ -1,5 +1,5 @@
 package ticketsystem.DomainLayer.policy;
 
-interface PurchaseRule {
+public interface PurchaseRule {
     PolicyResult isValid(int quantity, int age);
 }
