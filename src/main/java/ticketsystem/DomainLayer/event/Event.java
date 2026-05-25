@@ -5,8 +5,16 @@ import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.CouponDiscount;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.DiscountTypes;
+import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 public class Event {
@@ -34,6 +42,7 @@ public class Event {
     private DiscountPolicy discountPolicy;
     private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
     private int version;
+    private AtomicLong discountId=new AtomicLong(0L);
     // waiting queue
 
     public Event(Long id, LocalDateTime date, String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
@@ -50,7 +59,7 @@ public class Event {
         this.TicketPrice = ticketPrice;
         this.map = new EventMap(mapSize);
         this.purchasePolicy = new PurchasePolicy("Default purchase policy");
-        this.discountPolicy = new DiscountPolicy();
+        this.discountPolicy =new DiscountPolicy(DiscountCompositionType.MAX);//defult
         this.version = 0;
     }
 
@@ -75,6 +84,7 @@ public class Event {
         this.discountPolicy = other.discountPolicy;
         this.activeReservationsCount = new AtomicInteger(other.activeReservationsCount.get());
         this.version = other.version;
+        this.discountId = new AtomicLong(other.discountId.get());
         
     }
 
@@ -191,9 +201,11 @@ public class Event {
     public DiscountPolicy getDiscountPolicy() {
         return discountPolicy;
     }
-
     public void setDiscountPolicy(DiscountPolicy discountPolicy) {
         this.discountPolicy = discountPolicy;
+    }
+    private Long getNextDiscountId() {
+        return discountId.incrementAndGet();
     }
 
     public boolean isSoldOut() {
@@ -389,6 +401,39 @@ public class Event {
             throw new IllegalStateException("Cannot cancel an event that has already occurred");
         }
         this.status = eventStatus.CANCELLED;
+    }
+
+    // discount related methods
+    public void addVisibleDiscountToEvent(String name, BigDecimal percentage) {
+        DiscountTypes discount = new VisibleDiscount(name, getNextDiscountId(), percentage);
+        discountPolicy.addDiscount(discount);
+    }
+
+    public void addCouponDiscountToEvent(String name, String couponCode,
+            BigDecimal percentage, LocalDateTime endTime) {
+        DiscountTypes discount = new CouponDiscount(
+                name, getNextDiscountId(), couponCode, percentage, endTime);
+        discountPolicy.addDiscount(discount);
+    }
+
+    public void addConditionalDiscountToEvent(String name,
+            LocalDateTime startTime, LocalDateTime endTime,
+            BigDecimal percentage, Condition condition,
+            Integer ticketThreshold) {
+
+        DiscountTypes discount = new ConditionalDiscount(
+                name, getNextDiscountId(), startTime, endTime,
+                percentage, condition, ticketThreshold);
+        discountPolicy.addDiscount(discount);
+    }
+
+    public void setDiscountCompositionType(DiscountCompositionType compositionType){
+        getDiscountPolicy().setDiscountCompositionType(compositionType);
+
+    }
+
+    public void removeDiscountFromEvent(Long discountId) {
+        discountPolicy.removeDiscountFromCompany(discountId);
     }
 
 }
