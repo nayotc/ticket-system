@@ -1,6 +1,6 @@
 package ticketsystem.DomainLayer.company;
 
-
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 public class Company {
     private static long idCounter = 1; 

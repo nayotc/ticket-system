@@ -8,6 +8,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+import ticketsystem.DomainLayer.policy.policyResult;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
+
 
 public class Event {
 
@@ -49,7 +52,7 @@ public class Event {
         this.category = category;
         this.TicketPrice = ticketPrice;
         this.map = new EventMap(mapSize);
-        this.purchasePolicy = new PurchasePolicy("Default purchase policy");
+        this.purchasePolicy = PurchasePolicy.noRestrictions();
         this.discountPolicy = new DiscountPolicy();
         this.version = 0;
     }
@@ -390,5 +393,9 @@ public class Event {
         }
         this.status = eventStatus.CANCELLED;
     }
+
+    public policyResult canPurchase(int quantity, int age) {
+        return this.purchasePolicy.validate(quantity, age);
+     }
 
 }
