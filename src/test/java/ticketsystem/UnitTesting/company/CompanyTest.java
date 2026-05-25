@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
@@ -15,7 +16,6 @@ import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountKind;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.DiscountCompanyPolicy;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
 
 class CompanyTest {
@@ -26,7 +26,7 @@ class CompanyTest {
     @BeforeEach
     void setUp() {
         company = new Company("BGU Productions", FOUNDER_ID, new PurchasePolicy(),
-                new DiscountCompanyPolicy(DiscountCompositionType.MAX));
+                new DiscountPolicy(DiscountCompositionType.MAX));
     }
 
     // --- UC 3.2: Create Company & ID Generation ---
@@ -41,7 +41,7 @@ class CompanyTest {
     @Test
     void GivenNewCompanies_WhenCreated_ThenIdsAreUniqueAndIncremented() {
         Company secondCompany = new Company("Another Company", FOUNDER_ID, new PurchasePolicy(),
-                new DiscountCompanyPolicy(DiscountCompositionType.MAX));
+                new DiscountPolicy(DiscountCompositionType.MAX));
 
         assertTrue(company.getId() > 0, "Company ID should be a positive number.");
         assertTrue(secondCompany.getId() > company.getId(), "New company should receive a higher incremented ID.");

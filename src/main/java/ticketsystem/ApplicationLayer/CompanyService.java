@@ -3,7 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import ticketsystem.DomainLayer.company.DiscountCompanyPolicy;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DTO.CompanyDTO;
@@ -100,7 +100,7 @@ public class CompanyService {
                 companyName,
                 memberId,
                 new PurchasePolicy(),
-                new DiscountCompanyPolicy(DiscountCompositionType.MAX)//defult
+                new DiscountPolicy(DiscountCompositionType.MAX)//defult
         );
 
         membershipDomain.assignFounderRole(memberId, newCompany.getId());

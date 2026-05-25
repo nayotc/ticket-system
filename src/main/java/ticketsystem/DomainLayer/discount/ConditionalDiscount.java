@@ -15,7 +15,8 @@ public class ConditionalDiscount extends VisibleDiscount{
                                Condition condition, Integer ticketThreshold) {
         
         super(name,id,percentage);
-        
+        validateCondition(condition, ticketThreshold, startTime, endTime);
+
         this.condition = condition;
         this.ticketThreshold = ticketThreshold;
         this.startTime=startTime;
@@ -65,6 +66,39 @@ public class ConditionalDiscount extends VisibleDiscount{
 
         return true;
     }
+
+  private void validateCondition(Condition condition, Integer ticketThreshold,
+            LocalDateTime startTime, LocalDateTime endTime) {
+
+        if (condition == null) {
+            throw new IllegalArgumentException("Condition cannot be null");
+        }
+
+        switch (condition) {
+            case MIN_TICKET:
+            case MAX_TICKET:
+                if (ticketThreshold == null || ticketThreshold <= 0) {
+                    throw new IllegalArgumentException("Ticket threshold must be positive");
+                }
+                break;
+
+            case DATE:
+                if (startTime == null || endTime == null) {
+                    throw new IllegalArgumentException(
+                            "Start time and end time are required for date condition");
+                }
+
+                if (endTime.isBefore(startTime)) {
+                    throw new IllegalArgumentException(
+                            "End time cannot be before start time");
+                }
+                break;
+
+            default:
+                throw new IllegalArgumentException("Unsupported condition type");
+        }
+    }
+
 
     @Override
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {

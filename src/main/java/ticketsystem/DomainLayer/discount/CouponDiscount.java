@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public class CouponDiscount extends DiscountTypes{
     private String couponCode;
-    private BigDecimal percentage;
     private LocalDateTime endTime;
     
 
@@ -12,19 +11,16 @@ public class CouponDiscount extends DiscountTypes{
                           String couponCode,
                           BigDecimal percentage,LocalDateTime endTime
                           ) {
-        super(id,name);
-
+        super(id,name,percentage);
+        validateCouponCode(couponCode);
+        validateEndTime(endTime);
         this.couponCode = couponCode;
-        this.percentage = percentage;
         this.endTime=endTime;
     }
     public String getCouponCode() {
         return couponCode;
     }
 
-    public BigDecimal getPercentage() {
-        return percentage;
-    }
     public LocalDateTime getEndTime(){
         return endTime;
     }
@@ -33,12 +29,22 @@ public class CouponDiscount extends DiscountTypes{
     }
 
     public void setCouponCode(String couponCode) {
+        validateCouponCode(couponCode);
         this.couponCode = couponCode;
     }
-
-    public void setPercentage(BigDecimal percentage) {
-        this.percentage = percentage;
+    private void validateCouponCode(String couponCode) {
+    if (couponCode == null || couponCode.isBlank()) {
+        throw new IllegalArgumentException("Coupon code cannot be empty");
     }
+}
+
+    private void validateEndTime(LocalDateTime endTime) {
+        if(endTime != null && LocalDateTime.now().isAfter(endTime)) {
+            throw new IllegalArgumentException("End time cannot be in the past");
+        }
+    }
+
+
 
     @Override
     public BigDecimal calculateDiscount(BigDecimal totalPrice, int ticketCount, String couponCode) {
@@ -50,7 +56,7 @@ public class CouponDiscount extends DiscountTypes{
         }
 
         return totalPrice
-                .multiply(percentage)
+                .multiply(getPercentage())
                 .divide(BigDecimal.valueOf(100));
     }
 }

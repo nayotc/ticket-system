@@ -1,4 +1,4 @@
-package ticketsystem.UnitTesting.company;
+package ticketsystem.UnitTesting.discount;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -7,18 +7,18 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.DomainLayer.company.DiscountCompanyPolicy;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 
 class DiscountPolicyTest {
 
-        private DiscountCompanyPolicy discountPolicy;
+        private DiscountPolicy discountPolicy;
 
         @BeforeEach
         void setUp() {
-                discountPolicy = new DiscountCompanyPolicy(DiscountCompositionType.MAX);
+                discountPolicy = new DiscountPolicy(DiscountCompositionType.MAX);
         }
 
         @Test
@@ -80,7 +80,7 @@ class DiscountPolicyTest {
 
         @Test
         void GivenSumComposition_WhenCalculateDiscount_ThenReturnTieredTotalDiscountAmount() {
-                DiscountCompanyPolicy sumPolicy = new DiscountCompanyPolicy(DiscountCompositionType.SUM);
+                DiscountPolicy sumPolicy = new DiscountPolicy(DiscountCompositionType.SUM);
 
                 sumPolicy.addDiscount(new VisibleDiscount(
                                 "10 Percent",

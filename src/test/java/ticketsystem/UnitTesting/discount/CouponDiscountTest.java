@@ -68,24 +68,18 @@ class CouponDiscountTest {
         assertEquals(0, BigDecimal.ZERO.compareTo(result));
     }
 
-    @Test
-    void GivenExpiredCoupon_WhenCalculateDiscount_ThenReturnZero() {
-        CouponDiscount discount = new CouponDiscount(
-                "Coupon BGU10",
-                1L,
-                "BGU10",
-                BigDecimal.valueOf(10),
-                LocalDateTime.now().minusDays(1)
+   @Test
+        void GivenExpiredCouponEndTime_WhenCreateCouponDiscount_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new CouponDiscount(
+                        "Coupon BGU10",
+                        1L,
+                        "BGU10",
+                        BigDecimal.valueOf(10),
+                        LocalDateTime.now().minusDays(1)
+                )
         );
-
-        BigDecimal result = discount.calculateDiscount(
-                BigDecimal.valueOf(200),
-                1,
-                "BGU10"
-        );
-
-        assertEquals(0, BigDecimal.ZERO.compareTo(result));
-    }
+        }
 
     @Test
     void GivenCouponDiscount_WhenGettersCalled_ThenReturnCorrectValues() {

@@ -8,7 +8,6 @@ import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.DiscountCompanyPolicy;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.*;
@@ -21,7 +20,7 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -71,7 +70,7 @@ public class MembershipServiceTest {
         this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService, null);
 
         // 2. Setup Company state
-        testCompany = new Company("BGU Productions", founderId, new PurchasePolicy(), new DiscountCompanyPolicy(DiscountCompositionType.MAX));
+        testCompany = new Company("BGU Productions", founderId, new PurchasePolicy(), new DiscountPolicy(DiscountCompositionType.MAX));
         try { testCompany.setId(companyId); } catch (Exception e) {}
 
         // 3. Setup Founder - Active state

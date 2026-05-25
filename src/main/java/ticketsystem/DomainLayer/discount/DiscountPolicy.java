@@ -1,4 +1,4 @@
-package ticketsystem.DomainLayer.company;
+package ticketsystem.DomainLayer.discount;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
 
-public class DiscountCompanyPolicy {
+public class DiscountPolicy {
 
     private List<DiscountTypes> discounts = new ArrayList<>();
     private DiscountCompositionType compositionType;
 
-    public DiscountCompanyPolicy(DiscountCompositionType compositionType) {
+    public DiscountPolicy(DiscountCompositionType compositionType) {
         if (compositionType == null) {
              throw new IllegalArgumentException("Discount composition type cannot be null");
         }
@@ -95,7 +95,5 @@ public class DiscountCompanyPolicy {
     public List<DiscountTypes> getDiscounts() {
         return discounts;
     }
-
- 
 
 }
