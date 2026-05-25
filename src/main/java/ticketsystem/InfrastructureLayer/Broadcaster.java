@@ -43,7 +43,7 @@ public class Broadcaster implements IBrodcaster {
         }
     }
 
-    public static boolean broadcast(String sessionId, String message) {
+    public static void broadcastToGuest(String sessionId, String message) {
         List<Consumer<String>> listeners = notifiers.get(sessionId);
 
         if (listeners != null) {
@@ -53,11 +53,27 @@ public class Broadcaster implements IBrodcaster {
                         listener.accept(message);
                     } catch (Exception e) {
                         removeListener(sessionId, listener);
-                        return false;
                     }
                 });
             }
         }
-        return true;
     }
+
+    public void broadcastToMember(Notification notification) {
+        String sessionId = String.valueOf(notification.getRecipientMemberId());
+        List<Consumer<String>> listeners = notifiers.get(sessionId);
+
+        if (listeners != null) {
+            for (Consumer<String> listener : listeners) {
+                executor.execute(() -> {
+                    try {
+                        listener.accept(notification.getMessage());
+                    } catch (Exception e) {
+                        removeListener(sessionId, listener);
+                    }
+                });
+            }
+        }
+    }
+
 }

@@ -2,10 +2,12 @@ package ticketsystem.DomainLayer.IRepository;
 
 import java.util.List;
 
+import ticketsystem.DomainLayer.notifications.Notification;
+
 public interface INotificationsRepository {
 
-    void save(Long memberId, String message);
+    void save(Notification notification);
 
-    List<String> getAndClear(Long memberId);
+    List<Notification> getAndClear(Long memberId);
 
 }

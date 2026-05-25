@@ -4,38 +4,46 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
+import ticketsystem.DomainLayer.notifications.Notification;
 
 public class NotificationsRepository implements INotificationsRepository {
 
-    private final ConcurrentHashMap<Long, List<String>> pendingNotifications = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, List<Notification>> pendingNotifications = new ConcurrentHashMap<>();
 
     @Override
-    public void save(Long memberId, String message) {
-        pendingNotifications.computeIfAbsent(memberId, k -> new CopyOnWriteArrayList<>()).add(message);
+    public void save(Notification notification) {
+        pendingNotifications.computeIfAbsent(notification.getRecipientMemberId(), k -> new CopyOnWriteArrayList<>()).add(notification);
     }
 
     @Override
     // show member's pending notifications and mark them as delivered
-    public List<String> getAndClear(Long memberId) {
-        List<String> memberNotifications = pendingNotifications.get(memberId);
+    public List<Notification> getAndClear(Long memberId) {
+        List<Notification> memberNotifications = pendingNotifications.get(memberId);
 
         if (memberNotifications == null || memberNotifications.isEmpty()) {
             return new ArrayList<>();
         }
 
-        List<String> pendingNotifications = memberNotifications.stream()
-                .filter(message -> !message.isEmpty())
-                .collect(Collectors.toList());
+        // Create a copy of the notifications to return
+        List<Notification> notificationsToReturn = new ArrayList<>(memberNotifications);
 
-        for (String message : pendingNotifications) {
-            pendingNotifications.remove(message);
+        // Clear the pending notifications for this member
+        pendingNotifications.remove(memberId);
 
-        }
-
-        return memberNotifications;
+        return notificationsToReturn;
     }
 
+    public void markAsDelivered(Long notificationId, Long memberId) {
+        List<Notification> memberNotifications = pendingNotifications.get(memberId);
+        if (memberNotifications != null) {
+            for (Notification notification : memberNotifications) {
+                if (notification.getId() == notificationId) {
+                    memberNotifications.remove(notification);
+                    break;
+                }
+            }
+        }
+    }
 }

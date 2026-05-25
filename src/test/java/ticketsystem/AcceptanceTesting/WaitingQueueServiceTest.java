@@ -153,7 +153,7 @@ public class WaitingQueueServiceTest {
         public List<String> notifiedUsers = new ArrayList<>();
 
         @Override
-        public void notifyUser(String sessionId, String message) {
+        public void notifyGuest(String sessionId, String message) {
             notifiedUsers.add(sessionId);
         }
     }
