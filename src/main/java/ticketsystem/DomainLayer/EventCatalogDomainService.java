@@ -1,11 +1,13 @@
 package ticketsystem.DomainLayer;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import io.jsonwebtoken.lang.Objects;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.DomainLayer.company.Company;
 
 public class EventCatalogDomainService {
@@ -55,4 +57,31 @@ public class EventCatalogDomainService {
         return event.matchesSearchCriteria(criteria);
     }
     
+     public BigDecimal calculateFinalPrice(Company company,Event event,BigDecimal totalPrice,int ticketCount,String couponCode) {
+         
+            BigDecimal companyDiscount =
+                    company.calculateDiscountCompany(totalPrice, ticketCount, couponCode);
+
+            BigDecimal priceAfterCompanyDiscount =
+                    totalPrice.subtract(companyDiscount);
+
+            if (priceAfterCompanyDiscount.compareTo(BigDecimal.ZERO) < 0) {
+                priceAfterCompanyDiscount = BigDecimal.ZERO;
+            }
+
+            BigDecimal eventDiscount =event.calculateDiscountEvent(
+                            priceAfterCompanyDiscount,
+                            ticketCount,
+                            couponCode
+                    );
+
+            BigDecimal finalPrice =
+                    priceAfterCompanyDiscount.subtract(eventDiscount);
+
+            if (finalPrice.compareTo(BigDecimal.ZERO) < 0) {
+                finalPrice = BigDecimal.ZERO;
+            }
+            return finalPrice;
+
+    }
 }

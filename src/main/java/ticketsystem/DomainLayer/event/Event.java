@@ -428,8 +428,12 @@ public class Event {
     }
 
     public void setDiscountCompositionType(DiscountCompositionType compositionType){
-        getDiscountPolicy().setDiscountCompositionType(compositionType);
+        discountPolicy.setDiscountCompositionType(compositionType);
 
+    }
+    
+    public BigDecimal calculateDiscountEvent(BigDecimal totalPrice, int ticketCount, String couponCode){
+        return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 
     public void removeDiscountFromEvent(Long discountId) {
