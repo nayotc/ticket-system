@@ -21,7 +21,7 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.DomainLayer.event.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.event.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
@@ -160,7 +160,7 @@ public class EventTest {
 
     @Test
     void givenEvent_whenSetPurchasePolicy_thenPurchasePolicyIsUpdated() {
-        PurchasePolicy policy = new PurchasePolicy("New policy");
+        PurchasePolicy policy = PurchasePolicy.noRestrictions();
 
         event.setPurchasePolicy(policy);
 

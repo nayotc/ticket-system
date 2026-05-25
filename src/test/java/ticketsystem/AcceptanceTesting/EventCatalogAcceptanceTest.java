@@ -27,7 +27,7 @@ import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketSystem.DomainLayer.policy.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 public class EventCatalogAcceptanceTest {
 
@@ -347,7 +347,7 @@ public class EventCatalogAcceptanceTest {
      * Adjust this method only if your Company constructor or methods are different.
      */
     private Company createCompany(String name, Long founderId, double rate) {
-        Company company = new Company(name, founderId, ticketsystem.DomainLayer.policy.PurchasePolicy.noRestrictions(), new DiscountPolicy());
+        Company company = new Company(name, founderId, PurchasePolicy.noRestrictions(), new DiscountPolicy());
         company.setRate(rate);
 
         return company;

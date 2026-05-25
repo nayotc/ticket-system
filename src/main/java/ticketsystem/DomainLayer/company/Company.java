@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer.company;
 
+import ticketsystem.DomainLayer.Policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 public class Company {
@@ -142,4 +143,8 @@ public class Company {
 
         this.isActive = false;
     }
+
+    public PolicyResult canPurchase(int quantity, int age) {
+        return this.purchasePolicy.validate(quantity, age);
+     }
 }

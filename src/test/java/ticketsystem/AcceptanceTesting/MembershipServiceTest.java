@@ -9,11 +9,11 @@ import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.company.DiscountPolicy;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.user.*;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.DomainLayer.Policy.PurchasePolicy;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -68,7 +68,7 @@ public class MembershipServiceTest {
         this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService, null);
 
         // 2. Setup Company state
-        testCompany = new Company("BGU Productions", founderId, new PurchasePolicy(), new DiscountPolicy());
+        testCompany = new Company("BGU Productions", founderId, PurchasePolicy.noRestrictions(), new DiscountPolicy());
         try { testCompany.setId(companyId); } catch (Exception e) {}
 
         // 3. Setup Founder - Active state
