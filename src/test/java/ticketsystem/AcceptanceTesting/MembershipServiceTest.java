@@ -13,7 +13,7 @@ import ticketsystem.DomainLayer.user.*;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.DomainLayer.Policy.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 import java.util.HashSet;
 import java.util.Set;
