@@ -51,7 +51,7 @@ public class EventCatalogServiceTest {
 
         // Real domain service, because acceptance tests should test behavior,
         // not only orchestration.
-        domainService = new EventCatalogDomainService();
+        domainService = new EventCatalogDomainService(companyRepository);
 
         eventCatalogService = new EventCatalogService(
                 domainService,

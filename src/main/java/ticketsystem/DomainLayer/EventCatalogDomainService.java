@@ -7,10 +7,17 @@ import java.util.stream.Collectors;
 
 import io.jsonwebtoken.lang.Objects;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 
 public class EventCatalogDomainService {
+
+    ICompanyRepository companyRepository;
+    public EventCatalogDomainService(ICompanyRepository companyRepository){
+        this.companyRepository=companyRepository;
+    }
 
     public List<Event> globalSearch(List<Event> events, List<Long> companies, SearchCriteria criteria) {
         if (events == null) {
@@ -57,8 +64,9 @@ public class EventCatalogDomainService {
         return event.matchesSearchCriteria(criteria);
     }
     
-     public BigDecimal calculateFinalPrice(Company company,Event event,BigDecimal totalPrice,int ticketCount,String couponCode) {
+     public BigDecimal calculateFinalPrice(Long companyId,Event event,BigDecimal totalPrice,int ticketCount,String couponCode) {
          
+           Company company=companyRepository.findById(companyId).orElseThrow(() -> new IllegalArgumentException("Company not found"));
             BigDecimal companyDiscount =
                     company.calculateDiscountCompany(totalPrice, ticketCount, couponCode);
 

@@ -11,12 +11,15 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.event.Event;
 
 
 public class EventCatalogDomainTest {
 
     private EventCatalogDomainService domainService;
+    ICompanyRepository companyRepository;
+
 
     private SearchCriteria criteria;
 
@@ -26,7 +29,7 @@ public class EventCatalogDomainTest {
 
     @BeforeEach
     void setUp() {
-        domainService = new EventCatalogDomainService();
+        domainService = new EventCatalogDomainService(companyRepository);
 
         criteria = mock(SearchCriteria.class);
 
