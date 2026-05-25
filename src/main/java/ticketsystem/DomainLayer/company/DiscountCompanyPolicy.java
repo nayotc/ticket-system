@@ -16,7 +16,10 @@ public class DiscountCompanyPolicy {
     private DiscountCompositionType compositionType;
 
     public DiscountCompanyPolicy(DiscountCompositionType compositionType) {
-        this.compositionType = compositionType;
+        if (compositionType == null) {
+             throw new IllegalArgumentException("Discount composition type cannot be null");
+        }
+             this.compositionType = compositionType;
     }
 
     public void addDiscount(DiscountTypes discount) {
@@ -27,6 +30,9 @@ public class DiscountCompanyPolicy {
     }
 
     public void setDiscountCompositionType(DiscountCompositionType compositionType) {
+        if (compositionType == null) {
+            throw new IllegalArgumentException("Discount composition type cannot be null");
+        }
         this.compositionType = compositionType;
     }
 

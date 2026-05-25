@@ -324,6 +324,9 @@ public class CompanyService {
             company.addVisibleDiscountToCompany(name, percentage);
 
             companyRepository.save(company);
+                logger.logEvent(
+                "Visible discount added successfully to company id: " + companyId,
+                ISystemLogger.LogLevel.INFO);
 
         } catch (Exception e) {
 
@@ -344,6 +347,10 @@ public class CompanyService {
             company.addCouponDiscountToCompany(name, couponCode, percentage,endTime);
 
             companyRepository.save(company);
+                    logger.logEvent(
+                "Coupon discount added successfully to company id: " + companyId,
+                ISystemLogger.LogLevel.INFO
+        );
 
         } catch (Exception e) {
 
@@ -357,7 +364,7 @@ public class CompanyService {
             String name, LocalDateTime startTime,
             LocalDateTime endTime, BigDecimal percentage,
             Condition condition,
-            int ticketThreshold) throws Exception {
+            Integer ticketThreshold) throws Exception {
 
         try {
             Company company = canEditDiscount(token, companyId);
@@ -372,6 +379,10 @@ public class CompanyService {
             );
 
             companyRepository.save(company);
+                    logger.logEvent(
+                "Conditional discount added successfully to company id: " + companyId,
+                ISystemLogger.LogLevel.INFO
+        );
 
         } catch (Exception e) {
 
@@ -387,6 +398,11 @@ public class CompanyService {
         Company company = canEditDiscount(token,companyId);
         company.removeDiscountFromCompany(discountId);
         companyRepository.save(company);
+                logger.logEvent(
+                "Discount removed successfully from company id: "
+                        + companyId + ", discount id: " + discountId,
+                ISystemLogger.LogLevel.INFO
+        );
         } catch (Exception e){
               logger.logEvent( "Failed to remove discount, id:"+discountId ,ISystemLogger.LogLevel.WARN);
             throw e;
@@ -400,6 +416,11 @@ public class CompanyService {
         Company company = canEditDiscount(token,companyId);
         company.setDiscountCompositionType(compositionType);
         companyRepository.save(company);
+                logger.logEvent(
+                "Discount composition type updated successfully for company id: "
+                        + companyId,
+                ISystemLogger.LogLevel.INFO
+        );
         }catch(Exception e){
             logger.logEvent( "Failed to set composition Type discount to company",ISystemLogger.LogLevel.WARN);
             throw e;
