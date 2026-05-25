@@ -88,11 +88,12 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
 }
     //2.8 checkout
 
-    public BigDecimal submitActiveOrderForCheckout(ActiveOrder order, Event event) {
+    public BigDecimal submitActiveOrderForCheckout(ActiveOrder order, Event event, int buyerAge) {
         if(order==null|| event==null) {
             throw new IllegalStateException("No active order or event found");
         }
         order.validateCanBeSubmittedBy();
+        event.canPurchase(order.getTickets().size(), buyerAge);
         order.submitForCheckout();
         return calculateTotalPrice(order, event);
         }

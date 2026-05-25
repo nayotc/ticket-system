@@ -395,8 +395,20 @@ public class Event {
         this.status = eventStatus.CANCELLED;
     }
 
-    public PolicyResult canPurchase(int quantity, int age) {
-        return this.purchasePolicy.validate(quantity, age);
+    public void canPurchase(int quantity, int age) {
+        PolicyResult result = this.purchasePolicy.validate(quantity, age);
+        if (result == null) {
+            throw new IllegalStateException("Purchase policy validation failed");
+        }
+        if (!result.isAllowed()) {
+            String message = result.getMessage();
+
+            if (message == null || message.isBlank()) {
+                message = "User does not satisfy the purchase policy";
+            }
+
+            throw new IllegalArgumentException(message);
+        }
      }
 
 }

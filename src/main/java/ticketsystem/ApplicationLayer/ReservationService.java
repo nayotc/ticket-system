@@ -29,6 +29,8 @@ import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
+import java.time.LocalDate;
+import java.time.Period;
 
 public class ReservationService {
 
@@ -222,7 +224,8 @@ public class ReservationService {
                 throw new IllegalStateException("No active order or event found");
             }
 
-            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
+            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event, 
+                Period.between(details.getBirthDate(), LocalDate.now()).getYears());
 
             boolean paymentResult = paymentService.pay(amount, details);
 
