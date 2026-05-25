@@ -3,79 +3,77 @@ package ticketsystem.PresentationLayer.Layouts;
 import com.vaadin.flow.component.HasElement;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.RouterLayout;
+import ticketsystem.PresentationLayer.Components.SystemAdminHeader;
+import ticketsystem.PresentationLayer.Components.SystemAdminSideNav;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Session.UiSession;
 
 public class AdminLayout extends Div implements RouterLayout {
 
     private final Div content = new Div();
+    private final SystemAdminSideNav sideNav;
+    private final SystemAdminHeader header;
 
     public AdminLayout() {
+        this(null);
+    }
+
+    public AdminLayout(SystemAdminHeader.SystemAdminHeaderPresenter headerPresenter) {
+        this.sideNav = new SystemAdminSideNav();
+        this.header = new SystemAdminHeader(headerPresenter);
+
         getElement().setAttribute("dir", "rtl");
         addClassName("admin-layout");
 
         Div shell = new Div();
         shell.addClassName("management-shell");
 
-        shell.add(createSideNav(), createMainArea());
+        Div main = new Div();
+        main.addClassName("management-main");
+
+        content.addClassName("management-content");
+
+        main.add(createMobileHeader(), header, content);
+        shell.add(sideNav, main);
 
         add(shell);
     }
 
-    private Div createSideNav() {
-        Div sideNav = new Div();
-        sideNav.addClassName("management-side-nav");
-
-        Div header = new Div();
-        header.addClassName("management-side-nav-header");
-
-        Span title = new Span("Admin Panel");
-        title.addClassName("management-side-nav-title");
-
-        Span subtitle = new Span("System management");
-        subtitle.addClassName("management-side-nav-subtitle");
-
-        header.add(title, subtitle);
-
-        Div links = new Div();
-        links.addClassName("management-side-nav-links");
-
-        Button dashboard = new Button("לוח ניהול מערכת");
-        dashboard.addClassName("management-nav-item");
-        dashboard.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.ADMIN_DASHBOARD));
-
-        links.add(dashboard);
-
-        sideNav.add(header, links);
-        return sideNav;
-    }
-
-    private Div createMainArea() {
-        Div main = new Div();
-        main.addClassName("management-main");
-
-        main.add(createMobileHeader(), content);
-
-        content.addClassName("management-content");
-
-        return main;
-    }
-
     private Header createMobileHeader() {
-        Header header = new Header();
-        header.addClassName("management-mobile-header");
+        Header mobileHeader = new Header();
+        mobileHeader.addClassName("management-mobile-header");
 
         Span brand = new Span("TixNow");
         brand.addClassName("brand-logo");
+        brand.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.HOME));
 
-        Span menu = new Span("☰");
-        menu.addClassName("mobile-menu-icon");
+        HorizontalLayout actions = new HorizontalLayout();
+        actions.addClassName("management-mobile-actions");
 
-        header.add(brand, menu);
-        return header;
+        Button account = new Button(VaadinIcon.USER.create());
+        account.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        account.addClassName("header-icon-button");
+        account.getElement().setAttribute("aria-label", "אזור אישי");
+        account.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT));
+
+        Button logout = new Button("התנתקות");
+        logout.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        logout.addClassName("management-mobile-logout-button");
+        logout.addClickListener(event -> {
+            UiSession.logout();
+            UI.getCurrent().navigate(UiRoutes.HOME);
+        });
+
+        actions.add(account, logout);
+        mobileHeader.add(brand, actions);
+        return mobileHeader;
     }
 
     @Override

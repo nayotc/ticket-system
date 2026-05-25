@@ -32,11 +32,18 @@ public class PublicHeader extends Header {
         brand.addClassName("brand-logo");
         brand.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.HOME));
 
-        HorizontalLayout navLinks = new HorizontalLayout(
+        HorizontalLayout navLinks = new HorizontalLayout();
+        navLinks.add(
                 createEventsButton(),
                 createProductionsButton()
                 //navLink("עזרה", UiRoutes.HELP)
         );
+
+        if (shouldShowSystemAdminButton()) {
+            navLinks.add(createSystemAdminButton());
+        }
+
+        navLinks.addClassName("nav-links");
         navLinks.addClassName("nav-links");
 
         TextField search = new TextField();
@@ -174,17 +181,35 @@ public class PublicHeader extends Header {
         return anchor;
     }
 
+    private boolean shouldShowSystemAdminButton() {
+        if (!UiSession.isLoggedIn()) {
+            return false;
+        }
+
+        try {
+            return presenter.canAccessSystemAdmin(UiSession.getMemberToken());
+        } catch (Exception exception) {
+            return false;
+        }
+    }
+
+    private Button createSystemAdminButton() {
+        Button button = new Button("ניהול מערכת");
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.addClassName("nav-link");
+        button.addClassName("nav-link-button");
+        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.ADMIN_DASHBOARD));
+        return button;
+    }
+
     public interface HeaderPresenter {
         int getActiveCartItemsCount(String sessionToken);
-        /*
-         * Return the id of one company the user can manage.
-         *
-         * Expected behavior:
-         * - return company id when the member is owner/founder/manager of at least one company
-         * - return null when the member is not linked to any production company
-         * - throw exception only for real failures, for example invalid session or system error
-         */
+
         Long getFirstManagedCompanyId(String sessionToken) throws Exception;
+
+        default boolean canAccessSystemAdmin(String sessionToken) throws Exception {
+            return false;
+        }
     }
 
     private static class EmptyHeaderPresenter implements HeaderPresenter {

@@ -238,13 +238,46 @@ vaadin-checkbox {
 
 /* =========================
    Buttons
+   Global button system
    ========================= */
+
+:host,
+html {
+    --tn-button-min-height: 36px;
+    --tn-button-padding-x: 14px;
+    --tn-button-icon-gap: 1px;
+}
+
+vaadin-button:not(.header-icon-button):not(.policy-icon-button):not(.policy-icon-danger-button):not(.nav-link-button) {
+    min-height: var(--tn-button-min-height);
+    padding-inline: var(--tn-button-padding-x);
+    box-sizing: border-box;
+    gap: var(--tn-button-icon-gap);
+    font-weight: 800;
+    border-radius: 999px;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+vaadin-button:not(.header-icon-button):not(.policy-icon-button):not(.policy-icon-danger-button):not(.nav-link-button)::part(prefix) {
+    margin-inline-end: var(--tn-button-icon-gap);
+}
+
+vaadin-button:not(.header-icon-button):not(.policy-icon-button):not(.policy-icon-danger-button):not(.nav-link-button)::part(suffix) {
+    margin-inline-start: var(--tn-button-icon-gap);
+}
+
+vaadin-button:not(.header-icon-button):not(.policy-icon-button):not(.policy-icon-danger-button):not(.nav-link-button) > vaadin-icon {
+    margin-inline-end: var(--tn-button-icon-gap);
+    flex: 0 0 auto;
+}
 
 vaadin-button[theme~="primary"] {
     background: var(--tn-secondary);
     color: var(--tn-on-secondary);
-    font-weight: 800;
-    border-radius: 999px;
     box-shadow: 0 0 15px rgba(68, 226, 205, 0.22);
 }
 
@@ -255,6 +288,38 @@ vaadin-button[theme~="primary"]:hover {
 
 vaadin-button[theme~="tertiary-inline"] {
     color: var(--tn-primary);
+}
+
+vaadin-button[theme~="tertiary-inline"]:hover {
+    color: var(--tn-secondary-fixed);
+    background: rgba(45, 52, 73, 0.70);
+}
+
+vaadin-button.nav-link-button {
+    min-height: auto;
+    padding: 0 0 6px 0;
+    border-radius: 0;
+    gap: 0;
+    font-weight: 600;
+    background: transparent;
+    box-shadow: none;
+}
+
+vaadin-button.nav-link-button:hover {
+    background: transparent;
+    box-shadow: none;
+}
+
+.app-action-button {
+    min-height: var(--tn-button-min-height);
+    padding-inline: var(--tn-button-padding-x);
+    gap: var(--tn-button-icon-gap);
+    border-radius: 999px;
+    font-weight: 800;
+}
+
+.app-action-button::part(prefix) {
+    margin-inline-end: var(--tn-button-icon-gap);
 }
 
 /* =========================
@@ -979,7 +1044,7 @@ vaadin-button[theme~="tertiary-inline"] {
     border-bottom: 1px solid rgba(73, 68, 84, 0.35);
     align-items: center;
     text-align: center;
-    width = 100%;
+    width: 100%;
 }
 
 .management-side-nav-title {
@@ -3232,8 +3297,7 @@ vaadin-button.header-icon-button vaadin-icon {
 }
 
 /* =========================
-   Company management fixes
-   Append this section at the end of styles.css
+   Company management
    ========================= */
 
 .company-management-page {
@@ -3332,23 +3396,6 @@ vaadin-button.header-icon-button vaadin-icon {
     color: var(--tn-text-muted);
     font-size: 15px;
     line-height: 1.5;
-}
-
-.company-secondary-button,
-.company-danger-soft-button,
-.company-danger-button,
-.management-create-button,
-.management-nav-item {
-    gap: 8px;
-}
-
-.company-secondary-button > vaadin-icon,
-.company-danger-soft-button > vaadin-icon,
-.company-danger-button > vaadin-icon,
-.management-create-button > vaadin-icon,
-.management-nav-item > vaadin-icon {
-    margin-inline-start: 4px;
-    margin-inline-end: 8px;
 }
 
 .company-secondary-button {
@@ -3547,7 +3594,6 @@ vaadin-button.header-icon-button vaadin-icon {
 
 /* =========================
    Policies editor
-   Paste this block before the Global RTL overlay fix at the end of styles.css
    ========================= */
 
 .policy-editor-page {
@@ -3749,7 +3795,6 @@ vaadin-button.header-icon-button vaadin-icon {
 .policy-secondary-button,
 .policy-danger-button,
 .policy-dashed-button {
-    gap: 8px;
     font-weight: 800;
     border-radius: 14px;
 }
@@ -3804,12 +3849,6 @@ vaadin-button.header-icon-button vaadin-icon {
     line-height: 1;
 }
 
-.policy-primary-button::part(prefix),
-.policy-secondary-button::part(prefix),
-.policy-danger-button::part(prefix),
-.policy-dashed-button::part(prefix) {
-    margin-inline-end: 8px;
-}
 
 .policy-icon-button {
     width: 34px;
@@ -4046,7 +4085,7 @@ vaadin-button.header-icon-button vaadin-icon {
 
 /* =========================
    Global RTL overlay fix
-   Keep this at the end of styles.css
+   Vaadin overlays need LTR root positioning. App containers stay RTL.
    ========================= */
 
 html {
@@ -4483,9 +4522,6 @@ vaadin-date-picker-month-calendar {
     font-weight: 800;
 }
 
-.sales-report-header-button vaadin-icon {
-    margin-inline-end: 6px;
-}
 
 .sales-report-metrics-grid {
     width: 100%;
@@ -4875,11 +4911,6 @@ vaadin-date-picker-month-calendar {
     margin-top: 6px;
 }
 
-.my-account-save-button vaadin-icon,
-.my-account-refresh-button vaadin-icon,
-.my-account-table-action vaadin-icon {
-    margin-left: 8px;
-}
 
 .my-account-history-card.app-card {
     padding: 0;
@@ -5029,7 +5060,6 @@ vaadin-date-picker-month-calendar {
     border: 1px solid rgba(149, 142, 160, 0.24);
     border-radius: 999px;
     font-weight: 800;
-    gap: 8px;
 }
 
 .management-header-account-button:hover {
@@ -5063,7 +5093,6 @@ vaadin-date-picker-month-calendar {
     border-radius: 999px;
     font-weight: 800;
     box-shadow: 0 0 18px rgba(160, 120, 255, 0.28);
-    gap: 8px;
 }
 
 .management-create-company-button:hover {
@@ -5216,7 +5245,6 @@ vaadin-date-picker-month-calendar {
     min-height: 48px;
     padding: 0 24px;
     border-radius: 14px;
-    gap: 8px;
 }
 
 .create-production-company-form {
@@ -5232,7 +5260,6 @@ vaadin-date-picker-month-calendar {
     width: 100%;
     min-height: 48px;
     border-radius: 14px;
-    gap: 8px;
 }
 
 @keyframes create-company-form-in {
@@ -5281,3 +5308,237 @@ vaadin-date-picker-month-calendar {
     }
 }
 
+/* =========================
+   System admin dashboard
+   ========================= */
+
+.system-admin-page {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.system-admin-metrics-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.system-admin-dashboard-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+
+.system-admin-panel,
+.system-admin-wide-panel {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+}
+
+.system-admin-users-panel {
+    min-width: 0;
+}
+
+.system-admin-panel-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 22px 24px;
+    border-bottom: 1px solid rgba(73, 68, 84, 0.45);
+    background:
+        radial-gradient(circle at 0% 0%, rgba(208, 188, 255, 0.10), transparent 32%),
+        rgba(23, 31, 51, 0.56);
+}
+
+.system-admin-panel-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(208, 188, 255, 0.14);
+    color: var(--tn-primary);
+    border: 1px solid rgba(208, 188, 255, 0.28);
+    flex: 0 0 auto;
+}
+
+.system-admin-panel-icon vaadin-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.system-admin-panel-text {
+    min-width: 0;
+}
+
+.system-admin-panel-title {
+    margin: 0;
+    color: var(--tn-text);
+    font-size: 22px;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.system-admin-panel-description {
+    margin: 6px 0 0;
+    color: var(--tn-text-muted);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.system-admin-search-field {
+    width: calc(100% - 48px);
+    margin: 18px 24px 12px;
+}
+
+.system-admin-data-grid {
+    width: 100%;
+    min-width: 0;
+    border: none;
+    background: transparent;
+}
+
+.system-admin-data-grid::part(table) {
+    background: transparent;
+}
+
+.system-admin-data-grid::part(header-cell) {
+    background: var(--tn-surface-container);
+    color: var(--tn-text-muted);
+    font-weight: 800;
+    border-bottom: 1px solid rgba(73, 68, 84, 0.45);
+}
+
+.system-admin-data-grid::part(body-cell) {
+    background: rgba(19, 27, 46, 0.42);
+    color: var(--tn-text);
+    border-bottom: 1px solid rgba(73, 68, 84, 0.22);
+}
+
+.system-admin-data-grid::part(row):hover::part(body-cell) {
+    background: rgba(45, 52, 73, 0.62);
+}
+
+.system-admin-row-actions {
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+}
+
+.system-admin-secondary-action {
+    color: var(--tn-primary);
+    font-weight: 800;
+    border-radius: 999px;
+}
+
+.system-admin-secondary-action:hover {
+    color: var(--tn-secondary-fixed);
+    background: rgba(45, 52, 73, 0.70);
+}
+
+.system-admin-danger-action {
+    color: var(--tn-error);
+    font-weight: 800;
+    border-radius: 999px;
+}
+
+.system-admin-danger-action:hover {
+    background: rgba(255, 180, 171, 0.12);
+    color: #ffdad6;
+}
+
+.system-admin-confirm-button {
+    min-width: 120px;
+}
+
+.admin-confirm-dialog::part(backdrop) {
+    background: rgba(11, 19, 38, 0.62);
+    backdrop-filter: blur(10px);
+}
+
+.admin-confirm-card {
+    width: min(420px, calc(100vw - 32px));
+    padding: 28px;
+    box-sizing: border-box;
+    border-radius: 24px;
+    background: rgba(23, 31, 51, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+}
+
+.admin-confirm-title {
+    margin: 0;
+    color: var(--tn-text);
+    font-size: 24px;
+    line-height: 1.3;
+    font-weight: 800;
+}
+
+.admin-confirm-message {
+    margin: 10px 0 24px;
+    color: var(--tn-text-muted);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.admin-confirm-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 12px;
+}
+
+.admin-side-nav-links {
+    display: flex;
+    align-items: right;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#admin-users,
+#admin-companies,
+#admin-company-history,
+#admin-user-history {
+    scroll-margin-top: 112px;
+}
+
+@media (max-width: 1100px) {
+    .system-admin-metrics-grid {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+    }
+
+    .system-admin-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .system-admin-wide-panel {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 640px) {
+    .system-admin-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .system-admin-search-field {
+        width: calc(100% - 32px);
+        margin: 16px;
+    }
+
+    .system-admin-panel-header {
+        padding: 20px 16px;
+    }
+
+    .system-admin-row-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
