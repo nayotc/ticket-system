@@ -54,13 +54,14 @@ public class ManagementSideNav extends Div {
         Div header = new Div();
         header.addClassName("management-side-nav-header");
 
-        Span title = new Span("Producer Hub");
-        title.addClassName("management-side-nav-title");
+        Span brand = new Span("TixNow");
+        brand.addClassName("brand-logo");
+        brand.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.HOME));
 
         Span subtitle = new Span("Manage your events");
         subtitle.addClassName("management-side-nav-subtitle");
 
-        header.add(title, subtitle);
+        header.add(brand, subtitle);
         return header;
     }
 

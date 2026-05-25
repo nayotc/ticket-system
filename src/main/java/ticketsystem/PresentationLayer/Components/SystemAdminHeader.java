@@ -10,20 +10,20 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
-public class ManagementHeader extends Header {
+public class SystemAdminHeader extends Header {
 
-    private final ManagementHeaderPresenter presenter;
+    private final SystemAdminHeaderPresenter presenter;
 
-    public ManagementHeader() {
+    public SystemAdminHeader() {
         this(null);
     }
 
-    public ManagementHeader(ManagementHeaderPresenter presenter) {
+    public SystemAdminHeader(SystemAdminHeaderPresenter presenter) {
         this.presenter = presenter;
 
         addClassName("management-header");
 
-        Span title = new Span("ניהול הפקות");
+        Span title = new Span("ניהול מערכת");
         title.addClassName("management-header-title");
 
         HorizontalLayout actions = new HorizontalLayout();
@@ -53,8 +53,7 @@ public class ManagementHeader extends Header {
                     presenter.logout(UiSession.getMemberToken());
                 }
             } catch (Exception ignored) {
-                // The real presenter can show a proper message popup later.
-                // For now, the UI session is cleared so the user leaves management mode.
+                // Later the real presenter can show a message popup.
             }
 
             UiSession.logout();
@@ -64,7 +63,7 @@ public class ManagementHeader extends Header {
         return button;
     }
 
-    public interface ManagementHeaderPresenter {
+    public interface SystemAdminHeaderPresenter {
         void logout(String sessionToken) throws Exception;
     }
 }
