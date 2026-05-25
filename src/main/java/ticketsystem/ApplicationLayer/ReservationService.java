@@ -11,7 +11,9 @@ import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.Reservation;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
@@ -22,33 +24,46 @@ import java.time.LocalDate;
 import java.time.Period;
 
 public class ReservationService {
+private final IOrderRepository orderRepository;
+private final IEventRepository eventRepository;
+private final ICompanyRepository companyRepository;
+private final MembershipDomainService membershipDomain;
+private final TokenService tokenService;
+private final IPaymentService paymentService;
+private final ISecureBarcode secureBarcode;
+private final ILotteryRepository lotteryRepository;
+private final Reservation reservationDomeinService;
+private final EventCatalogDomainService eventCatalogDomainService;
+private final ISystemLogger logger;
+private final List<OrderCompletedListener> listeners = new ArrayList<>();
+private final INotifier notificationsService;
 
-    private final IOrderRepository orderRepository;
-    private final IEventRepository eventRepository;
-    private final TokenService tokenService;
-    private final IPaymentService paymentService;
-    private final ISecureBarcode secureBarcode;
-    private final ILotteryRepository lotteryRepository;
-    private final Reservation reservationDomeinService;
-    private final EventCatalogDomainService eventCatalogDomainService;
-    private final ISystemLogger logger;
-    private final List<OrderCompletedListener> listeners = new ArrayList<>();
+public ReservationService(
+        IOrderRepository orderRepository,
+        IEventRepository eventRepository,
+        ICompanyRepository companyRepository,
+        MembershipDomainService membershipDomain,
+        TokenService tokenService,
+        IPaymentService paymentService,
+        ISecureBarcode secureBarcode,
+        ILotteryRepository lotteryRepository,
+        EventCatalogDomainService eventCatalogDomainService,
+        ISystemLogger logger,
+        INotifier notifier) {
 
-    public ReservationService(
-            IOrderRepository orderRepository,
-            IEventRepository eventRepository,
-            TokenService tokenService, IPaymentService paymentService, ISecureBarcode secureBarcode,
-            ILotteryRepository lotteryRepository,EventCatalogDomainService eventCatalogDomainService , ISystemLogger logger) {
-        this.orderRepository = orderRepository;
-        this.eventRepository = eventRepository;
-        this.tokenService = tokenService;
-        this.paymentService = paymentService;
-        this.secureBarcode = secureBarcode;
-        this.lotteryRepository = lotteryRepository;
-        this.eventCatalogDomainService=eventCatalogDomainService;
-        this.logger = logger;
-        this.reservationDomeinService = new Reservation();
-    }
+    this.orderRepository = orderRepository;
+    this.eventRepository = eventRepository;
+    this.companyRepository = companyRepository;
+    this.membershipDomain = membershipDomain;
+    this.tokenService = tokenService;
+    this.paymentService = paymentService;
+    this.secureBarcode = secureBarcode;
+    this.lotteryRepository = lotteryRepository;
+    this.eventCatalogDomainService = eventCatalogDomainService;
+    this.logger = logger;
+    this.reservationDomeinService = new Reservation();
+    this.notificationsService = notifier;
+}
 
     // UC 2.5,2.4
     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position,
@@ -226,6 +241,10 @@ public class ReservationService {
             if (!paymentResult) {
                 order.paymentFailed();
                 saveAll(order, event);
+                notificationsService.notifyGuest(
+                token,
+                "Payment failed. No purchase was completed."
+                );
                 throw new IllegalStateException("Payment failed");
             }
 
@@ -243,6 +262,10 @@ public class ReservationService {
             try {
                 reservationDomeinService.completeCheckout(order, event);
                 saveAll(order, event);
+                notificationsService.notifyGuest(
+                token,
+                "Your purchase was completed successfully. Your tickets are now available."
+                );
             } catch (Exception completeCheckoutException) {
                 handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, details, eventId, completeCheckoutException,
                         "Complete checkout failed. Payment was refunded.",
@@ -305,7 +328,10 @@ public class ReservationService {
 
         order.paymentFailed();
         saveAll(order, event);
-
+        notificationsService.notifyGuest(
+        order.getSessionToken(),
+        "The purchase was canceled because ticket issuing failed. A refund was issued."
+        );
         if (refundResult) {
             logger.logEvent(
                     refundSuccessMessage + " orderId=" + order.getOrderId() + ", eventId=" + eventId,
@@ -394,13 +420,28 @@ public class ReservationService {
     }
 
     private void expireOldOrders() {
-        List<ActiveOrder> allOrders = orderRepository.getAll();
-        for (ActiveOrder order : allOrders) {
-                Event event = eventRepository.getEventById(order.getEventId());
-                if(reservationDomeinService.timeExpire(event, order))
-                    orderRepository.deleteOrder(order.getOrderId());
-                // logger.logEvent("Expired order cancelled: " + order.getOrderId(),
-                // LogLevel.WARN);
-            }
+    List<ActiveOrder> allOrders = orderRepository.getAll();
+
+    for (ActiveOrder order : allOrders) {
+        Event event = eventRepository.getEventById(order.getEventId());
+
+        if (event == null) {
+            continue;
         }
+
+        if (reservationDomeinService.timeExpire(event, order)) {
+            notificationsService.notifyGuest(
+                    order.getSessionToken(),
+                    "Your active order has expired. The reserved tickets were released back to the inventory."
+            );
+
+            orderRepository.deleteOrder(order.getOrderId());
+
+            logger.logEvent(
+                    "Expired order cancelled: " + order.getOrderId(),
+                    LogLevel.WARN
+            );
+        }
+    }
+}
 }

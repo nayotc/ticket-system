@@ -2,9 +2,14 @@ package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.LotteryService;
 import ticketsystem.ApplicationLayer.TokenService;
@@ -27,6 +32,7 @@ public class LotteryServiceTest {
     private ITokenRepository tokenRepository;
     private IUserRepository userRepository;
     private UserService userService;
+    private FakeNotifier fakeNotifier;
 
     @BeforeEach
     void setUp() {
@@ -35,8 +41,9 @@ public class LotteryServiceTest {
         repo.clearForTests(); 
         lotteryRepository = repo; 
         
-        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository); 
-        lotteryService = new LotteryService(lotteryRepository, tokenService);
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        fakeNotifier = new FakeNotifier(); 
+        lotteryService = new LotteryService(lotteryRepository, tokenService,fakeNotifier);
         userRepository = new UserRepository(); 
         userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
     }
@@ -144,5 +151,24 @@ public class LotteryServiceTest {
         
         Lottery notSavedLottery = lotteryRepository.findById(1L);
         assertNull(notSavedLottery, "Lottery should not be saved due to exception");
+    }
+
+    private static class FakeNotifier implements INotifier {
+
+        private final List<String> messages = new ArrayList<>();
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void notifyGuest(String guestToken, String message) {
+            messages.add(message);
+        }
+
+        boolean containsMessage(String text) {
+            return messages.stream().anyMatch(message -> message.contains(text));
+        }
     }
 }

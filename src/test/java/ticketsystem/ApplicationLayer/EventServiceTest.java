@@ -18,6 +18,8 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -55,8 +57,13 @@ public class EventServiceTest {
     @Mock 
     private ISystemLogger logger;
 
-    private EventService eventService;
+    @Mock
+    private INotifier mockNotifier;
 
+    @Mock
+    
+    private EventService eventService;
+    private HistoryService mockHistoryService;
     private final String validSessionId = "valid-session";
     private final Long validUserId = 1L;
     private final Long validCompanyId = 1L;
@@ -70,7 +77,9 @@ public class EventServiceTest {
                 mockEventRepository,
                 mockTokenService,
                 mockMembershipDomainService,
-                logger
+                logger,
+                mockNotifier,
+                mockHistoryService
         );
 
         when(mockTokenService.validateToken(validSessionId)).thenReturn(true);
@@ -1694,4 +1703,23 @@ public class EventServiceTest {
                 mockEventUpdatesListener
         );
     }
+        private static class FakeNotifier implements INotifier {
+
+        private final List<String> messages = new ArrayList<>();
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+                messages.add(message);
+        }
+
+        @Override
+        public void notifyGuest(String guestToken, String message) {
+                messages.add(message);
+        }
+
+        boolean containsMessage(String text) {
+                return messages.stream()
+                        .anyMatch(message -> message.contains(text));
+        }
+        }
 }

@@ -402,69 +402,70 @@ public class Event {
     }
 
     public void cancel() {
-        if (this.status == eventStatus.CANCELLED) {
-            throw new IllegalStateException("Event is already cancelled");
+    if (this.status == eventStatus.CANCELLED) {
+        throw new IllegalStateException("Event is already cancelled");
+    }
+    if (this.Date.isBefore(LocalDateTime.now())) {
+        throw new IllegalStateException("Cannot cancel an event that has already occurred");
+    }
+    this.status = eventStatus.CANCELLED;
+}
+
+public void canPurchase(int quantity, int age) {
+    PolicyResult result = this.purchasePolicy.validate(quantity, age);
+    if (result == null) {
+        throw new IllegalStateException("Purchase policy validation failed");
+    }
+
+    if (!result.isAllowed()) {
+        String message = result.getMessage();
+
+        if (message == null || message.isBlank()) {
+            message = "User does not satisfy the purchase policy";
         }
-        if (this.Date.isBefore(LocalDateTime.now())) {
-            throw new IllegalStateException("Cannot cancel an event that has already occurred");
-        }
-        this.status = eventStatus.CANCELLED;
+
+        throw new IllegalArgumentException(message);
     }
+}
 
-    public void canPurchase(int quantity, int age) {
-        PolicyResult result = this.purchasePolicy.validate(quantity, age);
-        if (result == null) {
-            throw new IllegalStateException("Purchase policy validation failed");
-        }
-        if (!result.isAllowed()) {
-            String message = result.getMessage();
+// discount related methods
+public void addVisibleDiscountToEvent(String name, BigDecimal percentage) {
+    DiscountTypes discount = new VisibleDiscount(name, getNextDiscountId(), percentage);
+    discountPolicy.addDiscount(discount);
+}
 
-            if (message == null || message.isBlank()) {
-                message = "User does not satisfy the purchase policy";
-            }
+public void addCouponDiscountToEvent(String name, String couponCode,
+        BigDecimal percentage, LocalDateTime endTime) {
+    DiscountTypes discount = new CouponDiscount(
+            name, getNextDiscountId(), couponCode, percentage, endTime);
+    discountPolicy.addDiscount(discount);
+}
 
-            throw new IllegalArgumentException(message);
-        }
-     }
-    // discount related methods
-    public void addVisibleDiscountToEvent(String name, BigDecimal percentage) {
-        DiscountTypes discount = new VisibleDiscount(name, getNextDiscountId(), percentage);
-        discountPolicy.addDiscount(discount);
-    }
+public void addConditionalDiscountToEvent(String name,
+        LocalDateTime startTime, LocalDateTime endTime,
+        BigDecimal percentage, Condition condition,
+        Integer ticketThreshold) {
 
-    public void addCouponDiscountToEvent(String name, String couponCode,
-            BigDecimal percentage, LocalDateTime endTime) {
-        DiscountTypes discount = new CouponDiscount(
-                name, getNextDiscountId(), couponCode, percentage, endTime);
-        discountPolicy.addDiscount(discount);
-    }
+    DiscountTypes discount = new ConditionalDiscount(
+            name, getNextDiscountId(), startTime, endTime,
+            percentage, condition, ticketThreshold);
+    discountPolicy.addDiscount(discount);
+}
 
-    public void addConditionalDiscountToEvent(String name,
-            LocalDateTime startTime, LocalDateTime endTime,
-            BigDecimal percentage, Condition condition,
-            Integer ticketThreshold) {
+public void setDiscountCompositionType(DiscountCompositionType compositionType) {
+    discountPolicy.setDiscountCompositionType(compositionType);
+}
 
-        DiscountTypes discount = new ConditionalDiscount(
-                name, getNextDiscountId(), startTime, endTime,
-                percentage, condition, ticketThreshold);
-        discountPolicy.addDiscount(discount);
-    }
+public BigDecimal calculateDiscountEvent(BigDecimal totalPrice, int ticketCount, String couponCode) {
+    return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
+}
 
-    public void setDiscountCompositionType(DiscountCompositionType compositionType){
-        discountPolicy.setDiscountCompositionType(compositionType);
+public void removeDiscountFromEvent(Long discountId) {
+    discountPolicy.removeDiscount(discountId);
+}
 
-    }
-    
-    public BigDecimal calculateDiscountEvent(BigDecimal totalPrice, int ticketCount, String couponCode){
-        return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
-    }
-
-    public void removeDiscountFromEvent(Long discountId) {
-        discountPolicy.removeDiscount(discountId);
-    }
-
-    public List<DiscountTypes> getDiscounts(){
-        return discountPolicy.getDiscounts();
-    }
+public List<DiscountTypes> getDiscounts() {
+    return discountPolicy.getDiscounts();
+}
 
 }

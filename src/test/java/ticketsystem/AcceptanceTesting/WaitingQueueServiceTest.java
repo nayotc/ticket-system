@@ -156,19 +156,23 @@ public class WaitingQueueServiceTest {
         assertEquals(0, savedEvent.getActiveReservationsCount(), "Active reservations should remain 0.");
         assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
     }
-
     private class FakeNotificationsService implements INotifier {
 
         public List<String> notifiedUsers = new ArrayList<>();
+        public List<String> messages = new ArrayList<>();
 
         @Override
         public void notifyGuest(String sessionId, String message) {
             notifiedUsers.add(sessionId);
+            messages.add(message);
         }
 
         @Override
         public void notifyMember(Long memberId, String message) {
-            notifiedUsers.add(memberId.toString());
+            if (memberId != null) {
+                notifiedUsers.add(memberId.toString());
+            }
+            messages.add(message);
         }
     }
 

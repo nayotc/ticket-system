@@ -2,6 +2,8 @@ package ticketsystem.AcceptanceTesting;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.EventService;
+import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
@@ -35,8 +38,12 @@ import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
+<<<<<<< HEAD
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+=======
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
+>>>>>>> d9ea5cf (Add real-time notification calls)
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -49,6 +56,7 @@ import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
@@ -61,10 +69,11 @@ public class EventServiceAcceptanceTest {
     private FakeTokenService tokenService;
     private MembershipDomainService membershipDomain;
     private final ISystemLogger logger = new LogbackSystemLogger();
-
+    private FakeNotificationsService fakeNotifications;
     private final String validOwnerSessionId = "owner-session";
     private final String invalidSessionId = "invalid-session";
-
+    private HistoryService historyService;
+    private IHistoryRepository historyRepository;
     private final Long ownerId = 1L;
     private final Long companyId = 100L;
 
@@ -73,6 +82,7 @@ public class EventServiceAcceptanceTest {
         eventRepository = new EventRepository();
         tokenService = new FakeTokenService();
         userRepository = new UserRepository();
+        fakeNotifications = new FakeNotificationsService();
 
         // FIX: We use a robust anonymous subclass of MembershipDomainService.
         // This ensures permissions work correctly even if EventService uses the
@@ -84,18 +94,22 @@ public class EventServiceAcceptanceTest {
                 if (memberId == null) {
                     return false;
                 }
+
                 Member member = userRepository.getMemberById(memberId);
-                // Fallback protection if EventService mistakenly passes companyId instead of
-                // userId
+
+                // Fallback protection if EventService mistakenly passes companyId instead of userId
                 if (member == null && memberId.equals(compId)) {
                     member = userRepository.getMemberById(ownerId);
                 }
+
                 if (member == null) {
                     return false;
                 }
 
                 CompanyRole role = member.getRoleInCompany(compId);
-                return role != null && role.getStatus() == RoleStatus.ACTIVE && role.hasPermission(permission);
+                return role != null
+                        && role.getStatus() == RoleStatus.ACTIVE
+                        && role.hasPermission(permission);
             }
 
             @Override
@@ -104,6 +118,7 @@ public class EventServiceAcceptanceTest {
                 if (uId == null) {
                     return false;
                 }
+
                 Member member = userRepository.getMemberById(uId);
                 if (member == null) {
                     return false;
@@ -114,25 +129,29 @@ public class EventServiceAcceptanceTest {
             }
         };
 
+        historyRepository = new HistoryRepository();
+        historyService = new HistoryService(
+                historyRepository,
+                tokenService,
+                membershipDomain,
+                logger
+        );
+
         eventService = new EventService(
                 eventRepository,
                 tokenService,
                 membershipDomain,
-                logger);
+                logger,
+                fakeNotifications,
+                historyService
+        );
 
-        // FIX: Setup a real Member with an ACTIVE Owner role in the DB
         Member ownerMember = new Member(ownerId, "EventOwnerUser");
         ownerMember.addOwnerRole(companyId, 999L);
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password");
 
         tokenService.addValidSession(validOwnerSessionId, ownerId);
-        tokenService.addValidSession(validOwnerSessionId, ownerId);
-
-        // membershipDomain.allow(validOwnerSessionId, companyId, "event:create");
-        // membershipDomain.allow(validOwnerSessionId, companyId, "event:defineMap");
-        // membershipDomain.allow(validOwnerSessionId, companyId, "event:update");
-        // membershipDomain.allow(validOwnerSessionId, companyId, "event:cancel");
     }
 
     // -------------------- Insert Event Tests -------------------
@@ -758,8 +777,7 @@ public class EventServiceAcceptanceTest {
         // Arrange
         Event event = createActiveExistingEvent();
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
@@ -773,7 +791,7 @@ public class EventServiceAcceptanceTest {
                 buyerSessionId,
                 buyerId);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         // Act
@@ -787,8 +805,8 @@ public class EventServiceAcceptanceTest {
         assertNotNull(cancelledEvent);
         assertEquals(eventStatus.CANCELLED, cancelledEvent.getStatus());
 
-        assertTrue(historyService.wasNotifiedFor(event.getId()));
-        assertEquals(1, historyService.notificationCount());
+        assertTrue(historyListener.wasNotifiedFor(event.getId()));
+        assertEquals(1, historyListener.notificationCount());
 
         assertNotNull(updatedOrder);
         assertEquals(ActiveOrder.OrderStatus.CANCELLED, updatedOrder.getStatus());
@@ -804,8 +822,7 @@ public class EventServiceAcceptanceTest {
         // Arrange
         Event event = createActiveExistingEvent();
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
@@ -819,7 +836,7 @@ public class EventServiceAcceptanceTest {
                 buyerSessionId,
                 buyerId);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         // Act
@@ -834,7 +851,7 @@ public class EventServiceAcceptanceTest {
         assertTrue(exception.getMessage().contains("Invalid session ID"));
         assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
 
-        assertFalse(historyService.wasNotifiedFor(event.getId()));
+        assertFalse(historyListener.wasNotifiedFor(event.getId()));
 
         assertNotNull(unchangedOrder);
         assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
@@ -850,8 +867,7 @@ public class EventServiceAcceptanceTest {
         String sessionWithoutPermission = "session-without-cancel-permission";
         tokenService.addValidSession(sessionWithoutPermission, 2L);
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
@@ -865,7 +881,7 @@ public class EventServiceAcceptanceTest {
                 buyerSessionId,
                 buyerId);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         // Act
@@ -880,7 +896,7 @@ public class EventServiceAcceptanceTest {
         assertTrue(exception.getMessage().contains("User does not have permission to cancel an event"));
         assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
 
-        assertFalse(historyService.wasNotifiedFor(event.getId()));
+        assertFalse(historyListener.wasNotifiedFor(event.getId()));
 
         assertNotNull(unchangedOrder);
         assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
@@ -893,13 +909,12 @@ public class EventServiceAcceptanceTest {
         // Arrange
         Long nonExistingEventId = 999L;
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         // Act
@@ -910,7 +925,7 @@ public class EventServiceAcceptanceTest {
         // Assert
         assertTrue(exception.getMessage().contains("Event does not exist"));
 
-        assertFalse(historyService.wasNotifiedFor(nonExistingEventId));
+        assertFalse(historyListener.wasNotifiedFor(nonExistingEventId));
     }
 
     @Test
@@ -918,8 +933,7 @@ public class EventServiceAcceptanceTest {
         // Arrange
         Event event = createActiveExistingEvent();
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
@@ -933,12 +947,12 @@ public class EventServiceAcceptanceTest {
                 buyerSessionId,
                 buyerId);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         eventService.cancelEvent(validOwnerSessionId, event.getId());
 
-        assertEquals(1, historyService.notificationCount());
+        assertEquals(1, historyListener.notificationCount());
         assertEquals(1, notificationsService.notificationCount(buyerSessionId));
         assertEquals(
                 ActiveOrder.OrderStatus.CANCELLED,
@@ -956,7 +970,7 @@ public class EventServiceAcceptanceTest {
         assertTrue(exception.getMessage().contains("Event is already canceled"));
         assertEquals(eventStatus.CANCELLED, cancelledEvent.getStatus());
 
-        assertEquals(1, historyService.notificationCount());
+        assertEquals(1, historyListener.notificationCount());
         assertEquals(1, notificationsService.notificationCount(buyerSessionId));
         assertEquals(ActiveOrder.OrderStatus.CANCELLED, orderAfterSecondCancel.getStatus());
     }
@@ -1475,48 +1489,22 @@ void GivenOwnerLoggedIn_WhenSetEventDiscountCompositionType_ThenCompositionTypeI
         }
     }
 
-    private static class FakeNotificationsService implements INotifier {
+private static class FakeNotificationsService implements INotifier {
 
-        private final Map<String, List<String>> messagesBySession = new HashMap<>();
+    private final Map<String, List<String>> messagesBySession = new HashMap<>();
+    private final Map<Long, List<String>> messagesByMember = new HashMap<>();
+    private final List<String> allMessages = new ArrayList<>();
 
-        @Override
-        public void notifyGuest(String sessionId, String message) {
-            messagesBySession
-                    .computeIfAbsent(sessionId, key -> new java.util.ArrayList<>())
-                    .add(message);
-        }
+    @Override
+    public void notifyGuest(String sessionId, String message) {
+        messagesBySession
+                .computeIfAbsent(sessionId, key -> new ArrayList<>())
+                .add(message);
 
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messagesBySession
-                    .computeIfAbsent(memberId.toString(), key -> new java.util.ArrayList<>())
-                    .add(message);
-        }
-
-        boolean wasNotified(String sessionId) {
-            return messagesBySession.containsKey(sessionId)
-                    && !messagesBySession.get(sessionId).isEmpty();
-        }
-
-        int notificationCount(String sessionId) {
-            if (!messagesBySession.containsKey(sessionId)) {
-                return 0;
-            }
-
-            return messagesBySession.get(sessionId).size();
-        }
-
-        String lastMessageFor(String sessionId) {
-            if (!messagesBySession.containsKey(sessionId)
-                    || messagesBySession.get(sessionId).isEmpty()) {
-                return "";
-            }
-
-            List<String> messages = messagesBySession.get(sessionId);
-            return messages.get(messages.size() - 1);
-        }
+        allMessages.add(message);
     }
 
+<<<<<<< HEAD
         // -------------------- Set Event Purchase Policy Tests -------------------
 
     @Test
@@ -1725,4 +1713,46 @@ void GivenOwnerLoggedIn_WhenSetEventDiscountCompositionType_ThenCompositionTypeI
         );
     }
 
+=======
+    @Override
+    public void notifyMember(Long memberId, String message) {
+        messagesByMember
+                .computeIfAbsent(memberId, key -> new ArrayList<>())
+                .add(message);
+
+        allMessages.add(message);
+    }
+
+    boolean wasNotified(String sessionId) {
+        return messagesBySession.containsKey(sessionId)
+                && !messagesBySession.get(sessionId).isEmpty();
+    }
+
+    int notificationCount(String sessionId) {
+        return messagesBySession
+                .getOrDefault(sessionId, List.of())
+                .size();
+    }
+
+    String lastMessageFor(String sessionId) {
+        List<String> messages = messagesBySession.getOrDefault(sessionId, List.of());
+
+        if (messages.isEmpty()) {
+            return "";
+        }
+
+        return messages.get(messages.size() - 1);
+    }
+
+    boolean wasMemberNotified(Long memberId) {
+        return messagesByMember.containsKey(memberId)
+                && !messagesByMember.get(memberId).isEmpty();
+    }
+
+    boolean containsMessage(String text) {
+        return allMessages.stream()
+                .anyMatch(message -> message.contains(text));
+    }
+}
+>>>>>>> d9ea5cf (Add real-time notification calls)
 }

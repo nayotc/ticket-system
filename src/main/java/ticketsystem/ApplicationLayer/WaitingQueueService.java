@@ -51,6 +51,10 @@ public class WaitingQueueService {
                     if (event.isSoldOut()) {
                         logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId,
                                 LogbackSystemLogger.LogLevel.INFO);
+                    notificationsService.notifyGuest(
+                    tokenString,
+                    "The event is sold out."
+                    );
                         return "ERROR: Sold Out";
                     }
 
@@ -67,6 +71,10 @@ public class WaitingQueueService {
                     int position = queueRepository.getQueueSize(eventId);
                     logger.logEvent("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position,
                             LogbackSystemLogger.LogLevel.INFO);
+                    notificationsService.notifyGuest(
+                    tokenString,
+                    "You have entered the waiting queue. Your current position is: " + position + "."
+                    );
                     return "QUEUED";
                 }
             } catch (Exception e) {
@@ -149,10 +157,20 @@ public class WaitingQueueService {
 
     public void expireUserSession(long eventId, String sessionId) {
         releaseSpot(eventId, sessionId);
+        notificationsService.notifyGuest(
+        sessionId,
+        "Your access time for ticket selection has expired. You were removed from the queue."
+        );
     }
 
     public void handleSoldOutEvent(long eventId) {
         List<String> remainingUsers = queueRepository.clearQueue(eventId);
+        for (String sessionId : remainingUsers) {
+        notificationsService.notifyGuest(
+                    sessionId,
+                    "The event is sold out. The waiting queue has been closed."
+            );
+        }
     }
 
 }

@@ -12,12 +12,16 @@ public class LotteryService {
     
     private final ILotteryRepository lotteryRepository;
     private final ITokenService tokenService;
-    //private final NotificationsService notificationsService;
+    private final INotifier notificationsService;
 
-    public LotteryService(ILotteryRepository lotteryRepository, ITokenService tokenService) {
-        this.lotteryRepository = lotteryRepository;  
-        this.tokenService = tokenService; 
-        //this.notificationsService = notificationsService;
+    public LotteryService(
+            ILotteryRepository lotteryRepository,
+            ITokenService tokenService,
+            INotifier notificationsService
+    ) {
+        this.lotteryRepository = lotteryRepository;
+        this.tokenService = tokenService;
+        this.notificationsService = notificationsService;
     }
 
     // Method to create a new lottery
@@ -95,8 +99,12 @@ public class LotteryService {
                     //winning member
                     String uniqueCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
                     lottery.setWinner(memberId, uniqueCode);
-                    //notificationsService.notify(memberId, "Congratulations! You won. Your code is: " + uniqueCode);
-                } else {
+                    notifyMemberIfConnected(
+                            memberId,
+                            "Congratulations! You won the purchase lottery. Your purchase code is: " + uniqueCode + "."
+                    );                
+                } 
+                    else {
                 //non-winning member
                     //notificationService.sendMessage(memberId, "We are sorry, you were not selected in the lottery.");
                 }
@@ -133,5 +141,12 @@ public class LotteryService {
         Collections.shuffle(winnersPool);
         
         return new ArrayList<>(winnersPool.subList(0, numberOfWinners));
+    }
+    private void notifyMemberIfConnected(Long memberId, String message) {
+    if (notificationsService == null || memberId == null || message == null || message.isBlank()) {
+        return;
+    }
+
+    notificationsService.notifyMember(memberId, message);
     }
 }

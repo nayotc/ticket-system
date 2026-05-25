@@ -292,16 +292,17 @@ public class QueueConcurrencyTest {
             }
         };
     }
-
     private INotifier createFakeNotifications() {
         return new INotifier() {
+            @Override
             public void notifyGuest(String sessionId, String message) {
-                // Do nothing
+                // No-op for concurrency tests
             }
+
+            @Override
             public void notifyMember(Long memberId, String message) {
-                // Do nothing
+                // No-op for concurrency tests
             }
         };
     }
-
-}
+    }

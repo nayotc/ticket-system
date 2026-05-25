@@ -37,7 +37,15 @@ import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.RoleStatus;
+<<<<<<< HEAD
 import ticketsystem.DTO.PurchaseRuleDTO;
+=======
+import java.util.Collection;
+import java.util.ArrayList;
+import java.util.List;
+
+import ticketsystem.ApplicationLayer.INotifier;
+>>>>>>> d9ea5cf (Add real-time notification calls)
 
 public class CompanyServiceTest {
 
@@ -45,7 +53,7 @@ public class CompanyServiceTest {
     private UserService userService;
     private ITokenService tokenService;
     private ISystemLogger testLogger;
-
+    private FakeNotifier fakeNotifier;
     private String founderToken;
     private String nonFounderToken;
     private IUserRepository userRepository;
@@ -82,7 +90,8 @@ public class CompanyServiceTest {
         userService = new UserService(userRepository, tokenService, testLogger);
         membershipDomain = new MembershipDomainService(userRepository);
         userService = new UserService(userRepository, tokenService, testLogger);
-        companyService = new CompanyService(companyRepository, tokenService, membershipDomain, testLogger);
+        fakeNotifier = new FakeNotifier();
+        companyService = new CompanyService(companyRepository, tokenService, membershipDomain, testLogger, fakeNotifier);
 
         founderToken = createLoggedInMember("noa_user", "password123");
         nonFounderToken = createLoggedInMember("other_user", "password123");
@@ -214,6 +223,7 @@ public class CompanyServiceTest {
     @Test
     void GivenFounder_WhenAddVisibleDiscountToCompany_ThenDiscountIsAddedToCompany() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
 
         companyService.addVisibleDiscountToCompany(
                 founderToken,
@@ -350,6 +360,7 @@ public class CompanyServiceTest {
         assertThrows(Exception.class, () ->
                 companyService.removeDiscountFromCompany(founderToken, companyDTO.getId(), 999999L)
         );
+<<<<<<< HEAD
     }  
     
     // UC 4.3: Set company purchase policy
@@ -512,4 +523,25 @@ public class CompanyServiceTest {
                 new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, minAge, null)
         );
         }
+=======
+    }    
+    private static class FakeNotifier implements INotifier {
+
+        private final List<String> messages = new ArrayList<>();
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void notifyGuest(String guestToken, String message) {
+            messages.add(message);
+        }
+
+        boolean containsMessage(String text) {
+            return messages.stream().anyMatch(message -> message.contains(text));
+        }
+    }
+>>>>>>> d9ea5cf (Add real-time notification calls)
 }

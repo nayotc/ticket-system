@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.CompanyService;
+import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.CompanyDTO;
@@ -54,6 +58,8 @@ public class SystemAdminServiceTest {
     OrderRepository orderRepo;
     LogbackSystemLogger logger = new LogbackSystemLogger();
     private MembershipDomainService membershipDomain;
+    private FakeNotifier fakeNotifier;
+
 
     @BeforeEach
     public void setUp() {
@@ -68,7 +74,8 @@ public class SystemAdminServiceTest {
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         membershipDomain = new MembershipDomainService(userRepo);
-        companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger);
+        fakeNotifier = new FakeNotifier();
+        companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger,fakeNotifier);
         orderRepo = new OrderRepository();
         historyRepo = new HistoryRepository();
         systemAdminService = new SystemAdminService(
@@ -79,7 +86,7 @@ public class SystemAdminServiceTest {
                 orderRepo,
                 tokenService,
                 companyRepo, logger, historyRepo,
-                membershipDomain
+                membershipDomain,fakeNotifier
         );
     }
 
@@ -456,5 +463,24 @@ public class SystemAdminServiceTest {
 
         assertTrue(exception.getMessage().contains("Unauthorized access"), 
             "Exception message should indicate unauthorized access for invalid admin");
+    }
+    private static class FakeNotifier implements INotifier {
+
+        private final List<String> messages = new ArrayList<>();
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void notifyGuest(String guestToken, String message) {
+            messages.add(message);
+        }
+
+        boolean containsMessage(String text) {
+            return messages.stream()
+                    .anyMatch(message -> message.contains(text));
+        }
     }
 }

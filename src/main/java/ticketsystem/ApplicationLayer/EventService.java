@@ -31,13 +31,18 @@ public class EventService {
     private final List<EventUpdatesListener> eventUpdatesListeners = new ArrayList<>();
     private final ISystemLogger logger;
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
+    private final INotifier notificationsService;
+    private final HistoryService historyService;
 
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
-            MembershipDomainService membershipDomain, ISystemLogger logger) {
+            MembershipDomainService membershipDomain, ISystemLogger logger,
+            INotifier notificationsService, HistoryService historyService) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
+        this.notificationsService = notificationsService;
+        this.historyService = historyService;
     }
 
     public Boolean insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
@@ -189,6 +194,10 @@ public class EventService {
             }
             existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
             eventRepository.updateEvent(existingEvent);
+                notifyPurchasedBuyersIfConnected(
+                existingEvent.getId(),
+                "The details of the event \"" + existingEvent.getName() + "\" have been updated. Please check your ticket details."
+            );
             logger.logEvent("Completed - updateEvent. " + context, LogLevel.INFO);
             return true;
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -338,6 +347,10 @@ public class EventService {
             event.cancel();
             eventRepository.updateEvent(event); // update event status to cancelled
             notifyEventCanceledListeners(eventId);
+            notifyPurchasedBuyersIfConnected(
+            eventId,
+            "The event \"" + event.getName() + "\" was canceled."
+           );
             logger.logEvent("Completed - cancelEvent. " + context, LogLevel.INFO);
             return true;
         } catch (IllegalArgumentException e) {
@@ -414,7 +427,23 @@ public class EventService {
                 + ", companyId=" + eventDTO.companyId()
                 + ", version=" + eventDTO.version();
     }
+    private void notifyPurchasedBuyersIfConnected(Long eventId, String message) {
+        if (notificationsService == null || historyService == null || eventId == null
+                || message == null || message.isBlank()) {
+            return;
+        }
+        List<Long> buyerMemberIds = historyService.getBuyerMemberIdsByEvent(eventId);
 
+        if (buyerMemberIds == null || buyerMemberIds.isEmpty()) {
+            return;
+        }
+
+        for (Long memberId : buyerMemberIds) {
+            if (memberId != null) {
+                notificationsService.notifyMember(memberId, message);
+            }
+        }
+    }
     public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
         try {
             Event event = canEditPurchasePolicy(token, eventId);
@@ -597,4 +626,6 @@ public class EventService {
 
         return event;
     }
+
 }
+

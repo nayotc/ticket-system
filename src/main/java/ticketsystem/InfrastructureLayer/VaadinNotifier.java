@@ -1,5 +1,7 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.util.Collection;
+
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
@@ -14,15 +16,46 @@ public class VaadinNotifier implements INotifier {
 
     @Override
     public void notifyMember(Long memberId, String message) {
+        if (memberId == null || message == null || message.isBlank()) {
+            return;
+        }
+
         Notification notification = new Notification(memberId.toString(), message);
         Notification savedNotification = notificationsRepository.save(notification);
+
         Broadcaster.broadcast(memberId.toString(), savedNotification);
     }
 
     @Override
     public void notifyGuest(String sessionId, String message) {
+        if (sessionId == null || sessionId.isBlank() || message == null || message.isBlank()) {
+            return;
+        }
+
         Notification notification = new Notification(sessionId, message);
+
         Broadcaster.broadcast(sessionId, notification);
     }
 
+    @Override
+    public void notifyMembers(Collection<Long> memberIds, String message) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return;
+        }
+
+        for (Long memberId : memberIds) {
+            notifyMember(memberId, message);
+        }
+    }
+
+    @Override
+    public void notifyGuests(Collection<String> guestTokens, String message) {
+        if (guestTokens == null || guestTokens.isEmpty()) {
+            return;
+        }
+
+        for (String guestToken : guestTokens) {
+            notifyGuest(guestToken, message);
+        }
+    }
 }

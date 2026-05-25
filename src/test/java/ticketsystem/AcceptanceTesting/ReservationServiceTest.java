@@ -1,16 +1,19 @@
 package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.ApplicationLayer.IPaymentService;
 import ticketsystem.ApplicationLayer.ISecureBarcode;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ReservationService;
@@ -21,6 +24,7 @@ import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
@@ -61,16 +65,18 @@ public class ReservationServiceTest {
     private TokenService tokenService;
     private UserService userService;
     private EventCatalogDomainService eventCatalogDomainService;
-
+    private IPaymentService paymentService;
     private TestSecureBarcode secureBarcode;
     private ISystemLogger logger;
+    private FakeNotifier fakeNotifier;
 
     private String memberToken;
     private String guestToken;
     private Long memberId;
-
+    private MembershipDomainService membershipDomain;
     private static final Long COMPANY_ID = 1L;
     private static final Long COMPANY_FOUNDER_ID = 1L;
+
 
     @BeforeEach
     void setUp() {
@@ -80,14 +86,19 @@ public class ReservationServiceTest {
         companyRepository = new CompanyRepository();
         userRepository = new UserRepository();
 
+        membershipDomain = new MembershipDomainService(userRepository);
+
+        paymentService = new PaymentServiceProxy();
+        secureBarcode = new TestSecureBarcode();
+        logger = new NoOpSystemLogger();
+        fakeNotifier = new FakeNotifier();
+
         ITokenRepository tokenRepository = new TokenRepository();
 
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long_for_tests",
                 tokenRepository
         );
-
-        logger = new NoOpSystemLogger();
 
         userService = new UserService(userRepository, tokenService, logger);
 
@@ -111,17 +122,18 @@ public class ReservationServiceTest {
 
         resetPaymentProxy();
 
-        secureBarcode = new TestSecureBarcode();
-
         reservationService = new ReservationService(
                 orderRepository,
                 eventRepository,
+                companyRepository,
+                membershipDomain,
                 tokenService,
-                new PaymentServiceProxy(),
+                paymentService,
                 secureBarcode,
                 lotteryRepository,
                 eventCatalogDomainService,
-                logger
+                logger,
+                fakeNotifier
         );
     }
 
@@ -824,4 +836,91 @@ public class ReservationServiceTest {
         }
     }
 
+    private void useGuestTokenService() {
+        tokenService = new TokenService(
+                "manual_test_secret_32_chars_long",
+                new TokenRepository()
+        ) {
+            @Override
+            public boolean validateToken(String token) {
+                return true;
+            }
+
+            @Override
+            public boolean isGuestToken(String token) {
+                return true;
+            }
+
+            @Override
+            public boolean isMemberToken(String token) {
+                return false;
+            }
+
+            @Override
+            public Long extractUserId(String token) {
+                return null;
+            }
+        };
+
+        userService = new UserService(userRepository, tokenService, logger);
+
+        reservationService = new ReservationService(
+                orderRepository,
+                eventRepository,
+                companyRepository,
+                membershipDomain,
+                tokenService,
+                paymentService,
+                secureBarcode,
+                lotteryRepository,
+                eventCatalogDomainService,
+                logger,
+                fakeNotifier
+        );
+    }
+private static class FakeNotifier implements INotifier {
+
+            private final List<String> messages = new ArrayList<>();
+
+            @Override
+            public void notifyMember(Long memberId, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyGuest(String guestToken, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyMembers(Collection<Long> memberIds, String message) {
+                if (memberIds == null) {
+                    return;
+                }
+
+                for (Long memberId : memberIds) {
+                    if (memberId != null) {
+                        notifyMember(memberId, message);
+                    }
+                }
+            }
+
+            @Override
+            public void notifyGuests(Collection<String> guestTokens, String message) {
+                if (guestTokens == null) {
+                    return;
+                }
+
+                for (String guestToken : guestTokens) {
+                    if (guestToken != null && !guestToken.isBlank()) {
+                        notifyGuest(guestToken, message);
+                    }
+                }
+            }
+
+            boolean containsMessage(String text) {
+                return messages.stream()
+                        .anyMatch(message -> message.contains(text));
+            }
+        }
 }

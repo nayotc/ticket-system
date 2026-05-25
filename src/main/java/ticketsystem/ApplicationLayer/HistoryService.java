@@ -16,6 +16,7 @@ import ticketsystem.DomainLayer.user.Permission;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.Objects;
 
 public class HistoryService implements OrderCompletedListener {
     private final IHistoryRepository historyRepository;
@@ -198,7 +199,19 @@ public class HistoryService implements OrderCompletedListener {
         }
     }
 
+    public List<Long> getBuyerMemberIdsByEvent(Long eventId) {
+        if (eventId == null) {
+            return List.of();
+        }
 
+        return historyRepository.getAllPurchases()
+                .stream()
+                .filter(purchase -> eventId.equals(purchase.getEventId()))
+                .map(Purchase::getMemberId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
 
 
 }
