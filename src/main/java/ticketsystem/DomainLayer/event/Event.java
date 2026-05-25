@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
-import ticketsystem.DomainLayer.policy.policyResult;
+import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 

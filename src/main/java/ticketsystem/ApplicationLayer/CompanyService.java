@@ -4,7 +4,7 @@ import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.company.DiscountPolicy;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
 
 public class CompanyService {
@@ -92,7 +92,7 @@ public class CompanyService {
         Company newCompany = new Company(
                 companyName,
                 memberId,
-                new PurchasePolicy(),
+                PurchasePolicy.noRestrictions(),
                 new DiscountPolicy()
         );
 
