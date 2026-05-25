@@ -240,7 +240,7 @@ public class ReservationService {
             try {
                 orderDTO = creaOrderDTOwithBarcode(order, event);
             } catch (Exception barcodeException) {
-                handleRefundAfterCheckoutFailure(order, event, amount, details, eventId, barcodeException,
+                handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, details, eventId, barcodeException,
                         "Ticket issuing failed. Payment was refunded.",
                         "Ticket issuing failed and refund failed.");
                 return false; // unreachable
@@ -250,7 +250,7 @@ public class ReservationService {
                 reservationDomeinService.completeCheckout(order, event);
                 saveAll(order, event);
             } catch (Exception completeCheckoutException) {
-                handleRefundAfterCheckoutFailure(order, event, amount, details, eventId, completeCheckoutException,
+                handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, details, eventId, completeCheckoutException,
                         "Complete checkout failed. Payment was refunded.",
                         "Complete checkout failed and refund failed.");
                 return false; // unreachable

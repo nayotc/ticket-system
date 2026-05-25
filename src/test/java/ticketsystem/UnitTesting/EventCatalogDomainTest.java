@@ -13,12 +13,13 @@ import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
 
 
 public class EventCatalogDomainTest {
 
     private EventCatalogDomainService domainService;
-    ICompanyRepository companyRepository;
+    ICompanyRepository companyRepository = new CompanyRepository();;
 
 
     private SearchCriteria criteria;

@@ -437,7 +437,7 @@ public class Event {
     }
 
     public void removeDiscountFromEvent(Long discountId) {
-        discountPolicy.removeDiscountFromCompany(discountId);
+        discountPolicy.removeDiscount(discountId);
     }
 
 }
