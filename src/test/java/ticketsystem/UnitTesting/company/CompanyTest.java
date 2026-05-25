@@ -8,16 +8,15 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.DTO.DiscountRequestDTO;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
+import ticketsystem.DomainLayer.discount.CouponDiscount;
+import ticketsystem.DomainLayer.discount.VisibleDiscount;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountKind;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.ConditionalDiscount;
-import ticketsystem.DomainLayer.company.CouponDiscount;
-import ticketsystem.DomainLayer.company.DiscountPolicy;
+import ticketsystem.DomainLayer.company.DiscountCompanyPolicy;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
-import ticketsystem.DomainLayer.company.VisibleDiscount;
-import ticketsystem.DomainLayer.company.ConditionalDiscount.Condition;
-import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
-import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountKind;
 
 class CompanyTest {
 
@@ -27,7 +26,7 @@ class CompanyTest {
     @BeforeEach
     void setUp() {
         company = new Company("BGU Productions", FOUNDER_ID, new PurchasePolicy(),
-                new DiscountPolicy(DiscountCompositionType.MAX));
+                new DiscountCompanyPolicy(DiscountCompositionType.MAX));
     }
 
     // --- UC 3.2: Create Company & ID Generation ---
@@ -42,7 +41,7 @@ class CompanyTest {
     @Test
     void GivenNewCompanies_WhenCreated_ThenIdsAreUniqueAndIncremented() {
         Company secondCompany = new Company("Another Company", FOUNDER_ID, new PurchasePolicy(),
-                new DiscountPolicy(DiscountCompositionType.MAX));
+                new DiscountCompanyPolicy(DiscountCompositionType.MAX));
 
         assertTrue(company.getId() > 0, "Company ID should be a positive number.");
         assertTrue(secondCompany.getId() > company.getId(), "New company should receive a higher incremented ID.");
@@ -126,80 +125,237 @@ class CompanyTest {
     // --- Discount Policy: Add Discount To Company ---
 
     @Test
-    void GivenVisibleDiscountDTO_WhenAddDiscountToCompany_ThenVisibleDiscountIsAdded() {
-        DiscountRequestDTO dto = createVisibleDiscountDTO();
-
-        company.addDiscountToCompany(dto);
+    void GivenValidVisibleDiscount_WhenAddVisibleDiscountToCompany_ThenDiscountIsAdded() {
+        company.addVisibleDiscountToCompany("Student Discount", BigDecimal.valueOf(10));
 
         assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
         assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof VisibleDiscount);
     }
 
     @Test
-    void GivenConditionalDiscountDTO_WhenAddDiscountToCompany_ThenConditionalDiscountIsAdded() {
-        DiscountRequestDTO dto = createConditionalDiscountDTO();
-
-        company.addDiscountToCompany(dto);
-
-        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
-        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
+    void GivenNullName_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany(null, BigDecimal.valueOf(10))
+        );
     }
 
     @Test
-    void GivenCouponDiscountDTO_WhenAddDiscountToCompany_ThenCouponDiscountIsAdded() {
-        DiscountRequestDTO dto = createCouponDiscountDTO();
+    void GivenEmptyName_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany("", BigDecimal.valueOf(10))
+        );
+    }
 
-        company.addDiscountToCompany(dto);
+    @Test
+    void GivenNullPercentage_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany("Discount", null)
+        );
+    }
+
+    @Test
+    void GivenNegativePercentage_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany("Discount", BigDecimal.valueOf(-1))
+        );
+    }
+
+    @Test
+    void GivenPercentageAbove100_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany("Discount", BigDecimal.valueOf(101))
+        );
+    }
+    // --- Discount Policy: Add Coupon Discount ---
+
+    @Test
+    void GivenValidCouponDiscount_WhenAddCouponDiscountToCompany_ThenDiscountIsAdded() {
+        company.addCouponDiscountToCompany(
+                "Coupon Discount",
+                "BGU10",
+                BigDecimal.valueOf(10),
+                LocalDateTime.now().plusDays(7)
+        );
 
         assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
         assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof CouponDiscount);
     }
 
     @Test
-    void GivenNullDiscountDTO_WhenAddDiscountToCompany_ThenExceptionIsThrown() {
-        Exception exception = assertThrows(IllegalArgumentException.class, () ->
-                company.addDiscountToCompany(null)
+    void GivenNullCouponCode_WhenAddCouponDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addCouponDiscountToCompany(
+                        "Coupon Discount",
+                        null,
+                        BigDecimal.valueOf(10),
+                        LocalDateTime.now().plusDays(7)
+                )
+        );
+    }
+
+    @Test
+    void GivenEmptyCouponCode_WhenAddCouponDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addCouponDiscountToCompany(
+                        "Coupon Discount",
+                        "",
+                        BigDecimal.valueOf(10),
+                        LocalDateTime.now().plusDays(7)
+                )
+        );
+    }
+    // --- Discount Policy: Add Conditional Discount ---
+
+    @Test
+    void GivenValidMinTicketCondition_WhenAddConditionalDiscountToCompany_ThenDiscountIsAdded() {
+        company.addConditionalDiscountToCompany(
+                "Min Ticket Discount",
+                null,
+                null,
+                BigDecimal.valueOf(15),
+                Condition.MIN_TICKET,
+                2
         );
 
-        assertTrue(exception.getMessage().contains("Discount details cannot be null"));
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
     }
 
-    private DiscountRequestDTO createVisibleDiscountDTO() {
-        DiscountRequestDTO dto = new DiscountRequestDTO();
+    @Test
+    void GivenValidMaxTicketCondition_WhenAddConditionalDiscountToCompany_ThenDiscountIsAdded() {
+        company.addConditionalDiscountToCompany(
+                "Max Ticket Discount",
+                null,
+                null,
+                BigDecimal.valueOf(15),
+                Condition.MAX_TICKET,
+                5
+        );
 
-        dto.setDiscountType(DiscountKind.VISIBLE);
-        dto.setName("Summer Sale");
-        dto.setStartTime(LocalDateTime.now().minusDays(1));
-        dto.setEndTime(LocalDateTime.now().plusDays(7));
-        dto.setPercentage(new BigDecimal(10));
-
-        return dto;
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
     }
 
-    private DiscountRequestDTO createConditionalDiscountDTO() {
-        DiscountRequestDTO dto = new DiscountRequestDTO();
+    @Test
+    void GivenValidDateCondition_WhenAddConditionalDiscountToCompany_ThenDiscountIsAdded() {
+        company.addConditionalDiscountToCompany(
+                "Date Discount",
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(7),
+                BigDecimal.valueOf(15),
+                Condition.DATE,
+                null
+        );
 
-        dto.setDiscountType(DiscountKind.CONDITIONAL);
-        dto.setName("Buy 2 Tickets Discount");
-        dto.setStartTime(LocalDateTime.now().minusDays(1));
-        dto.setEndTime(LocalDateTime.now().plusDays(7));
-        dto.setPercentage(new BigDecimal(15));
-        dto.setCondition(Condition.MIN_TICKET);
-        dto.setTicketThreshold(2);
-
-        return dto;
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
     }
 
-    private DiscountRequestDTO createCouponDiscountDTO() {
-        DiscountRequestDTO dto = new DiscountRequestDTO();
-
-        dto.setDiscountType(DiscountKind.COUPON);
-        dto.setName("Coupon Discount");
-        dto.setStartTime(LocalDateTime.now().minusDays(1));
-        dto.setEndTime(LocalDateTime.now().plusDays(7));
-        dto.setCouponCode("BGU10");
-        dto.setPercentage(new BigDecimal(10));
-
-        return dto;
+    @Test
+    void GivenNullCondition_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Conditional Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        null,
+                        2
+                )
+        );
     }
+
+    @Test
+    void GivenMinTicketConditionAndNullThreshold_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Min Ticket Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        Condition.MIN_TICKET,
+                        null
+                )
+        );
+    }
+
+    @Test
+    void GivenMaxTicketConditionAndNegativeThreshold_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Max Ticket Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        Condition.MAX_TICKET,
+                        -1
+                )
+        );
+    }
+
+    @Test
+    void GivenDateConditionAndNullDates_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Date Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        Condition.DATE,
+                        null
+                )
+        );
+    }
+
+    @Test
+    void GivenDateConditionAndEndBeforeStart_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Date Discount",
+                        LocalDateTime.now().plusDays(7),
+                        LocalDateTime.now().minusDays(1),
+                        BigDecimal.valueOf(15),
+                        Condition.DATE,
+                        null
+                )
+        );
+    }
+    // --- Discount Policy: Remove Discount ---
+
+    @Test
+    void GivenExistingDiscount_WhenRemoveDiscountFromCompany_ThenDiscountIsRemoved() {
+        company.addVisibleDiscountToCompany("Discount", BigDecimal.valueOf(10));
+
+        Long discountId = company.getDiscountPolicy()
+                .getDiscounts()
+                .get(0)
+                .getDiscountId();
+
+        company.removeDiscountFromCompany(discountId);
+
+        assertEquals(0, company.getDiscountPolicy().getDiscounts().size());
+    }
+
+    @Test
+    void GivenNonExistingDiscount_WhenRemoveDiscountFromCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.removeDiscountFromCompany(999L)
+        );
+    }
+    // --- Discount Policy: Composition Type ---
+
+    @Test
+    void GivenCompositionTypeSum_WhenSetDiscountCompositionType_ThenTypeIsUpdated() {
+        company.setDiscountCompositionType(DiscountCompositionType.SUM);
+
+        assertEquals(DiscountCompositionType.SUM, company.getDiscountCompositionType());
+    }
+
+    @Test
+    void GivenCompositionTypeMax_WhenSetDiscountCompositionType_ThenTypeIsUpdated() {
+        company.setDiscountCompositionType(DiscountCompositionType.MAX);
+
+        assertEquals(DiscountCompositionType.MAX, company.getDiscountCompositionType());
+    }
+    
 }

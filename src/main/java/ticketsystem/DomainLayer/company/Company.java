@@ -4,8 +4,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicLong;
 
-import ticketsystem.DTO.DiscountRequestDTO;
-import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
+import ticketsystem.DomainLayer.company.DiscountCompanyPolicy;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.CouponDiscount;
+import ticketsystem.DomainLayer.discount.DiscountTypes;
+import ticketsystem.DomainLayer.discount.VisibleDiscount;
 
 public class Company {
     private static long idCounter = 1;
@@ -15,7 +20,7 @@ public class Company {
     private final long founderId;
     private boolean isActive;
     private PurchasePolicy purchasePolicy;
-    private DiscountPolicy discountPolicy;
+    private DiscountCompanyPolicy discountPolicy;
     private Double rate = 0.0; // for search and filtering
     private Double totalRating = 0.0; // for calculating average rating
     private Integer ratingCount = 0; // for calculating average rating
@@ -24,7 +29,7 @@ public class Company {
     // Version field for Optimistic Locking
     private long version;
 
-    public Company(String name, long founderId, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
+    public Company(String name, long founderId, PurchasePolicy purchasePolicy, DiscountCompanyPolicy discountPolicy) {
         this.id = idCounter++;
 
         this.name = name;
@@ -84,11 +89,11 @@ public class Company {
         this.purchasePolicy = purchasePolicy;
     }
 
-    public DiscountPolicy getDiscountPolicy() {
+    public DiscountCompanyPolicy getDiscountPolicy() {
         return discountPolicy;
     }
 
-    public void setDiscountPolicy(DiscountPolicy discountPolicy) {
+    public void setDiscountPolicy(DiscountCompanyPolicy discountPolicy) {
         this.discountPolicy = discountPolicy;
     }
 
@@ -98,10 +103,6 @@ public class Company {
 
     public void setVersion(long version) {
         this.version = version;
-    }
-
-    private boolean isFounder(long memberId) {
-        return this.founderId == memberId;
     }
 
     public long getFounderId() {
@@ -159,53 +160,130 @@ public class Company {
     public Long getNextId() {
         return discountId.incrementAndGet();
     }
+// visible discount
+    public void addVisibleDiscountToCompany(String name, BigDecimal percentage) {
+        validateDiscountName(name);
+        validatePercentage(percentage);
 
+        DiscountTypes discount = new VisibleDiscount(
+                name,
+                getNextId(),
+                percentage
+        );
 
-    public void addDiscountToCompany(DiscountRequestDTO discountDTO) {
-
-    DiscountTypes discount;
-    if (discountDTO == null) {
-        throw new IllegalArgumentException("Discount details cannot be null");
+        discountPolicy.addDiscount(discount);
     }
 
-    switch (discountDTO.getDiscountKind()) {
 
-        case VISIBLE:
-            discount = new VisibleDiscount(
-                    discountDTO.getName(),getNextId(),
-                    discountDTO.getPercentage());
-            break;
+    // conditional discount
+    public void addConditionalDiscountToCompany(String name,
+            LocalDateTime startTime, LocalDateTime endTime,
+            BigDecimal percentage, Condition condition,
+            Integer ticketThreshold) {
 
-        case CONDITIONAL:
-            discount = new ConditionalDiscount(discountDTO.getName(),getNextId(),
-                    discountDTO.getStartTime(),
-                    discountDTO.getEndTime(),
-                    discountDTO.getPercentage(),
-                    discountDTO.getCondition(),discountDTO.getTicketThreshold()
-            );
-            break;
+        validateDiscountName(name);
+        validatePercentage(percentage);
 
-        case COUPON:
-            discount = new CouponDiscount(
-                    discountDTO.getName(),getNextId(),
-                    discountDTO.getCouponCode(),
-                    discountDTO.getPercentage()                    
-            );
-           break;
+        if (condition == null) {
+            throw new IllegalArgumentException("Discount condition cannot be null");
+        }
 
-        default:
-            throw new IllegalArgumentException("Unsupported discount type");
+        switch (condition) {
+            case MIN_TICKET:
+            case MAX_TICKET:
+                validateTicketThreshold(ticketThreshold);
+                break;
+
+            case DATE:
+                validateDateRange(startTime, endTime);
+                break;
+
+            default:
+                throw new IllegalArgumentException("Unsupported discount condition");
+        }
+
+        DiscountTypes discount = new ConditionalDiscount(
+                name,
+                getNextId(),
+                startTime,
+                endTime,
+                percentage,
+                condition,
+                ticketThreshold
+        );
+
+        discountPolicy.addDiscount(discount);
     }
-    getDiscountPolicy().addDiscount(discount);
+
+
+    // coupon discount
+    public void addCouponDiscountToCompany(
+            String name,
+            String couponCode,
+            BigDecimal percentage,LocalDateTime endTime
+    ) {
+        validateDiscountName(name);
+        validatePercentage(percentage);
+
+        if (couponCode == null || couponCode.isBlank()) {
+            throw new IllegalArgumentException("Coupon code cannot be empty");
+        }
+
+        DiscountTypes discount = new CouponDiscount(
+                name,
+                getNextId(),
+                couponCode,
+                percentage,endTime
+        );
+
+        discountPolicy.addDiscount(discount);
+    }
     
-}
-
-public BigDecimal calculateDiscountCompany(BigDecimal totalPrice, int ticketCount, String couponCode){
-    return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
-}
-
-public void removeDiscountFromCompany(Long discountId) {
-    discountPolicy.removeDiscountFromCompany(discountId);
-}
    
+
+    public BigDecimal calculateDiscountCompany(BigDecimal totalPrice, int ticketCount, String couponCode){
+        return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
+    }
+
+    public void removeDiscountFromCompany(Long discountId) {
+        discountPolicy.removeDiscountFromCompany(discountId);
+    }
+    //validation function
+    private void validateDiscountName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Discount name cannot be empty");
+        }
+    }
+
+    private void validatePercentage(BigDecimal percentage) {
+        if (percentage == null) {
+            throw new IllegalArgumentException("Discount percentage cannot be null");
+        }
+
+        if (percentage.compareTo(BigDecimal.ZERO) < 0 ||
+                percentage.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new IllegalArgumentException(
+                    "Discount percentage must be between 0 and 100");
+        }
+    }
+
+    private void validateTicketThreshold(Integer ticketThreshold) {
+        if (ticketThreshold == null || ticketThreshold <= 0) {
+            throw new IllegalArgumentException(
+                    "Ticket threshold must be positive");
+        }
+    }
+
+    private void validateDateRange(LocalDateTime startTime, LocalDateTime endTime) {
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException(
+                    "Discount dates cannot be null for date condition");
+        }
+
+        if (endTime.isBefore(startTime)) {
+            throw new IllegalArgumentException(
+                    "End time cannot be before start time");
+        }
+    }
+    
 }

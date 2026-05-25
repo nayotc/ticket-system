@@ -1,4 +1,4 @@
-package ticketsystem.UnitTesting.company;
+package ticketsystem.UnitTesting.discount;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.DomainLayer.company.ConditionalDiscount;
-import ticketsystem.DomainLayer.company.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 
 class ConditionalDiscountTest {
 

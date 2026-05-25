@@ -1,4 +1,4 @@
-package ticketsystem.DomainLayer.company;
+package ticketsystem.DomainLayer.discount;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 

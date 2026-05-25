@@ -7,12 +7,15 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class DiscountPolicy {
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountTypes;
+
+public class DiscountCompanyPolicy {
 
     private List<DiscountTypes> discounts = new ArrayList<>();
     private DiscountCompositionType compositionType;
 
-    public DiscountPolicy(DiscountCompositionType compositionType) {
+    public DiscountCompanyPolicy(DiscountCompositionType compositionType) {
         this.compositionType = compositionType;
     }
 
@@ -87,17 +90,6 @@ public class DiscountPolicy {
         return discounts;
     }
 
-    public enum DiscountCompositionType {
-        SUM,
-        MAX
-    }
-
-    public enum DiscountKind {
-        VISIBLE,
-        CONDITIONAL,
-        COUPON
-    }
-
-  
+ 
 
 }

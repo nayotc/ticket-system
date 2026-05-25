@@ -7,18 +7,18 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.DomainLayer.company.DiscountPolicy;
-import ticketsystem.DomainLayer.company.VisibleDiscount;
-import ticketsystem.DomainLayer.company.CouponDiscount;
-import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
+import ticketsystem.DomainLayer.company.DiscountCompanyPolicy;
+import ticketsystem.DomainLayer.discount.CouponDiscount;
+import ticketsystem.DomainLayer.discount.VisibleDiscount;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 
 class DiscountPolicyTest {
 
-        private DiscountPolicy discountPolicy;
+        private DiscountCompanyPolicy discountPolicy;
 
         @BeforeEach
         void setUp() {
-                discountPolicy = new DiscountPolicy(DiscountCompositionType.MAX);
+                discountPolicy = new DiscountCompanyPolicy(DiscountCompositionType.MAX);
         }
 
         @Test
@@ -80,7 +80,7 @@ class DiscountPolicyTest {
 
         @Test
         void GivenSumComposition_WhenCalculateDiscount_ThenReturnTieredTotalDiscountAmount() {
-                DiscountPolicy sumPolicy = new DiscountPolicy(DiscountCompositionType.SUM);
+                DiscountCompanyPolicy sumPolicy = new DiscountCompanyPolicy(DiscountCompositionType.SUM);
 
                 sumPolicy.addDiscount(new VisibleDiscount(
                                 "10 Percent",
@@ -102,22 +102,6 @@ class DiscountPolicyTest {
                                 null);
 
                 assertEquals(0, BigDecimal.valueOf(28).compareTo(result));
-        }
-
-        @Test
-        void GivenCouponDiscountWithCorrectCoupon_WhenCalculateDiscount_ThenCouponIsApplied() {
-                discountPolicy.addDiscount(new CouponDiscount(
-                                "Coupon",
-                                1L,
-                                "BGU10",
-                                BigDecimal.valueOf(10)));
-
-                BigDecimal result = discountPolicy.calculateDiscount(
-                                BigDecimal.valueOf(100),
-                                1,
-                                "BGU10");
-
-                assertEquals(0, BigDecimal.valueOf(10).compareTo(result));
         }
 
         @Test

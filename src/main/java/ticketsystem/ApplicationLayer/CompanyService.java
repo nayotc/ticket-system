@@ -1,13 +1,18 @@
 package ticketsystem.ApplicationLayer;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import ticketsystem.DomainLayer.company.DiscountCompanyPolicy;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DTO.CompanyDTO;
-import ticketsystem.DTO.DiscountRequestDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.DiscountPolicy;
-import ticketsystem.DomainLayer.company.DiscountPolicy.DiscountCompositionType;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+
 
 public class CompanyService {
 
@@ -95,7 +100,7 @@ public class CompanyService {
                 companyName,
                 memberId,
                 new PurchasePolicy(),
-                new DiscountPolicy(DiscountCompositionType.MAX)//defult
+                new DiscountCompanyPolicy(DiscountCompositionType.MAX)//defult
         );
 
         membershipDomain.assignFounderRole(memberId, newCompany.getId());
@@ -308,21 +313,74 @@ public class CompanyService {
         }
     }
     //add discount
-    public void addDiscountToCompany(
-            String token,Long companyId,DiscountRequestDTO discountDTO ) throws Exception{
-        try {
 
-            Company company = canEditDiscount(token,companyId);
-            company.addDiscountToCompany(discountDTO);
+    // add visible discount
+    public void addVisibleDiscountToCompany(String token, Long companyId,
+            String name, BigDecimal percentage) throws Exception {
+
+        try {
+            Company company = canEditDiscount(token, companyId);
+
+            company.addVisibleDiscountToCompany(name, percentage);
+
             companyRepository.save(company);
 
         } catch (Exception e) {
 
-            logger.logEvent( "Failed to add discount to company",ISystemLogger.LogLevel.WARN);
+            logger.logEvent("Failed to add visible discount to company",
+                    ISystemLogger.LogLevel.WARN);
+
             throw e;
         }
     }
+    // add coupon discount
+    public void addCouponDiscountToCompany(String token, Long companyId,
+            String name, String couponCode,
+            BigDecimal percentage,LocalDateTime endTime) throws Exception {
 
+        try {
+            Company company = canEditDiscount(token, companyId);
+
+            company.addCouponDiscountToCompany(name, couponCode, percentage,endTime);
+
+            companyRepository.save(company);
+
+        } catch (Exception e) {
+
+            logger.logEvent("Failed to add coupon discount to company",
+                    ISystemLogger.LogLevel.WARN);
+
+            throw e;
+        }
+    }// add conditional discount
+    public void addConditionalDiscountToCompany(String token, Long companyId,
+            String name, LocalDateTime startTime,
+            LocalDateTime endTime, BigDecimal percentage,
+            Condition condition,
+            int ticketThreshold) throws Exception {
+
+        try {
+            Company company = canEditDiscount(token, companyId);
+
+            company.addConditionalDiscountToCompany(
+                    name,
+                    startTime,
+                    endTime,
+                    percentage,
+                    condition,
+                    ticketThreshold
+            );
+
+            companyRepository.save(company);
+
+        } catch (Exception e) {
+
+            logger.logEvent("Failed to add conditional discount to company",
+                    ISystemLogger.LogLevel.WARN);
+
+            throw e;
+        }
+    }
     //remove discount
     public void removeDiscountFromCompany(String token,Long companyId,Long discountId ) throws Exception{
         try{
@@ -351,15 +409,15 @@ public class CompanyService {
     private Company canEditDiscount(String token,Long companyId) throws Exception{
         tokenService.validateToken(token);
 
-            Long userId = tokenService.extractUserId(token);
+            Long memberId = tokenService.extractUserId(token);
 
             Company company = companyRepository.findById(companyId)
                             .orElseThrow(() -> new Exception("Error: Company not found."));;
 
-        if (company.getFounderId() != userId) {
-                throw new IllegalArgumentException(
-                        "User is not allowed to manage company discount policy");
-            }
+        if (!membershipDomain.validatePermission(memberId,companyId,Permission.SET_DISCOUNT_POLICY)){
+            throw new IllegalArgumentException(
+                "User does not have permission to manage company discount policy");
+        }
             return company;
     }
 }
