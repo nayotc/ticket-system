@@ -3,6 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -10,6 +11,7 @@ import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
 
+@Service
 public class UserService {
     
     private final IUserRepository userRepository;
@@ -46,25 +48,35 @@ public class UserService {
         try {
             if (username == null || username.isBlank() || password == null || password.isBlank()) {
                 logger.logEvent("Sign-up rejected: blank username or password", LogLevel.WARN);
-                return false;
+                throw new IllegalArgumentException("Username and password are required.");
             }
+
             tokenService.validateToken(sessionToken);
+
             if (!tokenService.isGuestToken(sessionToken)) {
                 logger.logEvent("Sign-up rejected: session is not a guest token", LogLevel.WARN);
-                return false;
+                throw new IllegalStateException("Only guests can sign up.");
             }
+
             if (userRepository.isUsernameTaken(username)) {
                 logger.logEvent("Sign-up rejected: username already taken, username=" + username, LogLevel.INFO);
-                return false;
+                throw new IllegalArgumentException("Username is already taken.");
             }
+
             Long newId = new SecureRandom().nextLong();
             while (userRepository.isIDTaken(newId)) {
                 newId = new SecureRandom().nextLong();
             }
+
             String hashedPassword = passwordService.hashPassword(password);
             userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
+
             logger.logEvent("Sign-up succeeded: new member registered, username=" + username, LogLevel.INFO);
             return true;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
             logger.logError("Sign-up failed with unexpected error", e);
             throw e;
@@ -76,44 +88,52 @@ public class UserService {
     public String login(String sessionToken, String username, String password) {
         try {
             tokenService.validateToken(sessionToken);
-        } catch (RuntimeException e) {
-            logger.logError("Login failed: token validation failed", e);
-            throw e;
-        }
-        // Only guests can log in with credentials; members already have a member token.
-        if (!tokenService.isGuestToken(sessionToken)) {
-            logger.logEvent("Login rejected: session is not a guest token", LogLevel.WARN);
-            return null;
-        }
-        if (username == null || username.isBlank() || password == null || password.isBlank()) {
-            logger.logEvent("Login rejected: blank username or password", LogLevel.WARN);
-            return null;
-        }
-        String hashedPassword = userRepository.getHashedPasswordByUsername(username);
-        if (hashedPassword == null || !passwordService.verifyPassword(password, hashedPassword)) {
-            // Single message avoids distinguishing unknown user vs wrong password (user enumeration).
-            logger.logEvent("Login rejected: invalid credentials, username=" + username, LogLevel.WARN);
-            return null;
-        }
-        Member member = userRepository.getMemberByUsername(username);
-        if (member == null) {
-            logger.logEvent(
-                    "Login rejected: member missing after successful password check, username=" + username,
-                    LogLevel.WARN);
-            return null;
-        }
-        String memberToken = tokenService.addActiveSession(member);
 
-        try {
-            notifyListeners(sessionToken, memberToken);
-            tokenService.removeActiveSession(sessionToken);
-            logger.logEvent("Login succeeded: username=" + username, LogLevel.INFO);
-            return memberToken;
+            if (!tokenService.isGuestToken(sessionToken)) {
+                logger.logEvent("Login rejected: session is not a guest token", LogLevel.WARN);
+                throw new IllegalStateException("Only guests can log in.");
+            }
+
+            if (username == null || username.isBlank() || password == null || password.isBlank()) {
+                logger.logEvent("Login rejected: blank username or password", LogLevel.WARN);
+                throw new IllegalArgumentException("Username and password are required.");
+            }
+
+            String hashedPassword = userRepository.getHashedPasswordByUsername(username);
+            if (hashedPassword == null || !passwordService.verifyPassword(password, hashedPassword)) {
+                // Single message avoids distinguishing unknown user vs wrong password (user enumeration).
+                logger.logEvent("Login rejected: invalid credentials, username=" + username, LogLevel.WARN);
+                throw new IllegalArgumentException("Invalid username or password.");
+            }
+
+            Member member = userRepository.getMemberByUsername(username);
+            if (member == null) {
+                logger.logEvent(
+                        "Login rejected: member missing after successful password check, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Login failed. Please try again.");
+            }
+
+            String memberToken = tokenService.addActiveSession(member);
+
+            try {
+                notifyListeners(sessionToken, memberToken);
+                tokenService.removeActiveSession(sessionToken);
+                logger.logEvent("Login succeeded: username=" + username, LogLevel.INFO);
+                return memberToken;
+            } catch (Exception e) {
+                tokenService.removeActiveSession(memberToken);
+                logger.logError(
+                        "Login aborted: post-login listener failed; member session rolled back, username=" + username,
+                        e);
+                throw new IllegalStateException("Login failed. Please try again.");
+            }
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
-            tokenService.removeActiveSession(memberToken);
-            logger.logError(
-                    "Login aborted: post-login listener failed; member session rolled back, username=" + username,
-                    e);
+            logger.logError("Login failed with unexpected error", e);
             throw e;
         }
     }
@@ -123,8 +143,13 @@ public class UserService {
         try {
             tokenService.validateToken(sessionToken);
             tokenService.removeActiveSession(sessionToken);
+
             logger.logEvent("Exit: session closed", LogLevel.INFO);
             return true;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
             logger.logError("Exit failed", e);
             throw e;
@@ -135,22 +160,28 @@ public class UserService {
     public String logOut(String sessionToken) {
         try {
             tokenService.validateToken(sessionToken);
+
             if (tokenService.isGuestToken(sessionToken)) {
                 logger.logEvent(
                         "Logout rejected: guest session cannot use member logout (use exit to end session)",
                         LogLevel.WARN);
-                return null;
+                throw new IllegalStateException("Only logged-in members can log out.");
             }
+
             Long memberId = tokenService.extractUserId(sessionToken);
             tokenService.removeActiveSession(sessionToken);
+
             String guestToken = visitSystem();
             logger.logEvent("Logout succeeded: new guest session issued, memberId=" + memberId, LogLevel.INFO);
             return guestToken;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
         } catch (Exception e) {
             logger.logError("Logout failed", e);
             throw e;
         }
-
     }
 
     // 6. Update Member Username: Allows a member to update their username by
