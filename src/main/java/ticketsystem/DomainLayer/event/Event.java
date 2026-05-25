@@ -12,6 +12,7 @@ import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 
+
 public class Event {
 
     public enum eventStatus {
@@ -394,7 +395,7 @@ public class Event {
         this.status = eventStatus.CANCELLED;
     }
 
-    public policyResult canPurchase(int quantity, int age) {
+    public PolicyResult canPurchase(int quantity, int age) {
         return this.purchasePolicy.validate(quantity, age);
      }
 

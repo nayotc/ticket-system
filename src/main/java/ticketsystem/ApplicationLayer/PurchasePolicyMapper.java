@@ -5,6 +5,7 @@ import java.util.List;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DomainLayer.policy.*;
+import ticketsystem.DomainLayer.policy.PurchaseRule;
 
 
 public class PurchasePolicyMapper {
