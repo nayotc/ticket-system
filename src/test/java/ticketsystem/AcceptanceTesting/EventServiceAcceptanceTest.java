@@ -69,7 +69,8 @@ public class EventServiceAcceptanceTest {
         userRepository = new UserRepository();
 
         // FIX: We use a robust anonymous subclass of MembershipDomainService.
-        // This ensures permissions work correctly even if EventService uses the incomplete String-based stub method,
+        // This ensures permissions work correctly even if EventService uses the
+        // incomplete String-based stub method,
         // and protects against NullPointerExceptions when the repository lookups fail.
         membershipDomain = new MembershipDomainService(userRepository) {
             @Override
@@ -78,7 +79,8 @@ public class EventServiceAcceptanceTest {
                     return false;
                 }
                 Member member = userRepository.getMemberById(memberId);
-                // Fallback protection if EventService mistakenly passes companyId instead of userId
+                // Fallback protection if EventService mistakenly passes companyId instead of
+                // userId
                 if (member == null && memberId.equals(compId)) {
                     member = userRepository.getMemberById(ownerId);
                 }
@@ -474,9 +476,11 @@ public class EventServiceAcceptanceTest {
 
         Long differentCompanyId = companyId + 1;
 
-        // FIX: The domain rules block editing if the user isn't an owner in the new company too.
+        // FIX: The domain rules block editing if the user isn't an owner in the new
+        // company too.
         // Grant the owner a role in the new company to bypass the permission check,
-        // allowing the logic to proceed and throw the intended "Cannot change event's company" exception.
+        // allowing the logic to proceed and throw the intended "Cannot change event's
+        // company" exception.
         Member ownerMember = userRepository.getMemberById(ownerId);
         ownerMember.addOwnerRole(differentCompanyId, 999L);
         ownerMember.getRoleInCompany(differentCompanyId).setStatus(RoleStatus.ACTIVE);
@@ -989,7 +993,8 @@ public class EventServiceAcceptanceTest {
 
     private EventMapDTO createInconsistentMapDTO() {
         StandingAreaDTO inconsistentStandingArea = new StandingAreaDTO(
-                1L, "Invalid Standing Area", new PairDTO<>(2, 2), new PairDTO<>(4, 5), "StandingArea", false, 10L, 8L, 5L);
+                1L, "Invalid Standing Area", new PairDTO<>(2, 2), new PairDTO<>(4, 5), "StandingArea", false, 10L, 8L,
+                5L);
 
         return new EventMapDTO(new PairDTO<>(10, 20), List.of(inconsistentStandingArea), false);
     }
@@ -1082,14 +1087,12 @@ public class EventServiceAcceptanceTest {
 
     private OrderService createOrderServiceListener(
             OrderRepository orderRepository,
-            FakeNotificationsService notificationsService
-    ) {
+            FakeNotificationsService notificationsService) {
         return new OrderService(
                 orderRepository,
                 null,
                 new LogbackSystemLogger(),
-                notificationsService
-        );
+                notificationsService);
     }
 
     private static class FakeTokenService implements ITokenService {
@@ -1193,6 +1196,13 @@ public class EventServiceAcceptanceTest {
         public void notifyGuest(String sessionId, String message) {
             messagesBySession
                     .computeIfAbsent(sessionId, key -> new java.util.ArrayList<>())
+                    .add(message);
+        }
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messagesBySession
+                    .computeIfAbsent(memberId.toString(), key -> new java.util.ArrayList<>())
                     .add(message);
         }
 

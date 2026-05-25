@@ -2,38 +2,39 @@ package ticketsystem.DomainLayer.notifications;
 
 public class Notification {
 
-    private long id;
-    private final Long recipientMemberId;
-    private final String message;
+    private Long id;
+    private String targetId;
+    private String message;
 
-    public Notification(
-            Long recipientMemberId,
-            String message
-    ) {
-        // if (recipientMemberId == null) {
-        //     throw new IllegalArgumentException("Notification must have a member id");
-        // }
+    public Notification() {
+    }
 
-        // if (message == null || message.isBlank()) {
-        //     throw new IllegalArgumentException("Notification message cannot be blank");
-        // }
-        this.recipientMemberId = recipientMemberId;
+    public Notification(String targetId, String message) {
+        this.targetId = targetId;
         this.message = message;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
-    public Long getRecipientMemberId() {
-        return recipientMemberId;
+    public String getTargetId() {
+        return targetId;
+    }
+
+    public void setTargetId(String targetId) {
+        this.targetId = targetId;
     }
 
     public String getMessage() {
         return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

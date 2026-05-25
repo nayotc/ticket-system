@@ -1,25 +1,28 @@
 package ticketsystem.InfrastructureLayer;
 
 import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
 
 public class VaadinNotifier implements INotifier {
 
-    private final Broadcaster broadcaster;
+    private final INotificationsRepository notificationsRepository;
 
-    public VaadinNotifier(Broadcaster broadcaster) {
-        this.broadcaster = broadcaster;
+    public VaadinNotifier(INotificationsRepository notificationsRepository) {
+        this.notificationsRepository = notificationsRepository;
+    }
+
+    @Override
+    public void notifyMember(Long memberId, String message) {
+        Notification notification = new Notification(memberId.toString(), message);
+        Notification savedNotification = notificationsRepository.save(notification);
+        Broadcaster.broadcast(memberId.toString(), savedNotification);
     }
 
     @Override
     public void notifyGuest(String sessionId, String message) {
-        // user logged in:send notification immediately to user
-        Broadcaster.broadcastToGuest(sessionId, message);
-    }
-
-    @Override
-    public void notifyMember(Notification notification) {
-        broadcaster.broadcastToMember(notification);
+        Notification notification = new Notification(sessionId, message);
+        Broadcaster.broadcast(sessionId, notification);
     }
 
 }

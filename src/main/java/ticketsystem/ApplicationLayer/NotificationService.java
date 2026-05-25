@@ -2,34 +2,22 @@ package ticketsystem.ApplicationLayer;
 
 import java.util.List;
 
+import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
 
 public class NotificationService {
 
-    private final NotificationsRepository notificationRepository;
-    private final INotifier notifier;
+    private final INotificationsRepository notificationRepository;
 
-    public NotificationService(NotificationsRepository notificationRepository, INotifier notifier) {
+    public NotificationService(INotificationsRepository notificationRepository) {
         this.notificationRepository = notificationRepository;
-        this.notifier = notifier;
     }
 
-    public void sendNotificationToGuest(String sessionId, String message) {
-        notifier.notifyGuest(sessionId, message);
+    public List<Notification> getPendingNotifications(String targetId) {
+        return notificationRepository.findPendingByTargetId(targetId);
     }
 
-    public void sendNotificationToMember(Long memberId, String message) {
-        Notification notification = new Notification(memberId, message);
-        notificationRepository.save(notification);
-        notifier.notifyMember(notification);
-    }
-
-    public List<Notification> getDelayedNotificationsForUser(Long userId, String sessionId) {
-        return notificationRepository.getAndClear(userId);
-    }
-
-    public void markAsDeliverd(Long notificationId, Long memberId) {
-        notificationRepository.markAsDelivered(notificationId, memberId);
+    public void markAsDelivered(Long notificationId) {
+        notificationRepository.removeById(notificationId);
     }
 }

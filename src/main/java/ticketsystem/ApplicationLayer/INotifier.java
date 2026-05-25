@@ -1,10 +1,8 @@
 package ticketsystem.ApplicationLayer;
 
-import ticketsystem.DomainLayer.notifications.Notification;
-
 public interface INotifier {
 
-    void notifyGuest(String sessionId, String message);
+    void notifyMember(Long memberId, String message);
 
-    void notifyMember(Notification notification);
+    void notifyGuest(String guestToken, String message);
 }

@@ -11,8 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
@@ -28,7 +28,7 @@ import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 
 public class WaitingQueueServiceTest {
 
-    //private FakeEventRepository fakeEventRepo;
+    // private FakeEventRepository fakeEventRepo;
     private EventRepository EventRepo;
     private WaitingQueueRepository realQueueRepo;
     private FakeNotificationsService fakeNotifications;
@@ -45,13 +45,15 @@ public class WaitingQueueServiceTest {
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         logger = new LogbackSystemLogger();
-        waitingQueueService = new WaitingQueueService(EventRepo, realQueueRepo, fakeNotifications, tokenService, logger);
+        waitingQueueService = new WaitingQueueService(EventRepo, realQueueRepo, fakeNotifications, tokenService,
+                logger);
     }
 
     @Test
     public void givenEventHasCapacity_whenTryReserve_thenUserIsApproved() {
         // Arrange
-        Event event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK, 100L, EventCategory.CONCERT, "Michel Jackson", BigDecimal.valueOf(300), new Pair<>(10, 10));
+        Event event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK,
+                100L, EventCategory.CONCERT, "Michel Jackson", BigDecimal.valueOf(300), new Pair<>(10, 10));
         EventRepo.addEvent(event);
         String validToken = tokenService.addActiveSession(new Guest());
 
@@ -68,13 +70,14 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEventIsFull_whenTryReserve_thenUserIsQueued() {
         // Arrange
-        Event event = new Event(2L, LocalDateTime.now().plusDays(1), "Art Expo", 1L, 1L, EventLocation.NEW_YORK, 1L, EventCategory.EXHIBITION, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
+        Event event = new Event(2L, LocalDateTime.now().plusDays(1), "Art Expo", 1L, 1L, EventLocation.NEW_YORK, 1L,
+                EventCategory.EXHIBITION, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
         EventRepo.addEvent(event);
         String validToken = tokenService.addActiveSession(new Guest());
 
         waitingQueueService.tryReserve(2, validToken);
 
-        // Act 
+        // Act
         String result = waitingQueueService.tryReserve(2, validToken);
 
         // Assert
@@ -86,8 +89,9 @@ public class WaitingQueueServiceTest {
 
     @Test
     public void givenUserInQueue_whenSpotReleased_thenNextUserIsProcessedAndNotified() {
-        // Arrange 
-        Event event = new Event(3L, LocalDateTime.now().plusDays(1), "Rock Concert", 1L, 1L, EventLocation.NEW_YORK, 1L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
+        // Arrange
+        Event event = new Event(3L, LocalDateTime.now().plusDays(1), "Rock Concert", 1L, 1L, EventLocation.NEW_YORK, 1L,
+                EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
         EventRepo.addEvent(event);
 
         String validToken1 = tokenService.addActiveSession(new Guest());
@@ -99,11 +103,12 @@ public class WaitingQueueServiceTest {
         assertEquals("APPROVED", result1);
         assertEquals("QUEUED", result2);
 
-        // Act 
+        // Act
         waitingQueueService.releaseSpot(3, validToken1);
 
         // Assert
-        assertTrue(fakeNotifications.notifiedUsers.contains(validToken2), "The queued user should have received a notification.");
+        assertTrue(fakeNotifications.notifiedUsers.contains(validToken2),
+                "The queued user should have received a notification.");
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
         assertEquals(0, realQueueRepo.getQueueSize(3), "Queue should be empty after the user was dequeued.");
@@ -112,7 +117,8 @@ public class WaitingQueueServiceTest {
     @Test
     public void givenEmptyQueue_whenSpotReleased_thenCapacityDrops() {
         // Arrange
-        Event event = new Event(4L, LocalDateTime.now().plusDays(1), "Jazz Night", 1L, 1L, EventLocation.NEW_YORK, 2L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
+        Event event = new Event(4L, LocalDateTime.now().plusDays(1), "Jazz Night", 1L, 1L, EventLocation.NEW_YORK, 2L,
+                EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
         EventRepo.addEvent(event);
 
         String validToken1 = tokenService.addActiveSession(new Guest());
@@ -124,23 +130,26 @@ public class WaitingQueueServiceTest {
         assertEquals("APPROVED", result1);
         assertEquals("APPROVED", result2);
 
-        // Act 
+        // Act
         waitingQueueService.releaseSpot(4, validToken2);
 
         // Assert
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Capacity should drop to 1.");
-        assertTrue(fakeNotifications.notifiedUsers.isEmpty(), "No notifications should be sent since the queue is empty.");
+        assertTrue(fakeNotifications.notifiedUsers.isEmpty(),
+                "No notifications should be sent since the queue is empty.");
     }
 
     @Test
     public void givenInvalidToken_whenTryReserve_thenUserIsRejected() {
         // Arrange
-        Event event = new Event(5L, LocalDateTime.now().plusDays(1), "Secret Show", 1L, 1L, EventLocation.NEW_YORK, 100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
+        Event event = new Event(5L, LocalDateTime.now().plusDays(1), "Secret Show", 1L, 1L, EventLocation.NEW_YORK,
+                100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
         EventRepo.addEvent(event);
 
         // Act
-        assertThrows(IllegalArgumentException.class, () -> waitingQueueService.tryReserve(5, "invalid-token"), "An invalid token should throw an exception.");
+        assertThrows(IllegalArgumentException.class, () -> waitingQueueService.tryReserve(5, "invalid-token"),
+                "An invalid token should throw an exception.");
 
         // Assert
         Event savedEvent = EventRepo.getEventById(event.getId());
@@ -155,6 +164,11 @@ public class WaitingQueueServiceTest {
         @Override
         public void notifyGuest(String sessionId, String message) {
             notifiedUsers.add(sessionId);
+        }
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            notifiedUsers.add(memberId.toString());
         }
     }
 

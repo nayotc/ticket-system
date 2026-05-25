@@ -59,7 +59,7 @@ public class WaitingQueueService {
                         eventRepository.updateEvent(event);
                         logger.logEvent(
                                 "User with session id" + tokenString + " APPROVED to enter checkout for Event "
-                                + eventId,
+                                        + eventId,
                                 LogbackSystemLogger.LogLevel.INFO);
                         return "APPROVED";
                     }

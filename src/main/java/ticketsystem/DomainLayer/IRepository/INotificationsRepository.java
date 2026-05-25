@@ -6,8 +6,10 @@ import ticketsystem.DomainLayer.notifications.Notification;
 
 public interface INotificationsRepository {
 
-    void save(Notification notification);
+    Notification save(Notification notification);
 
-    List<Notification> getAndClear(Long memberId);
+    List<Notification> findPendingByTargetId(String targetId);
+
+    void removeById(Long notificationId);
 
 }
