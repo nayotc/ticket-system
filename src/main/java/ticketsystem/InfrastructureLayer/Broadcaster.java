@@ -8,20 +8,28 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
+import ticketsystem.ApplicationLayer.IBrodcaster;
 import ticketsystem.DomainLayer.notifications.Notification;
 
-public class Broadcaster {
+public class Broadcaster implements IBrodcaster {
 
     private static final Executor executor = Executors.newCachedThreadPool();
+    private static NotificationsRepository repository = new NotificationsRepository();
+    private static Map<String, List<Consumer<String>>> notifiers = new ConcurrentHashMap<>();
 
-    private static final Map<String, List<Consumer<String>>> notifiers = new ConcurrentHashMap<>();
-
-    public static synchronized Runnable registerListener(String sessionId, Consumer<String> notifier) {
+    @Override
+    public synchronized Runnable registerListener(String sessionId, Consumer<String> notifier) {
         addListener(sessionId, notifier);
         return () -> removeListener(sessionId, notifier);
     }
 
-    public static void addListener(String sessionId, Consumer<String> notifier) {
+    public synchronized Runnable registerListener(Long memberId, Consumer<String> notifier) {
+        String sessionId = memberId.toString();
+        addListener(sessionId, notifier);
+        return () -> removeListener(sessionId, notifier);
+    }
+
+    public void addListener(String sessionId, Consumer<String> notifier) {
         notifiers.computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>()).add(notifier);
     }
 
@@ -35,7 +43,7 @@ public class Broadcaster {
         }
     }
 
-    public static void broadcast(String sessionId, String message, NotificationsRepository repository) {
+    public static boolean broadcast(String sessionId, String message) {
         List<Consumer<String>> listeners = notifiers.get(sessionId);
 
         if (listeners != null) {
@@ -45,15 +53,11 @@ public class Broadcaster {
                         listener.accept(message);
                     } catch (Exception e) {
                         removeListener(sessionId, listener);
-                        Long memberId = Long.parseLong(SessionManager.getUserIdForSession(sessionId));
-                        Notification notification = new Notification(memberId, sessionId, message);
-                        if (notification.getRecipientMemberId() != null && repository != null) {
-                            repository.save(notification);
-                            //System.out.println("Listener disconnected. Message saved to fallback repository.");
-                        }
+                        return false;
                     }
                 });
             }
         }
+        return true;
     }
 }

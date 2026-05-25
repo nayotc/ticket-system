@@ -1,9 +1,6 @@
 package ticketsystem.InfrastructureLayer;
 
-import java.util.List;
-
 import ticketsystem.ApplicationLayer.INotifier;
-import ticketsystem.DomainLayer.notifications.Notification;
 
 public class VaadinNotifier implements INotifier {
 
@@ -17,29 +14,16 @@ public class VaadinNotifier implements INotifier {
 
     @Override
     public void notifyUser(String sessionId, String message) {
-        String userId = SessionManager.getUserIdForSession(sessionId);
-        if (SessionManager.isUserOnline(userId)) {
-            // user logged in:send notification immediately to user
-            broadcaster.broadcast(sessionId, message, notificationRepository);
-        } else {
-            // user not logged in: save the notification for later delivery when the user logs in
-            Notification notification = new Notification(Long.parseLong(userId), sessionId, message);
-            notificationRepository.save(notification);
+        // user logged in:send notification immediately to user
+        Broadcaster.broadcast(sessionId, message);
+    }
+
+    public void notifyMember(Long memberId, String message) {
+        String sessionId = Long.toString(memberId);
+        if (!broadcaster.broadcast(sessionId, message)) {
+            // user is offline: save notification for later delivery
+            notificationRepository.save(memberId, message);
         }
     }
 
-    //called when a user logs in and becomes a subscribed user
-    public void handleUserLogin(String userId, String sessionId) {
-        SessionManager.registerSession(userId, sessionId);
-        List<Notification> delayedMessages = notificationRepository.getAndClear(userId);
-        if (delayedMessages != null) {
-            for (Notification msg : delayedMessages) {
-                broadcaster.broadcast(sessionId, msg.getMessage(), notificationRepository);
-            }
-        }
-    }
-
-    public void handleUserLogout(String sessionId) {
-        SessionManager.removeSession(sessionId);
-    }
 }
