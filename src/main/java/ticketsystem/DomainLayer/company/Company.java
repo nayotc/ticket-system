@@ -1,6 +1,6 @@
 package ticketsystem.DomainLayer.company;
 
-import ticketsystem.DomainLayer.Policy.PolicyResult;
+import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 public class Company {
