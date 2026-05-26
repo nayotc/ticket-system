@@ -34,7 +34,6 @@ import ticketsystem.DomainLayer.event.Pair;
 @Profile("dev")
 public class DevDataInitializer implements CommandLineRunner {
 
-    // Regular member credentials (the buyer)
     private static final String TEST_USERNAME = "test@test.com";
     private static final String TEST_PASSWORD = "123456";
 
@@ -80,10 +79,8 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private void createTestMember() {
         if (userRepository.isUsernameTaken(TEST_USERNAME)) {
-            System.out.println("Dev user already exists: " + TEST_USERNAME);
             return;
         }
-
         String guestToken = userService.visitSystem();
         userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000");
 
