@@ -99,7 +99,7 @@ public class LotteryService {
                     //winning member
                     String uniqueCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
                     lottery.setWinner(memberId, uniqueCode);
-                    notifyMemberIfConnected(
+                    notificationsService.notifyMember(
                             memberId,
                             "Congratulations! You won the purchase lottery. Your purchase code is: " + uniqueCode + "."
                     );                
@@ -142,11 +142,5 @@ public class LotteryService {
         
         return new ArrayList<>(winnersPool.subList(0, numberOfWinners));
     }
-    private void notifyMemberIfConnected(Long memberId, String message) {
-    if (notificationsService == null || memberId == null || message == null || message.isBlank()) {
-        return;
-    }
 
-    notificationsService.notifyMember(memberId, message);
-    }
 }

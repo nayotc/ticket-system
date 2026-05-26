@@ -10,10 +10,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import ticketsystem.ApplicationLayer.*;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
@@ -28,7 +26,6 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.*;
 
 public class ReservationServiceTest {
-
 private ReservationService reservationService;
 
 private IOrderRepository orderRepository;
@@ -110,7 +107,6 @@ private static final Long COMPANY_FOUNDER_ID = 1L;
             memberTokens[i] = createLoggedInMember("user" + i, "password123");
         }
     }
-
     @Test
     void ConcurrencyTest_SelectSameSeat_WhenManyUsersTrySameSeat_ThenOnlyOneUserSucceeds()
             throws InterruptedException {

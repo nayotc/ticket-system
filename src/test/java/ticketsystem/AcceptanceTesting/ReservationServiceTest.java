@@ -46,6 +46,7 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
+import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
@@ -53,7 +54,6 @@ import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 public class ReservationServiceTest {
-
     private ReservationService reservationService;
 
     private IOrderRepository orderRepository;
@@ -69,11 +69,12 @@ public class ReservationServiceTest {
     private TestSecureBarcode secureBarcode;
     private ISystemLogger logger;
     private FakeNotifier fakeNotifier;
+    private MembershipDomainService membershipDomain;
 
     private String memberToken;
     private String guestToken;
     private Long memberId;
-    private MembershipDomainService membershipDomain;
+
     private static final Long COMPANY_ID = 1L;
     private static final Long COMPANY_FOUNDER_ID = 1L;
 
@@ -836,91 +837,92 @@ public class ReservationServiceTest {
         }
     }
 
-    private void useGuestTokenService() {
-        tokenService = new TokenService(
-                "manual_test_secret_32_chars_long",
-                new TokenRepository()
-        ) {
-            @Override
-            public boolean validateToken(String token) {
-                return true;
-            }
+private void useGuestTokenService() {
+    tokenService = new TokenService(
+            "manual_test_secret_32_chars_long",
+            new TokenRepository()
+    ) {
+        @Override
+        public boolean validateToken(String token) {
+            return true;
+        }
 
-            @Override
-            public boolean isGuestToken(String token) {
-                return true;
-            }
+        @Override
+        public boolean isGuestToken(String token) {
+            return true;
+        }
 
-            @Override
-            public boolean isMemberToken(String token) {
-                return false;
-            }
+        @Override
+        public boolean isMemberToken(String token) {
+            return false;
+        }
 
-            @Override
-            public Long extractUserId(String token) {
-                return null;
-            }
-        };
+        @Override
+        public Long extractUserId(String token) {
+            return null;
+        }
+    };
 
-        userService = new UserService(userRepository, tokenService, logger);
+    userService = new UserService(userRepository, tokenService, logger);
 
-        reservationService = new ReservationService(
-                orderRepository,
-                eventRepository,
-                companyRepository,
-                membershipDomain,
-                tokenService,
-                paymentService,
-                secureBarcode,
-                lotteryRepository,
-                eventCatalogDomainService,
-                logger,
-                fakeNotifier
-        );
-    }
+    reservationService = new ReservationService(
+            orderRepository,
+            eventRepository,
+            companyRepository,
+            membershipDomain,
+            tokenService,
+            paymentService,
+            secureBarcode,
+            lotteryRepository,
+            eventCatalogDomainService,
+            logger,
+            fakeNotifier
+    );
+}
+
 private static class FakeNotifier implements INotifier {
 
-            private final List<String> messages = new ArrayList<>();
+    private final List<String> messages = new ArrayList<>();
 
-            @Override
-            public void notifyMember(Long memberId, String message) {
-                messages.add(message);
-            }
+    @Override
+    public void notifyMember(Long memberId, String message) {
+        messages.add(message);
+    }
 
-            @Override
-            public void notifyGuest(String guestToken, String message) {
-                messages.add(message);
-            }
+    @Override
+    public void notifyGuest(String guestToken, String message) {
+        messages.add(message);
+    }
 
-            @Override
-            public void notifyMembers(Collection<Long> memberIds, String message) {
-                if (memberIds == null) {
-                    return;
-                }
+    @Override
+    public void notifyMembers(Collection<Long> memberIds, String message) {
+        if (memberIds == null) {
+            return;
+        }
 
-                for (Long memberId : memberIds) {
-                    if (memberId != null) {
-                        notifyMember(memberId, message);
-                    }
-                }
-            }
-
-            @Override
-            public void notifyGuests(Collection<String> guestTokens, String message) {
-                if (guestTokens == null) {
-                    return;
-                }
-
-                for (String guestToken : guestTokens) {
-                    if (guestToken != null && !guestToken.isBlank()) {
-                        notifyGuest(guestToken, message);
-                    }
-                }
-            }
-
-            boolean containsMessage(String text) {
-                return messages.stream()
-                        .anyMatch(message -> message.contains(text));
+        for (Long memberId : memberIds) {
+            if (memberId != null) {
+                notifyMember(memberId, message);
             }
         }
+    }
+
+    @Override
+    public void notifyGuests(Collection<String> guestTokens, String message) {
+        if (guestTokens == null) {
+            return;
+        }
+
+        for (String guestToken : guestTokens) {
+            if (guestToken != null && !guestToken.isBlank()) {
+                notifyGuest(guestToken, message);
+            }
+        }
+    }
+
+    boolean containsMessage(String text) {
+        return messages.stream()
+                .anyMatch(message -> message.contains(text));
+    }
+}
 }

@@ -21,22 +21,8 @@ public class CompanyService {
     private final ITokenService tokenService;
     private final ISystemLogger logger;
     private final MembershipDomainService membershipDomain;
-<<<<<<< HEAD
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
-    
-    /**
-     * Constructor without logger. Kept for backward compatibility with existing
-     * tests and code.
-     */
-    public CompanyService(ICompanyRepository repo,
-                        ITokenService tokenService,
-                        MembershipDomainService membershipDomain) {
-        this(repo, tokenService, membershipDomain, null);
-    }
-
-=======
     private final INotifier notificationsService;
->>>>>>> d9ea5cf (Add real-time notification calls)
     public CompanyService(ICompanyRepository repo,
                         ITokenService tokenService,
                         MembershipDomainService membershipDomain,

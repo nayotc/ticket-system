@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
@@ -38,12 +36,9 @@ import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
-<<<<<<< HEAD
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
-=======
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
->>>>>>> d9ea5cf (Add real-time notification calls)
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -72,7 +67,6 @@ public class EventServiceAcceptanceTest {
     private FakeNotificationsService fakeNotifications;
     private final String validOwnerSessionId = "owner-session";
     private final String invalidSessionId = "invalid-session";
-    private HistoryService historyService;
     private IHistoryRepository historyRepository;
     private final Long ownerId = 1L;
     private final Long companyId = 100L;
@@ -130,12 +124,6 @@ public class EventServiceAcceptanceTest {
         };
 
         historyRepository = new HistoryRepository();
-        historyService = new HistoryService(
-                historyRepository,
-                tokenService,
-                membershipDomain,
-                logger
-        );
 
         eventService = new EventService(
                 eventRepository,
@@ -143,7 +131,7 @@ public class EventServiceAcceptanceTest {
                 membershipDomain,
                 logger,
                 fakeNotifications,
-                historyService
+                historyRepository
         );
 
         Member ownerMember = new Member(ownerId, "EventOwnerUser");
@@ -1489,22 +1477,7 @@ void GivenOwnerLoggedIn_WhenSetEventDiscountCompositionType_ThenCompositionTypeI
         }
     }
 
-private static class FakeNotificationsService implements INotifier {
 
-    private final Map<String, List<String>> messagesBySession = new HashMap<>();
-    private final Map<Long, List<String>> messagesByMember = new HashMap<>();
-    private final List<String> allMessages = new ArrayList<>();
-
-    @Override
-    public void notifyGuest(String sessionId, String message) {
-        messagesBySession
-                .computeIfAbsent(sessionId, key -> new ArrayList<>())
-                .add(message);
-
-        allMessages.add(message);
-    }
-
-<<<<<<< HEAD
         // -------------------- Set Event Purchase Policy Tests -------------------
 
     @Test
@@ -1713,46 +1686,85 @@ private static class FakeNotificationsService implements INotifier {
         );
     }
 
-=======
-    @Override
-    public void notifyMember(Long memberId, String message) {
-        messagesByMember
-                .computeIfAbsent(memberId, key -> new ArrayList<>())
-                .add(message);
+    private static class FakeNotificationsService implements INotifier {
 
-        allMessages.add(message);
-    }
+        private final Map<String, List<String>> messagesBySession = new HashMap<>();
+        private final Map<Long, List<String>> messagesByMember = new HashMap<>();
+        private final List<String> allMessages = new ArrayList<>();
 
-    boolean wasNotified(String sessionId) {
-        return messagesBySession.containsKey(sessionId)
-                && !messagesBySession.get(sessionId).isEmpty();
-    }
+        @Override
+        public void notifyGuest(String sessionId, String message) {
+            messagesBySession
+                    .computeIfAbsent(sessionId, key -> new ArrayList<>())
+                    .add(message);
 
-    int notificationCount(String sessionId) {
-        return messagesBySession
-                .getOrDefault(sessionId, List.of())
-                .size();
-    }
-
-    String lastMessageFor(String sessionId) {
-        List<String> messages = messagesBySession.getOrDefault(sessionId, List.of());
-
-        if (messages.isEmpty()) {
-            return "";
+            allMessages.add(message);
         }
 
-        return messages.get(messages.size() - 1);
-    }
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messagesByMember
+                    .computeIfAbsent(memberId, key -> new ArrayList<>())
+                    .add(message);
 
-    boolean wasMemberNotified(Long memberId) {
-        return messagesByMember.containsKey(memberId)
-                && !messagesByMember.get(memberId).isEmpty();
-    }
+            allMessages.add(message);
+        }
 
-    boolean containsMessage(String text) {
-        return allMessages.stream()
-                .anyMatch(message -> message.contains(text));
+        @Override
+        public void notifyMembers(Collection<Long> memberIds, String message) {
+            if (memberIds == null) {
+                return;
+            }
+
+            for (Long memberId : memberIds) {
+                if (memberId != null) {
+                    notifyMember(memberId, message);
+                }
+            }
+        }
+
+        @Override
+        public void notifyGuests(Collection<String> guestTokens, String message) {
+            if (guestTokens == null) {
+                return;
+            }
+
+            for (String guestToken : guestTokens) {
+                if (guestToken != null && !guestToken.isBlank()) {
+                    notifyGuest(guestToken, message);
+                }
+            }
+        }
+
+        boolean wasNotified(String sessionId) {
+            return messagesBySession.containsKey(sessionId)
+                    && !messagesBySession.get(sessionId).isEmpty();
+        }
+
+        int notificationCount(String sessionId) {
+            return messagesBySession
+                    .getOrDefault(sessionId, List.of())
+                    .size();
+        }
+
+        String lastMessageFor(String sessionId) {
+            List<String> messages = messagesBySession.getOrDefault(sessionId, List.of());
+
+            if (messages.isEmpty()) {
+                return "";
+            }
+
+            return messages.get(messages.size() - 1);
+        }
+
+        boolean wasMemberNotified(Long memberId) {
+            return messagesByMember.containsKey(memberId)
+                    && !messagesByMember.get(memberId).isEmpty();
+        }
+
+        boolean containsMessage(String text) {
+            return allMessages.stream()
+                    .anyMatch(message -> message.contains(text));
+        }
     }
-}
->>>>>>> d9ea5cf (Add real-time notification calls)
 }

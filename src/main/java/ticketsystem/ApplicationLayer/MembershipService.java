@@ -113,7 +113,7 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
         userRepository.updateMember(targetMember);
 
         // Notify the target member about the pending assignment
-        notifyMemberIfConnected(
+        notificationsService.notifyMember(
                 targetMemberId,
                 "You received a request to become a manager of the production company \""
                         + getCompanyName(companyId) + "\"."
@@ -263,7 +263,13 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             logger.logEvent(
                     "Completed - removeOwnerAssignment. targetMemberId=" + targetMemberId + " removed as owner.", 
                     LogLevel.INFO);
-            
+            if (notificationsService != null && targetMemberId != null) {
+                notificationsService.notifyMember(
+                        targetMemberId,
+                        "Your owner role in the production company \""
+                                + company.getName() + "\" was removed."
+                );
+            }
             return true;
             
         } 
@@ -323,6 +329,14 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
                     targetMember.deleteRoleInCompany(companyId);
                     userRepository.updateMember(targetMember);
                     userRepository.updateMember(appointer);
+                    if (notificationsService != null && appointerId != null) {
+                    notificationsService.notifyMember(
+                            appointerId,
+                            targetMember.getUserName()
+                                    + " resigned from the owner role in the production company \""
+                                    + getCompanyName(companyId) + "\"."
+                    );
+                }
                 }
                 else {
                     throw new IllegalArgumentException("Appointer not found.");
@@ -384,8 +398,13 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             // Update the repository with the changes to the target member
             userRepository.updateMember(targetManager);
             
-            // TODO: add notification to the target member about the pending assignment
-            
+            if (notificationsService != null && managerId != null) {
+                notificationsService.notifyMember(
+                        managerId,
+                        "Your management permissions in the production company \""
+                                + getCompanyName(companyId) + "\" were updated."
+                );
+            }            
             logger.logEvent(
                     "Completed - updateManagerPermissions. permissions updated for managerId=" + managerId, 
                     LogLevel.INFO);
@@ -441,7 +460,13 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             // 4. Persist changes in the repository
             userRepository.updateMember(appointer);
             userRepository.updateMember(targetMember);
-            
+            if (notificationsService != null && targetMemberId != null) {
+            notificationsService.notifyMember(
+                    targetMemberId,
+                    "Your manager role in the production company \""
+                            + getCompanyName(companyId) + "\" was removed."
+            );
+        }
             logger.logEvent("Completed - removeManagerAssignment. targetMemberId=" + targetMemberId + " removed as manager.", LogLevel.INFO);
             
             return true;
@@ -666,17 +691,7 @@ public boolean rejectAssignment(String sessionToken, Long companyId) throws Exce
                 "An error occurred while viewing roles and permissions tree: " + e.getMessage(), e);
         }
     }
-    private void notifyMemberIfConnected(Long memberId, String message) {
-        if (notificationsService == null) {
-            return;
-        }
 
-        if (memberId == null || message == null || message.isBlank()) {
-            return;
-        }
-
-        notificationsService.notifyMember(memberId, message);
-    }
 
     private String getCompanyName(Long companyId) {
         try {

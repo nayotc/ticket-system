@@ -3,6 +3,7 @@ package ticketsystem.AcceptanceTesting;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -156,24 +157,46 @@ public class WaitingQueueServiceTest {
         assertEquals(0, savedEvent.getActiveReservationsCount(), "Active reservations should remain 0.");
         assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
     }
-    private class FakeNotificationsService implements INotifier {
+private class FakeNotificationsService implements INotifier {
 
-        public List<String> notifiedUsers = new ArrayList<>();
-        public List<String> messages = new ArrayList<>();
+    public List<String> notifiedUsers = new ArrayList<>();
+    public List<String> messages = new ArrayList<>();
 
-        @Override
-        public void notifyGuest(String sessionId, String message) {
-            notifiedUsers.add(sessionId);
-            messages.add(message);
+    @Override
+    public void notifyGuest(String sessionId, String message) {
+        notifiedUsers.add(sessionId);
+        messages.add(message);
+    }
+
+    @Override
+    public void notifyMember(Long memberId, String message) {
+        if (memberId != null) {
+            notifiedUsers.add(memberId.toString());
+        }
+        messages.add(message);
+    }
+
+    @Override
+    public void notifyMembers(Collection<Long> memberIds, String message) {
+        if (memberIds == null) {
+            return;
         }
 
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            if (memberId != null) {
-                notifiedUsers.add(memberId.toString());
-            }
-            messages.add(message);
+        for (Long memberId : memberIds) {
+            notifyMember(memberId, message);
         }
     }
+
+    @Override
+    public void notifyGuests(Collection<String> guestTokens, String message) {
+        if (guestTokens == null) {
+            return;
+        }
+
+        for (String guestToken : guestTokens) {
+            notifyGuest(guestToken, message);
+        }
+    }
+}
 
 }

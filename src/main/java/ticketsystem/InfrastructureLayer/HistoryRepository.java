@@ -16,12 +16,14 @@ public class HistoryRepository implements IHistoryRepository {
     private Map<Long, Purchase> allPurchases;
     private Map<Long, List<Purchase>> purchasesByMemberId;
     private Map<Long, List<Purchase>> purchasesByCompanyId;
+    private Map<Long, List<Purchase>> purchasesByEventId;
 
     public HistoryRepository() {
         this.counter = new AtomicLong(1);
         this.allPurchases = new ConcurrentHashMap<>();
         this.purchasesByMemberId = new ConcurrentHashMap<>();
         this.purchasesByCompanyId = new ConcurrentHashMap<>();
+        this.purchasesByEventId = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -37,6 +39,12 @@ public class HistoryRepository implements IHistoryRepository {
         purchasesByCompanyId
                 .computeIfAbsent(purchase.getCompanyId(), k -> new CopyOnWriteArrayList<>())
                 .add(purchase);
+
+        if (purchase.getEventId() != null) {
+        purchasesByEventId
+                .computeIfAbsent(purchase.getEventId(), k -> new CopyOnWriteArrayList<>())
+                .add(purchase);
+    }
     }
 
     @Override
@@ -65,4 +73,10 @@ public class HistoryRepository implements IHistoryRepository {
     public long generateNextId() {
         return counter.getAndIncrement(); 
     }
+    @Override
+    public List<Purchase> getPurchasesByEventId(long eventId) {
+        List<Purchase> purchases = purchasesByEventId.getOrDefault(eventId, new CopyOnWriteArrayList<>());
+        return new ArrayList<>(purchases);
+    }
+
 }

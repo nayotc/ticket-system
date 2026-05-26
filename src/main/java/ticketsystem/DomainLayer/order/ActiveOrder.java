@@ -21,7 +21,7 @@ public class ActiveOrder {
     private OrderStatus status;
     private LocalDateTime expiresAt;
     private int version;
-    
+    private static final long EXPIRATION_WARNING_BEFORE_MINUTES = 2;
 
     public ActiveOrder(Long orderId, String sessionToken, Long userId, Long eventId) {
         this.orderId = orderId;
@@ -165,6 +165,12 @@ public class ActiveOrder {
         return LocalDateTime.now().isAfter(expiresAt);
     }
 
+    public boolean isAboutToExpire() {
+        LocalDateTime now = LocalDateTime.now();
+
+        return !isExpired()
+                && !now.isBefore(expiresAt.minusMinutes(EXPIRATION_WARNING_BEFORE_MINUTES));
+    }
     public enum OrderStatus {
     ACTIVE,
     PENDING_CHECKOUT,

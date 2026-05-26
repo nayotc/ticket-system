@@ -39,6 +39,7 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 
 public class EventServiceTest {
 
@@ -61,9 +62,9 @@ public class EventServiceTest {
     private INotifier mockNotifier;
 
     @Mock
-    
+    private IHistoryRepository mockHistoryRepository;
+
     private EventService eventService;
-    private HistoryService mockHistoryService;
     private final String validSessionId = "valid-session";
     private final Long validUserId = 1L;
     private final Long validCompanyId = 1L;
@@ -79,9 +80,9 @@ public class EventServiceTest {
                 mockMembershipDomainService,
                 logger,
                 mockNotifier,
-                mockHistoryService
+                mockHistoryRepository
         );
-
+        when(mockHistoryRepository.getAllPurchases()).thenReturn(List.of());
         when(mockTokenService.validateToken(validSessionId)).thenReturn(true);
         when(mockTokenService.extractUserId(validSessionId)).thenReturn(validUserId);
 
@@ -1703,23 +1704,4 @@ public class EventServiceTest {
                 mockEventUpdatesListener
         );
     }
-        private static class FakeNotifier implements INotifier {
-
-        private final List<String> messages = new ArrayList<>();
-
-        @Override
-        public void notifyMember(Long memberId, String message) {
-                messages.add(message);
-        }
-
-        @Override
-        public void notifyGuest(String guestToken, String message) {
-                messages.add(message);
-        }
-
-        boolean containsMessage(String text) {
-                return messages.stream()
-                        .anyMatch(message -> message.contains(text));
-        }
-        }
 }

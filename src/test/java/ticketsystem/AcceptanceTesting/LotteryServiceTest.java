@@ -153,22 +153,49 @@ public class LotteryServiceTest {
         assertNull(notSavedLottery, "Lottery should not be saved due to exception");
     }
 
-    private static class FakeNotifier implements INotifier {
+        private static class FakeNotifier implements INotifier {
 
-        private final List<String> messages = new ArrayList<>();
+            private final List<String> messages = new ArrayList<>();
 
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messages.add(message);
+            @Override
+            public void notifyMember(Long memberId, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyGuest(String guestToken, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyMembers(Collection<Long> memberIds, String message) {
+                if (memberIds == null) {
+                    return;
+                }
+
+                for (Long memberId : memberIds) {
+                    if (memberId != null) {
+                        notifyMember(memberId, message);
+                    }
+                }
+            }
+
+            @Override
+            public void notifyGuests(Collection<String> guestTokens, String message) {
+                if (guestTokens == null) {
+                    return;
+                }
+
+                for (String guestToken : guestTokens) {
+                    if (guestToken != null && !guestToken.isBlank()) {
+                        notifyGuest(guestToken, message);
+                    }
+                }
+            }
+
+            boolean containsMessage(String text) {
+                return messages.stream()
+                        .anyMatch(message -> message.contains(text));
+            }
         }
-
-        @Override
-        public void notifyGuest(String guestToken, String message) {
-            messages.add(message);
-        }
-
-        boolean containsMessage(String text) {
-            return messages.stream().anyMatch(message -> message.contains(text));
-        }
-    }
 }

@@ -22,6 +22,10 @@ import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import java.util.Objects;
+
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
+import ticketsystem.DomainLayer.history.Purchase;
 
 public class EventService {
 
@@ -32,17 +36,17 @@ public class EventService {
     private final ISystemLogger logger;
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
     private final INotifier notificationsService;
-    private final HistoryService historyService;
+    private final IHistoryRepository historyRepository;
 
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
             MembershipDomainService membershipDomain, ISystemLogger logger,
-            INotifier notificationsService, HistoryService historyService) {
+            INotifier notificationsService, IHistoryRepository historyRepository) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
         this.notificationsService = notificationsService;
-        this.historyService = historyService;
+        this.historyRepository = historyRepository;
     }
 
     public Boolean insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
@@ -191,13 +195,13 @@ public class EventService {
             if (notificateUsers) {
                 notifyEventUpdatedListeners(existingEvent.getId(), eventDTO.date(), eventDTO.location(), message);
                 logger.logEvent("Notified users - updateEvent. " + context, LogLevel.DEBUG);
-            }
-            existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
-            eventRepository.updateEvent(existingEvent);
-                notifyPurchasedBuyersIfConnected(
+                notifyPurchasedBuyers(
                 existingEvent.getId(),
                 "The details of the event \"" + existingEvent.getName() + "\" have been updated. Please check your ticket details."
             );
+            }
+            existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
+            eventRepository.updateEvent(existingEvent);
             logger.logEvent("Completed - updateEvent. " + context, LogLevel.INFO);
             return true;
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -347,7 +351,7 @@ public class EventService {
             event.cancel();
             eventRepository.updateEvent(event); // update event status to cancelled
             notifyEventCanceledListeners(eventId);
-            notifyPurchasedBuyersIfConnected(
+            notifyPurchasedBuyers(
             eventId,
             "The event \"" + event.getName() + "\" was canceled."
            );
@@ -427,23 +431,25 @@ public class EventService {
                 + ", companyId=" + eventDTO.companyId()
                 + ", version=" + eventDTO.version();
     }
-    private void notifyPurchasedBuyersIfConnected(Long eventId, String message) {
-        if (notificationsService == null || historyService == null || eventId == null
-                || message == null || message.isBlank()) {
-            return;
-        }
-        List<Long> buyerMemberIds = historyService.getBuyerMemberIdsByEvent(eventId);
-
-        if (buyerMemberIds == null || buyerMemberIds.isEmpty()) {
-            return;
-        }
-
-        for (Long memberId : buyerMemberIds) {
-            if (memberId != null) {
-                notificationsService.notifyMember(memberId, message);
-            }
-        }
+    private void notifyPurchasedBuyers(Long eventId, String message) {
+    if (notificationsService == null || historyRepository == null || eventId == null
+            || message == null || message.isBlank()) {
+        return;
     }
+
+    List<Long> buyerMemberIds = historyRepository.getPurchasesByEventId(eventId)
+            .stream()
+            .map(Purchase::getMemberId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+
+    if (buyerMemberIds.isEmpty()) {
+        return;
+    }
+
+    notificationsService.notifyMembers(buyerMemberIds, message);
+}
     public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
         try {
             Event event = canEditPurchasePolicy(token, eventId);

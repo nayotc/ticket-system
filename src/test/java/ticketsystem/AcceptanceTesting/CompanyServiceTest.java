@@ -37,15 +37,15 @@ import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.RoleStatus;
-<<<<<<< HEAD
+
 import ticketsystem.DTO.PurchaseRuleDTO;
-=======
+
 import java.util.Collection;
 import java.util.ArrayList;
 import java.util.List;
 
 import ticketsystem.ApplicationLayer.INotifier;
->>>>>>> d9ea5cf (Add real-time notification calls)
+
 
 public class CompanyServiceTest {
 
@@ -360,7 +360,7 @@ public class CompanyServiceTest {
         assertThrows(Exception.class, () ->
                 companyService.removeDiscountFromCompany(founderToken, companyDTO.getId(), 999999L)
         );
-<<<<<<< HEAD
+
     }  
     
     // UC 4.3: Set company purchase policy
@@ -523,25 +523,50 @@ public class CompanyServiceTest {
                 new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, minAge, null)
         );
         }
-=======
-    }    
-    private static class FakeNotifier implements INotifier {
+        private static class FakeNotifier implements INotifier {
 
-        private final List<String> messages = new ArrayList<>();
+            private final List<String> messages = new ArrayList<>();
 
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messages.add(message);
+            @Override
+            public void notifyMember(Long memberId, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyGuest(String guestToken, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyMembers(Collection<Long> memberIds, String message) {
+                if (memberIds == null) {
+                    return;
+                }
+
+                for (Long memberId : memberIds) {
+                    if (memberId != null) {
+                        notifyMember(memberId, message);
+                    }
+                }
+            }
+
+            @Override
+            public void notifyGuests(Collection<String> guestTokens, String message) {
+                if (guestTokens == null) {
+                    return;
+                }
+
+                for (String guestToken : guestTokens) {
+                    if (guestToken != null && !guestToken.isBlank()) {
+                        notifyGuest(guestToken, message);
+                    }
+                }
+            }
+
+            boolean containsMessage(String text) {
+                return messages.stream()
+                        .anyMatch(message -> message.contains(text));
+            }
         }
 
-        @Override
-        public void notifyGuest(String guestToken, String message) {
-            messages.add(message);
         }
-
-        boolean containsMessage(String text) {
-            return messages.stream().anyMatch(message -> message.contains(text));
-        }
-    }
->>>>>>> d9ea5cf (Add real-time notification calls)
-}
