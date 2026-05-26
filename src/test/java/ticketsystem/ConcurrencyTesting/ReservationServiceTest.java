@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import static java.util.Collections.synchronizedList;
@@ -80,7 +81,7 @@ public class ReservationServiceTest {
                 tokenService,
                 paymentService,
                 secureBarcode,
-                lotteryRepository,logger
+                lotteryRepository,logger, new CompanyRepository()
         );
     }
 
@@ -574,7 +575,7 @@ private Event createActiveEventWithSingleSeat(Long eventId) {
     
 
     private PaymentDetails createPaymentDetails() {
-        return new PaymentDetails("VISA", "Yosi");
+        return new PaymentDetails("VISA", "Yosi", LocalDate.now());
     }
 
     private static class FakePaymentService implements IPaymentService {
