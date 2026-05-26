@@ -23,6 +23,7 @@ import ticketsystem.PresentationLayer.Components.StatusBadge;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.SalesReportPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
@@ -134,10 +135,10 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     }
 
     private void loadFromPresenterOrDemo() {
-        if (presenter == null) {
-            loadDemoData();
-            return;
-        }
+        // if (presenter == null) {
+        //     loadDemoData();
+        //     return;
+        // }
 
         String token = UiSession.getMemberToken();
         if (token == null || token.isBlank()) {
@@ -153,31 +154,10 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             SalesReportDTO report = presenter.generateSalesReport(token, companyId);
             List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
             bindSalesReport(report, transactions);
-        } catch (IllegalArgumentException e) {
+        } catch (PresentationException e) {
             bindSalesReport(new SalesReportDTO(0, BigDecimal.ZERO, e.getMessage()), List.of());
             showError(e.getMessage());
         }
-    }
-
-    private void loadDemoData() {
-        List<OrderDTO> demoTransactions = List.of(
-                createOrder(8492L, companyId, 91L, 11L, 701L, "פסטיבל אורות הלילה", "תל אביב", "COMPLETED", 180, 170),
-                createOrder(8491L, companyId, 92L, 11L, 702L, "הופעת רוק במדבר", "באר שבע", "COMPLETED", 120),
-                createOrder(8490L, companyId, 93L, 12L, 701L, "פסטיבל אורות הלילה", "תל אביב", "COMPLETED", 400, 400),
-                createOrder(8489L, companyId, 94L, 12L, 703L, "כנס חדשנות", "ירושלים", STATUS_CANCELED, 240),
-                createOrder(8488L, companyId + 999, 95L, 16L, 904L, "אירוע של חברה אחרת", "חיפה", "COMPLETED", 999)
-        );
-
-        List<OrderDTO> filtered = filterTransactionsByCompany(demoTransactions);
-        int ticketsSold = filtered.stream().mapToInt(this::countSoldTickets).sum();
-        BigDecimal revenue = filtered.stream()
-                .map(this::calculateOrderTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        bindSalesReport(
-                new SalesReportDTO(ticketsSold, revenue, "נתוני דוגמה עד לחיבור Presenter"),
-                filtered
-        );
     }
 
 //    private AppCard createSummaryCard() {
@@ -223,6 +203,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         H3 title = new H3("עסקאות החברה");
         title.addClassName("sales-report-card-title");
 
+        // TODO: remove this helper message from Transactions Card.
         Span helper = new Span("מוצגות רק עסקאות המשויכות לחברה הנוכחית.");
         helper.addClassName("sales-report-card-helper");
 
@@ -336,6 +317,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         H3 title = new H3("הכנסות לפי אירוע");
         title.addClassName("sales-report-card-title");
 
+        // TODO: remove this helper message from chart.
         Span helper = new Span("מבוסס על OrderDTO הקיימים. אין פילוח לפי סוג כרטיס ואין אחוז המרה.");
         helper.addClassName("sales-report-card-helper");
 
@@ -503,32 +485,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         return STATUS_CANCELED.equalsIgnoreCase(status) || STATUS_CANCELLED.equalsIgnoreCase(status);
     }
 
-    private OrderDTO createOrder(
-            Long purchaseId,
-            Long companyId,
-            Long memberId,
-            Long managedByMemberId,
-            Long eventId,
-            String eventName,
-            String location,
-            String status,
-            int... prices
-    ) {
-        List<PurchaseDTO> tickets = new ArrayList<>();
-        for (int index = 0; index < prices.length; index++) {
-            tickets.add(new PurchaseDTO(
-                    purchaseId * 100 + index,
-                    index + 1,
-                    index + 4,
-                    BigDecimal.valueOf(prices[index]),
-                    status,
-                    "DEMO-" + purchaseId + "-" + index
-            ));
-        }
-
-        return new OrderDTO(purchaseId, tickets, eventName, location, memberId, companyId, managedByMemberId, eventId);
-    }
-
     private Button createHeaderButton(String text, VaadinIcon icon, boolean subtle) {
         Button button = new Button(text, icon.create());
         button.addClassName("sales-report-header-button");
@@ -578,9 +534,4 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     private record EventRevenue(String eventName, BigDecimal revenue) {
     }
 
-    // public interface SalesReportPresenter {
-    //     SalesReportDTO generateSalesReport(String token, long companyId);
-
-    //     List<OrderDTO> getCompanyTransactions(String token, long companyId);
-    // }
 }
