@@ -8,12 +8,42 @@ public class Member extends User {
 
     private final Long memberId;
     private String userName;
+    private long version;
     private ConcurrentHashMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
 
     public Member(Long memberId, String userName) {
         this.memberId = memberId;
         this.userName = userName;
+        this.version = 0; // Initialize version
         this.myRoles = new ConcurrentHashMap<Long, CompanyRole>();
+    }
+
+    // Copy Constructor for Deep Copying
+    public Member(Member other) {
+        this.memberId = other.memberId;
+        this.userName = other.userName;
+        this.version = other.version;
+        this.myRoles = new ConcurrentHashMap<>();
+        
+        // Deep copy of the roles map to prevent shared memory references between threads
+        for (java.util.Map.Entry<Long, CompanyRole> entry : other.myRoles.entrySet()) {
+            Long compId = entry.getKey();
+            CompanyRole originalRole = entry.getValue();
+            CompanyRole copiedRole = null;
+            
+            // Polymorphic copying based on the role instance
+            if (originalRole instanceof Founder) {
+                copiedRole = new Founder((Founder) originalRole, compId);
+            } else if (originalRole instanceof Owner) {
+                copiedRole = new Owner((Owner) originalRole, compId);
+            } else if (originalRole instanceof Manager) {
+                copiedRole = new Manager((Manager) originalRole, compId);
+            }
+            
+            if (copiedRole != null) {
+                this.myRoles.put(compId, copiedRole);
+            }
+        }
     }
 
     public Long getId() {
@@ -26,6 +56,14 @@ public class Member extends User {
 
     public void setUserName(String userName) {
         this.userName = userName;
+    }
+
+    public long getVersion() {
+        return this.version;
+    }
+
+    public void setVersion(long version) {
+        this.version = version;
     }
 
     public List<CompanyRole> getAllRoles() {
@@ -66,5 +104,4 @@ public class Member extends User {
             ((Manager) role).setPermissions(newPermissions);
         }
     }
-
 }
