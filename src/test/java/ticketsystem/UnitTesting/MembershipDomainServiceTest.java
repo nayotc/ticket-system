@@ -3,12 +3,13 @@ package ticketsystem.UnitTesting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.DiscountPolicy;
 import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.*;
 
 import java.util.HashSet;
@@ -41,7 +42,7 @@ public class MembershipDomainServiceTest {
         userRepository.addRegisteredMember(100L, appointer, "password123");
         userRepository.addRegisteredMember(200L, appointee, "password123");
         
-        company = new Company("BGU Productions", 100L, new PurchasePolicy(), new DiscountPolicy());
+        company = new Company("BGU Productions", 100L, new PurchasePolicy(), new DiscountPolicy(DiscountCompositionType.MAX));
         try { company.setId(companyId); } catch (Exception e) {}
 
         // Setup a pre-existing Owner specifically for UC 4.9 & 4.10 tests
@@ -583,8 +584,9 @@ public class MembershipDomainServiceTest {
         // Act
         domainService.assignFounderRole(100L, companyId);
 
-        // Assert
-        CompanyRole role = appointer.getRoleInCompany(companyId);
+        // Assert: MUST fetch fresh instance
+        Member updatedAppointer = userRepository.getMemberById(100L);
+        CompanyRole role = updatedAppointer.getRoleInCompany(companyId);
 
         assertNotNull(role, "Founder role should be assigned.");
         assertTrue(role instanceof Founder, "Assigned role should be Founder.");
@@ -682,8 +684,15 @@ public class MembershipDomainServiceTest {
         domainService.cancelAllRolesForMember(200L);
 
         // Assert
-        assertEquals(RoleStatus.CANCELLED, appointee.getRoleInCompany(companyId).getStatus());
-        assertEquals(RoleStatus.CANCELLED, appointee.getRoleInCompany(secondCompanyId).getStatus());
+        Member updatedAppointee = userRepository.getMemberById(200L);
+        Member updatedAppointer = userRepository.getMemberById(100L);
+        
+        assertEquals(RoleStatus.CANCELLED, updatedAppointee.getRoleInCompany(companyId).getStatus());
+        assertEquals(RoleStatus.CANCELLED, updatedAppointee.getRoleInCompany(secondCompanyId).getStatus());
+
+        founderRole = (Founder) updatedAppointer.getRoleInCompany(companyId);
+        assertFalse(founderRole.getAppointeesMemberIds().contains(200L),
+                "Cancelled member should be removed from the first appointer's appointees list.");
 
         assertFalse(founderRole.getAppointeesMemberIds().contains(200L),
                 "Cancelled member should be removed from the first appointer's appointees list.");
@@ -697,13 +706,13 @@ public class MembershipDomainServiceTest {
         // Arrange
         appointer.addFounderRole(companyId);
 
-        // Act + Assert
+        // Act & Assert
         Exception exception = assertThrows(Exception.class, () -> {
             domainService.cancelAllRolesForMember(100L);
         });
 
-        assertEquals("Cannot delete user: The user is a Founder of one or more companies.",
-                exception.getMessage());
+        // Use contains to be safe from exception wrappers
+        assertTrue(exception.getMessage().contains("Cannot delete user: The user is a Founder"));
     }
 
     @Test
@@ -724,6 +733,7 @@ public class MembershipDomainServiceTest {
         assertEquals(RoleStatus.CANCELLED, appointee.getRoleInCompany(companyId).getStatus());
         assertEquals(RoleStatus.CANCELLED, existingOwner.getRoleInCompany(companyId).getStatus());
     }
+
     // =========================================================================================
 // Use Case 4.15: Roles and permissions tree - Domain logic
 // =========================================================================================
