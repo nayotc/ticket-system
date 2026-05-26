@@ -1,8 +1,5 @@
 package ticketsystem.InfrastructureLayer.Bootstrap;
 
-import java.math.BigDecimal;
-import java.util.List;
-
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
