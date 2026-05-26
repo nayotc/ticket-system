@@ -1,7 +1,5 @@
 package ticketsystem.AcceptanceTesting;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -10,12 +8,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.EventService;
-import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventDTO;
@@ -26,26 +32,20 @@ import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.Event.eventStatus;
-import ticketsystem.DomainLayer.user.User;
-import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
+import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
-import ticketsystem.InfrastructureLayer.OrderRepository;
-import ticketsystem.DomainLayer.order.ActiveOrder;
-import ticketsystem.DomainLayer.order.Ticket;
-import ticketsystem.ApplicationLayer.ISystemLogger;
-import ticketsystem.InfrastructureLayer.OrderRepository;
-import ticketsystem.DomainLayer.order.ActiveOrder;
-import ticketsystem.DomainLayer.order.Ticket;
-
 
 public class EventServiceAcceptanceTest {
 
@@ -67,21 +67,27 @@ public class EventServiceAcceptanceTest {
         eventRepository = new EventRepository();
         tokenService = new FakeTokenService();
         userRepository = new UserRepository();
-        
+
         // FIX: We use a robust anonymous subclass of MembershipDomainService.
-        // This ensures permissions work correctly even if EventService uses the incomplete String-based stub method,
+        // This ensures permissions work correctly even if EventService uses the
+        // incomplete String-based stub method,
         // and protects against NullPointerExceptions when the repository lookups fail.
         membershipDomain = new MembershipDomainService(userRepository) {
             @Override
             public boolean validatePermission(Long memberId, Long compId, Permission permission) {
-                if (memberId == null) return false;
+                if (memberId == null) {
+                    return false;
+                }
                 Member member = userRepository.getMemberById(memberId);
-                // Fallback protection if EventService mistakenly passes companyId instead of userId
+                // Fallback protection if EventService mistakenly passes companyId instead of
+                // userId
                 if (member == null && memberId.equals(compId)) {
                     member = userRepository.getMemberById(ownerId);
                 }
-                if (member == null) return false;
-                
+                if (member == null) {
+                    return false;
+                }
+
                 CompanyRole role = member.getRoleInCompany(compId);
                 return role != null && role.getStatus() == RoleStatus.ACTIVE && role.hasPermission(permission);
             }
@@ -89,10 +95,14 @@ public class EventServiceAcceptanceTest {
             @Override
             public boolean validatePermission(String sessionId, Long compId, String permission) {
                 Long uId = tokenService.extractUserId(sessionId);
-                if (uId == null) return false;
+                if (uId == null) {
+                    return false;
+                }
                 Member member = userRepository.getMemberById(uId);
-                if (member == null) return false;
-                
+                if (member == null) {
+                    return false;
+                }
+
                 CompanyRole role = member.getRoleInCompany(compId);
                 return role != null && role.getStatus() == RoleStatus.ACTIVE;
             }
@@ -120,7 +130,6 @@ public class EventServiceAcceptanceTest {
     }
 
     // -------------------- Insert Event Tests -------------------
-
     @Test
     void GivenOwnerLoggedInAndValidEventDetails_WhenInsertEvent_ThenEventIsCreatedAndSaved() {
         // Arrange
@@ -258,7 +267,7 @@ public class EventServiceAcceptanceTest {
     void GivenLoggedInUserWithoutCreatePermission_WhenInsertEvent_ThenSystemRejectsTheRequest() {
         String sessionWithoutPermission = "session-without-create-permission";
         Long plainUserId = 2L;
-        
+
         // Setup a real user WITHOUT any roles
         Member plainUser = new Member(plainUserId, "PlainUser");
         userRepository.addRegisteredMember(plainUserId, plainUser, "password");
@@ -284,8 +293,6 @@ public class EventServiceAcceptanceTest {
     }
 
     // -------------------- Update Event Tests -------------------
-    
-
     @Test
     void GivenOwnerLoggedInEventExistsAndValidUpdatedDetails_WhenUpdateEvent_ThenEventIsUpdatedAndSaved() {
         Event event = createExistingEvent();
@@ -414,7 +421,7 @@ public class EventServiceAcceptanceTest {
         Event savedEvent = eventRepository.getEventById(event.getId());
 
         String sessionWithoutPermission = "session-without-update-permission";
-        
+
         // Setup a real user WITHOUT any roles
         Member plainUser = new Member(2L, "PlainUser");
         userRepository.addRegisteredMember(2L, plainUser, "password");
@@ -469,9 +476,11 @@ public class EventServiceAcceptanceTest {
 
         Long differentCompanyId = companyId + 1;
 
-        // FIX: The domain rules block editing if the user isn't an owner in the new company too.
+        // FIX: The domain rules block editing if the user isn't an owner in the new
+        // company too.
         // Grant the owner a role in the new company to bypass the permission check,
-        // allowing the logic to proceed and throw the intended "Cannot change event's company" exception.
+        // allowing the logic to proceed and throw the intended "Cannot change event's
+        // company" exception.
         Member ownerMember = userRepository.getMemberById(ownerId);
         ownerMember.addOwnerRole(differentCompanyId, 999L);
         ownerMember.getRoleInCompany(differentCompanyId).setStatus(RoleStatus.ACTIVE);
@@ -547,7 +556,6 @@ public class EventServiceAcceptanceTest {
     }
 
     // -------------------- Define Event Map Tests -------------------
-
     @Test
     void GivenOwnerLoggedInEventExistsAndValidMap_WhenDefineEventMap_ThenConfigurationIsSaved() {
         Event event = createExistingEvent();
@@ -631,7 +639,7 @@ public class EventServiceAcceptanceTest {
     void GivenLoggedInUserWithoutDefineMapPermission_WhenDefineEventMap_ThenSystemRejectsTheRequest() {
         Event event = createExistingEvent();
         eventRepository.addEvent(event);
-         int originalElementCount = elementCount(eventRepository.getEventById(event.getId()));
+        int originalElementCount = elementCount(eventRepository.getEventById(event.getId()));
         eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
 
         String sessionWithoutPermission = "session-without-map-permission";
@@ -680,7 +688,6 @@ public class EventServiceAcceptanceTest {
     }
 
     // --------------------view Event Map Tests -------------------
-
     @Test
     void GivenUserEnteredSystemAndEventHasConfiguredMap_WhenGetEventMap_ThenSystemReturnsEventMapAndAvailability() {
         Event event = createExistingEvent();
@@ -740,7 +747,6 @@ public class EventServiceAcceptanceTest {
     }
 
     // -------------------- Cancel Event Tests -------------------
-
     @Test
     void GivenOwnerLoggedInEventExistsHistoryAndOrderListenersRegistered_WhenCancelEvent_ThenEventIsCanceledHistoryIsNotifiedAndActiveOrderIsCanceled() {
         // Arrange
@@ -950,7 +956,6 @@ public class EventServiceAcceptanceTest {
     }
 
     // -------------------- Helper Methods and Test Doubles -------------------
-
     private EventDTO createValidUpdateDTO(Event savedEvent) {
         return new EventDTO(
                 savedEvent.getId(),
@@ -988,7 +993,8 @@ public class EventServiceAcceptanceTest {
 
     private EventMapDTO createInconsistentMapDTO() {
         StandingAreaDTO inconsistentStandingArea = new StandingAreaDTO(
-                1L, "Invalid Standing Area", new PairDTO<>(2, 2), new PairDTO<>(4, 5), "StandingArea", false, 10L, 8L, 5L);
+                1L, "Invalid Standing Area", new PairDTO<>(2, 2), new PairDTO<>(4, 5), "StandingArea", false, 10L, 8L,
+                5L);
 
         return new EventMapDTO(new PairDTO<>(10, 20), List.of(inconsistentStandingArea), false);
     }
@@ -1080,15 +1086,13 @@ public class EventServiceAcceptanceTest {
     }
 
     private OrderService createOrderServiceListener(
-        OrderRepository orderRepository,
-        FakeNotificationsService notificationsService
-    ) {
+            OrderRepository orderRepository,
+            FakeNotificationsService notificationsService) {
         return new OrderService(
                 orderRepository,
                 null,
                 new LogbackSystemLogger(),
-                notificationsService
-        );
+                notificationsService);
     }
 
     private static class FakeTokenService implements ITokenService {
@@ -1189,9 +1193,16 @@ public class EventServiceAcceptanceTest {
         private final Map<String, List<String>> messagesBySession = new HashMap<>();
 
         @Override
-        public void notifyUser(String sessionId, String message) {
+        public void notifyGuest(String sessionId, String message) {
             messagesBySession
                     .computeIfAbsent(sessionId, key -> new java.util.ArrayList<>())
+                    .add(message);
+        }
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messagesBySession
+                    .computeIfAbsent(memberId.toString(), key -> new java.util.ArrayList<>())
                     .add(message);
         }
 
@@ -1220,4 +1231,3 @@ public class EventServiceAcceptanceTest {
     }
 
 }
-

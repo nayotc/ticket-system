@@ -1,17 +1,28 @@
 package ticketsystem.InfrastructureLayer;
 
 import ticketsystem.ApplicationLayer.INotifier;
-import ticketsystem.InfrastructureLayer.Broadcaster;
+import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
+import ticketsystem.DomainLayer.notifications.Notification;
 
 public class VaadinNotifier implements INotifier {
-    private final Broadcaster broadcaster;
 
-    public VaadinNotifier(Broadcaster broadcaster) {
-        this.broadcaster = broadcaster;
+    private final INotificationsRepository notificationsRepository;
+
+    public VaadinNotifier(INotificationsRepository notificationsRepository) {
+        this.notificationsRepository = notificationsRepository;
     }
 
     @Override
-    public void notifyUser(String sessionId, String message) {
-        broadcaster.broadcast(sessionId, message);
+    public void notifyMember(Long memberId, String message) {
+        Notification notification = new Notification(memberId.toString(), message);
+        Notification savedNotification = notificationsRepository.save(notification);
+        Broadcaster.broadcast(memberId.toString(), savedNotification);
     }
+
+    @Override
+    public void notifyGuest(String sessionId, String message) {
+        Notification notification = new Notification(sessionId, message);
+        Broadcaster.broadcast(sessionId, notification);
+    }
+
 }

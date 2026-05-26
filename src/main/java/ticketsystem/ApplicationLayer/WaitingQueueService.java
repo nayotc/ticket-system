@@ -105,7 +105,7 @@ public class WaitingQueueService {
                 eventRepository.updateEvent(eventToUpdate);
 
                 String sessionId = approvedUsers.get(0);
-                notificationsService.notifyUser(sessionId,
+                notificationsService.notifyGuest(sessionId,
                         "It's your turn! You can now purchase tickets for Event " + eventId);
                 logger.logEvent("Processed waiting queue for Event " + eventId + ". Approved users: 1",
                         LogbackSystemLogger.LogLevel.INFO);
