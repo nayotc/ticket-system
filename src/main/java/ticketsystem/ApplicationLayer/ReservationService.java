@@ -29,6 +29,8 @@ import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+
 import java.time.LocalDate;
 import java.time.Period;
 
@@ -42,13 +44,14 @@ public class ReservationService {
     private final ILotteryRepository lotteryRepository;
     private final Reservation reservationDomeinService;
     private final ISystemLogger logger;
+    private final CompanyRepository companyRepository;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
 
     public ReservationService(
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
             TokenService tokenService, IPaymentService paymentService, ISecureBarcode secureBarcode,
-            ILotteryRepository lotteryRepository, ISystemLogger logger) {
+            ILotteryRepository lotteryRepository, ISystemLogger logger, CompanyRepository companyRepository) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
@@ -56,8 +59,8 @@ public class ReservationService {
         this.secureBarcode = secureBarcode;
         this.lotteryRepository = lotteryRepository;
         this.logger = logger;
+        this.companyRepository = companyRepository;
         this.reservationDomeinService = new Reservation();
-
     }
 
     // UC 2.5,2.4
@@ -223,10 +226,10 @@ public class ReservationService {
             if (order == null || event == null) {
                 throw new IllegalStateException("No active order or event found");
             }
-
-            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event, 
-                Period.between(details.getBirthDate(), LocalDate.now()).getYears());
-
+            int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();  
+            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event, buyerAge);
+            companyRepository.findById(123L).ifPresent(company -> 
+                {company.canPurchase(order.getTickets().size(), buyerAge);});
             boolean paymentResult = paymentService.pay(amount, details);
 
             if (!paymentResult) {

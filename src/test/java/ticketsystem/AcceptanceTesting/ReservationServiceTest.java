@@ -36,6 +36,7 @@ import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
@@ -49,6 +50,7 @@ public class ReservationServiceTest {
     private FakeSecureBarcode secureBarcode;
     private TokenService tokenService;
     private ISystemLogger logger;
+    private CompanyRepository companyRepository;
 
     @BeforeEach
     void setUp() {
@@ -58,6 +60,7 @@ public class ReservationServiceTest {
         paymentService = new FakePaymentService();
         secureBarcode = new FakeSecureBarcode();
         logger=new FakeSystemLogger();
+        companyRepository = new CompanyRepository();
 
          tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
@@ -115,7 +118,8 @@ public class ReservationServiceTest {
                 eventRepository,
                 tokenService,
                 paymentService,
-                secureBarcode,lotteryRepository,logger
+                secureBarcode,lotteryRepository,logger,companyRepository
+
         );
     }
     @Test
