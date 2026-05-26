@@ -523,4 +523,9 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     private record EventRevenue(String eventName, BigDecimal revenue) {
     }
 
+    // public interface SalesReportPresenter {
+    //     SalesReportDTO generateSalesReport(String token, long companyId);
+
+    //     List<OrderDTO> getCompanyTransactions(String token, long companyId);
+    // }
 }

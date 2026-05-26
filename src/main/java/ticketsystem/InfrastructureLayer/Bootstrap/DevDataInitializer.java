@@ -3,17 +3,24 @@ package ticketsystem.InfrastructureLayer.Bootstrap;
 import java.math.BigDecimal;
 import java.util.List;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
+import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
