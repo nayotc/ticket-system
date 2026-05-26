@@ -23,6 +23,7 @@ import ticketsystem.PresentationLayer.Components.StatusBadge;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
+import ticketsystem.PresentationLayer.Presenters.SalesReportPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
 import java.math.BigDecimal;
@@ -36,6 +37,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("דוח מכירות")
 @Route(value = UiRoutes.SALES_REPORT, layout = ManagementLayout.class)
@@ -56,7 +59,11 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     private SalesReportDTO currentReport = new SalesReportDTO(0, BigDecimal.ZERO, "לא נטענו נתונים");
     private List<OrderDTO> currentTransactions = new ArrayList<>();
 
-    public SalesReport() {
+    // Change 1: The constructor receives the Presenter via Spring
+    @Autowired
+    public SalesReport(SalesReportPresenter salesReportPresenterpresenter) {
+        this.presenter = salesReportPresenterpresenter;
+
         addClassName("sales-report-page");
         setSpacing(false);
 
@@ -93,7 +100,9 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         add(header, metricsGrid, contentGrid, transactionsCard, emptyStateContainer);
 
         configureTransactionsGrid();
-        loadDemoData();
+        // Change 2: Remove the call to loadDemoData().
+        // Instead, the beforeEnter method will call loadFromPresenterOrDemo()
+        // when the screen loads, and it will use the real Presenter injected by Spring.
     }
 
     /**
@@ -569,9 +578,9 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     private record EventRevenue(String eventName, BigDecimal revenue) {
     }
 
-    public interface SalesReportPresenter {
-        SalesReportDTO generateSalesReport(String token, long companyId);
+    // public interface SalesReportPresenter {
+    //     SalesReportDTO generateSalesReport(String token, long companyId);
 
-        List<OrderDTO> getCompanyTransactions(String token, long companyId);
-    }
+    //     List<OrderDTO> getCompanyTransactions(String token, long companyId);
+    // }
 }

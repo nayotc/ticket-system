@@ -21,21 +21,21 @@ import java.util.Objects;
 
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 
-public class HistoryService implements OrderCompletedListener, EventUpdatesListener {
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class HistoryService implements OrderCompletedListener {
     private final IHistoryRepository historyRepository;
     private final ITokenService tokenService;
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private ObjectMapper objectMapper;
     private MembershipDomainService membershipDomainService;
     private ISystemLogger logger;
     private final UserAccessService userAccessService;
     private final INotifier notificationsService; 
 
-    public HistoryService(IHistoryRepository historyRepository,
-                        ITokenService tokenService,
-                        MembershipDomainService membershipDomainService,
-                        ISystemLogger logger,
-                        UserAccessService userAccessService,
-                        INotifier notificationsService) {
+    @Autowired
+    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
