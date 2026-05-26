@@ -7,11 +7,13 @@ import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.ApplicationLayer.PurchasePolicyMapper;
 
 
 public class CompanyService {
@@ -20,6 +22,8 @@ public class CompanyService {
     private final ITokenService tokenService;
     private final ISystemLogger logger;
     private final MembershipDomainService membershipDomain;
+    private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
+    
     /**
      * Constructor without logger. Kept for backward compatibility with existing
      * tests and code.
@@ -441,4 +445,39 @@ public class CompanyService {
         }
             return company;
     }
+
+    public void setCompanyPurchasePolicy(String token, Long companyId, PurchasePolicyDTO policyDTO) throws Exception {
+        try {
+            Company company = canEditPurchasePolicy(token, companyId);
+
+            PurchasePolicy policy = mapper.toDomain(policyDTO);
+
+            company.setPurchasePolicy(policy);
+
+            companyRepository.save(company);
+
+        } catch (Exception e) {
+            logger.logEvent(
+                    "Failed to set purchase policy for company, id: " + companyId,
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
+        }
+    }
+    private Company canEditPurchasePolicy(String token,Long companyId) throws Exception{
+        tokenService.validateToken(token);
+
+            Long memberId = tokenService.extractUserId(token);
+
+            Company company = companyRepository.findById(companyId)
+                            .orElseThrow(() -> new Exception("Error: Company not found."));;
+
+        if (!membershipDomain.validatePermission(memberId,companyId,Permission.SET_PURCHASING_POLICY)){
+            throw new IllegalArgumentException(
+                "User does not have permission to manage company purchasing policy");
+        }
+            return company;
+    }
+
+
 }

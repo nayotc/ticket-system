@@ -189,6 +189,9 @@ public class Event {
     }
 
     public void setPurchasePolicy(PurchasePolicy purchasePolicy) {
+        if (purchasePolicy == null) {
+            throw new IllegalArgumentException("Purchase policy cannot be null");
+        }
         this.purchasePolicy = purchasePolicy;
     }
 

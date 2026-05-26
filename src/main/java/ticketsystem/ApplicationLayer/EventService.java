@@ -11,11 +11,13 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -27,6 +29,7 @@ public class EventService {
     private final MembershipDomainService membershipDomain;
     private final List<EventUpdatesListener> eventUpdatesListeners = new ArrayList<>();
     private final ISystemLogger logger;
+    private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
 
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
             MembershipDomainService membershipDomain, ISystemLogger logger) {
@@ -409,6 +412,38 @@ public class EventService {
         return "eventId=" + eventDTO.id()
                 + ", companyId=" + eventDTO.companyId()
                 + ", version=" + eventDTO.version();
+    }
+
+       public void setCompanyPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
+        try {
+            Event event = canEditPurchasePolicy(token, eventId);
+
+            PurchasePolicy policy = mapper.toDomain(policyDTO);
+
+            event.setPurchasePolicy(policy);
+
+            eventRepository.updateEvent(event);
+
+        } catch (Exception e) {
+            logger.logEvent(
+                    "Failed to set purchase policy for event, id: " + eventId,
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
+        }
+    }
+    private Event canEditPurchasePolicy(String token,Long eventId) throws Exception{
+        tokenService.validateToken(token);
+
+            Long memberId = tokenService.extractUserId(token);
+
+            Event event = eventRepository.getEventById(eventId);
+
+        if (!membershipDomain.validatePermission(memberId,event.getCompanyId(),Permission.MANAGE_EVENT_INVENTORY)){
+            throw new IllegalArgumentException(
+                "User does not have permission to manage company purchasing policy");
+        }
+            return event;
     }
 
 }
