@@ -639,6 +639,154 @@ vaadin-button.nav-link-button:hover {
 }
 
 /* =========================
+   Event card lottery and sale status
+   ========================= */
+
+.event-card-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 132px;
+}
+
+.event-company-row {
+    margin-top: -2px;
+    margin-bottom: 6px;
+}
+
+vaadin-button.event-company-link {
+    min-height: auto;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--tn-primary);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+vaadin-button.event-company-link:hover {
+    background: transparent;
+    box-shadow: none;
+    color: var(--tn-secondary-fixed);
+    text-decoration: underline;
+}
+
+vaadin-button.event-lottery-button {
+    width: 100%;
+    min-height: 38px;
+    border-radius: 12px;
+    gap: 8px;
+    background: var(--tn-primary);
+    color: var(--tn-on-primary);
+    box-shadow: 0 0 15px rgba(208, 188, 255, 0.30);
+}
+
+vaadin-button.event-lottery-button:hover {
+    background: var(--tn-primary-fixed);
+    box-shadow: 0 0 20px rgba(208, 188, 255, 0.44);
+}
+
+.event-buy-button-wrapper {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+vaadin-button.event-buy-button {
+    width: 100%;
+    min-height: 38px;
+    border-radius: 12px;
+    gap: 8px;
+}
+
+vaadin-button.event-buy-button-closed,
+vaadin-button.event-buy-button-closed[disabled] {
+    background: rgba(73, 68, 84, 0.55);
+    color: rgba(203, 195, 215, 0.62);
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+vaadin-button.event-buy-button-closed::part(label),
+vaadin-button.event-buy-button-closed::part(prefix) {
+    color: rgba(203, 195, 215, 0.62);
+}
+
+.event-sale-closed-ribbon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    width: 138%;
+    padding: 3px 0;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    background: rgba(255, 180, 171, 0.92);
+    color: var(--tn-on-error);
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 900;
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.24);
+}
+
+.event-sold-out-ribbon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    width: 138%;
+    padding: 3px 0;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    background: rgba(255, 180, 171, 0.92);
+    color: var(--tn-on-error);
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 900;
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.24);
+}
+
+.event-card-sale-closed .event-price {
+    color: var(--tn-primary);
+}
+
+vaadin-button.event-buy-button-sold-out,
+vaadin-button.event-buy-button-sold-out[disabled] {
+    background: rgba(73, 68, 84, 0.55);
+    color: rgba(203, 195, 215, 0.62);
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+vaadin-button.event-buy-button-sold-out::part(label),
+vaadin-button.event-buy-button-sold-out::part(prefix) {
+    color: rgba(203, 195, 215, 0.62);
+}
+
+@media (max-width: 600px) {
+    .event-card-actions {
+        width: 100%;
+        align-items: center;
+    }
+
+    .event-buy-button-wrapper,
+    vaadin-button.event-buy-button,
+    vaadin-button.event-lottery-button {
+        width: 100%;
+        max-width: 220px;
+    }
+}
+
+/* =========================
    Highlight section
    ========================= */
 
@@ -1574,10 +1722,12 @@ vaadin-button.nav-link-button:hover {
     }
 
     .event-card-content {
-        padding: 18px 20px 20px 20px;
-        align-items: center;
-        text-align: center;
-        gap: 14px;
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        background: rgba(19, 27, 46, 0.64);
     }
 
     .event-card-image-text {
@@ -1599,10 +1749,12 @@ vaadin-button.nav-link-button:hover {
     }
 
     .event-detail-row {
-        justify-content: center;
-        text-align: center;
-        font-size: 17px;
-        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--tn-text-muted);
+        font-size: 14px;
+        line-height: 1.65;
     }
 
     .event-detail-row vaadin-icon {
@@ -1611,12 +1763,7 @@ vaadin-button.nav-link-button:hover {
     }
 
     .event-card-footer {
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 14px;
-        width: 100%;
-        padding-top: 16px;
+        margin-top: auto;
     }
 
     .event-price-label {
