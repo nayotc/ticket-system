@@ -8,16 +8,15 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import ticketsystem.ApplicationLayer.CompanyService;
-
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.UserService;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 
 @Component
 @Profile("dev")
