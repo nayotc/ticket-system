@@ -1,11 +1,12 @@
 package ticketsystem.InfrastructureLayer;
 
 import java.util.Collection;
-
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
+import org.springframework.stereotype.Service;
 
+@Service
 public class VaadinNotifier implements INotifier {
 
     private final INotificationsRepository notificationsRepository;
