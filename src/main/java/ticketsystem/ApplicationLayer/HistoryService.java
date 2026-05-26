@@ -32,7 +32,7 @@ import org.springframework.stereotype.Service;
 public class HistoryService implements OrderCompletedListener, EventUpdatesListener {
     private final IHistoryRepository historyRepository;
     private final ITokenService tokenService;
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private ObjectMapper objectMapper;
     private MembershipDomainService membershipDomainService;
     private ISystemLogger logger;
     private final UserAccessService userAccessService;
