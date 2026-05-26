@@ -29,8 +29,6 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.ApplicationLayer.UserService;
-import ticketsystem.DomainLayer.IRepository.IUserRepository;
 
 @Component
 @Profile("dev")
