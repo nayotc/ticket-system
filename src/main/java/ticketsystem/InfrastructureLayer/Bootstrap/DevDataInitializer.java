@@ -6,10 +6,18 @@ import java.util.List;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+
+import ticketsystem.ApplicationLayer.CompanyService;
+import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
@@ -18,6 +26,7 @@ import ticketsystem.DomainLayer.user.Permission;
 @Profile("dev")
 public class DevDataInitializer implements CommandLineRunner {
 
+    // Regular member credentials (the buyer)
     private static final String TEST_USERNAME = "test@test.com";
     private static final String TEST_PASSWORD = "123456";
 
@@ -52,16 +61,11 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private void createTestMember() {
         if (userRepository.isUsernameTaken(TEST_USERNAME)) {
-            System.out.println("Dev user already exists: " + TEST_USERNAME);
             return;
         }
-
         String guestToken = userService.visitSystem();
         userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000");
-
-        System.out.println("Dev user created:");
-        System.out.println("username: " + TEST_USERNAME);
-        System.out.println("password: " + TEST_PASSWORD);
+        System.out.println("Dev Regular Member (Buyer) created: " + TEST_USERNAME);
     }
 
     private void createTestFounder() {
@@ -123,7 +127,7 @@ public class DevDataInitializer implements CommandLineRunner {
         OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, TEST_COMPANY_ID, founderId, 92L);
         historyService.onOrderCompleted(order2);
         
-        System.out.println("Test sales data generated successfully. Buyer: " + TEST_USERNAME + ", Founder: " + FOUNDER_USERNAME);
+        System.out.println("Test sales data generated successfully. Buyer: " + TEST_USERNAME + ", Manager/Founder: " + FOUNDER_USERNAME);
         
         // Printing a detailed console summary of the loaded mock transactions
         System.out.println("=========================================================================");
@@ -138,4 +142,5 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println("=========================================================================");
         System.out.println();
     }
+
 }
