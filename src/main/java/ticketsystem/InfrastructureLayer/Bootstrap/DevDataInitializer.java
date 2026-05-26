@@ -19,6 +19,8 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.ApplicationLayer.UserService;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
 
 @Component
 @Profile("dev")
@@ -30,7 +32,6 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private static final String FOUNDER_USERNAME = "founder@test.com";
     private static final String FOUNDER_PASSWORD = "123456";
-    
     private static final long TEST_COMPANY_ID = 1L;
     private static final String COMPANY_NAME = "TixNow Productions"; 
     
@@ -49,7 +50,6 @@ public class DevDataInitializer implements CommandLineRunner {
         this.historyService = historyService;
     }
 
-    @Override
     public void run(String... args) {
         createTestMember();               // 1. Create the regular buyer member
         createTestFounder();              // 2. Create the company founder member
