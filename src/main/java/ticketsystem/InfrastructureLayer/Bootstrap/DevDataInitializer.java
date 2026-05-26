@@ -79,8 +79,10 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private void createTestMember() {
         if (userRepository.isUsernameTaken(TEST_USERNAME)) {
+            System.out.println("Dev user already exists: " + TEST_USERNAME);
             return;
         }
+
         String guestToken = userService.visitSystem();
         userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000");
 
