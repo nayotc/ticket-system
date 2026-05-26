@@ -11,7 +11,7 @@ import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.*;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
@@ -54,7 +54,7 @@ public class MembershipConcurrencyTest {
         this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService, null, logger);
         
         // Setup Company
-        Company company = new Company("BGU Productions", 100L, new PurchasePolicy(), new DiscountPolicy(DiscountCompositionType.MAX));
+        Company company = new Company("BGU Productions", 100L, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
         try { company.setId(companyId); } catch (Exception e) {}
         companyRepository.save(company);
 

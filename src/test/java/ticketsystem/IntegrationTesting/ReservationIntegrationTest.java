@@ -45,6 +45,7 @@ public class ReservationIntegrationTest {
                                 100L);
 
                 event = createActiveEventWithSeatingAndStandingAreas(100L);
+                
         }
 
         @Test
@@ -296,7 +297,7 @@ public class ReservationIntegrationTest {
                                 new seatPositionDTO(1, 1));
 
                 // Act
-                reservation.submitActiveOrderForCheckout(order, event);
+                reservation.submitActiveOrderForCheckout(order, event, 18);
                 reservation.completeCheckout(order, event);
 
                 // Assert
@@ -312,7 +313,7 @@ public class ReservationIntegrationTest {
                 Long areaId = 1L;
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
-                reservation.submitActiveOrderForCheckout(order, event);
+                reservation.submitActiveOrderForCheckout(order, event, 18);
                 reservation.completeCheckout(order, event);
 
                 ActiveOrder secondOrder = new ActiveOrder(2L, "token-2", 2L, 100L);
@@ -353,7 +354,7 @@ public class ReservationIntegrationTest {
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
 
-                BigDecimal total = reservation.submitActiveOrderForCheckout(order, event);
+                BigDecimal total = reservation.submitActiveOrderForCheckout(order, event, 18);
 
                 assertEquals(OrderStatus.PENDING_CHECKOUT, order.getStatus());
                 assertEquals(new BigDecimal("100.00"), total);
@@ -370,7 +371,7 @@ public class ReservationIntegrationTest {
                 StandingArea standingArea = getStandingArea(event, areaId);
 
                 reservation.selectStandingTicket(order, event, areaId, 4);
-                reservation.submitActiveOrderForCheckout(order, event);
+                reservation.submitActiveOrderForCheckout(order, event, 18);
 
                 reservation.completeCheckout(order, event);
 
@@ -395,7 +396,7 @@ public class ReservationIntegrationTest {
 
                 // Act + Assert
                 assertThrows(IllegalStateException.class, () -> {
-                        reservation.submitActiveOrderForCheckout(order, event);
+                        reservation.submitActiveOrderForCheckout(order, event, 18);
                 });
         }
 
@@ -431,7 +432,7 @@ public class ReservationIntegrationTest {
                 Long areaId = 1L;
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
-                reservation.submitActiveOrderForCheckout(order, event);
+                reservation.submitActiveOrderForCheckout(order, event, 18);
 
                 order.paymentFailed();
 
@@ -467,7 +468,7 @@ public class ReservationIntegrationTest {
                 SeatPosition seatPosition = new SeatPosition(1, 1);
 
                 reservation.selectSeatTicket(order, event, areaId, new seatPositionDTO(1, 1));
-                reservation.submitActiveOrderForCheckout(order, event);
+                reservation.submitActiveOrderForCheckout(order, event, 18);
 
                 event.releaseSeat(areaId, seatPosition);
 

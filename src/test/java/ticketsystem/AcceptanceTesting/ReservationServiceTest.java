@@ -3,6 +3,7 @@ package ticketsystem.AcceptanceTesting;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -795,7 +796,7 @@ private Event createActiveEventWithSeatingArea(Long eventId) {
 }
 
     private PaymentDetails createPaymentDetails() {
-        return new PaymentDetails("VISA","Yosi");
+        return new PaymentDetails("VISA","Yosi", LocalDate.now());
     }
 
     private static class FakePaymentService implements IPaymentService {
@@ -974,13 +975,12 @@ private Event createActiveEventWithSeatingArea(Long eventId) {
             return null;
         }
     };
-
-    reservationService = new ReservationService(
-            orderRepository,
-            eventRepository,
-            tokenService,
-            paymentService,
-            secureBarcode,lotteryRepository,logger
-    );
+        reservationService = new ReservationService(
+                orderRepository,
+                eventRepository,
+                tokenService,
+                paymentService,
+                secureBarcode,lotteryRepository,logger,companyRepository
+        );
 }
 }
