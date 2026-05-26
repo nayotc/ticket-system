@@ -3,6 +3,7 @@ package ticketsystem.DomainLayer.event;
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -438,6 +439,10 @@ public class Event {
 
     public void removeDiscountFromEvent(Long discountId) {
         discountPolicy.removeDiscount(discountId);
+    }
+
+    public List<DiscountTypes> getDiscounts(){
+        return discountPolicy.getDiscounts();
     }
 
 }
