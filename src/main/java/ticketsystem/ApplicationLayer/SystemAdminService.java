@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.springframework.stereotype.Service;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ticketsystem.DTO.CompanyDTO;
@@ -27,6 +29,7 @@ import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.MembershipDomainService;
 
+@Service
 public class SystemAdminService {
 
     private final ISystemAdminRepository adminRepository;

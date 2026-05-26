@@ -5,9 +5,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.stereotype.Repository;
+
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 
+@Repository
 public class SystemAdminRepository implements ISystemAdminRepository {
 // Using ConcurrentHashMap for thread safety in case of concurrent access
 
