@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,8 @@ import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.PurchasePolicyDTO;
+import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -34,6 +37,7 @@ import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.RoleStatus;
+import ticketsystem.DTO.PurchaseRuleDTO;
 
 public class CompanyServiceTest {
 
@@ -346,5 +350,166 @@ public class CompanyServiceTest {
         assertThrows(Exception.class, () ->
                 companyService.removeDiscountFromCompany(founderToken, companyDTO.getId(), 999999L)
         );
-    }    
+    }  
+    
+    // UC 4.3: Set company purchase policy
+    @Test
+        void GivenFounder_WhenSetCompanyPurchasePolicyWithMaxTicketsRule_ThenPolicyIsSavedOnCompany() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+        companyService.setCompanyPurchasePolicy(
+                founderToken,
+                companyDTO.getId(),
+                policyDTO
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        assertDoesNotThrow(() -> company.canPurchase(5, 20));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(6, 20)
+        );
+
+        assertEquals("Cannot purchase more than 5 tickets.", exception.getMessage());
+        }
+
+        @Test
+        void GivenFounder_WhenSetCompanyPurchasePolicyWithMinAgeRule_ThenPolicyIsSavedOnCompany() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO policyDTO = minAgePolicyDTO(18);
+
+        companyService.setCompanyPurchasePolicy(
+                founderToken,
+                companyDTO.getId(),
+                policyDTO
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        assertDoesNotThrow(() -> company.canPurchase(1, 18));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(1, 17)
+        );
+
+        assertEquals(
+                "Customer does not meet the minimum age requirement of 18",
+                exception.getMessage()
+        );
+        }
+
+        @Test
+        void GivenFounder_WhenSetCompanyPurchasePolicyWithNestedRule_ThenNestedPolicyIsSavedOnCompany() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO policyDTO = new PurchasePolicyDTO(
+                new PurchaseRuleDTO(
+                        PurchaseRuleType.AND,
+                        null,
+                        List.of(
+                                new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, 18, null),
+                                new PurchaseRuleDTO(
+                                        PurchaseRuleType.OR,
+                                        null,
+                                        List.of(
+                                                new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, 2, null),
+                                                new PurchaseRuleDTO(PurchaseRuleType.MIN_TICKETS, 100, null)
+                                        )
+                                )
+                        )
+                )
+        );
+
+        companyService.setCompanyPurchasePolicy(
+                founderToken,
+                companyDTO.getId(),
+                policyDTO
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        assertDoesNotThrow(() -> company.canPurchase(2, 18));
+        assertDoesNotThrow(() -> company.canPurchase(100, 18));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(50, 18)
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(2, 17)
+        );
+        }
+
+        @Test
+        void GivenUserWithoutPurchasePolicyPermission_WhenSetCompanyPurchasePolicy_ThenThrowsException() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> companyService.setCompanyPurchasePolicy(
+                        nonFounderToken,
+                        companyDTO.getId(),
+                        policyDTO
+                )
+        );
+        }
+
+        @Test
+        void GivenFounderAndNonExistingCompany_WhenSetCompanyPurchasePolicy_ThenThrowsException() {
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+        assertThrows(
+                Exception.class,
+                () -> companyService.setCompanyPurchasePolicy(
+                        founderToken,
+                        999999L,
+                        policyDTO
+                        )
+        );
+        }
+
+        @Test
+        void GivenFounderAndInvalidPurchasePolicyDTO_WhenSetCompanyPurchasePolicy_ThenThrowsException() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO invalidPolicyDTO = new PurchasePolicyDTO(
+                new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, null, null)
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> companyService.setCompanyPurchasePolicy(
+                        founderToken,
+                        companyDTO.getId(),
+                        invalidPolicyDTO
+                )
+        );
+
+        assertEquals("Minimum age is required", exception.getMessage());
+        }
+
+        private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {
+        return new PurchasePolicyDTO(
+                new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, maxTickets, null)
+        );
+        }
+
+        private PurchasePolicyDTO minAgePolicyDTO(int minAge) {
+        return new PurchasePolicyDTO(
+                new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, minAge, null)
+        );
+        }
 }

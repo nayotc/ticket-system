@@ -414,7 +414,7 @@ public class EventService {
                 + ", version=" + eventDTO.version();
     }
 
-       public void setCompanyPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
+       public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
         try {
             Event event = canEditPurchasePolicy(token, eventId);
 
@@ -438,10 +438,13 @@ public class EventService {
             Long memberId = tokenService.extractUserId(token);
 
             Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
 
         if (!membershipDomain.validatePermission(memberId,event.getCompanyId(),Permission.MANAGE_EVENT_INVENTORY)){
             throw new IllegalArgumentException(
-                "User does not have permission to manage company purchasing policy");
+                "User does not have permission to manage event purchasing policy");
         }
             return event;
     }
