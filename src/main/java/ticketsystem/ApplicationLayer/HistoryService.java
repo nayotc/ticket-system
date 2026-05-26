@@ -28,7 +28,7 @@ import org.springframework.stereotype.Service;
 public class HistoryService implements OrderCompletedListener {
     private final IHistoryRepository historyRepository;
     private final ITokenService tokenService;
-    private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper = new ObjectMapper();
     private MembershipDomainService membershipDomainService;
     private ISystemLogger logger;
     private final UserAccessService userAccessService;
