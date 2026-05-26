@@ -121,7 +121,8 @@ public class DevDataInitializer implements CommandLineRunner {
     }
 
     /**
-     * Creates the actual production company in the system owned by the founder.
+     * New function: Configures the test user as the Founder of the company.
+     * This is critical so that HistoryService allows them to generate the sales report.
      */
     private void createTestCompany() {
         System.out.println("Creating test production company...");
@@ -286,38 +287,6 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println(" -> EXPECTED REPORT TOTALS: 3 Tickets Sold | Total Revenue: 480.00 NIS");
         System.out.println("=========================================================================");
         System.out.println();
-    }
-
-    /**
-     * New function: Configures the test user as the Founder of the company.
-     * This is critical so that HistoryService allows them to generate the sales report.
-     */
-    private void assignPermissionsToTestMember() {
-        System.out.println("Assigning Founder permissions to the test user...");
-
-        var user = userRepository.getMemberByUsername(TEST_USERNAME); 
-        
-        // Ensuring the user is of type Member as defined in the domain
-        if (user instanceof Member) {
-            Member member = (Member) user;
-            
-            // 1. Adding the founder role to the test company (ID = 1)
-            member.addFounderRole(TEST_COMPANY_ID);
-            
-            // 2. Fetching the role we just added
-            CompanyRole role = member.getRoleInCompany(TEST_COMPANY_ID);
-            
-            if (role != null && role.isPending()) {
-                // 3. Activating the role so it receives all permissions (including GENERATE_SALES_REPORT)
-                role.activate();
-            }
-            
-            // Saving the updated user in the database
-            userRepository.updateMember(member); 
-            
-            System.out.println("Founder permissions assigned successfully.");
-            System.out.println("Founder has permission to GENERATE_SALES_REPORT: " + member.hasPermission(TEST_COMPANY_ID, Permission.GENERATE_SALES_REPORT));
-        }
     }
 
 }
