@@ -3,28 +3,29 @@ package ticketsystem.ApplicationLayer;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
+import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
-public class OrderService implements UserLoginListener, EventUpdatesListener{
+public class OrderService implements UserLoginListener, EventUpdatesListener {
 
     private final IOrderRepository orderRepository;
     private final TokenService tokenService;
     private final ISystemLogger logger;
     private final INotifier notificationsService;
 
-    public OrderService(IOrderRepository orderRepository,TokenService tokenService,ISystemLogger logger,INotifier notificationsService) {
+    public OrderService(IOrderRepository orderRepository, TokenService tokenService, ISystemLogger logger,
+            INotifier notificationsService) {
         this.orderRepository = orderRepository;
         this.tokenService = tokenService;
         this.logger = logger;
         this.notificationsService = notificationsService;
     }
 
-     @Override
+    @Override
     public void onUserLogin(String guestToken, String memberToken) {
 
         try {
@@ -70,7 +71,8 @@ public class OrderService implements UserLoginListener, EventUpdatesListener{
         for (ActiveOrder order : affectedOrders) {
             order.cancelOrder();
             orderRepository.updateOrder(order);
-            notificationsService.notifyUser(order.getSessionToken(), "Your order number: " + order.getOrderId() + " - has been canceled due to event cancellation.");
+            notificationsService.notifyGuest(order.getSessionToken(),
+                    "Your order number: " + order.getOrderId() + " - has been canceled due to event cancellation.");
         }
     }
 
@@ -78,10 +80,9 @@ public class OrderService implements UserLoginListener, EventUpdatesListener{
     public void onEventUpdated(Long eventId, LocalDateTime date, String Location, String updateMessage) {
         List<ActiveOrder> affectedOrders = orderRepository.getActiveOrdersByEventId(eventId);
         for (ActiveOrder order : affectedOrders) {
-            notificationsService.notifyUser(order.getSessionToken(), "Update for your order number - " + order.getOrderId() + " :/n" + updateMessage);
+            notificationsService.notifyGuest(order.getSessionToken(),
+                    "Update for your order number - " + order.getOrderId() + " :/n" + updateMessage);
         }
     }
-
-
 
 }

@@ -8,41 +8,49 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
-public class Broadcaster {
+import ticketsystem.ApplicationLayer.IBrodcaster;
+import ticketsystem.DomainLayer.notifications.Notification;
+
+public class Broadcaster implements IBrodcaster {
 
     private static final Executor executor = Executors.newCachedThreadPool();
-    
-    private static final Map<String, List<Consumer<String>>> notifiers = new ConcurrentHashMap<>();    
+    private static final Map<String, List<Consumer<Notification>>> notifiers = new ConcurrentHashMap<>();
 
-    public static synchronized Runnable registerListener(String sessionId, Consumer<String> notifier) {
+    @Override
+    public synchronized Runnable registerListener(String sessionId, Consumer<Notification> notifier) {
         addListener(sessionId, notifier);
         return () -> removeListener(sessionId, notifier);
     }
 
-    public static void addListener(String sessionId, Consumer<String> notifier) {
+    public synchronized Runnable registerListener(Long memberId, Consumer<Notification> notifier) {
+        String sessionId = memberId.toString();
+        addListener(sessionId, notifier);
+        return () -> removeListener(sessionId, notifier);
+    }
+
+    public void addListener(String sessionId, Consumer<Notification> notifier) {
         notifiers.computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>()).add(notifier);
     }
 
-    public static void removeListener(String sessionId, Consumer<String> notifier) {
-        List<Consumer<String>> listeners = notifiers.get(sessionId);
+    public static void removeListener(String sessionId, Consumer<Notification> notifier) {
+        List<Consumer<Notification>> listeners = notifiers.get(sessionId);
         if (listeners != null) {
             listeners.remove(notifier);
             if (listeners.isEmpty()) {
                 notifiers.remove(sessionId);
             }
         }
-    }  
+    }
 
-    public static void broadcast(String sessionId, String message) {
-        List<Consumer<String>> listeners = notifiers.get(sessionId);
+    public static void broadcast(String targetId, Notification notification) {
+        List<Consumer<Notification>> listeners = notifiers.get(targetId);
         if (listeners != null) {
-            for (Consumer<String> listener : listeners) {
+            for (Consumer<Notification> listener : listeners) {
                 executor.execute(() -> {
                     try {
-                        listener.accept(message);
+                        listener.accept(notification);
                     } catch (Exception e) {
-                        //TODO: Handle exception
-                        System.err.println("Failed to send message to listener: " + e.getMessage());
+                        removeListener(targetId, listener);
                     }
                 });
             }

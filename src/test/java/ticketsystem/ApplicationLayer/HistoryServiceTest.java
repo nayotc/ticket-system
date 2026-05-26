@@ -142,7 +142,8 @@ public class HistoryServiceTest {
         List<OrderDTO> history = historyService.getHistoryForUser(validToken);
         assertEquals(1, history.size(), "One purchase should be added to history");
     }
-        private Company createCompanyWithFounderRole(long founderId) {
+
+    private Company createCompanyWithFounderRole(long founderId) {
         Company company = new Company(
                 "history_company_" + founderId,
                 founderId,
@@ -157,6 +158,8 @@ public class HistoryServiceTest {
 
         boolean roleAdded = founder.addFounderRole(company.getId());
         assertTrue(roleAdded, "Founder role should be added successfully");
+
+        userRepository.updateMember(founder);
 
         return company;
     }
@@ -184,8 +187,9 @@ public class HistoryServiceTest {
 
         );
     }
+
     /**
- * 4.5 View purchase and order history - Successful Scenario
+    * 4.5 View purchase and order history - Successful Scenario
     */
     @Test
     void GivenOwnerAndExistingCompanyHistory_WhenGetHistoryForCompany_ThenReturnsCompanyHistory() {
@@ -213,6 +217,7 @@ public class HistoryServiceTest {
         assertEquals("Company History Concert", result.get(0).getEventName(), "Event name should match");
         assertEquals(company.getId(), result.get(0).getCompanyId(), "Company id should match");
     }
+    
     @Test
     void GivenMemberWithoutCompanyPermission_WhenGetHistoryForCompany_ThenThrowsIllegalArgumentException() {
         // --- Given (Arrange) ---
@@ -232,6 +237,7 @@ public class HistoryServiceTest {
                 "Error message should mention insufficient permissions"
         );
     }
+
     private OrderDTO createSalesReportOrderDTO(Long buyerMemberId, long companyId, Long managedByMemberId,
             String eventName, BigDecimal... ticketPrices) {
         List<PurchaseDTO> purchases = new ArrayList<>();
@@ -259,6 +265,7 @@ public class HistoryServiceTest {
                 20L
         );
     }
+
     private long createActiveManagerUnderFounder(long founderId, long companyId, String username) {
         String managerToken = getValidMemberToken(username, "Pass123!");
         long managerId = tokenService.extractUserId(managerToken);
@@ -286,8 +293,11 @@ public class HistoryServiceTest {
 
         ((Founder) founderRole).addAppointee(managerId);
 
+        userRepository.updateMember(manager);
+
         return managerId;
     }
+
     /**
      * 4.6 Generate sales report - Successful Scenario
      */
@@ -304,6 +314,20 @@ public class HistoryServiceTest {
                 company.getId(),
                 "sales_report_manager"
         );
+
+        // --- FIX: Link the manager to the owner's tree in DB ---
+        // The helper method likely creates the manager but fails to add them 
+        // to the appointer's local list. We fix it here manually to build the tree.
+        Member ownerMember = userRepository.getMemberById(ownerId);
+        CompanyRole ownerRole = ownerMember.getRoleInCompany(company.getId());
+        
+        if (ownerRole instanceof ticketsystem.DomainLayer.user.Founder) {
+            ((ticketsystem.DomainLayer.user.Founder) ownerRole).addAppointee(managerId);
+        } else if (ownerRole instanceof ticketsystem.DomainLayer.user.Owner) {
+            ((ticketsystem.DomainLayer.user.Owner) ownerRole).addAppointee(managerId);
+        }
+        userRepository.updateMember(ownerMember);
+        // --------------------------------------------------------
 
         String outsideOwnerToken = getValidMemberToken("outside_sales_owner", "Pass123!");
         long outsideOwnerId = tokenService.extractUserId(outsideOwnerToken);
@@ -385,6 +409,7 @@ public class HistoryServiceTest {
                 "Empty report message should match"
         );
     }
+
     /**
      * 4.6 Generate sales report - Guest purchases are included in company sales report
      */

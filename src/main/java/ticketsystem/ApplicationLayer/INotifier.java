@@ -2,5 +2,7 @@ package ticketsystem.ApplicationLayer;
 
 public interface INotifier {
 
-    void notifyUser(String sessionId, String message);
+    void notifyMember(Long memberId, String message);
+
+    void notifyGuest(String guestToken, String message);
 }

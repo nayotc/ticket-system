@@ -1,22 +1,24 @@
 package ticketsystem.InfrastructureLayer;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.stereotype.Repository;
 
 import ticketsystem.DomainLayer.user.Member;
 
+@Repository
 public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUserRepository {
 
-    private Map<Long, Member> registeredMembersMap;
-    private Map<String, String> hashedPasswordsMap;
-    private Map<String, Long> usernameToIdMap;
+    // Using ConcurrentHashMap to allow thread-safe concurrent access without locking the whole map for reads
+    private ConcurrentHashMap<Long, Member> registeredMembersMap;
+    private ConcurrentHashMap<String, String> hashedPasswordsMap;
+    private ConcurrentHashMap<String, Long> usernameToIdMap;
 
     public UserRepository() {
-        this.registeredMembersMap = new HashMap<>();
-        this.usernameToIdMap = new HashMap<>();
-        this.hashedPasswordsMap = new HashMap<>();
+        this.registeredMembersMap = new ConcurrentHashMap<>();
+        this.usernameToIdMap = new ConcurrentHashMap<>();
+        this.hashedPasswordsMap = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -24,7 +26,8 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
         if (registeredMembersMap.containsKey(id) || usernameToIdMap.containsKey(member.getUserName())) {
             return false; // ID or username already exists, cannot add member
         }
-        registeredMembersMap.put(id, member);
+        // Save a detached copy using the copy constructor to isolate the database state
+        registeredMembersMap.put(id, new Member(member));
         usernameToIdMap.put(member.getUserName(), id);
         hashedPasswordsMap.put(member.getUserName(), hashedPassword);
         return true;
@@ -45,32 +48,39 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
     }
 
     @Override
-    public synchronized boolean isIDTaken(long id) {
+    public boolean isIDTaken(long id) {
         return registeredMembersMap.containsKey(id);
     }
 
     @Override
-    public synchronized boolean isUsernameTaken(String username) {
+    public boolean isUsernameTaken(String username) {
         return usernameToIdMap.containsKey(username);
     }
 
     @Override
-    public synchronized int getAllRegisteredMembersCount() {
+    public int getAllRegisteredMembersCount() {
         return registeredMembersMap.size();
     }
 
     @Override
-    public synchronized Member getMemberByUsername(String username) {
-        return registeredMembersMap.get(usernameToIdMap.get(username));
+    public Member getMemberByUsername(String username) {
+        Long id = usernameToIdMap.get(username);
+        if (id == null) return null;
+        return getMemberById(id);
     }
 
     @Override
-    public synchronized Member getMemberById(long id) {
-        return registeredMembersMap.get(id);
+    public Member getMemberById(long id) {
+        Member dbMember = registeredMembersMap.get(id);
+        if (dbMember != null) {
+            // Return a detached deep copy so modifications don't affect the database until saved
+            return new Member(dbMember);
+        }
+        return null;
     }
 
     @Override
-    public synchronized String getHashedPasswordByUsername(String username) {
+    public String getHashedPasswordByUsername(String username) {
         return hashedPasswordsMap.get(username);
     }
 
@@ -117,19 +127,41 @@ public class UserRepository implements ticketsystem.DomainLayer.IRepository.IUse
     }
 
     @Override
-    public synchronized boolean updateMember(Member targetMember) {
+    public boolean updateMember(Member targetMember) {
         long id = targetMember.getId();
         
-        if (!registeredMembersMap.containsKey(id)) {
+        // Fetch current active member state from the map
+        Member currentDbMember = registeredMembersMap.get(id);
+        
+        if (currentDbMember == null) {
             return false;
         }
         
-        registeredMembersMap.put(id, targetMember);
+        // Optimistic locking version check
+        if (currentDbMember.getVersion() != targetMember.getVersion()) {
+            throw new RuntimeException("OptimisticLockingFailureException: Concurrent modification detected for member " + id + 
+                                       ". Expected version " + targetMember.getVersion() + " but found " + currentDbMember.getVersion());
+        }
+        
+        // Prepare updated state and increment version
+        Member updatedMember = new Member(targetMember);
+        updatedMember.setVersion(currentDbMember.getVersion() + 1);
+        
+        // Atomic compare-and-swap update using ConcurrentHashMap's replace method
+        boolean replaced = registeredMembersMap.replace(id, currentDbMember, updatedMember);
+        if (!replaced) {
+            throw new RuntimeException("OptimisticLockingFailureException: Member " + id + " was modified concurrently during replace.");
+        }
+        
         return true;
     }
 
     @Override
     public List<Member> getAllMembers() {
-        return new ArrayList<>(registeredMembersMap.values());
+        List<Member> membersCopy = new ArrayList<>();
+        for (Member m : registeredMembersMap.values()) {
+            membersCopy.add(new Member(m));
+        }
+        return membersCopy;
     }
 }
