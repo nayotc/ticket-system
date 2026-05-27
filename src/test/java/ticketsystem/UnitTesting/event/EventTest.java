@@ -28,9 +28,10 @@ import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.policy.PurchaseRule;
 import ticketsystem.DomainLayer.event.SeatPosition;
-import ticketsystem.DomainLayer.event.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 
 public class EventTest {
 
@@ -174,7 +175,7 @@ public class EventTest {
 
     @Test
     void givenEvent_whenSetDiscountPolicy_thenDiscountPolicyIsUpdated() {
-        DiscountPolicy policy = new DiscountPolicy();
+        DiscountPolicy policy = new DiscountPolicy(DiscountCompositionType.MAX);
 
         event.setDiscountPolicy(policy);
 

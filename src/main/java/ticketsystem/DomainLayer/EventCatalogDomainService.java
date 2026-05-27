@@ -1,14 +1,18 @@
 package ticketsystem.DomainLayer;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import io.jsonwebtoken.lang.Objects;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 
 public class EventCatalogDomainService {
+
+    ICompanyRepository companyRepository;
+    public EventCatalogDomainService(ICompanyRepository companyRepository){
+        this.companyRepository=companyRepository;
+    }
 
     public List<Event> globalSearch(List<Event> events, List<Long> companies, SearchCriteria criteria) {
         if (events == null) {
@@ -55,4 +59,38 @@ public class EventCatalogDomainService {
         return event.matchesSearchCriteria(criteria);
     }
     
+     public BigDecimal calculateFinalPrice(Long companyId,Event event,BigDecimal totalPrice,int ticketCount,String couponCode) {
+        if (companyId == null)  throw new IllegalArgumentException("Company id cannot be null");
+        if (event == null) throw new IllegalArgumentException("Event cannot be null");
+        if (totalPrice == null) throw new IllegalArgumentException("Total price cannot be null");
+        if (ticketCount < 0) throw new IllegalArgumentException("Ticket count cannot be negative");
+           Company company=companyRepository.findById(companyId).orElseThrow(() -> new IllegalArgumentException("Company not found"));
+            BigDecimal companyDiscount =
+                    company.calculateDiscountCompany(totalPrice, ticketCount, couponCode);
+
+            BigDecimal priceAfterCompanyDiscount =
+                    totalPrice.subtract(companyDiscount);
+
+            if (priceAfterCompanyDiscount.compareTo(BigDecimal.ZERO) < 0) {
+                priceAfterCompanyDiscount = BigDecimal.ZERO;
+            }
+
+            BigDecimal eventDiscount =event.calculateDiscountEvent(
+                            priceAfterCompanyDiscount,
+                            ticketCount,
+                            couponCode
+                    );
+
+            BigDecimal finalPrice =
+                    priceAfterCompanyDiscount.subtract(eventDiscount);
+
+            if (finalPrice.compareTo(BigDecimal.ZERO) < 0) {
+                finalPrice = BigDecimal.ZERO;
+            }
+            return finalPrice;
+
+    }
+    public void canPurchase(long companyId, int ticketCount, int buyerAge) {
+        companyRepository.findById(companyId).orElseThrow(() -> new IllegalArgumentException("Company not found")).canPurchase(ticketCount, buyerAge);
+    }
 }

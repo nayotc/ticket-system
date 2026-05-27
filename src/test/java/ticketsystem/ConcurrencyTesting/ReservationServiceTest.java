@@ -1,17 +1,14 @@
 package ticketsystem.ConcurrencyTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static java.util.Collections.synchronizedList;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import static java.util.Collections.synchronizedList;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,21 +17,36 @@ import org.junit.jupiter.api.Test;
 import ticketsystem.ApplicationLayer.*;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
+import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.IRepository.*;
+import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.event.*;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.*;
 
 public class ReservationServiceTest {
 
     private ReservationService reservationService;
+
     private IOrderRepository orderRepository;
     private IEventRepository eventRepository;
     private ILotteryRepository lotteryRepository;
-    private FakePaymentService paymentService;
-    private FakeSecureBarcode secureBarcode;
-    private TokenService tokenService;
-    private FakeSystemLogger logger;
+    private ICompanyRepository companyRepository;
+    private IUserRepository userRepository;
 
+    private TokenService tokenService;
+    private UserService userService;
+    private EventCatalogDomainService eventCatalogDomainService;
+
+    private TestSecureBarcode secureBarcode;
+    private ISystemLogger logger;
+
+    private String[] memberTokens;
+
+    private static final Long COMPANY_ID = 1L;
+    private static final Long COMPANY_FOUNDER_ID = 1L;
 
     @BeforeEach
     void setUp() {
@@ -44,49 +56,55 @@ public class ReservationServiceTest {
         lotteryRepository = LotteryRepository.getInstance();
         ((LotteryRepository) lotteryRepository).clearForTests();
 
-        paymentService = new FakePaymentService();
-        secureBarcode = new FakeSecureBarcode();
-        logger= new FakeSystemLogger();
-
+        companyRepository = new CompanyRepository();
+        userRepository = new UserRepository();
 
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
                 new TokenRepository()
-        ) {
-            @Override
-            public boolean validateToken(String token) {
-                return true;
-            }
+        );
 
-            @Override
-            public boolean isGuestToken(String token) {
-                return false;
-            }
+        logger = new NoOpSystemLogger();
+        userService = new UserService(userRepository, tokenService, logger);
 
-            @Override
-            public boolean isMemberToken(String token) {
-                return true;
-            }
+        Company company = new Company(
+                "BGU Productions",
+                COMPANY_FOUNDER_ID,
+                PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX)
+        );
 
-            @Override
-            public Long extractUserId(String token) {
-                String[] parts = token.split("-");
-                return Long.parseLong(parts[2]);
-            }
-        };
+        company.setId(COMPANY_ID);
+        companyRepository.save(company);
+
+        eventCatalogDomainService =
+                new EventCatalogDomainService((CompanyRepository) companyRepository);
+
+        resetPaymentProxy();
+
+        secureBarcode = new TestSecureBarcode();
 
         reservationService = new ReservationService(
                 orderRepository,
                 eventRepository,
                 tokenService,
-                paymentService,
+                new PaymentServiceProxy(),
                 secureBarcode,
-                lotteryRepository,logger, new CompanyRepository()
+                lotteryRepository,
+                eventCatalogDomainService,
+                logger
         );
+
+        memberTokens = new String[40];
+        for (int i = 0; i < memberTokens.length; i++) {
+            memberTokens[i] = createLoggedInMember("user" + i, "password123");
+        }
     }
 
     @Test
-    void ConcurrencyTest_SelectSameSeat_WhenManyUsersTrySameSeat_ThenOnlyOneUserSucceeds() throws InterruptedException {
+    void ConcurrencyTest_SelectSameSeat_WhenManyUsersTrySameSeat_ThenOnlyOneUserSucceeds()
+            throws InterruptedException {
+
         Long eventId = 100L;
         Long areaId = 1L;
 
@@ -105,14 +123,14 @@ public class ReservationServiceTest {
         seatPositionDTO position = new seatPositionDTO(1, 1);
 
         for (int i = 0; i < numberOfThreads; i++) {
-            final int userId = i + 1;
+            final int userIndex = i + 1;
 
             executor.submit(() -> {
                 try {
                     startLatch.await();
 
                     boolean result = reservationService.selectSeatTicket(
-                            "member-token-" + userId,
+                            tokenForUserIndex(userIndex),
                             eventId,
                             areaId,
                             position,
@@ -140,21 +158,17 @@ public class ReservationServiceTest {
     }
 
     @Test
-    void ConcurrencyTest_CheckoutSameOrder_WhenManyThreadsCheckoutSameOrder_ThenOnlyOneCheckoutSucceeds() throws InterruptedException {
+    void ConcurrencyTest_CheckoutSameOrder_WhenManyThreadsCheckoutSameOrder_ThenOnlyOneCheckoutSucceeds()
+            throws InterruptedException {
+
         Long eventId = 101L;
         Long areaId = 1L;
-        String token = "member-token-1";
+        String token = tokenForUserIndex(1);
 
         Event event = createActiveStandingEvent(eventId);
         eventRepository.addEvent(event);
 
-        reservationService.selectStandingTicket(
-                token,
-                eventId,
-                areaId,
-                1,
-                null
-        );
+        reservationService.selectStandingTicket(token, eventId, areaId, 1, null);
 
         int numberOfThreads = 10;
 
@@ -173,7 +187,8 @@ public class ReservationServiceTest {
                     boolean result = reservationService.checkout(
                             token,
                             eventId,
-                            createPaymentDetails()
+                            createPaymentDetails(),
+                            null
                     );
 
                     if (result) {
@@ -197,7 +212,9 @@ public class ReservationServiceTest {
     }
 
     @Test
-    void ConcurrencyTest_SelectStandingTickets_WhenManyUsersSelectTickets_ThenSystemStaysConsistent() throws InterruptedException {
+    void ConcurrencyTest_SelectStandingTickets_WhenManyUsersSelectTickets_ThenSystemStaysConsistent()
+            throws InterruptedException {
+
         Long eventId = 102L;
         Long areaId = 1L;
 
@@ -214,14 +231,14 @@ public class ReservationServiceTest {
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
 
         for (int i = 0; i < numberOfThreads; i++) {
-            final int userId = i + 1;
+            final int userIndex = i + 1;
 
             executor.submit(() -> {
                 try {
                     startLatch.await();
 
                     boolean result = reservationService.selectStandingTicket(
-                            "member-token-" + userId,
+                            tokenForUserIndex(userIndex),
                             eventId,
                             areaId,
                             1,
@@ -256,6 +273,7 @@ public class ReservationServiceTest {
 
         assertTrue(activeOrdersForEvent >= successCount.get(),
                 "There should be at least one active order for every successful reservation");
+
         assertTrue(successCount.get() <= numberOfThreads);
     }
 
@@ -279,7 +297,7 @@ public class ReservationServiceTest {
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
 
         for (int i = 0; i < numberOfUsers; i++) {
-            final int userId = i + 1;
+            final int userIndex = i + 1;
             final int row = (i / 5) + 1;
             final int col = (i % 5) + 1;
 
@@ -288,7 +306,7 @@ public class ReservationServiceTest {
                     startLatch.await();
 
                     boolean result = reservationService.selectSeatTicket(
-                            "member-token-" + userId,
+                            tokenForUserIndex(userIndex),
                             eventId,
                             areaId,
                             new seatPositionDTO(row, col),
@@ -312,15 +330,15 @@ public class ReservationServiceTest {
         executor.shutdown();
 
         assertTrue(completed, "Test timed out");
-        assertTrue(successCount.get() > 0,
-        "At least some users should succeed");
+
+        assertTrue(successCount.get() > 0, "At least some users should succeed");
 
         assertTrue(successCount.get() <= numberOfUsers,
                 "Success count cannot exceed number of users");
 
         assertEquals(numberOfUsers, successCount.get() + exceptions.size(),
                 "Every thread should either succeed or fail safely");
-            }
+    }
 
     @Test
     void ConcurrencyTest_ManyUsersCheckoutDifferentOrders_ThenAllCheckoutsSucceed()
@@ -335,10 +353,10 @@ public class ReservationServiceTest {
         int numberOfUsers = 10;
 
         for (int i = 0; i < numberOfUsers; i++) {
-            int userId = i + 1;
+            int userIndex = i + 1;
 
             reservationService.selectStandingTicket(
-                    "member-token-" + userId,
+                    tokenForUserIndex(userIndex),
                     eventId,
                     areaId,
                     1,
@@ -354,16 +372,17 @@ public class ReservationServiceTest {
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
 
         for (int i = 0; i < numberOfUsers; i++) {
-            final int userId = i + 1;
+            final int userIndex = i + 1;
 
             executor.submit(() -> {
                 try {
                     startLatch.await();
 
                     boolean result = reservationService.checkout(
-                            "member-token-" + userId,
+                            tokenForUserIndex(userIndex),
                             eventId,
-                            createPaymentDetails()
+                            createPaymentDetails(),
+                            null
                     );
 
                     if (result) {
@@ -382,7 +401,7 @@ public class ReservationServiceTest {
         boolean completed = doneLatch.await(10, TimeUnit.SECONDS);
         executor.shutdown();
 
-       assertTrue(completed, "Test timed out");
+        assertTrue(completed, "Test timed out");
 
         assertTrue(successCount.get() > 0,
                 "At least one checkout should succeed");
@@ -419,14 +438,14 @@ public class ReservationServiceTest {
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
 
         for (int i = 0; i < numberOfUsers; i++) {
-            final int userId = i + 1;
+            final int userIndex = i + 1;
 
             executor.submit(() -> {
                 try {
                     startLatch.await();
 
                     boolean result = reservationService.selectStandingTicket(
-                            "member-token-" + userId,
+                            tokenForUserIndex(userIndex),
                             eventId,
                             areaId,
                             1,
@@ -456,151 +475,122 @@ public class ReservationServiceTest {
     }
 
     private Event createActiveEventWithManySeats(Long eventId, int rows, int columns) {
-    Event event = new Event(
-            eventId,
-            LocalDateTime.now().plusDays(10),
-            "Concurrency Many Seats Test Event",
-            1L,
-            1L,
-            EventLocation.TEL_AVIV,
-            100L,
-            EventCategory.CONCERT,
-            "Test Artist",
-            new BigDecimal("100.00"),
-            new Pair<>(10, 10)
-    );
+        Event event = createBaseEvent(eventId, "Concurrency Many Seats Test Event");
 
-    SeatingArea seatingArea = new SeatingArea(
-            1L,
-            "Seating Area",
-            new Pair<>(0, 0),
-            new Pair<>(10, 10),
-            rows,
-            columns
-    );
+        SeatingArea seatingArea = new SeatingArea(
+                1L,
+                "Seating Area",
+                new Pair<>(0, 0),
+                new Pair<>(10, 10),
+                rows,
+                columns
+        );
 
-    event.getMap().addElement(seatingArea);
-    event.setStatus(Event.eventStatus.ACTIVE);
+        event.getMap().addElement(seatingArea);
+        event.setStatus(Event.eventStatus.ACTIVE);
 
-    return event;
-}
+        return event;
+    }
 
-private Event createActiveStandingEventWithCapacity(Long eventId, int capacity) {
-    Event event = new Event(
-            eventId,
-            LocalDateTime.now().plusDays(10),
-            "Concurrency Standing Capacity Test Event",
-            1L,
-            1L,
-            EventLocation.TEL_AVIV,
-            100L,
-            EventCategory.CONCERT,
-            "Test Artist",
-            new BigDecimal("100.00"),
-            new Pair<>(10, 10)
-    );
+    private Event createActiveStandingEventWithCapacity(Long eventId, int capacity) {
+        Event event = createBaseEvent(eventId, "Concurrency Standing Capacity Test Event");
 
-    StandingArea standingArea = new StandingArea(
-            1L,
-            "Standing Area",
-            new Pair<>(0, 0),
-            new Pair<>(10, 10),
-            capacity
-    );
+        StandingArea standingArea = new StandingArea(
+                1L,
+                "Standing Area",
+                new Pair<>(0, 0),
+                new Pair<>(10, 10),
+                capacity
+        );
 
-    event.getMap().addElement(standingArea);
-    event.setStatus(Event.eventStatus.ACTIVE);
+        event.getMap().addElement(standingArea);
+        event.setStatus(Event.eventStatus.ACTIVE);
 
-    return event;
-}
+        return event;
+    }
 
     private Event createActiveStandingEvent(Long eventId) {
-    Event event = new Event(
-            eventId,
-            LocalDateTime.now().plusDays(10),
-            "Concurrency Standing Test Event",
-            1L,
-            1L,
-            EventLocation.TEL_AVIV,
-            100L,
-            EventCategory.CONCERT,
-            "Test Artist",
-            new BigDecimal("100.00"),
-            new Pair<>(10, 10)
-    );
+        Event event = createBaseEvent(eventId, "Concurrency Standing Test Event");
 
-    StandingArea standingArea = new StandingArea(
-            1L,
-            "Standing Area",
-            new Pair<>(0, 0),
-            new Pair<>(10, 10),
-            20
-    );
+        StandingArea standingArea = new StandingArea(
+                1L,
+                "Standing Area",
+                new Pair<>(0, 0),
+                new Pair<>(10, 10),
+                20
+        );
 
-    event.getMap().addElement(standingArea);
-    event.setStatus(Event.eventStatus.ACTIVE);
+        event.getMap().addElement(standingArea);
+        event.setStatus(Event.eventStatus.ACTIVE);
 
-    return event;
-}
+        return event;
+    }
 
-private Event createActiveEventWithSingleSeat(Long eventId) {
-    Event event = new Event(
-            eventId,
-            LocalDateTime.now().plusDays(10),
-            "Concurrency Seat Test Event",
-            1L,
-            1L,
-            EventLocation.TEL_AVIV,
-            100L,
-            EventCategory.CONCERT,
-            "Test Artist",
-            new BigDecimal("100.00"),
-            new Pair<>(10, 10)
-    );
+    private Event createActiveEventWithSingleSeat(Long eventId) {
+        Event event = createBaseEvent(eventId, "Concurrency Seat Test Event");
 
-    SeatingArea seatingArea = new SeatingArea(
-            1L,
-            "Seating Area",
-            new Pair<>(0, 0),
-            new Pair<>(10, 10),
-            1,
-            1
-    );
+        SeatingArea seatingArea = new SeatingArea(
+                1L,
+                "Seating Area",
+                new Pair<>(0, 0),
+                new Pair<>(10, 10),
+                1,
+                1
+        );
 
-    event.getMap().addElement(seatingArea);
-    event.setStatus(Event.eventStatus.ACTIVE);
+        event.getMap().addElement(seatingArea);
+        event.setStatus(Event.eventStatus.ACTIVE);
 
-    return event;
-}
-    
+        return event;
+    }
+
+    private Event createBaseEvent(Long eventId, String name) {
+        return new Event(
+                eventId,
+                LocalDateTime.now().plusDays(10),
+                name,
+                COMPANY_ID,
+                COMPANY_FOUNDER_ID,
+                EventLocation.TEL_AVIV,
+                100L,
+                EventCategory.CONCERT,
+                "Test Artist",
+                new BigDecimal("100.00"),
+                new Pair<>(10, 10)
+        );
+    }
 
     private PaymentDetails createPaymentDetails() {
         return new PaymentDetails("VISA", "Yosi", LocalDate.now());
     }
 
-    private static class FakePaymentService implements IPaymentService {
-        AtomicInteger payCalls = new AtomicInteger(0);
-        AtomicInteger refundCalls = new AtomicInteger(0);
+    private String createLoggedInMember(String username, String password) {
+        String guest = userService.visitSystem();
 
-        @Override
-        public boolean connect() {
-            return true;
-        }
+        boolean signedUp = userService.signUp(guest, username, password);
+        assertTrue(signedUp);
 
-        @Override
-        public boolean pay(BigDecimal amount, PaymentDetails details) {
-            payCalls.incrementAndGet();
-            return true;
-        }
+        String token = userService.login(guest, username, password);
+        assertNotNull(token);
 
-        @Override
-        public boolean refund(BigDecimal amount, PaymentDetails details) {
-            refundCalls.incrementAndGet();
-            return true;
-        }
+        return token;
     }
 
-    private static class FakeSecureBarcode implements ISecureBarcode {
+    private String tokenForUserIndex(int index) {
+        return memberTokens[index - 1];
+    }
+
+    private void resetPaymentProxy() {
+        PaymentServiceProxy.isConnectionSuccessful = true;
+        PaymentServiceProxy.isPaymentSuccessful = true;
+        PaymentServiceProxy.isRefundSuccessful = true;
+
+        PaymentServiceProxy.wasConnectCalled = false;
+        PaymentServiceProxy.wasPayCalled = false;
+        PaymentServiceProxy.wasRefundCalled = false;
+    }
+
+    private static class TestSecureBarcode implements ISecureBarcode {
         AtomicInteger generateCalls = new AtomicInteger(0);
 
         @Override
@@ -615,18 +605,13 @@ private Event createActiveEventWithSingleSeat(Long eventId) {
         }
     }
 
-    private static class FakeSystemLogger implements ISystemLogger {
-        List<String> messages = new ArrayList<>();
-
+    private static class NoOpSystemLogger implements ISystemLogger {
         @Override
         public void logEvent(String message, LogLevel level) {
-            messages.add("[" + level + "] " + message);
         }
 
         @Override
         public void logError(String errorMessage, Throwable exception) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'logError'");
         }
     }
 }

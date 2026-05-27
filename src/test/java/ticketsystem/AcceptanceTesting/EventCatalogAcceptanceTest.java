@@ -57,7 +57,7 @@ public class EventCatalogAcceptanceTest {
         tokenService = new FakeTokenService();
         logger = new LogbackSystemLogger();
 
-        EventCatalogDomainService domainService = new EventCatalogDomainService();
+        EventCatalogDomainService domainService = new EventCatalogDomainService(companyRepository);
 
         eventCatalogService = new EventCatalogService(
                 domainService,

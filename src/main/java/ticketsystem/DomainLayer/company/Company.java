@@ -239,7 +239,7 @@ public class Company {
     }
 
     public void removeDiscountFromCompany(Long discountId) {
-        discountPolicy.removeDiscountFromCompany(discountId);
+        discountPolicy.removeDiscount(discountId);
     }
    
     
