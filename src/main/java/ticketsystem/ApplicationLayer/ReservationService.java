@@ -213,7 +213,7 @@ public class ReservationService {
             if (order == null || event == null) {
                 throw new IllegalStateException("No active order or event found");
             }
-            if(details == null| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
+            if(details == null|| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
             int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();  
