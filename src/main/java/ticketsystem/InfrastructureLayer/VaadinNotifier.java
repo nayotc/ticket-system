@@ -1,6 +1,7 @@
 package ticketsystem.InfrastructureLayer;
 
 import java.util.Collection;
+
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
