@@ -65,6 +65,148 @@ public class UserServiceTest {
     }
 
     @Test
+    void TestSuccessfulSignUpWithFormattedPhone_ThenPhoneIsNormalized() {
+        // Arrange
+        String sessionToken = userService.visitSystem();
+
+        // Act
+        boolean answer = userService.signUp(
+                sessionToken,
+                "formattedPhoneUser",
+                "password123",
+                "Formatted Phone User",
+                "050-1234567"
+        );
+
+        // Assert
+        assertTrue(answer, "Sign up should succeed with a formatted phone number");
+        assertNotNull(userRepository.getMemberByUsername("formattedPhoneUser"),
+                "Member should be stored after sign up");
+        assertEquals("0501234567", userRepository.getMemberByUsername("formattedPhoneUser").getPhone(),
+                "Phone should be normalized and stored without separators");
+    }
+
+    @Test
+    void TestSignUpWithBlankFullName_ThenThrowsException() {
+        // Arrange
+        String sessionToken = userService.visitSystem();
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.signUp(
+                    sessionToken,
+                    "blankFullNameUser",
+                    "password123",
+                    "   ",
+                    "0500000000"
+            );
+        }, "Sign up should throw when full name is blank");
+
+        assertFalse(userRepository.isUsernameTaken("blankFullNameUser"),
+                "User should not be registered when full name is invalid");
+    }
+
+    @Test
+    void TestSignUpWithTooShortFullName_ThenThrowsException() {
+        // Arrange
+        String sessionToken = userService.visitSystem();
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.signUp(
+                    sessionToken,
+                    "shortFullNameUser",
+                    "password123",
+                    "A",
+                    "0500000000"
+            );
+        }, "Sign up should throw when full name is too short");
+
+        assertFalse(userRepository.isUsernameTaken("shortFullNameUser"),
+                "User should not be registered when full name is invalid");
+    }
+
+    @Test
+    void TestSignUpWithPhoneContainingLetters_ThenThrowsException() {
+        // Arrange
+        String sessionToken = userService.visitSystem();
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.signUp(
+                    sessionToken,
+                    "invalidPhoneCharactersUser",
+                    "password123",
+                    "Invalid Phone User",
+                    "05012abc67"
+            );
+        }, "Sign up should throw when phone contains non-digit characters");
+
+        assertFalse(userRepository.isUsernameTaken("invalidPhoneCharactersUser"),
+                "User should not be registered when phone is invalid");
+    }
+
+    @Test
+    void TestSignUpWithTooShortPhone_ThenThrowsException() {
+        // Arrange
+        String sessionToken = userService.visitSystem();
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.signUp(
+                    sessionToken,
+                    "shortPhoneUser",
+                    "password123",
+                    "Short Phone User",
+                    "05012345"
+            );
+        }, "Sign up should throw when phone is too short");
+
+        assertFalse(userRepository.isUsernameTaken("shortPhoneUser"),
+                "User should not be registered when phone is invalid");
+    }
+
+    @Test
+    void TestSignUpWithTooLongPhone_ThenThrowsException() {
+        // Arrange
+        String sessionToken = userService.visitSystem();
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.signUp(
+                    sessionToken,
+                    "longPhoneUser",
+                    "password123",
+                    "Long Phone User",
+                    "05012345678"
+            );
+        }, "Sign up should throw when phone is too long");
+
+        assertFalse(userRepository.isUsernameTaken("longPhoneUser"),
+                "User should not be registered when phone is invalid");
+    }
+
+    @Test
+    void TestSignUpWithBlankPhone_ThenThrowsException() {
+        // Arrange
+        String sessionToken = userService.visitSystem();
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.signUp(
+                    sessionToken,
+                    "blankPhoneUser",
+                    "password123",
+                    "Blank Phone User",
+                    "   "
+            );
+        }, "Sign up should throw when phone is blank");
+
+        assertFalse(userRepository.isUsernameTaken("blankPhoneUser"),
+                "User should not be registered when phone is invalid");
+    }
+
+    @Test
     void TestSignUpWithTakenUsername_Acceptance() {
         // Arrange: simulate a guest visiting the system and signing up
         String sessionToken1 = userService.visitSystem();
@@ -501,7 +643,8 @@ public class UserServiceTest {
                 "password123",
                 "Test User",
                 "0500000000"
-        );        String loginToken = userService.login(sessionToken, "newUser", "password123");
+        );
+        String loginToken = userService.login(sessionToken, "newUser", "password123");
         userService.logOut(loginToken);
 
         // Act& Assert: attempt to logout with an inactive token and expect an exception
