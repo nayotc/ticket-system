@@ -184,7 +184,38 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     }
 
     private void handleContinue() {
-        UI.getCurrent().navigate(UiRoutes.CHECKOUT);
+        if (eventId == null) {
+            Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+            return;
+        }
+        try {
+            for (SelectedSeat seat : selectedSeats.values()) {
+                reservationPresenter.selectSeatTicket(
+                        eventId,
+                        seat.areaId(),
+                        seat.row(),
+                        seat.number(),
+                        null
+                );
+            }
+
+            for (SelectedStandingArea standingArea : selectedStandingAreas.values()) {
+                reservationPresenter.selectStandingTicket(
+                        eventId,
+                        standingArea.areaId(),
+                        standingArea.quantity(),
+                        null
+                );
+            }
+
+            UI.getCurrent().navigate(UiRoutes.CHECKOUT);
+
+        } catch (PresentationException e) {
+            Notifications.error(e.getMessage());
+
+        } catch (Exception e) {
+            Notifications.error("לא ניתן להמשיך להזמנה. נסי שוב");
+        }
     }
 
     private void renderMap() {
