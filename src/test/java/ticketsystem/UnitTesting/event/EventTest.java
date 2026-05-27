@@ -1,5 +1,6 @@
 package ticketsystem.UnitTesting.event;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -21,11 +22,16 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.DomainLayer.event.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.MaxTicketsRule;
+import ticketsystem.DomainLayer.policy.MinAgeRule;
+import ticketsystem.DomainLayer.policy.PolicyResult;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchaseRule;
 import ticketsystem.DomainLayer.event.SeatPosition;
-import ticketsystem.DomainLayer.event.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 
 public class EventTest {
 
@@ -160,7 +166,7 @@ public class EventTest {
 
     @Test
     void givenEvent_whenSetPurchasePolicy_thenPurchasePolicyIsUpdated() {
-        PurchasePolicy policy = new PurchasePolicy("New policy");
+        PurchasePolicy policy = PurchasePolicy.noRestrictions();
 
         event.setPurchasePolicy(policy);
 
@@ -169,7 +175,7 @@ public class EventTest {
 
     @Test
     void givenEvent_whenSetDiscountPolicy_thenDiscountPolicyIsUpdated() {
-        DiscountPolicy policy = new DiscountPolicy();
+        DiscountPolicy policy = new DiscountPolicy(DiscountCompositionType.MAX);
 
         event.setDiscountPolicy(policy);
 
@@ -720,4 +726,123 @@ public class EventTest {
 
         return criteria;
     }
+
+    @Test
+    void givenDefaultPurchasePolicy_whenCanPurchase_thenDoesNotThrow() {
+        assertDoesNotThrow(() -> event.canPurchase(100, 0));
+    }
+
+    @Test
+    void givenMaxTicketsPolicyAndValidQuantity_whenCanPurchase_thenDoesNotThrow() {
+        event.setPurchasePolicy(new PurchasePolicy(new MaxTicketsRule(5)));
+
+        assertDoesNotThrow(() -> event.canPurchase(5, 20));
+    }
+
+    @Test
+    void givenMaxTicketsPolicyAndTooManyTickets_whenCanPurchase_thenThrowExceptionWithPolicyMessage() {
+        event.setPurchasePolicy(new PurchasePolicy(new MaxTicketsRule(5)));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> event.canPurchase(6, 20)
+        );
+
+        assertEquals("Cannot purchase more than 5 tickets.", exception.getMessage());
+    }
+
+    @Test
+    void givenMinAgePolicyAndValidAge_whenCanPurchase_thenDoesNotThrow() {
+        event.setPurchasePolicy(new PurchasePolicy(new MinAgeRule(18)));
+
+        assertDoesNotThrow(() -> event.canPurchase(1, 18));
+    }
+
+    @Test
+    void givenMinAgePolicyAndAgeBelowMinimum_whenCanPurchase_thenThrowExceptionWithPolicyMessage() {
+        event.setPurchasePolicy(new PurchasePolicy(new MinAgeRule(18)));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> event.canPurchase(1, 17)
+        );
+
+        assertEquals(
+                "Customer does not meet the minimum age requirement of 18",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void givenDeniedPurchasePolicyWithNullMessage_whenCanPurchase_thenThrowDefaultMessage() {
+        event.setPurchasePolicy(new PurchasePolicy(
+                new FixedResultPurchaseRule(PolicyResult.denied(null))
+        ));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> event.canPurchase(1, 20)
+        );
+
+        assertEquals(
+                "User does not satisfy the purchase policy",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void givenDeniedPurchasePolicyWithBlankMessage_whenCanPurchase_thenThrowDefaultMessage() {
+        event.setPurchasePolicy(new PurchasePolicy(
+                new FixedResultPurchaseRule(PolicyResult.denied("   "))
+        ));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> event.canPurchase(1, 20)
+        );
+
+        assertEquals(
+                "User does not satisfy the purchase policy",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void givenPurchasePolicyReturnsNull_whenCanPurchase_thenThrowIllegalStateException() {
+        event.setPurchasePolicy(new PurchasePolicy(
+                new FixedResultPurchaseRule(null)
+        ));
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> event.canPurchase(1, 20)
+        );
+
+        assertEquals("Purchase policy validation failed", exception.getMessage());
+    }
+
+    @Test
+    void givenNullPurchasePolicy_whenSetPurchasePolicy_thenThrowException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> event.setPurchasePolicy(null)
+        );
+
+        assertEquals("Purchase policy cannot be null", exception.getMessage());
+    }
+
+    private static class FixedResultPurchaseRule implements PurchaseRule {
+
+        private final PolicyResult result;
+
+        private FixedResultPurchaseRule(PolicyResult result) {
+            this.result = result;
+        }
+
+        @Override
+        public PolicyResult isValid(int quantity, int age) {
+            return result;
+        }
+    }
+
 }

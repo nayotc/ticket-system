@@ -2,12 +2,23 @@ package ticketsystem.UnitTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
+import ticketsystem.DomainLayer.discount.CouponDiscount;
+import ticketsystem.DomainLayer.discount.VisibleDiscount;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountKind;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.DiscountPolicy;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PolicyResult;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchaseRule;
 
 class CompanyTest {
 
@@ -16,7 +27,8 @@ class CompanyTest {
 
     @BeforeEach
     void setUp() {
-        company = new Company("BGU Productions", FOUNDER_ID, new PurchasePolicy(), new DiscountPolicy());
+        company = new Company("BGU Productions", FOUNDER_ID, PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX));
     }
 
     // --- UC 3.2: Create Company & ID Generation ---
@@ -30,7 +42,8 @@ class CompanyTest {
 
     @Test
     void GivenNewCompanies_WhenCreated_ThenIdsAreUniqueAndIncremented() {
-        Company secondCompany = new Company("Another Company", FOUNDER_ID, new PurchasePolicy(), new DiscountPolicy());
+        Company secondCompany = new Company("Another Company", FOUNDER_ID, PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX));
 
         assertTrue(company.getId() > 0, "Company ID should be a positive number.");
         assertTrue(secondCompany.getId() > company.getId(), "New company should receive a higher incremented ID.");
@@ -107,6 +120,359 @@ class CompanyTest {
 
         copy.setVersion(6);
 
-        assertNotEquals(company.getVersion(), copy.getVersion(), "Modifying detached copy should not affect the original.");
+        assertNotEquals(company.getVersion(), copy.getVersion(),
+                "Modifying detached copy should not affect the original.");
     }
+
+    // --- Discount Policy: Add Discount To Company ---
+
+    @Test
+    void GivenValidVisibleDiscount_WhenAddVisibleDiscountToCompany_ThenDiscountIsAdded() {
+        company.addVisibleDiscountToCompany("Student Discount", BigDecimal.valueOf(10));
+
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof VisibleDiscount);
+    }
+
+    @Test
+    void GivenNullName_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany(null, BigDecimal.valueOf(10))
+        );
+    }
+
+    @Test
+    void GivenEmptyName_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany("", BigDecimal.valueOf(10))
+        );
+    }
+
+    @Test
+    void GivenNullPercentage_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany("Discount", null)
+        );
+    }
+
+    @Test
+    void GivenNegativePercentage_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany("Discount", BigDecimal.valueOf(-1))
+        );
+    }
+
+    @Test
+    void GivenPercentageAbove100_WhenAddVisibleDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addVisibleDiscountToCompany("Discount", BigDecimal.valueOf(101))
+        );
+    }
+    // --- Discount Policy: Add Coupon Discount ---
+
+    @Test
+    void GivenValidCouponDiscount_WhenAddCouponDiscountToCompany_ThenDiscountIsAdded() {
+        company.addCouponDiscountToCompany(
+                "Coupon Discount",
+                "BGU10",
+                BigDecimal.valueOf(10),
+                LocalDateTime.now().plusDays(7)
+        );
+
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof CouponDiscount);
+    }
+
+    @Test
+    void GivenNullCouponCode_WhenAddCouponDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addCouponDiscountToCompany(
+                        "Coupon Discount",
+                        null,
+                        BigDecimal.valueOf(10),
+                        LocalDateTime.now().plusDays(7)
+                )
+        );
+    }
+
+    @Test
+    void GivenEmptyCouponCode_WhenAddCouponDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addCouponDiscountToCompany(
+                        "Coupon Discount",
+                        "",
+                        BigDecimal.valueOf(10),
+                        LocalDateTime.now().plusDays(7)
+                )
+        );
+    }
+    // --- Discount Policy: Add Conditional Discount ---
+
+    @Test
+    void GivenValidMinTicketCondition_WhenAddConditionalDiscountToCompany_ThenDiscountIsAdded() {
+        company.addConditionalDiscountToCompany(
+                "Min Ticket Discount",
+                null,
+                null,
+                BigDecimal.valueOf(15),
+                Condition.MIN_TICKET,
+                2
+        );
+
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
+    }
+
+    @Test
+    void GivenValidMaxTicketCondition_WhenAddConditionalDiscountToCompany_ThenDiscountIsAdded() {
+        company.addConditionalDiscountToCompany(
+                "Max Ticket Discount",
+                null,
+                null,
+                BigDecimal.valueOf(15),
+                Condition.MAX_TICKET,
+                5
+        );
+
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
+    }
+
+    @Test
+    void GivenValidDateCondition_WhenAddConditionalDiscountToCompany_ThenDiscountIsAdded() {
+        company.addConditionalDiscountToCompany(
+                "Date Discount",
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(7),
+                BigDecimal.valueOf(15),
+                Condition.DATE,
+                null
+        );
+
+        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
+    }
+
+    @Test
+    void GivenNullCondition_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Conditional Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        null,
+                        2
+                )
+        );
+    }
+
+    @Test
+    void GivenMinTicketConditionAndNullThreshold_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Min Ticket Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        Condition.MIN_TICKET,
+                        null
+                )
+        );
+    }
+
+    @Test
+    void GivenMaxTicketConditionAndNegativeThreshold_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Max Ticket Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        Condition.MAX_TICKET,
+                        -1
+                )
+        );
+    }
+
+    @Test
+    void GivenDateConditionAndNullDates_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Date Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        Condition.DATE,
+                        null
+                )
+        );
+    }
+
+    @Test
+    void GivenDateConditionAndEndBeforeStart_WhenAddConditionalDiscountToCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.addConditionalDiscountToCompany(
+                        "Date Discount",
+                        LocalDateTime.now().plusDays(7),
+                        LocalDateTime.now().minusDays(1),
+                        BigDecimal.valueOf(15),
+                        Condition.DATE,
+                        null
+                )
+        );
+    }
+    // --- Discount Policy: Remove Discount ---
+
+    @Test
+    void GivenExistingDiscount_WhenRemoveDiscountFromCompany_ThenDiscountIsRemoved() {
+        company.addVisibleDiscountToCompany("Discount", BigDecimal.valueOf(10));
+
+        Long discountId = company.getDiscountPolicy()
+                .getDiscounts()
+                .get(0)
+                .getDiscountId();
+
+        company.removeDiscountFromCompany(discountId);
+
+        assertEquals(0, company.getDiscountPolicy().getDiscounts().size());
+    }
+
+    @Test
+    void GivenNonExistingDiscount_WhenRemoveDiscountFromCompany_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                company.removeDiscountFromCompany(999L)
+        );
+    }
+    // --- Discount Policy: Composition Type ---
+
+    @Test
+    void GivenCompositionTypeSum_WhenSetDiscountCompositionType_ThenTypeIsUpdated() {
+        company.setDiscountCompositionType(DiscountCompositionType.SUM);
+
+        assertEquals(DiscountCompositionType.SUM, company.getDiscountCompositionType());
+    }
+
+    @Test
+    void GivenCompositionTypeMax_WhenSetDiscountCompositionType_ThenTypeIsUpdated() {
+        company.setDiscountCompositionType(DiscountCompositionType.MAX);
+
+        assertEquals(DiscountCompositionType.MAX, company.getDiscountCompositionType());
+    }
+       @Test
+    void GivenAllowedPurchasePolicy_WhenCompanyCanPurchase_ThenDoesNotThrow() {
+        Company company = createCompanyWithPolicyResult(PolicyResult.allowed());
+
+        assertDoesNotThrow(() -> company.canPurchase(2, 20));
+    }
+
+    @Test
+    void GivenDeniedPurchasePolicy_WhenCompanyCanPurchase_ThenThrowIllegalArgumentException() {
+        Company company = createCompanyWithPolicyResult(
+                PolicyResult.denied("Purchase policy violation")
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(2, 20)
+        );
+    }
+
+    @Test
+    void GivenDeniedPurchasePolicy_WhenCompanyCanPurchase_ThenExceptionContainsPolicyMessage() {
+        String expectedMessage = "Cannot purchase more than 5 tickets.";
+
+        Company company = createCompanyWithPolicyResult(
+                PolicyResult.denied(expectedMessage)
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(6, 20)
+        );
+
+        assertEquals(expectedMessage, exception.getMessage());
+    }
+
+    @Test
+    void GivenDeniedPurchasePolicyWithNullMessage_WhenCompanyCanPurchase_ThenThrowDefaultMessage() {
+        Company company = createCompanyWithPolicyResult(
+                PolicyResult.denied(null)
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(2, 20)
+        );
+
+        assertEquals(
+                "User does not satisfy the purchase policy",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void GivenDeniedPurchasePolicyWithBlankMessage_WhenCompanyCanPurchase_ThenThrowDefaultMessage() {
+        Company company = createCompanyWithPolicyResult(
+                PolicyResult.denied("   ")
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(2, 20)
+        );
+
+        assertEquals(
+                "User does not satisfy the purchase policy",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void GivenPurchasePolicyReturnsNull_WhenCompanyCanPurchase_ThenThrowIllegalStateException() {
+        Company company = createCompanyWithPolicyResult(null);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> company.canPurchase(2, 20)
+        );
+    }
+
+    @Test
+    void GivenNullPurchasePolicy_WhenSetPurchasePolicy_ThenThrowIllegalArgumentException() {
+        Company company = createCompanyWithPolicyResult(PolicyResult.allowed());
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> company.setPurchasePolicy(null)
+        );
+    }
+
+    private Company createCompanyWithPolicyResult(PolicyResult result) {
+        PurchasePolicy purchasePolicy = new PurchasePolicy(
+                new FixedResultPurchaseRule(result)
+        );
+
+        return new Company(
+                "Test Company",
+                1L,
+                purchasePolicy,
+                new DiscountPolicy(DiscountCompositionType.MAX)
+        );
+    }
+
+    private static class FixedResultPurchaseRule implements PurchaseRule {
+
+        private final PolicyResult result;
+
+        private FixedResultPurchaseRule(PolicyResult result) {
+            this.result = result;
+        }
+
+        @Override
+        public PolicyResult isValid(int quantity, int age) {
+            return result;
+        }
+    }
+    
 }

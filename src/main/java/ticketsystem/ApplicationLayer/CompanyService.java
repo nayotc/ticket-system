@@ -1,11 +1,18 @@
 package ticketsystem.ApplicationLayer;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.DiscountPolicy;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 
 public class CompanyService {
 
@@ -13,6 +20,8 @@ public class CompanyService {
     private final ITokenService tokenService;
     private final ISystemLogger logger;
     private final MembershipDomainService membershipDomain;
+    private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
+    
     /**
      * Constructor without logger. Kept for backward compatibility with existing
      * tests and code.
@@ -92,8 +101,8 @@ public class CompanyService {
         Company newCompany = new Company(
                 companyName,
                 memberId,
-                new PurchasePolicy(),
-                new DiscountPolicy()
+                PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX)//defult
         );
 
         membershipDomain.assignFounderRole(memberId, newCompany.getId());
@@ -305,4 +314,168 @@ public class CompanyService {
             logger.logError(message, exception);
         }
     }
+    //add discount
+
+    // add visible discount
+    public void addVisibleDiscountToCompany(String token, Long companyId,
+            String name, BigDecimal percentage) throws Exception {
+
+        try {
+            Company company = canEditDiscount(token, companyId);
+
+            company.addVisibleDiscountToCompany(name, percentage);
+
+            companyRepository.save(company);
+                logger.logEvent(
+                "Visible discount added successfully to company id: " + companyId,
+                ISystemLogger.LogLevel.INFO);
+
+        } catch (Exception e) {
+
+            logger.logEvent("Failed to add visible discount to company",
+                    ISystemLogger.LogLevel.WARN);
+
+            throw e;
+        }
+    }
+    // add coupon discount
+    public void addCouponDiscountToCompany(String token, Long companyId,
+            String name, String couponCode,
+            BigDecimal percentage,LocalDateTime endTime) throws Exception {
+
+        try {
+            Company company = canEditDiscount(token, companyId);
+
+            company.addCouponDiscountToCompany(name, couponCode, percentage,endTime);
+
+            companyRepository.save(company);
+                    logger.logEvent(
+                "Coupon discount added successfully to company id: " + companyId,
+                ISystemLogger.LogLevel.INFO
+        );
+
+        } catch (Exception e) {
+
+            logger.logEvent("Failed to add coupon discount to company",
+                    ISystemLogger.LogLevel.WARN);
+
+            throw e;
+        }
+    }// add conditional discount
+    public void addConditionalDiscountToCompany(String token, Long companyId,
+            String name, LocalDateTime startTime,
+            LocalDateTime endTime, BigDecimal percentage,
+            Condition condition,
+            Integer ticketThreshold) throws Exception {
+
+        try {
+            Company company = canEditDiscount(token, companyId);
+
+            company.addConditionalDiscountToCompany(
+                    name,
+                    startTime,
+                    endTime,
+                    percentage,
+                    condition,
+                    ticketThreshold
+            );
+
+            companyRepository.save(company);
+                    logger.logEvent(
+                "Conditional discount added successfully to company id: " + companyId,
+                ISystemLogger.LogLevel.INFO
+        );
+
+        } catch (Exception e) {
+
+            logger.logEvent("Failed to add conditional discount to company",
+                    ISystemLogger.LogLevel.WARN);
+
+            throw e;
+        }
+    }
+    //remove discount
+    public void removeDiscountFromCompany(String token,Long companyId,Long discountId ) throws Exception{
+        try{
+        Company company = canEditDiscount(token,companyId);
+        company.removeDiscountFromCompany(discountId);
+        companyRepository.save(company);
+                logger.logEvent(
+                "Discount removed successfully from company id: "
+                        + companyId + ", discount id: " + discountId,
+                ISystemLogger.LogLevel.INFO
+        );
+        } catch (Exception e){
+              logger.logEvent( "Failed to remove discount, id:"+discountId ,ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
+    }
+
+    //set composition type
+    public void setCompositionType(String token,Long companyId,DiscountCompositionType compositionType)
+    throws Exception{
+        try{
+        Company company = canEditDiscount(token,companyId);
+        company.setDiscountCompositionType(compositionType);
+        companyRepository.save(company);
+                logger.logEvent(
+                "Discount composition type updated successfully for company id: "
+                        + companyId,
+                ISystemLogger.LogLevel.INFO
+        );
+        }catch(Exception e){
+            logger.logEvent( "Failed to set composition Type discount to company",ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
+    }
+
+    private Company canEditDiscount(String token,Long companyId) throws Exception{
+        tokenService.validateToken(token);
+
+            Long memberId = tokenService.extractUserId(token);
+
+            Company company = companyRepository.findById(companyId)
+                            .orElseThrow(() -> new Exception("Error: Company not found."));;
+
+        if (!membershipDomain.validatePermission(memberId,companyId,Permission.SET_DISCOUNT_POLICY)){
+            throw new IllegalArgumentException(
+                "User does not have permission to manage company discount policy");
+        }
+            return company;
+    }
+
+    public void setCompanyPurchasePolicy(String token, Long companyId, PurchasePolicyDTO policyDTO) throws Exception {
+        try {
+            Company company = canEditPurchasePolicy(token, companyId);
+
+            PurchasePolicy policy = mapper.toDomain(policyDTO);
+
+            company.setPurchasePolicy(policy);
+
+            companyRepository.save(company);
+
+        } catch (Exception e) {
+            logger.logEvent(
+                    "Failed to set purchase policy for company, id: " + companyId,
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
+        }
+    }
+    private Company canEditPurchasePolicy(String token,Long companyId) throws Exception{
+        tokenService.validateToken(token);
+
+            Long memberId = tokenService.extractUserId(token);
+
+            Company company = companyRepository.findById(companyId)
+                            .orElseThrow(() -> new Exception("Error: Company not found."));;
+
+        if (!membershipDomain.validatePermission(memberId,companyId,Permission.SET_PURCHASING_POLICY)){
+            throw new IllegalArgumentException(
+                "User does not have permission to manage company purchasing policy");
+        }
+            return company;
+    }
+
+
 }

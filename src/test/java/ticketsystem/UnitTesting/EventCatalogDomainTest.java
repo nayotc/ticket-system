@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
+import java.util.Optional;
+import java.math.BigDecimal;
 import java.util.Arrays;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -11,12 +13,17 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
 
 
 public class EventCatalogDomainTest {
 
     private EventCatalogDomainService domainService;
+    ICompanyRepository companyRepository;
+
 
     private SearchCriteria criteria;
 
@@ -26,8 +33,8 @@ public class EventCatalogDomainTest {
 
     @BeforeEach
     void setUp() {
-        domainService = new EventCatalogDomainService();
-
+        companyRepository = mock(ICompanyRepository.class);
+        domainService = new EventCatalogDomainService(companyRepository);
         criteria = mock(SearchCriteria.class);
 
         eventFromAllowedCompanyAndMatching = mock(Event.class);
@@ -251,5 +258,203 @@ public class EventCatalogDomainTest {
                 "Company rating criteria is not applicable for company-specific search",
                 exception.getMessage()
         );
+    }
+    @Test
+    void GivenNoDiscounts_WhenCalculateFinalPrice_ThenReturnOriginalPrice() {
+        // Arrange
+        Long companyId = 1L;
+        Event event = mock(Event.class);
+        Company company = mock(Company.class);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(company.calculateDiscountCompany(BigDecimal.valueOf(100), 2, null))
+                .thenReturn(BigDecimal.ZERO);
+        when(event.calculateDiscountEvent(BigDecimal.valueOf(100), 2, null))
+                .thenReturn(BigDecimal.ZERO);
+
+        // Act
+        BigDecimal result = domainService.calculateFinalPrice(
+                companyId,
+                event,
+                BigDecimal.valueOf(100),
+                2,
+                null
+        );
+
+        // Assert
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(result));
+    }
+    @Test
+    void GivenCompanyAndEventDiscounts_WhenCalculateFinalPrice_ThenApplyCompanyDiscountFirstAndThenEventDiscount() {
+        // Arrange
+        Long companyId = 1L;
+        Event event = mock(Event.class);
+        Company company = mock(Company.class);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        when(company.calculateDiscountCompany(BigDecimal.valueOf(100), 2, "SAVE10"))
+                .thenReturn(BigDecimal.valueOf(10));
+
+        when(event.calculateDiscountEvent(BigDecimal.valueOf(90), 2, "SAVE10"))
+                .thenReturn(BigDecimal.valueOf(20));
+
+        // Act
+        BigDecimal result = domainService.calculateFinalPrice(
+                companyId,
+                event,
+                BigDecimal.valueOf(100),
+                2,
+                "SAVE10"
+        );
+
+        // Assert
+        assertEquals(0, BigDecimal.valueOf(70).compareTo(result));
+
+        verify(company).calculateDiscountCompany(BigDecimal.valueOf(100), 2, "SAVE10");
+        verify(event).calculateDiscountEvent(BigDecimal.valueOf(90), 2, "SAVE10");
+    }
+    @Test
+    void GivenCompanyDiscountGreaterThanTotalPrice_WhenCalculateFinalPrice_ThenPriceAfterCompanyDiscountIsZero() {
+        // Arrange
+        Long companyId = 1L;
+        Event event = mock(Event.class);
+        Company company = mock(Company.class);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        when(company.calculateDiscountCompany(BigDecimal.valueOf(100), 1, null))
+                .thenReturn(BigDecimal.valueOf(150));
+
+        when(event.calculateDiscountEvent(BigDecimal.ZERO, 1, null))
+                .thenReturn(BigDecimal.ZERO);
+
+        // Act
+        BigDecimal result = domainService.calculateFinalPrice(
+                companyId,
+                event,
+                BigDecimal.valueOf(100),
+                1,
+                null
+        );
+
+        // Assert
+        assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        verify(event).calculateDiscountEvent(BigDecimal.ZERO, 1, null);
+    }
+    @Test
+    void GivenEventDiscountGreaterThanRemainingPrice_WhenCalculateFinalPrice_ThenFinalPriceIsZero() {
+        // Arrange
+        Long companyId = 1L;
+        Event event = mock(Event.class);
+        Company company = mock(Company.class);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        when(company.calculateDiscountCompany(BigDecimal.valueOf(100), 1, null))
+                .thenReturn(BigDecimal.valueOf(20));
+
+        when(event.calculateDiscountEvent(BigDecimal.valueOf(80), 1, null))
+                .thenReturn(BigDecimal.valueOf(100));
+
+        // Act
+        BigDecimal result = domainService.calculateFinalPrice(
+                companyId,
+                event,
+                BigDecimal.valueOf(100),
+                1,
+                null
+        );
+
+        // Assert
+        assertEquals(0, BigDecimal.ZERO.compareTo(result));
+    }
+    @Test
+    void GivenNullCompanyId_WhenCalculateFinalPrice_ThenThrowException() {
+        Event event = mock(Event.class);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> domainService.calculateFinalPrice(
+                        null,
+                        event,
+                        BigDecimal.valueOf(100),
+                        1,
+                        null
+                )
+        );
+
+        assertEquals("Company id cannot be null", exception.getMessage());
+    }
+    @Test
+    void GivenNullEvent_WhenCalculateFinalPrice_ThenThrowException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> domainService.calculateFinalPrice(
+                        1L,
+                        null,
+                        BigDecimal.valueOf(100),
+                        1,
+                        null
+                )
+        );
+
+        assertEquals("Event cannot be null", exception.getMessage());
+    }
+    @Test
+    void GivenNullTotalPrice_WhenCalculateFinalPrice_ThenThrowException() {
+        Event event = mock(Event.class);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> domainService.calculateFinalPrice(
+                        1L,
+                        event,
+                        null,
+                        1,
+                        null
+                )
+        );
+
+        assertEquals("Total price cannot be null", exception.getMessage());
+    }
+    @Test
+    void GivenNegativeTicketCount_WhenCalculateFinalPrice_ThenThrowException() {
+        Event event = mock(Event.class);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> domainService.calculateFinalPrice(
+                        1L,
+                        event,
+                        BigDecimal.valueOf(100),
+                        -1,
+                        null
+                )
+        );
+
+        assertEquals("Ticket count cannot be negative", exception.getMessage());
+    }
+    @Test
+    void GivenCompanyDoesNotExist_WhenCalculateFinalPrice_ThenThrowException() {
+        // Arrange
+        Long companyId = 999L;
+        Event event = mock(Event.class);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.empty());
+
+        // Act + Assert
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> domainService.calculateFinalPrice(
+                        companyId,
+                        event,
+                        BigDecimal.valueOf(100),
+                        1,
+                        null
+                )
+        );
+
+        assertEquals("Company not found", exception.getMessage());
     }
 }

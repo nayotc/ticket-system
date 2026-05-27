@@ -45,8 +45,10 @@ public class QueueConcurrencyTest {
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(eventRepo, queueRepo, fakeNotifications, TokenService, logger);
-        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK, 100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
+        WaitingQueueService queueService = new WaitingQueueService(eventRepo, queueRepo, fakeNotifications,
+                TokenService, logger);
+        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK,
+                100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
         eventRepo.addEvent(event);
 
         int numberOfUsers = 1000;
@@ -90,9 +92,9 @@ public class QueueConcurrencyTest {
             }));
         }
 
-        latch.countDown(); //release all 1000 threads to start processing
+        latch.countDown(); // release all 1000 threads to start processing
 
-        boolean completed = completionLatch.await(10, TimeUnit.SECONDS); //untill all threads finish or timeout
+        boolean completed = completionLatch.await(10, TimeUnit.SECONDS); // untill all threads finish or timeout
         assertTrue(completed, "Test timed out! One or more threads got stuck and did not finish.");
         executor.shutdown();
 
@@ -115,7 +117,8 @@ public class QueueConcurrencyTest {
         assertEquals(900, queueRepo.getQueueSize(1L), "Queue repository should hold exactly 900 users.");
     }
 
-    // test to ensure that duplicate requests from the same sessionId are handled correctly
+    // test to ensure that duplicate requests from the same sessionId are handled
+    // correctly
     @Test
     public void testConcurrentDuplicateRequests_ShouldOnlyQueueOnce() throws InterruptedException {
         IEventRepository fakeEventRepo = createFakeEventRepo();
@@ -124,10 +127,12 @@ public class QueueConcurrencyTest {
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService, logger);
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications,
+                TokenService, logger);
 
         // create an event that is already at full capacity
-        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival2", 1L, 1L, EventLocation.NEW_YORK, 100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
+        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival2", 1L, 1L, EventLocation.NEW_YORK,
+                100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
         for (int i = 0; i < 100; i++) {
             event.incrementActiveReservations();
         }
@@ -172,7 +177,8 @@ public class QueueConcurrencyTest {
             }
         }
         // ensure that only 1 entry for this sessionId is in the queue, not 100
-        assertEquals(1, queueRepo.getQueueSize(1L), "Duplicate requests should result in exactly 1 entry in the queue.");
+        assertEquals(1, queueRepo.getQueueSize(1L),
+                "Duplicate requests should result in exactly 1 entry in the queue.");
     }
 
     @Test
@@ -183,10 +189,12 @@ public class QueueConcurrencyTest {
         TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications, TokenService, logger);
+        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications,
+                TokenService, logger);
 
         // full event with 100 active reservations and 200 people in the queue
-        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK, 100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
+        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK,
+                100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
 
         for (int i = 0; i < 100; i++) {
             event.incrementActiveReservations();
@@ -218,7 +226,8 @@ public class QueueConcurrencyTest {
                     if (!latch.await(5, TimeUnit.SECONDS)) {
                         throw new RuntimeException("Timeout waiting for start signal");
                     }
-                    // every time a spot is released, the next user in the queue should be approved and take that spot, so the event should remain at full capacity
+                    // every time a spot is released, the next user in the queue should be approved
+                    // and take that spot, so the event should remain at full capacity
                     queueService.releaseSpot(1L, finishingUserToken);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -241,9 +250,11 @@ public class QueueConcurrencyTest {
             }
         }
         Event updatedEvent = fakeEventRepo.getEventById(1L);
-        assertEquals(100, updatedEvent.getActiveReservationsCount(), "Event should be instantly refilled to max capacity.");
+        assertEquals(100, updatedEvent.getActiveReservationsCount(),
+                "Event should be instantly refilled to max capacity.");
 
-        // originally there were 200 users in the queue, 50 should have been approved and removed, leaving 150 still waiting
+        // originally there were 200 users in the queue, 50 should have been approved
+        // and removed, leaving 150 still waiting
         assertEquals(150, queueRepo.getQueueSize(1L), "Queue should have exactly 150 users left.");
     }
 
@@ -283,8 +294,13 @@ public class QueueConcurrencyTest {
     }
 
     private INotifier createFakeNotifications() {
-        return (sessionId, message) -> {
-            // Do nothing
+        return new INotifier() {
+            public void notifyGuest(String sessionId, String message) {
+                // Do nothing
+            }
+            public void notifyMember(Long memberId, String message) {
+                // Do nothing
+            }
         };
     }
 
