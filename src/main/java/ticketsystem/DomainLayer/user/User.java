@@ -33,7 +33,8 @@ public class User {
     }
 
     public boolean isSuspended(){
-
+        if(suspension==null)
+            return false;
         return suspension.isActive();
     }
 

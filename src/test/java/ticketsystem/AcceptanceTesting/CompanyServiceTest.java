@@ -20,6 +20,7 @@ import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
@@ -59,6 +60,8 @@ public class CompanyServiceTest {
     private IUserRepository userRepository;
     private MembershipDomainService membershipDomain;
     private ICompanyRepository companyRepository;
+    private  UserAccessService userAccessService;
+
     
 
 
@@ -91,7 +94,8 @@ public class CompanyServiceTest {
         membershipDomain = new MembershipDomainService(userRepository);
         userService = new UserService(userRepository, tokenService, testLogger);
         fakeNotifier = new FakeNotifier();
-        companyService = new CompanyService(companyRepository, tokenService, membershipDomain, testLogger, fakeNotifier);
+        userAccessService=new UserAccessService(userRepository);
+        companyService = new CompanyService(companyRepository, tokenService, membershipDomain, testLogger,userAccessService,fakeNotifier);
 
         founderToken = createLoggedInMember("noa_user", "password123");
         nonFounderToken = createLoggedInMember("other_user", "password123");

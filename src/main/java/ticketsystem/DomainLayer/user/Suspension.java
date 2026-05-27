@@ -44,18 +44,18 @@ public class Suspension {
 
     public boolean isActive() {
 
-    if (revoked) {
-        return false;
-    }
+        if (revoked) {
+            return false;
+        }
 
-    if (endDate == null) {
-        return true; // permanent suspension
-    }
+        if (endDate == null) {
+            return true; // permanent suspension
+        }
 
     return LocalDateTime.now().isBefore(endDate);   
     }
 
-    
+
     public boolean isRevoked(){
         return revoked;
     }
