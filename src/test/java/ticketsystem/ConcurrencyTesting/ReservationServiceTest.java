@@ -53,7 +53,7 @@ public class ReservationServiceTest {
         orderRepository = new OrderRepository();
         eventRepository = new EventRepository();
 
-        lotteryRepository = LotteryRepository.getInstance();
+        lotteryRepository = new LotteryRepository();
         ((LotteryRepository) lotteryRepository).clearForTests();
 
         companyRepository = new CompanyRepository();
