@@ -31,6 +31,8 @@ import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -954,6 +956,287 @@ public class EventServiceAcceptanceTest {
         assertEquals(1, notificationsService.notificationCount(buyerSessionId));
         assertEquals(ActiveOrder.OrderStatus.CANCELLED, orderAfterSecondCancel.getStatus());
     }
+    // -------------------- Event Discount Policy Tests --------------------
+
+@Test
+void GivenOwnerLoggedInAndValidVisibleDiscount_WhenAddVisibleDiscountToEvent_ThenDiscountIsAddedSuccessfully() throws Exception {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    // Act
+    eventService.addVisibleDiscountToEvent(
+            validOwnerSessionId,
+            event.getId(),
+            "Summer Discount",
+            BigDecimal.valueOf(15)
+    );
+
+    // Assert
+    Event updatedEvent = eventRepository.getEventById(event.getId());
+
+    assertNotNull(updatedEvent);
+    assertEquals(1, updatedEvent.getDiscounts().size());
+    assertEquals("Summer Discount",
+            updatedEvent.getDiscounts().get(0).getName());
+}
+
+@Test
+void GivenOwnerLoggedInAndInvalidDiscountPercentage_WhenAddVisibleDiscountToEvent_ThenSystemRejectsTheRequest() {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    // Act
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> eventService.addVisibleDiscountToEvent(
+                    validOwnerSessionId,
+                    event.getId(),
+                    "Invalid Discount",
+                    BigDecimal.valueOf(150)
+            )
+    );
+
+    // Assert
+    Event unchangedEvent = eventRepository.getEventById(event.getId());
+
+    assertTrue(exception.getMessage().contains("percentage"));
+    assertEquals(0, unchangedEvent.getDiscounts().size());
+}
+
+@Test
+void GivenUserWithoutPermission_WhenAddVisibleDiscountToEvent_ThenSystemRejectsTheRequest() {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    String sessionWithoutPermission = "session-without-discount-permission";
+
+    Member plainUser = new Member(2L, "PlainUser");
+    userRepository.addRegisteredMember(2L, plainUser, "password");
+
+    tokenService.addValidSession(sessionWithoutPermission, 2L);
+
+    // Act
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> eventService.addVisibleDiscountToEvent(
+                    sessionWithoutPermission,
+                    event.getId(),
+                    "Summer Discount",
+                    BigDecimal.valueOf(10)
+            )
+    );
+
+    // Assert
+    assertTrue(exception.getMessage()
+            .contains("User does not have permission to manage event discount policy"));
+}
+
+@Test
+void GivenEventDoesNotExist_WhenAddVisibleDiscountToEvent_ThenSystemRejectsTheRequest() {
+    // Act
+    Exception exception = assertThrows(
+            Exception.class,
+            () -> eventService.addVisibleDiscountToEvent(
+                    validOwnerSessionId,
+                    999L,
+                    "Summer Discount",
+                    BigDecimal.valueOf(10)
+            )
+    );
+
+    // Assert
+    assertTrue(exception.getMessage().contains("Event not found"));
+}
+
+
+// -------------------- Coupon Discount Tests --------------------
+
+@Test
+void GivenOwnerLoggedInAndValidCouponDiscount_WhenAddCouponDiscountToEvent_ThenCouponDiscountIsAddedSuccessfully() throws Exception {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    LocalDateTime endDate = LocalDateTime.now().plusDays(10);
+
+    // Act
+    eventService.addCouponDiscountToEvent(
+            validOwnerSessionId,
+            event.getId(),
+            "Coupon Discount",
+            "SAVE20",
+            BigDecimal.valueOf(20),
+            endDate
+    );
+
+    // Assert
+    Event updatedEvent = eventRepository.getEventById(event.getId());
+
+    assertEquals(1, updatedEvent.getDiscounts().size());
+    assertEquals("Coupon Discount",
+            updatedEvent.getDiscounts().get(0).getName());
+}
+
+@Test
+void GivenCouponDiscountWithPastExpirationDate_WhenAddCouponDiscountToEvent_ThenSystemRejectsTheRequest() {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    // Act
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> eventService.addCouponDiscountToEvent(
+                    validOwnerSessionId,
+                    event.getId(),
+                    "Coupon Discount",
+                    "SAVE20",
+                    BigDecimal.valueOf(20),
+                    LocalDateTime.now().minusDays(1)
+            )
+    );
+
+    // Assert
+    assertTrue(exception.getMessage()
+        .contains("End time cannot be in the past"));
+}
+
+
+// -------------------- Conditional Discount Tests --------------------
+
+@Test
+void GivenOwnerLoggedInAndValidConditionalDiscount_WhenAddConditionalDiscountToEvent_ThenConditionalDiscountIsAddedSuccessfully() throws Exception {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    // Act
+    eventService.addConditionalDiscountToEvent(
+            validOwnerSessionId,
+            event.getId(),
+            "Bulk Discount",
+            LocalDateTime.now(),
+            LocalDateTime.now().plusDays(5),
+            BigDecimal.valueOf(25),
+            Condition.MIN_TICKET,
+            4
+    );
+
+    // Assert
+    Event updatedEvent = eventRepository.getEventById(event.getId());
+
+    assertEquals(1, updatedEvent.getDiscounts().size());
+    assertEquals("Bulk Discount",
+            updatedEvent.getDiscounts().get(0).getName());
+}
+
+@Test
+void GivenConditionalDiscountWithInvalidThreshold_WhenAddConditionalDiscountToEvent_ThenSystemRejectsTheRequest() {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    // Act
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> eventService.addConditionalDiscountToEvent(
+                    validOwnerSessionId,
+                    event.getId(),
+                    "Bulk Discount",
+                    LocalDateTime.now(),
+                    LocalDateTime.now().plusDays(5),
+                    BigDecimal.valueOf(25),
+                    Condition.MIN_TICKET,
+                    0
+            )
+    );
+
+    // Assert
+    assertTrue(exception.getMessage().contains("threshold"));
+}
+
+
+// -------------------- Remove Discount Tests --------------------
+
+@Test
+void GivenExistingDiscount_WhenRemoveDiscountFromEvent_ThenDiscountIsRemovedSuccessfully() throws Exception {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    eventService.addVisibleDiscountToEvent(
+            validOwnerSessionId,
+            event.getId(),
+            "Summer Discount",
+            BigDecimal.valueOf(15)
+    );
+
+    Long discountId =
+            eventRepository.getEventById(event.getId())
+                    .getDiscounts()
+                    .get(0)
+                    .getDiscountId();
+
+    // Act
+    eventService.removeDiscountFromEvent(
+            validOwnerSessionId,
+            event.getId(),
+            discountId
+    );
+
+    // Assert
+    Event updatedEvent = eventRepository.getEventById(event.getId());
+
+    assertEquals(0, updatedEvent.getDiscounts().size());
+}
+
+@Test
+void GivenDiscountDoesNotExist_WhenRemoveDiscountFromEvent_ThenSystemRejectsTheRequest() {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    // Act
+    Exception exception = assertThrows(
+            Exception.class,
+            () -> eventService.removeDiscountFromEvent(
+                    validOwnerSessionId,
+                    event.getId(),
+                    999L
+            )
+    );
+
+    // Assert
+    assertTrue(exception.getMessage().contains("Discount"));
+}
+
+
+// -------------------- Composition Type Tests --------------------
+
+@Test
+void GivenOwnerLoggedIn_WhenSetEventDiscountCompositionType_ThenCompositionTypeIsUpdated() throws Exception {
+    // Arrange
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    // Act
+    eventService.setEventDiscountCompositionType(
+            validOwnerSessionId,
+            event.getId(),
+            DiscountCompositionType.MAX
+    );
+
+    // Assert
+    Event updatedEvent = eventRepository.getEventById(event.getId());
+
+    assertEquals(
+            DiscountCompositionType.MAX,
+            updatedEvent.getDiscountPolicy().getDiscountCompositionType()
+    );
+}
 
     // -------------------- Helper Methods and Test Doubles -------------------
     private EventDTO createValidUpdateDTO(Event savedEvent) {

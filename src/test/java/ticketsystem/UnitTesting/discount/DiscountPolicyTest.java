@@ -126,7 +126,7 @@ class DiscountPolicyTest {
                 assertEquals(1, discountPolicy.getDiscounts().size());
 
                 // Act
-                discountPolicy.removeDiscountFromCompany(1L);
+                discountPolicy.removeDiscount(1L);
 
                 // Assert
                 assertTrue(discountPolicy.getDiscounts().isEmpty());
@@ -151,7 +151,7 @@ class DiscountPolicyTest {
                 assertEquals(2, discountPolicy.getDiscounts().size());
 
                 // Act
-                discountPolicy.removeDiscountFromCompany(1L);
+                discountPolicy.removeDiscount(1L);
 
                 // Assert
                 assertEquals(1, discountPolicy.getDiscounts().size());
@@ -170,7 +170,7 @@ class DiscountPolicyTest {
 
                 // Act + Assert
                 Exception exception = assertThrows(IllegalArgumentException.class,
-                                () -> discountPolicy.removeDiscountFromCompany(999L));
+                                () -> discountPolicy.removeDiscount(999L));
 
                 assertTrue(exception.getMessage().contains("Discount not found"));
                 assertEquals(1, discountPolicy.getDiscounts().size());
@@ -180,7 +180,7 @@ class DiscountPolicyTest {
         void GivenEmptyDiscountPolicy_WhenRemoveDiscountFromCompany_ThenThrowException() {
                 // Act + Assert
                 Exception exception = assertThrows(IllegalArgumentException.class,
-                                () -> discountPolicy.removeDiscountFromCompany(1L));
+                                () -> discountPolicy.removeDiscount(1L));
 
                 assertTrue(exception.getMessage().contains("Discount not found"));
         }
