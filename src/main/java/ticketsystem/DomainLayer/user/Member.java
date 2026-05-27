@@ -109,7 +109,7 @@ public class Member extends User {
     }
 
     //Suspend
-     public void suspend(Long suspendedByAdminId,
+     public void suspendMember(Long suspendedByAdminId,
                       LocalDateTime startDate,
                       LocalDateTime endDate,
                       String reason){
