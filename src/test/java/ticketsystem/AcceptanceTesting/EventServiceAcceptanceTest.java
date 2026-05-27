@@ -25,6 +25,7 @@ import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.OrderService;
+import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
@@ -74,6 +75,8 @@ public class EventServiceAcceptanceTest {
     private IHistoryRepository historyRepository;
     private final Long ownerId = 1L;
     private final Long companyId = 100L;
+    private UserAccessService userAccessService; 
+
 
     @BeforeEach
     void setUp() {
@@ -81,6 +84,7 @@ public class EventServiceAcceptanceTest {
         tokenService = new FakeTokenService();
         userRepository = new UserRepository();
         fakeNotifications = new FakeNotificationsService();
+        userAccessService=new UserAccessService(userRepository);
 
         // FIX: We use a robust anonymous subclass of MembershipDomainService.
         // This ensures permissions work correctly even if EventService uses the
@@ -135,7 +139,7 @@ public class EventServiceAcceptanceTest {
                 membershipDomain,
                 logger,
                 fakeNotifications,
-                historyRepository
+                historyRepository,userAccessService
         );
 
         // FIX: Setup a real Member with an ACTIVE Owner role in the DB
@@ -869,7 +873,18 @@ public class EventServiceAcceptanceTest {
 
         String buyerSessionId = "buyer-session";
         Long buyerId = 55L;
+        Member memberWithoutPermission = new Member(
+            2L,
+            "userWithoutPermission",
+            "User Without Permission",
+            "0500000000"
+    );
 
+    userRepository.addRegisteredMember(
+            2L,
+            memberWithoutPermission,
+            "password"
+    );
         ActiveOrder activeOrder = createActiveOrderForEvent(
                 orderRepository,
                 event.getId(),

@@ -41,6 +41,7 @@ public class HistoryServiceTest {
     private UserService userService;
     private HistoryService historyService;
     private ICompanyRepository companyRepository;
+    private UserAccessService userAccessService;
 
     @BeforeEach
     void setUp() {
@@ -54,7 +55,8 @@ public class HistoryServiceTest {
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         this.userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
         this.companyRepository = new CompanyRepository();
-        this.historyService = new HistoryService(historyRepository, tokenService, new MembershipDomainService(userRepository), new LogbackSystemLogger()    );
+        userAccessService=new UserAccessService(userRepository);
+        this.historyService = new HistoryService(historyRepository, tokenService, new MembershipDomainService(userRepository), new LogbackSystemLogger(),userAccessService);
     }
 
     /**

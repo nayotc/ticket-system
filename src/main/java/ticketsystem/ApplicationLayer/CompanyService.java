@@ -149,6 +149,7 @@ public class CompanyService {
 
         try {
             long memberId = getRegisteredMemberId(sessionId);
+            userAccessService.validateCanPerformNonViewAction(memberId);
 
             Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
@@ -195,7 +196,7 @@ public class CompanyService {
 
         try {
             long memberId = getRegisteredMemberId(sessionId);
-
+            userAccessService.validateCanPerformNonViewAction(memberId);
             Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
@@ -455,6 +456,7 @@ public class CompanyService {
         tokenService.validateToken(token);
 
             Long memberId = tokenService.extractUserId(token);
+            userAccessService.validateCanPerformNonViewAction(memberId);
 
             Company company = companyRepository.findById(companyId)
                             .orElseThrow(() -> new Exception("Error: Company not found."));;
@@ -488,7 +490,7 @@ public class CompanyService {
         tokenService.validateToken(token);
 
             Long memberId = tokenService.extractUserId(token);
-
+            userAccessService.validateCanPerformNonViewAction(memberId);
             Company company = companyRepository.findById(companyId)
                             .orElseThrow(() -> new Exception("Error: Company not found."));;
 

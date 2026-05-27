@@ -43,6 +43,7 @@ public class ReservationService {
     private final ISystemLogger logger;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
     private final INotifier notificationsService;
+    private final UserAccessService userAccessService; 
     private final Set<Long> expirationWarningSentOrderIds = ConcurrentHashMap.newKeySet();
     private final Set<Long> soldOutNotificationSentEventIds = ConcurrentHashMap.newKeySet();
 
@@ -57,7 +58,7 @@ public class ReservationService {
             ILotteryRepository lotteryRepository,
             EventCatalogDomainService eventCatalogDomainService,
             ISystemLogger logger,
-            INotifier notifier) {
+            INotifier notifier,UserAccessService userAccessService) {
 
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
@@ -71,6 +72,7 @@ public class ReservationService {
         this.logger = logger;
         this.reservationDomeinService = new Reservation();
         this.notificationsService = notifier;
+        this.userAccessService=userAccessService;
     }
 
     // UC 2.5,2.4
@@ -79,7 +81,7 @@ public class ReservationService {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
-
+            userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
             if (eventRepository.getEventById(eventId) == null) {
                 throw new IllegalArgumentException("Event not found");
             }
@@ -113,6 +115,8 @@ public class ReservationService {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
+            Long memberId=tokenService.extractUserId(token);
+            userAccessService.validateCanPerformNonViewAction(memberId);
             if (eventRepository.getEventById(eventId) == null) {
                 throw new IllegalArgumentException("Event not found");
             }
@@ -148,6 +152,7 @@ public class ReservationService {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
+            userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
             ActiveOrder order = findActiveOrder(token, eventId);
             if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
@@ -170,6 +175,7 @@ public class ReservationService {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
+            userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
             ActiveOrder order = findActiveOrder(token, eventId);
 
             if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
@@ -229,7 +235,7 @@ public class ReservationService {
 
         try {
             tokenService.validateToken(token);
-
+            userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
 

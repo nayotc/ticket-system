@@ -5,6 +5,7 @@ import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
@@ -64,7 +65,7 @@ public class MembershipServiceTest {
     private String appointeeToken;
     private String managerToken;
     private String ownerToken;
-
+    private UserAccessService userAccessService;
     @BeforeEach
     void setUp() {
         // 1. Initialize Concrete Repositories and Services
@@ -75,8 +76,9 @@ public class MembershipServiceTest {
         this.systemLogger = new LogbackSystemLogger();        
         this.domainService = new MembershipDomainService(userRepository);
         fakeNotifier = new FakeNotifier();
+        userAccessService=new UserAccessService(userRepository);
         // Initialize service with null for notifications and the logger
-        this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService, fakeNotifier, systemLogger);
+        this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService, fakeNotifier, systemLogger,userAccessService);
 
         // 2. Setup Company state
         testCompany = new Company("BGU Productions", founderId, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
