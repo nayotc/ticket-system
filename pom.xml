@@ -159,8 +159,6 @@
                     <!-- Bootstrap -->
                     <exclude>ticketsystem/InfrastructureLayer/Bootstrap/**</exclude>
 
-                    <!-- Notifications -->
-                    <exclude>ticketsystem/DomainLayer/notifications/**</exclude>
 
                     <exclude>ticketsystem/InfrastructureLayer/**</exclude>
                     <!-- Root package classes -->
