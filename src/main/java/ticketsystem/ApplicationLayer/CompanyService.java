@@ -2,6 +2,7 @@ package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
@@ -21,25 +22,16 @@ public class CompanyService {
     private final ISystemLogger logger;
     private final MembershipDomainService membershipDomain;
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
-    
-    /**
-     * Constructor without logger. Kept for backward compatibility with existing
-     * tests and code.
-     */
-    public CompanyService(ICompanyRepository repo,
-                        ITokenService tokenService,
-                        MembershipDomainService membershipDomain) {
-        this(repo, tokenService, membershipDomain, null);
-    }
-
+    private final INotifier notificationsService;
     public CompanyService(ICompanyRepository repo,
                         ITokenService tokenService,
                         MembershipDomainService membershipDomain,
-                        ISystemLogger logger) {
+                        ISystemLogger logger, INotifier notifier) {
         this.companyRepository = repo;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
+        this.notificationsService=notifier;
     }
 
     /**
@@ -151,7 +143,10 @@ public class CompanyService {
             membershipDomain.validateFounder(memberId, companyId);
             company.closeOrSuspend();
             companyRepository.save(company);
-
+            notifyCompanyStaff(
+            company,
+            "The production company \"" + company.getName() + "\" has been closed and is no longer active."
+            );
             logEvent("UC 4.13 completed: company closed, companyId=" + companyId
                     + ", founderId=" + memberId,
                     ISystemLogger.LogLevel.INFO);
@@ -194,7 +189,10 @@ public class CompanyService {
             membershipDomain.validateFounder(memberId, companyId);
             company.reopenCompany();
             companyRepository.save(company);
-
+            notifyCompanyStaff(
+            company,
+            "The production company \"" + company.getName() + "\" has been reopened and is now active."
+            );
             logEvent("UC 4.14 completed: company reopened, companyId=" + companyId
                     + ", founderId=" + memberId,
                     ISystemLogger.LogLevel.INFO);
@@ -290,7 +288,18 @@ public class CompanyService {
             throw e;
         }
     }
+    private void notifyCompanyStaff(Company company, String message) {
+        if (notificationsService == null || company == null || message == null || message.isBlank()) {
+            return;
+        }
 
+        Set<Long> recipients = membershipDomain.getManagementSubTreeMemberIds(
+                company.getFounderId(),
+                company.getId()
+        );
+
+        notificationsService.notifyMembers(recipients, message);
+    }
     /**
      * Writes an event log message if a logger was injected.
      *

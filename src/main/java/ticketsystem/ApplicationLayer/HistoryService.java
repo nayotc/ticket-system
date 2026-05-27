@@ -198,7 +198,4 @@ public class HistoryService implements OrderCompletedListener {
         }
     }
 
-
-
-
 }

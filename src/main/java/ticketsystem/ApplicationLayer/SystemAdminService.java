@@ -22,6 +22,7 @@ import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import java.util.Map;
+import java.util.Set;
 
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
@@ -39,6 +40,7 @@ public class SystemAdminService {
     private final IHistoryRepository historyRepository;
     private final ObjectMapper objectMapper;
     private final MembershipDomainService membershipDomain;
+    private final INotifier notificationsService;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
@@ -48,7 +50,7 @@ public class SystemAdminService {
             ITokenService tokenService,
             ICompanyRepository companyRepository,
             ISystemLogger logger, IHistoryRepository historyRepository,
-            MembershipDomainService membershipDomain) {
+            MembershipDomainService membershipDomain, INotifier notificationsService) {
 
         this.adminRepository = adminRepository;
         this.paymentService = paymentService;
@@ -60,7 +62,7 @@ public class SystemAdminService {
         this.historyRepository = historyRepository;
         this.membershipDomain = membershipDomain;
         this.objectMapper = new ObjectMapper();
-
+        this.notificationsService=notificationsService;
     }   
 
 //Use Case: Ticket System Initialization
@@ -146,31 +148,45 @@ public class SystemAdminService {
         }
     }
 
-    // Use Case 6.1: Close Production Company by System Admin
-    public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) throws Exception {
-        SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+   // Use Case 6.1: Close Production Company by System Admin
+public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) throws Exception {
+    SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
-        if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
-            logger.logEvent("Unauthorized access. Invalid admin credentials.",
-                    LogbackSystemLogger.LogLevel.WARN);
-            throw new Exception("Unauthorized access. Invalid admin credentials.");
-        }
-
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new Exception("Error: Company not found."));
-
-        membershipDomain.cancelAllRolesForCompany(companyId);
-
-        company.closeBySystemAdmin();
-
-        companyRepository.save(company);
-
-        logger.logEvent("Production company closed by System Admin. companyId=" + companyId
-                        + ", adminId=" + adminId,
-                LogbackSystemLogger.LogLevel.INFO);
-
-        return new CompanyDTO(company);
+    if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
+        logger.logEvent("Unauthorized access. Invalid admin credentials.",
+                LogbackSystemLogger.LogLevel.WARN);
+        throw new Exception("Unauthorized access. Invalid admin credentials.");
     }
+
+    Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new Exception("Error: Company not found."));
+
+    Set<Long> staffMemberIds = membershipDomain.getManagementSubTreeMemberIds(
+            company.getFounderId(),
+            company.getId()
+    );
+
+    membershipDomain.cancelAllRolesForCompany(companyId);
+
+    company.closeBySystemAdmin();
+
+    companyRepository.save(company);
+
+    if (notificationsService != null) {
+        notificationsService.notifyMembers(
+                staffMemberIds,
+                "The production company \"" + company.getName()
+                        + "\" was closed by a system administrator, and your role in this company was removed."
+        );
+    }
+
+    logger.logEvent("Production company closed by System Admin. companyId=" + companyId
+                    + ", adminId=" + adminId,
+            LogbackSystemLogger.LogLevel.INFO);
+
+    return new CompanyDTO(company);
+}
+
     // Use Case: View Purchase History by Company and Event 6.4
     public Map<Long, Map<String, List<OrderDTO>>> getPurchaseHistoryByCompanyAndEvent(long adminId) {
             try {

@@ -1,5 +1,6 @@
 package ticketsystem.ConcurrencyTesting;
 
+import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
@@ -17,11 +18,12 @@ import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -41,6 +43,8 @@ public class MembershipConcurrencyTest {
     private String founderToken; // Appointer 1
     private String ownerToken;   // Appointer 2
 
+    private INotifier notifier;
+
     @BeforeEach
     void setUp() {
         ITokenRepository tokenRepo = new TokenRepository();
@@ -49,10 +53,16 @@ public class MembershipConcurrencyTest {
         ICompanyRepository companyRepository = new CompanyRepository();
         MembershipDomainService domainService = new MembershipDomainService(userRepository);
         ISystemLogger logger = new LogbackSystemLogger();
-
+        notifier = new FakeNotifier();
         // Initialize Application Service
-        this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService, null, logger);
-        
+        this.membershipService = new MembershipService(
+                tokenService,
+                userRepository,
+                companyRepository,
+                domainService,
+                notifier,
+                logger
+        );        
         // Setup Company
         Company company = new Company("BGU Productions", 100L, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
         try { company.setId(companyId); } catch (Exception e) {}
@@ -299,4 +309,50 @@ public class MembershipConcurrencyTest {
         Manager managerRole = (Manager) updatedTarget.getRoleInCompany(companyId);
         assertEquals(1, managerRole.getPermissions().size(), "Manager should end up with exactly 1 permission from the winning thread.");
     }
+private static class FakeNotifier implements INotifier {
+
+            private final List<String> messages = new ArrayList<>();
+
+            @Override
+            public void notifyMember(Long memberId, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyGuest(String guestToken, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyMembers(Collection<Long> memberIds, String message) {
+                if (memberIds == null) {
+                    return;
+                }
+
+                for (Long memberId : memberIds) {
+                    if (memberId != null) {
+                        notifyMember(memberId, message);
+                    }
+                }
+            }
+
+            @Override
+            public void notifyGuests(Collection<String> guestTokens, String message) {
+                if (guestTokens == null) {
+                    return;
+                }
+
+                for (String guestToken : guestTokens) {
+                    if (guestToken != null && !guestToken.isBlank()) {
+                        notifyGuest(guestToken, message);
+                    }
+                }
+            }
+
+            boolean containsMessage(String text) {
+                return messages.stream()
+                        .anyMatch(message -> message.contains(text));
+            }
+        }
+
 }

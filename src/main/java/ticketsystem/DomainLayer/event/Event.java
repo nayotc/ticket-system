@@ -417,13 +417,13 @@ public class Event {
     }
 
     public void cancel() {
-        if (this.status == eventStatus.CANCELLED) {
-            throw new IllegalStateException("Event is already cancelled");
-        }
-        if (this.Date.isBefore(LocalDateTime.now())) {
-            throw new IllegalStateException("Cannot cancel an event that has already occurred");
-        }
-        this.status = eventStatus.CANCELLED;
+    if (this.status == eventStatus.CANCELLED) {
+        throw new IllegalStateException("Event is already cancelled");
+    }
+    if (this.Date.isBefore(LocalDateTime.now())) {
+        throw new IllegalStateException("Cannot cancel an event that has already occurred");
+    }
+    this.status = eventStatus.CANCELLED;
     }
 
     public void canPurchase(int quantity, int age) {
@@ -431,6 +431,7 @@ public class Event {
         if (result == null) {
             throw new IllegalStateException("Purchase policy validation failed");
         }
+
         if (!result.isAllowed()) {
             String message = result.getMessage();
 
@@ -440,7 +441,8 @@ public class Event {
 
             throw new IllegalArgumentException(message);
         }
-     }
+    }
+
     // discount related methods
     public void addVisibleDiscountToEvent(String name, BigDecimal percentage) {
         DiscountTypes discount = new VisibleDiscount(name, getNextDiscountId(), percentage);
@@ -465,12 +467,11 @@ public class Event {
         discountPolicy.addDiscount(discount);
     }
 
-    public void setDiscountCompositionType(DiscountCompositionType compositionType){
+    public void setDiscountCompositionType(DiscountCompositionType compositionType) {
         discountPolicy.setDiscountCompositionType(compositionType);
-
     }
-    
-    public BigDecimal calculateDiscountEvent(BigDecimal totalPrice, int ticketCount, String couponCode){
+
+    public BigDecimal calculateDiscountEvent(BigDecimal totalPrice, int ticketCount, String couponCode) {
         return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 
@@ -478,8 +479,8 @@ public class Event {
         discountPolicy.removeDiscount(discountId);
     }
 
-    public List<DiscountTypes> getDiscounts(){
+    public List<DiscountTypes> getDiscounts() {
         return discountPolicy.getDiscounts();
     }
 
-}
+    }

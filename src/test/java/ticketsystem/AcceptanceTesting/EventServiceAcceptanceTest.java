@@ -2,12 +2,13 @@ package ticketsystem.AcceptanceTesting;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import ticketsystem.ApplicationLayer.EventService;
+import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
@@ -37,6 +38,7 @@ import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -53,6 +55,7 @@ import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
@@ -65,10 +68,10 @@ public class EventServiceAcceptanceTest {
     private FakeTokenService tokenService;
     private MembershipDomainService membershipDomain;
     private final ISystemLogger logger = new LogbackSystemLogger();
-
+    private FakeNotificationsService fakeNotifications;
     private final String validOwnerSessionId = "owner-session";
     private final String invalidSessionId = "invalid-session";
-
+    private IHistoryRepository historyRepository;
     private final Long ownerId = 1L;
     private final Long companyId = 100L;
 
@@ -77,6 +80,7 @@ public class EventServiceAcceptanceTest {
         eventRepository = new EventRepository();
         tokenService = new FakeTokenService();
         userRepository = new UserRepository();
+        fakeNotifications = new FakeNotificationsService();
 
         // FIX: We use a robust anonymous subclass of MembershipDomainService.
         // This ensures permissions work correctly even if EventService uses the
@@ -88,18 +92,22 @@ public class EventServiceAcceptanceTest {
                 if (memberId == null) {
                     return false;
                 }
+
                 Member member = userRepository.getMemberById(memberId);
-                // Fallback protection if EventService mistakenly passes companyId instead of
-                // userId
+
+                // Fallback protection if EventService mistakenly passes companyId instead of userId
                 if (member == null && memberId.equals(compId)) {
                     member = userRepository.getMemberById(ownerId);
                 }
+
                 if (member == null) {
                     return false;
                 }
 
                 CompanyRole role = member.getRoleInCompany(compId);
-                return role != null && role.getStatus() == RoleStatus.ACTIVE && role.hasPermission(permission);
+                return role != null
+                        && role.getStatus() == RoleStatus.ACTIVE
+                        && role.hasPermission(permission);
             }
 
             @Override
@@ -108,6 +116,7 @@ public class EventServiceAcceptanceTest {
                 if (uId == null) {
                     return false;
                 }
+
                 Member member = userRepository.getMemberById(uId);
                 if (member == null) {
                     return false;
@@ -118,25 +127,23 @@ public class EventServiceAcceptanceTest {
             }
         };
 
+        historyRepository = new HistoryRepository();
+
         eventService = new EventService(
                 eventRepository,
                 tokenService,
                 membershipDomain,
-                logger);
+                logger,
+                fakeNotifications,
+                historyRepository
+        );
 
-        // FIX: Setup a real Member with an ACTIVE Owner role in the DB
         Member ownerMember = new Member(ownerId, "EventOwnerUser");
         ownerMember.addOwnerRole(companyId, 999L);
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password");
 
         tokenService.addValidSession(validOwnerSessionId, ownerId);
-        tokenService.addValidSession(validOwnerSessionId, ownerId);
-
-        // membershipDomain.allow(validOwnerSessionId, companyId, "event:create");
-        // membershipDomain.allow(validOwnerSessionId, companyId, "event:defineMap");
-        // membershipDomain.allow(validOwnerSessionId, companyId, "event:update");
-        // membershipDomain.allow(validOwnerSessionId, companyId, "event:cancel");
     }
 
     // -------------------- Insert Event Tests -------------------
@@ -764,8 +771,7 @@ public class EventServiceAcceptanceTest {
         // Arrange
         Event event = createActiveExistingEvent();
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
@@ -779,7 +785,7 @@ public class EventServiceAcceptanceTest {
                 buyerSessionId,
                 buyerId);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         // Act
@@ -793,8 +799,8 @@ public class EventServiceAcceptanceTest {
         assertNotNull(cancelledEvent);
         assertEquals(eventStatus.CANCELLED, cancelledEvent.getStatus());
 
-        assertTrue(historyService.wasNotifiedFor(event.getId()));
-        assertEquals(1, historyService.notificationCount());
+        assertTrue(historyListener.wasNotifiedFor(event.getId()));
+        assertEquals(1, historyListener.notificationCount());
 
         assertNotNull(updatedOrder);
         assertEquals(ActiveOrder.OrderStatus.CANCELLED, updatedOrder.getStatus());
@@ -810,8 +816,7 @@ public class EventServiceAcceptanceTest {
         // Arrange
         Event event = createActiveExistingEvent();
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
@@ -825,7 +830,7 @@ public class EventServiceAcceptanceTest {
                 buyerSessionId,
                 buyerId);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         // Act
@@ -840,7 +845,7 @@ public class EventServiceAcceptanceTest {
         assertTrue(exception.getMessage().contains("Invalid session ID"));
         assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
 
-        assertFalse(historyService.wasNotifiedFor(event.getId()));
+        assertFalse(historyListener.wasNotifiedFor(event.getId()));
 
         assertNotNull(unchangedOrder);
         assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
@@ -856,8 +861,7 @@ public class EventServiceAcceptanceTest {
         String sessionWithoutPermission = "session-without-cancel-permission";
         tokenService.addValidSession(sessionWithoutPermission, 2L);
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
@@ -871,7 +875,7 @@ public class EventServiceAcceptanceTest {
                 buyerSessionId,
                 buyerId);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         // Act
@@ -886,7 +890,7 @@ public class EventServiceAcceptanceTest {
         assertTrue(exception.getMessage().contains("User does not have permission to cancel an event"));
         assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
 
-        assertFalse(historyService.wasNotifiedFor(event.getId()));
+        assertFalse(historyListener.wasNotifiedFor(event.getId()));
 
         assertNotNull(unchangedOrder);
         assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
@@ -899,13 +903,12 @@ public class EventServiceAcceptanceTest {
         // Arrange
         Long nonExistingEventId = 999L;
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         // Act
@@ -916,7 +919,7 @@ public class EventServiceAcceptanceTest {
         // Assert
         assertTrue(exception.getMessage().contains("Event does not exist"));
 
-        assertFalse(historyService.wasNotifiedFor(nonExistingEventId));
+        assertFalse(historyListener.wasNotifiedFor(nonExistingEventId));
     }
 
     @Test
@@ -924,8 +927,7 @@ public class EventServiceAcceptanceTest {
         // Arrange
         Event event = createActiveExistingEvent();
 
-        FakeHistoryServiceListener historyService = new FakeHistoryServiceListener();
-
+        FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
         FakeNotificationsService notificationsService = new FakeNotificationsService();
         OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
@@ -939,12 +941,12 @@ public class EventServiceAcceptanceTest {
                 buyerSessionId,
                 buyerId);
 
-        eventService.addEventUpdatesListener(historyService);
+        eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
 
         eventService.cancelEvent(validOwnerSessionId, event.getId());
 
-        assertEquals(1, historyService.notificationCount());
+        assertEquals(1, historyListener.notificationCount());
         assertEquals(1, notificationsService.notificationCount(buyerSessionId));
         assertEquals(
                 ActiveOrder.OrderStatus.CANCELLED,
@@ -962,7 +964,7 @@ public class EventServiceAcceptanceTest {
         assertTrue(exception.getMessage().contains("Event is already canceled"));
         assertEquals(eventStatus.CANCELLED, cancelledEvent.getStatus());
 
-        assertEquals(1, historyService.notificationCount());
+        assertEquals(1, historyListener.notificationCount());
         assertEquals(1, notificationsService.notificationCount(buyerSessionId));
         assertEquals(ActiveOrder.OrderStatus.CANCELLED, orderAfterSecondCancel.getStatus());
     }
@@ -1481,22 +1483,262 @@ void GivenOwnerLoggedIn_WhenSetEventDiscountCompositionType_ThenCompositionTypeI
         }
     }
 
-    private static class FakeNotificationsService implements INotifier {
+// -------------------- Set Event Purchase Policy Tests -------------------
 
-        private final Map<String, List<String>> messagesBySession = new HashMap<>();
+@Test
+void GivenOwnerLoggedInEventExistsAndMaxTicketsPolicy_WhenSetEventPurchasePolicy_ThenPolicyIsSavedAndEnforced() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
 
-        @Override
-        public void notifyGuest(String sessionId, String message) {
-            messagesBySession
-                    .computeIfAbsent(sessionId, key -> new java.util.ArrayList<>())
-                    .add(message);
-        }
+    PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+    eventService.setEventPurchasePolicy(
+            validOwnerSessionId,
+            event.getId(),
+            policyDTO
+    );
+
+    Event updatedEvent = eventRepository.getEventById(event.getId());
+
+    assertNotNull(updatedEvent);
+    assertDoesNotThrow(() -> updatedEvent.canPurchase(5, 20));
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> updatedEvent.canPurchase(6, 20)
+    );
+
+    assertTrue(exception.getMessage().contains("Cannot purchase more than 5 tickets"));
+}
+
+@Test
+void GivenOwnerLoggedInEventExistsAndMinAgePolicy_WhenSetEventPurchasePolicy_ThenPolicyIsSavedAndEnforced() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    PurchasePolicyDTO policyDTO = minAgePolicyDTO(18);
+
+    eventService.setEventPurchasePolicy(
+            validOwnerSessionId,
+            event.getId(),
+            policyDTO
+    );
+
+    Event updatedEvent = eventRepository.getEventById(event.getId());
+
+    assertNotNull(updatedEvent);
+    assertDoesNotThrow(() -> updatedEvent.canPurchase(1, 18));
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> updatedEvent.canPurchase(1, 17)
+    );
+
+    assertTrue(exception.getMessage().contains("minimum age requirement of 18"));
+}
+
+@Test
+void GivenOwnerLoggedInEventExistsAndNestedPurchasePolicy_WhenSetEventPurchasePolicy_ThenNestedPolicyIsSavedAndEnforced() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    PurchasePolicyDTO policyDTO = nestedPolicyDTO();
+
+    eventService.setEventPurchasePolicy(
+            validOwnerSessionId,
+            event.getId(),
+            policyDTO
+    );
+
+    Event updatedEvent = eventRepository.getEventById(event.getId());
+
+    assertNotNull(updatedEvent);
+
+    assertDoesNotThrow(() -> updatedEvent.canPurchase(2, 18));
+    assertDoesNotThrow(() -> updatedEvent.canPurchase(100, 18));
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> updatedEvent.canPurchase(50, 18)
+    );
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> updatedEvent.canPurchase(2, 17)
+    );
+}
+
+@Test
+void GivenLoggedInUserWithoutPermission_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    String sessionWithoutPermission = "session-without-policy-permission";
+    Long plainUserId = 2L;
+
+    Member plainUser = new Member(plainUserId, "PlainUser");
+    userRepository.addRegisteredMember(plainUserId, plainUser, "password");
+    tokenService.addValidSession(sessionWithoutPermission, plainUserId);
+
+    PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> eventService.setEventPurchasePolicy(
+                    sessionWithoutPermission,
+                    event.getId(),
+                    policyDTO
+            )
+    );
+
+    Event unchangedEvent = eventRepository.getEventById(event.getId());
+
+    assertTrue(exception.getMessage().contains("permission"));
+    assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
+}
+
+@Test
+void GivenEventDoesNotExist_WhenSetEventPurchasePolicy_ThenSystemRejectsTheRequest() {
+    PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> eventService.setEventPurchasePolicy(
+                    validOwnerSessionId,
+                    999L,
+                    policyDTO
+            )
+    );
+
+    assertTrue(exception.getMessage().contains("Event not found"));
+}
+
+@Test
+void GivenInvalidPurchasePolicyDTO_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    PurchasePolicyDTO invalidPolicyDTO = new PurchasePolicyDTO(
+            new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, null, null)
+    );
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> eventService.setEventPurchasePolicy(
+                    validOwnerSessionId,
+                    event.getId(),
+                    invalidPolicyDTO
+            )
+    );
+
+    Event unchangedEvent = eventRepository.getEventById(event.getId());
+
+    assertTrue(exception.getMessage().contains("Maximum tickets is required"));
+    assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
+}
+
+@Test
+void GivenInvalidSession_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
+
+    PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> eventService.setEventPurchasePolicy(
+                    invalidSessionId,
+                    event.getId(),
+                    policyDTO
+            )
+    );
+
+    Event unchangedEvent = eventRepository.getEventById(event.getId());
+
+    assertTrue(exception.getMessage().contains("permission"));
+    assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
+}
+
+private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {
+    return new PurchasePolicyDTO(
+            new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, maxTickets, null)
+    );
+}
+
+private PurchasePolicyDTO minAgePolicyDTO(int minAge) {
+    return new PurchasePolicyDTO(
+            new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, minAge, null)
+    );
+}
+
+private PurchasePolicyDTO nestedPolicyDTO() {
+    return new PurchasePolicyDTO(
+            new PurchaseRuleDTO(
+                    PurchaseRuleType.AND,
+                    null,
+                    List.of(
+                            new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, 18, null),
+                            new PurchaseRuleDTO(
+                                    PurchaseRuleType.OR,
+                                    null,
+                                    List.of(
+                                            new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, 2, null),
+                                            new PurchaseRuleDTO(PurchaseRuleType.MIN_TICKETS, 100, null)
+                                    )
+                            )
+                    )
+            )
+    );
+}
+
+private static class FakeNotificationsService implements INotifier {
+
+    private final Map<String, List<String>> messagesBySession = new HashMap<>();
+    private final Map<Long, List<String>> messagesByMember = new HashMap<>();
+    private final List<String> allMessages = new ArrayList<>();
+
+    @Override
+    public void notifyGuest(String sessionId, String message) {
+        messagesBySession
+                .computeIfAbsent(sessionId, key -> new ArrayList<>())
+                .add(message);
+
+        allMessages.add(message);
+    }
 
         @Override
         public void notifyMember(Long memberId, String message) {
-            messagesBySession
-                    .computeIfAbsent(memberId.toString(), key -> new java.util.ArrayList<>())
+            messagesByMember
+                    .computeIfAbsent(memberId, key -> new ArrayList<>())
                     .add(message);
+
+            allMessages.add(message);
+        }
+
+        @Override
+        public void notifyMembers(Collection<Long> memberIds, String message) {
+            if (memberIds == null) {
+                return;
+            }
+
+            for (Long memberId : memberIds) {
+                if (memberId != null) {
+                    notifyMember(memberId, message);
+                }
+            }
+        }
+
+        @Override
+        public void notifyGuests(Collection<String> guestTokens, String message) {
+            if (guestTokens == null) {
+                return;
+            }
+
+            for (String guestToken : guestTokens) {
+                if (guestToken != null && !guestToken.isBlank()) {
+                    notifyGuest(guestToken, message);
+                }
+            }
         }
 
         boolean wasNotified(String sessionId) {
@@ -1505,230 +1747,44 @@ void GivenOwnerLoggedIn_WhenSetEventDiscountCompositionType_ThenCompositionTypeI
         }
 
         int notificationCount(String sessionId) {
-            if (!messagesBySession.containsKey(sessionId)) {
-                return 0;
-            }
-
-            return messagesBySession.get(sessionId).size();
+            return messagesBySession
+                    .getOrDefault(sessionId, List.of())
+                    .size();
         }
 
         String lastMessageFor(String sessionId) {
-            if (!messagesBySession.containsKey(sessionId)
-                    || messagesBySession.get(sessionId).isEmpty()) {
+            List<String> messages = messagesBySession.getOrDefault(sessionId, List.of());
+
+            if (messages.isEmpty()) {
                 return "";
             }
 
-            List<String> messages = messagesBySession.get(sessionId);
             return messages.get(messages.size() - 1);
         }
+
+        boolean wasMemberNotified(Long memberId) {
+            return messagesByMember.containsKey(memberId)
+                    && !messagesByMember.get(memberId).isEmpty();
+        }
+
+    int memberNotificationCount(Long memberId) {
+        return messagesByMember
+                .getOrDefault(memberId, List.of())
+                .size();
     }
 
-        // -------------------- Set Event Purchase Policy Tests -------------------
+    String lastMessageForMember(Long memberId) {
+        List<String> messages = messagesByMember.getOrDefault(memberId, List.of());
 
-    @Test
-    void GivenOwnerLoggedInEventExistsAndMaxTicketsPolicy_WhenSetEventPurchasePolicy_ThenPolicyIsSavedAndEnforced() throws Exception {
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
+        if (messages.isEmpty()) {
+            return "";
+        }
 
-        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
-
-        eventService.setEventPurchasePolicy(
-                validOwnerSessionId,
-                event.getId(),
-                policyDTO
-        );
-
-        Event updatedEvent = eventRepository.getEventById(event.getId());
-
-        assertNotNull(updatedEvent);
-        assertDoesNotThrow(() -> updatedEvent.canPurchase(5, 20));
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> updatedEvent.canPurchase(6, 20)
-        );
-
-        assertTrue(exception.getMessage().contains("Cannot purchase more than 5 tickets"));
+        return messages.get(messages.size() - 1);
     }
-
-    @Test
-    void GivenOwnerLoggedInEventExistsAndMinAgePolicy_WhenSetEventPurchasePolicy_ThenPolicyIsSavedAndEnforced() throws Exception {
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
-
-        PurchasePolicyDTO policyDTO = minAgePolicyDTO(18);
-
-        eventService.setEventPurchasePolicy(
-                validOwnerSessionId,
-                event.getId(),
-                policyDTO
-        );
-
-        Event updatedEvent = eventRepository.getEventById(event.getId());
-
-        assertNotNull(updatedEvent);
-        assertDoesNotThrow(() -> updatedEvent.canPurchase(1, 18));
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> updatedEvent.canPurchase(1, 17)
-        );
-
-        assertTrue(exception.getMessage().contains("minimum age requirement of 18"));
+        boolean containsMessage(String text) {
+            return allMessages.stream()
+                    .anyMatch(message -> message.contains(text));
+        }
     }
-
-    @Test
-    void GivenOwnerLoggedInEventExistsAndNestedPurchasePolicy_WhenSetEventPurchasePolicy_ThenNestedPolicyIsSavedAndEnforced() throws Exception {
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
-
-        PurchasePolicyDTO policyDTO = nestedPolicyDTO();
-
-        eventService.setEventPurchasePolicy(
-                validOwnerSessionId,
-                event.getId(),
-                policyDTO
-        );
-
-        Event updatedEvent = eventRepository.getEventById(event.getId());
-
-        assertNotNull(updatedEvent);
-
-        assertDoesNotThrow(() -> updatedEvent.canPurchase(2, 18));
-        assertDoesNotThrow(() -> updatedEvent.canPurchase(100, 18));
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updatedEvent.canPurchase(50, 18)
-        );
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updatedEvent.canPurchase(2, 17)
-        );
-    }
-
-    @Test
-    void GivenLoggedInUserWithoutPermission_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
-
-        String sessionWithoutPermission = "session-without-policy-permission";
-        Long plainUserId = 2L;
-
-        Member plainUser = new Member(plainUserId, "PlainUser");
-        userRepository.addRegisteredMember(plainUserId, plainUser, "password");
-        tokenService.addValidSession(sessionWithoutPermission, plainUserId);
-
-        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> eventService.setEventPurchasePolicy(
-                        sessionWithoutPermission,
-                        event.getId(),
-                        policyDTO
-                )
-        );
-
-        Event unchangedEvent = eventRepository.getEventById(event.getId());
-
-        assertTrue(exception.getMessage().contains("permission"));
-        assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
-    }
-
-    @Test
-    void GivenEventDoesNotExist_WhenSetEventPurchasePolicy_ThenSystemRejectsTheRequest() {
-        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> eventService.setEventPurchasePolicy(
-                        validOwnerSessionId,
-                        999L,
-                        policyDTO
-                )
-        );
-
-        assertTrue(exception.getMessage().contains("Event not found"));
-    }
-
-    @Test
-    void GivenInvalidPurchasePolicyDTO_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
-
-        PurchasePolicyDTO invalidPolicyDTO = new PurchasePolicyDTO(
-                new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, null, null)
-        );
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> eventService.setEventPurchasePolicy(
-                        validOwnerSessionId,
-                        event.getId(),
-                        invalidPolicyDTO
-                )
-        );
-
-        Event unchangedEvent = eventRepository.getEventById(event.getId());
-
-        assertTrue(exception.getMessage().contains("Maximum tickets is required"));
-        assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
-    }
-
-    @Test
-    void GivenInvalidSession_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
-
-        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
-
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> eventService.setEventPurchasePolicy(
-                        invalidSessionId,
-                        event.getId(),
-                        policyDTO
-                )
-        );
-
-        Event unchangedEvent = eventRepository.getEventById(event.getId());
-
-        assertTrue(exception.getMessage().contains("permission"));
-        assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
-    }
-
-    private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {
-        return new PurchasePolicyDTO(
-                new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, maxTickets, null)
-        );
-    }
-
-    private PurchasePolicyDTO minAgePolicyDTO(int minAge) {
-        return new PurchasePolicyDTO(
-                new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, minAge, null)
-        );
-    }
-
-    private PurchasePolicyDTO nestedPolicyDTO() {
-        return new PurchasePolicyDTO(
-                new PurchaseRuleDTO(
-                        PurchaseRuleType.AND,
-                        null,
-                        List.of(
-                                new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, 18, null),
-                                new PurchaseRuleDTO(
-                                        PurchaseRuleType.OR,
-                                        null,
-                                        List.of(
-                                                new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, 2, null),
-                                                new PurchaseRuleDTO(PurchaseRuleType.MIN_TICKETS, 100, null)
-                                        )
-                                )
-                        )
-                )
-        );
-    }
-
 }

@@ -144,7 +144,14 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
                     }
                 return false;
             }
+    public boolean timeAboutToExpire(Event event, ActiveOrder order) {
+    if (event == null || order == null) {
+        return false;
+    }
 
+    return order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT
+            && order.isAboutToExpire();
+}
     //expire order and release tickets back to event
     public void expire(Event event , ActiveOrder order) {
       

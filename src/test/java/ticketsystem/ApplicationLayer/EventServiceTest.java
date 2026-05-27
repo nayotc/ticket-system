@@ -18,6 +18,8 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +36,7 @@ import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.*;
 import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 
 public class EventServiceTest {
 
@@ -52,8 +55,13 @@ public class EventServiceTest {
     @Mock 
     private ISystemLogger logger;
 
-    private EventService eventService;
+    @Mock
+    private INotifier mockNotifier;
 
+    @Mock
+    private IHistoryRepository mockHistoryRepository;
+
+    private EventService eventService;
     private final String validSessionId = "valid-session";
     private final Long validUserId = 1L;
     private final Long validCompanyId = 1L;
@@ -67,9 +75,11 @@ public class EventServiceTest {
                 mockEventRepository,
                 mockTokenService,
                 mockMembershipDomainService,
-                logger
+                logger,
+                mockNotifier,
+                mockHistoryRepository
         );
-
+        when(mockHistoryRepository.getAllPurchases()).thenReturn(List.of());
         when(mockTokenService.validateToken(validSessionId)).thenReturn(true);
         when(mockTokenService.extractUserId(validSessionId)).thenReturn(validUserId);
 
