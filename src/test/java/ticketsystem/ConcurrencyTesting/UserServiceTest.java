@@ -99,7 +99,13 @@ public class UserServiceTest {
                     try {
                         startLatch.await();
                         String sessionToken = userService.visitSystem();
-                        userService.signUp(sessionToken, "user" + userId, "password" + userId);
+                        userService.signUp(
+                                sessionToken,
+                                "user" + userId,
+                                "password" + userId,
+                                "Test User " + userId,
+                                "0500000000"
+                        );
                     } catch (IllegalArgumentException e) {
                         if (!"Username is already taken.".equals(e.getMessage())) {
                             exceptions.add(e);
@@ -140,7 +146,13 @@ public class UserServiceTest {
         List<String> generatedTokens = synchronizedList(new ArrayList<>());
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
         String InitialSessionToken = userService.visitSystem();
-        userService.signUp(InitialSessionToken, "username", "password");
+        userService.signUp(
+                InitialSessionToken,
+                "username",
+                "password",
+                "Test User",
+                "0500000000"
+        );
         // Act: simulate 100 login attempts for the same user concurrently
         for (int i = 0; i < numberOfThreads; i++) {
             executor.submit(() -> {
@@ -181,7 +193,13 @@ public class UserServiceTest {
         // Arrange: 20 distinct members, each with their own session after login
         for (int i = 0; i < numberOfThreads; i++) {
             String guestToken = userService.visitSystem();
-            assertTrue(userService.signUp(guestToken, "user" + i, "password" + i));
+            assertTrue(userService.signUp(
+                    guestToken,
+                    "user" + i,
+                    "password" + i,
+                    "Test User " + i,
+                    "0500000000"
+            ));
             memberTokens[i] = userService.login(guestToken, "user" + i, "password" + i);
             assertNotNull(memberTokens[i], "Login should succeed for user" + i);
         }

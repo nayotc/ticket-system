@@ -173,7 +173,7 @@ public class SystemAdminServiceTest {
         realAdminRepo.addAdmin(admin);
         long memberId = 1L;
 
-        Member member = new Member(memberId, "TestUser");
+        Member member = new Member(memberId, "TestUser", "Test User", "0500000001");
         userRepo.addRegisteredMember(memberId, member, "hashedPassword123");
 
         // Act
@@ -196,14 +196,14 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(new SystemAdmin(String.valueOf(adminId), "admin", true));
 
-        Member founder = new Member(founderId, "founder");
+        Member founder = new Member(founderId, "founder", "Founder User", "0500000002");
         userRepo.addRegisteredMember(founderId, founder, "password123");
         String founderSessionId = tokenService.addActiveSession(founder);
 
         CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
         long companyId = createdCompany.getId();
 
-        Member owner = new Member(ownerId, "owner");
+        Member owner = new Member(ownerId, "owner", "Owner User", "0500000003");
         owner.addOwnerRole(companyId, founderId);
         owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepo.addRegisteredMember(ownerId, owner, "password123");
@@ -211,7 +211,7 @@ public class SystemAdminServiceTest {
         Set<Permission> managerPermissions = new HashSet<>();
         managerPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
-        Member manager = new Member(managerId, "manager");
+        Member manager = new Member(managerId, "manager", "Manager User", "0500000004");
         manager.addManagerRole(companyId, founderId, managerPermissions);
         manager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepo.addRegisteredMember(managerId, manager, "password123");
@@ -246,7 +246,7 @@ public class SystemAdminServiceTest {
         // Arrange
         long nonAdminId = 10L;
         long founderId = 20L;
-        Member founder = new Member(founderId, "founder");
+        Member founder = new Member(founderId, "founder", "Founder User", "0500000005");
         userRepo.addRegisteredMember(founderId, founder, "password123");
         String founderSessionId = tokenService.addActiveSession(founder);
 

@@ -28,6 +28,7 @@ import ticketsystem.PresentationLayer.Layouts.AuthLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Presenters.AuthPresenter;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
+import ticketsystem.PresentationLayer.Components.Notifications;
 
 @PageTitle("TixNow | התחברות")
 @Route(value = UiRoutes.LOGIN, layout = AuthLayout.class)
@@ -173,8 +174,7 @@ public class Login extends PageContainer {
              * Replaced with real authentication through AuthPresenter.
              */
 
-            Notification notification = Notification.show("התחברת בהצלחה");
-            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            Notifications.success("התחברת בהצלחה");
 
             UI.getCurrent().navigate(UiRoutes.HOME);
 
@@ -188,7 +188,6 @@ public class Login extends PageContainer {
     }
 
     private void showError(String message) {
-        Notification notification = Notification.show(message);
-        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        Notifications.error(message);
     }
 }

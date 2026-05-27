@@ -138,7 +138,8 @@ public class EventServiceAcceptanceTest {
                 historyRepository
         );
 
-        Member ownerMember = new Member(ownerId, "EventOwnerUser");
+        // FIX: Setup a real Member with an ACTIVE Owner role in the DB
+        Member ownerMember = new Member(ownerId, "EventOwnerUser", "Event Owner User", "0500000001");
         ownerMember.addOwnerRole(companyId, 999L);
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password");
@@ -286,7 +287,7 @@ public class EventServiceAcceptanceTest {
         Long plainUserId = 2L;
 
         // Setup a real user WITHOUT any roles
-        Member plainUser = new Member(plainUserId, "PlainUser");
+        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002");
         userRepository.addRegisteredMember(plainUserId, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, plainUserId);
 
@@ -440,7 +441,7 @@ public class EventServiceAcceptanceTest {
         String sessionWithoutPermission = "session-without-update-permission";
 
         // Setup a real user WITHOUT any roles
-        Member plainUser = new Member(2L, "PlainUser");
+        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000003");
         userRepository.addRegisteredMember(2L, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, 2L);
 
@@ -660,7 +661,7 @@ public class EventServiceAcceptanceTest {
         eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
 
         String sessionWithoutPermission = "session-without-map-permission";
-        Member plainUser = new Member(2L, "PlainUser");
+        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000004");
         userRepository.addRegisteredMember(2L, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, 2L);
 
@@ -1025,7 +1026,7 @@ void GivenUserWithoutPermission_WhenAddVisibleDiscountToEvent_ThenSystemRejectsT
 
     String sessionWithoutPermission = "session-without-discount-permission";
 
-    Member plainUser = new Member(2L, "PlainUser");
+    Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000005");
     userRepository.addRegisteredMember(2L, plainUser, "password");
 
     tokenService.addValidSession(sessionWithoutPermission, 2L);
@@ -1576,7 +1577,7 @@ void GivenLoggedInUserWithoutPermission_WhenSetEventPurchasePolicy_ThenSystemRej
     String sessionWithoutPermission = "session-without-policy-permission";
     Long plainUserId = 2L;
 
-    Member plainUser = new Member(plainUserId, "PlainUser");
+    Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002");
     userRepository.addRegisteredMember(plainUserId, plainUser, "password");
     tokenService.addValidSession(sessionWithoutPermission, plainUserId);
 

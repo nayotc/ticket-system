@@ -41,7 +41,7 @@ public class AuthPresenter {
         }
     }
 
-    public boolean signUp(String username, String password) {
+    public boolean signUp(String username, String password, String fullName, String phone) {
         try {
             String guestToken = UiSession.getGuestToken();
 
@@ -49,19 +49,20 @@ public class AuthPresenter {
                 throw new PresentationException("Guest session is missing. Please refresh and try again.");
             }
 
-            userService.signUp(guestToken, username, password);
+            userService.signUp(guestToken, username, password, fullName, phone);
             return true;
 
         } catch (PresentationException e) {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
-        } catch (Exception e) {
+        throw new PresentationException(translateSignUpError(e.getMessage()));
+    } catch (Exception e) {
             throw new PresentationException("Registration failed. Please try again.");
         }
     }
+
+
 
     public String login(String username, String password) {
         try {
@@ -140,5 +141,23 @@ public class AuthPresenter {
         } catch (Exception e) {
             throw new PresentationException("Exit failed. Please try again.");
         }
+    }
+
+    private String translateSignUpError(String message) {
+        if (message == null || message.isBlank()) {
+            return "ההרשמה נכשלה. נסו שוב.";
+        }
+
+        return switch (message) {
+            case "Username and password are required." -> "יש להזין אימייל וסיסמה.";
+            case "Only guests can sign up." -> "לא ניתן להירשם כאשר כבר מחוברים למערכת.";
+            case "Username is already taken." -> "האימייל כבר קיים במערכת.";
+            case "Full name is required." -> "יש להזין שם מלא.";
+            case "Full name must be between 2 and 100 characters." -> "השם המלא חייב להכיל בין 2 ל־100 תווים.";
+            case "Phone number is required." -> "יש להזין מספר טלפון.";
+            case "Phone number must contain digits only." -> "מספר הטלפון יכול להכיל ספרות בלבד.";
+            case "Phone number must be 9 or 10 digits long." -> "מספר הטלפון חייב להכיל 9 או 10 ספרות.";
+            default -> message;
+        };
     }
 }

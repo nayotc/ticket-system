@@ -49,7 +49,13 @@ public class UserOrderIntegrationTests {
     public void testUserLogin_WhenNeitherGuestNorMemberHasOrder_ThenNoActiveOrder() {
         // Arrange - visit → sign up
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "member", "password");
+        userService.signUp(
+                guestToken,
+                "member",
+                "password",
+                "Test User",
+                "0500000000"
+        );
         String memberToken = userService.login(guestToken, "member", "password");
         // doesn't have any orders
         guestToken = userService.logOut(memberToken);
@@ -64,7 +70,13 @@ public class UserOrderIntegrationTests {
     public void testUserLogin_WhenGuestHasOrderAndMemberHasNoOrder_ThenGuestOrderBecomesMemberOrder() {
         // Arrange - visit → sign up
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "member", "password");
+        userService.signUp(
+                guestToken,
+                "member",
+                "password",
+                "Test User",
+                "0500000000"
+        );
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");
         // doesn't have any orders
@@ -87,7 +99,13 @@ public class UserOrderIntegrationTests {
     public void testUserLogin_WhenGuestHasNoOrderAndMemberHasOrder_ThenMemberOrderUnchanged() {
         // Arrange - visit → sign up
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "member", "password");
+        userService.signUp(
+                guestToken,
+                "member",
+                "password",
+                "Test User",
+                "0500000000"
+        );
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");
         ActiveOrder memberOrder = new ActiveOrder(
@@ -109,7 +127,13 @@ public class UserOrderIntegrationTests {
     public void testUserLogin_WhenGuestAndMemberHaveOrdersForSameEvent_ThenOrdersMergedAndGuestRemoved() {
         // Arrange - visit → sign up
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "member", "password");
+        userService.signUp(
+                guestToken,
+                "member",
+                "password",
+                "Test User",
+                "0500000000"
+        );
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");
 
@@ -140,7 +164,13 @@ public class UserOrderIntegrationTests {
     public void testUserLogin_WhenGuestAndMemberHaveOrdersForDifferentEvents_ThenGuestOrderDeleted() {
         // Arrange - visit → sign up
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "member", "password");
+        userService.signUp(
+                guestToken,
+                "member",
+                "password",
+                "Test User",
+                "0500000000"
+        );
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");
         ActiveOrder memberOrder = new ActiveOrder(

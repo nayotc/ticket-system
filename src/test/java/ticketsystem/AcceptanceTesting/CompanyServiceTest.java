@@ -100,7 +100,7 @@ public class CompanyServiceTest {
     private String createLoggedInMember(String username, String password) {
         String guestToken = userService.visitSystem();
 
-        boolean signedUp = userService.signUp(guestToken, username, password);
+        boolean signedUp = userService.signUp(guestToken, username, password, "Test User", "0500000000");
         assertTrue(signedUp, "Member signup should succeed during test setup.");
 
         String memberToken = userService.login(guestToken, username, password);

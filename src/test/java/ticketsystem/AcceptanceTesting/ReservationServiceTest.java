@@ -141,7 +141,13 @@ public class ReservationServiceTest {
     private String createLoggedInMember(String username, String password) {
         String guest = userService.visitSystem();
 
-        boolean signedUp = userService.signUp(guest, username, password);
+        boolean signedUp = userService.signUp(
+                guest,
+                username,
+                password,
+                "Test User",
+                "0500000000"
+        );
         assertTrue(signedUp);
 
         String token = userService.login(guest, username, password);

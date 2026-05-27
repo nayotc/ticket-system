@@ -62,7 +62,13 @@ public class HistoryServiceTest {
      */
     private String getValidMemberToken(String username, String password) {
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, username, password);
+        userService.signUp(
+                guestToken,
+                username,
+                password,
+                "Test User",
+                "0500000000"
+        );
         return userService.login(guestToken, username, password);
     }
 

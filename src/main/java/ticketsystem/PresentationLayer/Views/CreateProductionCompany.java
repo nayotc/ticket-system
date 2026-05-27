@@ -15,6 +15,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.PresentationLayer.Components.AppCard;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
@@ -133,7 +134,7 @@ public class CreateProductionCompany extends Div {
                 createButton.setEnabled(true);
                 return;
             }
-
+            Notifications.success("חברת ההפקה נוצרה בהצלחה");
             UI.getCurrent().navigate(UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(company.getId())));
         } catch (Exception e) {
             createButton.setEnabled(true);
@@ -142,13 +143,11 @@ public class CreateProductionCompany extends Div {
     }
 
     private void showWarning(String message) {
-        Notification notification = Notification.show(message, 3500, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+        Notifications.warning(message);
     }
 
     private void showError(String message) {
-        Notification notification = Notification.show(message == null || message.isBlank() ? "הפעולה נכשלה" : message, 3500, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        Notifications.error(message);
     }
 
     public interface CreateProductionCompanyPresenter {
