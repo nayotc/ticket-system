@@ -132,7 +132,7 @@ public class ReservationTest {
     @Test
     void GivenValidActiveOrder_WhenSubmitActiveOrderForCheckout_ThenValidateAndSubmitOrder() {
         // Act
-        reservation.submitActiveOrderForCheckout(order, event, 18);
+        reservation.submitActiveOrderForCheckout(order, event);
 
         // Assert
         InOrder inOrder = inOrder(order);
