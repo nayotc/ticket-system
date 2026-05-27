@@ -31,7 +31,7 @@ public class LotteryServiceTest {
     @BeforeEach
     void setUp() {
         tokenRepository = new TokenRepository();
-        LotteryRepository repo = LotteryRepository.getInstance();
+        LotteryRepository repo = new LotteryRepository();
         repo.clearForTests(); 
         lotteryRepository = repo; 
         

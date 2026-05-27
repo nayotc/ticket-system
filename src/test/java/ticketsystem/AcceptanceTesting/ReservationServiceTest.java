@@ -76,7 +76,7 @@ public class ReservationServiceTest {
     void setUp() {
         orderRepository = new OrderRepository();
         eventRepository = new EventRepository();
-        lotteryRepository = LotteryRepository.getInstance();
+        lotteryRepository = new LotteryRepository();
         companyRepository = new CompanyRepository();
         userRepository = new UserRepository();
 
