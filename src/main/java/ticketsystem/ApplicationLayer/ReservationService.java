@@ -19,6 +19,7 @@ import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
+import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
@@ -39,6 +40,7 @@ public class ReservationService {
     private final ISecureBarcode secureBarcode;
     private final ILotteryRepository lotteryRepository;
     private final Reservation reservationDomeinService;
+    private final EventCatalogDomainService eventCatalogDomainService;
     private final ISystemLogger logger;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
 
@@ -46,13 +48,14 @@ public class ReservationService {
             IOrderRepository orderRepository,
             IEventRepository eventRepository,
             TokenService tokenService, IPaymentService paymentService, ISecureBarcode secureBarcode,
-            ILotteryRepository lotteryRepository, ISystemLogger logger) {
+            ILotteryRepository lotteryRepository,EventCatalogDomainService eventCatalogDomainService , ISystemLogger logger) {
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.paymentService = paymentService;
         this.secureBarcode = secureBarcode;
         this.lotteryRepository = lotteryRepository;
+        this.eventCatalogDomainService=eventCatalogDomainService;
         this.logger = logger;
         this.reservationDomeinService = new Reservation();
 
@@ -209,7 +212,7 @@ public class ReservationService {
 
     // 2.8 checkout
    
-        public boolean checkout(String token, Long eventId, PaymentDetails details) {
+        public boolean checkout(String token, Long eventId, PaymentDetails details,String coupon) {
         expireOldOrders();
 
         try {
@@ -223,8 +226,8 @@ public class ReservationService {
             }
 
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
-
-            boolean paymentResult = paymentService.pay(amount, details);
+            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
+            boolean paymentResult = paymentService.pay(amountAfterDiscount, details);
 
             if (!paymentResult) {
                 order.paymentFailed();
@@ -237,7 +240,7 @@ public class ReservationService {
             try {
                 orderDTO = creaOrderDTOwithBarcode(order, event);
             } catch (Exception barcodeException) {
-                handleRefundAfterCheckoutFailure(order, event, amount, details, eventId, barcodeException,
+                handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, details, eventId, barcodeException,
                         "Ticket issuing failed. Payment was refunded.",
                         "Ticket issuing failed and refund failed.");
                 return false; // unreachable
@@ -247,7 +250,7 @@ public class ReservationService {
                 reservationDomeinService.completeCheckout(order, event);
                 saveAll(order, event);
             } catch (Exception completeCheckoutException) {
-                handleRefundAfterCheckoutFailure(order, event, amount, details, eventId, completeCheckoutException,
+                handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, details, eventId, completeCheckoutException,
                         "Complete checkout failed. Payment was refunded.",
                         "Complete checkout failed and refund failed.");
                 return false; // unreachable

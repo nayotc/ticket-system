@@ -1,11 +1,13 @@
 package ticketsystem.ApplicationLayer;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.ApplicationLayer.ITokenService;
@@ -96,5 +98,4 @@ public class EventCatalogService {
         }
     }
 
-    
 }

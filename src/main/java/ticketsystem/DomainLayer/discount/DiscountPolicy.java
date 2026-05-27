@@ -40,7 +40,7 @@ public class DiscountPolicy {
         return compositionType;
     }
 
-    public void removeDiscountFromCompany(Long discountId) {
+    public void removeDiscount(Long discountId) {
         boolean removed = discounts.removeIf(discount -> discount.getDiscountId().equals(discountId));
 
         if (!removed) {
