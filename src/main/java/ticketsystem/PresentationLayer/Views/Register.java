@@ -19,6 +19,10 @@ import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import org.springframework.beans.factory.annotation.Autowired;
+import ticketsystem.PresentationLayer.Presenters.AuthPresenter;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
+import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Components.ActionBar;
 import ticketsystem.PresentationLayer.Components.FormCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
@@ -35,8 +39,12 @@ public class Register extends PageContainer {
     private final PasswordField password = createPasswordField("סיסמה");
     private final PasswordField confirmPassword = createPasswordField("אימות סיסמה");
     private final Checkbox termsAccepted = new Checkbox();
+    private final AuthPresenter authPresenter;
 
-    public Register() {
+    @Autowired
+    public Register(AuthPresenter authPresenter) {
+        this.authPresenter = authPresenter;
+
         addClassName("auth-page");
         setSpacing(false);
 
@@ -161,7 +169,7 @@ public class Register extends PageContainer {
     }
 
     private void handleRegister() {
-        if (isBlank(fullName.getValue()) || isBlank(email.getValue())
+        if (isBlank(fullName.getValue()) || isBlank(email.getValue()) || isBlank(phone.getValue())
                 || isBlank(password.getValue()) || isBlank(confirmPassword.getValue())) {
             showError("יש למלא את כל שדות החובה");
             return;
@@ -177,23 +185,26 @@ public class Register extends PageContainer {
             return;
         }
 
-        /*
-         * TODO:
-         * לחבר כאן ל-Presenter או ל-UserService.
-         *
-         * לדוגמה בהמשך:
-         * userService.register(
-         *     fullName.getValue(),
-         *     email.getValue(),
-         *     phone.getValue(),
-         *     password.getValue()
-         * );
-         */
+        try {
+            if (UiSession.getGuestToken() == null) {
+                authPresenter.visitSystem();
+            }
 
-        Notification notification = Notification.show("ההרשמה נקלטה בהצלחה");
-        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            authPresenter.signUp(
+                    email.getValue(),
+                    password.getValue(),
+                    fullName.getValue(),
+                    phone.getValue()
+            );
 
-        UI.getCurrent().navigate(UiRoutes.LOGIN);
+            Notification notification = Notification.show("ההרשמה נקלטה בהצלחה");
+            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+            UI.getCurrent().navigate(UiRoutes.LOGIN);
+
+        } catch (PresentationException e) {
+            showError(e.getMessage());
+        }
     }
 
     private boolean isBlank(String value) {
