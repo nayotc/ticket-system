@@ -59,20 +59,20 @@ public class MembershipConcurrencyTest {
         companyRepository.save(company);
 
         // Setup Founder (Appointer 1) - Has version 0
-        Member founder = new Member(100L, "Founder");
+        Member founder = new Member(100L, "Founder", "Founder User", "0500000001");
         founder.addFounderRole(companyId);
         userRepository.addRegisteredMember(100L, founder, "pass");
         founderToken = tokenService.addActiveSession(founder);
 
         // Setup active Owner (Appointer 2) - Has version 0
-        Member owner = new Member(101L, "Owner");
+        Member owner = new Member(101L, "Owner", "Owner User", "0500000002");
         owner.addOwnerRole(companyId, 100L);
         owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(101L, owner, "pass");
         ownerToken = tokenService.addActiveSession(owner);
 
         // Setup Target Member - Starts with no roles, version 0
-        Member target = new Member(targetMemberId, "TargetUser");
+        Member target = new Member(targetMemberId, "TargetUser", "Target User", "0500000003");
         userRepository.addRegisteredMember(targetMemberId, target, "pass");
     }
 

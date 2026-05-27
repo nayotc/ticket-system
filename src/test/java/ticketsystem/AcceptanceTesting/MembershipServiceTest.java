@@ -79,13 +79,13 @@ public class MembershipServiceTest {
         try { testCompany.setId(companyId); } catch (Exception e) {}
 
         // 3. Setup Founder - Active state
-        founderMember = new Member(founderId, "FounderUser");
+        founderMember = new Member(founderId, "FounderUser", "Founder User", "0500000001");
         founderMember.addFounderRole(companyId);
         userRepository.addRegisteredMember(founderId, founderMember, "password123");
         appointerToken = tokenService.addActiveSession(founderMember);
 
         // 4. Setup Manager - Pre-existing active role
-        managerMember = new Member(managerId, "ManagerUser");
+        managerMember = new Member(managerId, "ManagerUser", "Manager User", "0500000002");
         Set<Permission> managerPerms = new HashSet<>();
         managerPerms.add(Permission.MANAGE_INQUIRIES);
         managerMember.addManagerRole(companyId, founderId, managerPerms);
@@ -97,7 +97,7 @@ public class MembershipServiceTest {
         founderRole.addAppointee(managerId);
 
         // 5. Setup Owner - Specifically for UC 4.9 and 4.10
-        ownerMember = new Member(ownerId, "OwnerUser");
+        ownerMember = new Member(ownerId, "OwnerUser", "Owner User", "0500000003");
         ownerMember.addOwnerRole(companyId, founderId);
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password123");
@@ -110,7 +110,7 @@ public class MembershipServiceTest {
         companyRepository.save(testCompany);
 
         // 6. Setup Regular Member - Starting with no role (For UC 4.7, 4.8)
-        member = new Member(memberId, "PlainMember");
+        member = new Member(memberId, "PlainMember", "Plain Member", "0500000004");
         userRepository.addRegisteredMember(memberId, member, "password123");
         appointeeToken = tokenService.addActiveSession(member);
     }
@@ -443,7 +443,7 @@ public class MembershipServiceTest {
     @Test
     public void GivenOwnerWithSubordinate_WhenResignFromOwnership_ThenReturnsTrueAndSubordinateIsTransferred() throws Exception {
         // Arrange
-        Member subManager = new Member(999L, "SubManager");
+        Member subManager = new Member(999L, "SubManager", "Sub Manager", "0500000005");
         subManager.addManagerRole(companyId, ownerId, new HashSet<>());
         subManager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(999L, subManager, "password123");

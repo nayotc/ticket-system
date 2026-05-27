@@ -21,7 +21,7 @@ public class MemberTest {
     @BeforeEach
     void setUp() {
         // Arrange: Initialize a new Member
-        member = new Member(memberId, "john_doe");
+        member = new Member(memberId, "john_doe", "John Doe", "0500000000");
     }
 
     @Test
