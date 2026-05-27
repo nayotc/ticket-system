@@ -1,4 +1,6 @@
 package ticketsystem.DomainLayer;
+
+import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -13,6 +15,7 @@ import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Manager;
 import ticketsystem.DomainLayer.user.Member;
 
+@Component
 public class MembershipDomainService {
 
     private final IUserRepository userRepository;

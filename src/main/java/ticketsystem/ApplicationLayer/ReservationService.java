@@ -1,5 +1,7 @@
 package ticketsystem.ApplicationLayer;
 
+import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,6 +30,7 @@ import java.time.Period;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Permission;
 
+@Service
 public class ReservationService {
 
     private final IOrderRepository orderRepository;

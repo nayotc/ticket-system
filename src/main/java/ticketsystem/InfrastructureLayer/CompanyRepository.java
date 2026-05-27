@@ -1,5 +1,7 @@
 package ticketsystem.InfrastructureLayer;
 
+import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,6 +11,7 @@ import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 
+@Repository
 public class CompanyRepository implements ICompanyRepository {
     private final ConcurrentHashMap<Long, Company> companies = new ConcurrentHashMap<>(); 
    @Override
