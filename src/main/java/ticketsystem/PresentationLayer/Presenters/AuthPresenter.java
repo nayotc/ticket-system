@@ -41,7 +41,7 @@ public class AuthPresenter {
         }
     }
 
-    public boolean signUp(String username, String password) {
+    public boolean signUp(String username, String password, String fullName, String phone) {
         try {
             String guestToken = UiSession.getGuestToken();
 
@@ -49,7 +49,7 @@ public class AuthPresenter {
                 throw new PresentationException("Guest session is missing. Please refresh and try again.");
             }
 
-            userService.signUp(guestToken, username, password);
+            userService.signUp(guestToken, username, password, fullName, phone);
             return true;
 
         } catch (PresentationException e) {
