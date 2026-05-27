@@ -52,13 +52,15 @@ public class Suspension {
         return true; // permanent suspension
     }
 
-    return LocalDateTime.now().isBefore(endDate);
-}
-public boolean isRevoked(){
-    return revoked;
-}
- void revoke(){
-    this.revoked = true;
-}
+    return LocalDateTime.now().isBefore(endDate);   
+    }
+
+    
+    public boolean isRevoked(){
+        return revoked;
+    }
+    void revoke(){
+        this.revoked = true;
+    }
 
 }

@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class User {
-
-    private List<Suspension> suspensions=new ArrayList<>();
+    private Suspension suspension;
+   // private List<Suspension> suspensions=new ArrayList<>();
     public User(){
     }
 
@@ -19,14 +19,13 @@ public class User {
             throw new IllegalStateException("Member is already suspended");
         }
 
-        suspensions.add(suspension);
+        this.suspension=suspension;
     }
 
     public void revokeSuspension(){
 
-        Suspension activeSuspension = getActiveSuspension();
-
-        if(activeSuspension == null){
+        Suspension activeSuspension = getSuspension();
+        if(activeSuspension == null|| !suspension.isActive()){
             throw new IllegalStateException("Member is not suspended");
         }
 
@@ -35,15 +34,10 @@ public class User {
 
     public boolean isSuspended(){
 
-        return suspensions.stream()
-                .anyMatch(Suspension::isActive);
+        return suspension.isActive();
     }
 
-    public Suspension getActiveSuspension(){
-
-        return suspensions.stream()
-                .filter(Suspension::isActive)
-                .findFirst()
-                .orElse(null);
+    public Suspension getSuspension(){
+            return suspension;
     }
 }

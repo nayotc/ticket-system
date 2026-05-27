@@ -23,15 +23,28 @@ public class CompanyService {
     private final MembershipDomainService membershipDomain;
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
     private final INotifier notificationsService;
+    private final UserAccessService userAccessService; 
+    
+    /**
+     * Constructor without logger. Kept for backward compatibility with existing
+     * tests and code.
+     */
+    public CompanyService(ICompanyRepository repo,
+                        ITokenService tokenService,
+                        MembershipDomainService membershipDomain,UserAccessService userAccessService, INotifier notifier) {
+        this(repo, tokenService, membershipDomain, null,userAccessService,notifier);
+    }
+
     public CompanyService(ICompanyRepository repo,
                         ITokenService tokenService,
                         MembershipDomainService membershipDomain,
-                        ISystemLogger logger, INotifier notifier) {
+                        ISystemLogger logger,UserAccessService userAccessService, INotifier notifier) {
         this.companyRepository = repo;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
         this.notificationsService=notifier;
+        this.userAccessService=userAccessService;
     }
 
     /**
@@ -86,7 +99,7 @@ public class CompanyService {
 
         try {
             long memberId = getRegisteredMemberId(sessionId);
-
+            userAccessService.validateCanPerformNonViewAction(memberId);
             logEvent("UC 3.2 validated member, memberId=" + memberId,
                     ISystemLogger.LogLevel.DEBUG);
 
