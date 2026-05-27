@@ -1013,7 +1013,7 @@ void GivenUserWithoutPermission_WhenAddVisibleDiscountToEvent_ThenSystemRejectsT
 
     String sessionWithoutPermission = "session-without-discount-permission";
 
-    Member plainUser = new Member(2L, "PlainUser");
+    Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000005");
     userRepository.addRegisteredMember(2L, plainUser, "password");
 
     tokenService.addValidSession(sessionWithoutPermission, 2L);
