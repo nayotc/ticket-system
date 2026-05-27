@@ -3,6 +3,8 @@ package ticketsystem.InfrastructureLayer;
 
 import java.util.Collection;
 
+import org.springframework.stereotype.Service;
+
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
