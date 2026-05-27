@@ -8,12 +8,16 @@ public class Member extends User {
 
     private final Long memberId;
     private String userName;
+    private String fullName;
+    private String phone;
     private long version;
     private ConcurrentHashMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
 
-    public Member(Long memberId, String userName) {
+    public Member(Long memberId, String userName, String fullName, String phone) {
         this.memberId = memberId;
         this.userName = userName;
+        this.fullName = fullName;
+        this.phone = phone;
         this.version = 0; // Initialize version
         this.myRoles = new ConcurrentHashMap<Long, CompanyRole>();
     }
@@ -22,6 +26,8 @@ public class Member extends User {
     public Member(Member other) {
         this.memberId = other.memberId;
         this.userName = other.userName;
+        this.fullName = other.fullName;
+        this.phone = other.phone;
         this.version = other.version;
         this.myRoles = new ConcurrentHashMap<>();
         
@@ -57,6 +63,14 @@ public class Member extends User {
     public void setUserName(String userName) {
         this.userName = userName;
     }
+
+    public String getFullName() { return this.fullName;}
+
+    public void setFullName(String fullName) { this.fullName = fullName; }
+
+    public String getPhone() { return this.phone; }
+
+    public void setPhone(String phone) { this.phone = phone; }
 
     public long getVersion() {
         return this.version;
