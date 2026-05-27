@@ -174,12 +174,17 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
         continueButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         continueButton.addClassName("ticket-summary-continue-button");
-        continueButton.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.CHECKOUT));
+//        continueButton.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.CHECKOUT));
+        continueButton.addClickListener(event -> handleContinue());
 
         totalBox.add(totalText, totalPrice, continueButton);
 
         summary.add(header, selectedTicketsList, emptySelection, totalBox);
         return summary;
+    }
+
+    private void handleContinue() {
+        UI.getCurrent().navigate(UiRoutes.CHECKOUT);
     }
 
     private void renderMap() {
