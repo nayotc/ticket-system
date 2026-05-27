@@ -10,6 +10,8 @@ public class Member extends User {
     private String userName;
     private long version;
     private ConcurrentHashMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
+    private Suspension suspension;
+
 
     public Member(Long memberId, String userName) {
         this.memberId = memberId;
@@ -103,5 +105,39 @@ public class Member extends User {
         if (role != null && role instanceof Manager) {
             ((Manager) role).setPermissions(newPermissions);
         }
+    }
+
+    //Suspend
+     public void suspend(Suspension suspension){
+
+        if(suspension == null){
+            throw new IllegalArgumentException("Suspension cannot be null");
+        }
+
+        if(isSuspended()){
+            throw new IllegalStateException("Member is already suspended");
+        }
+
+        this.suspension=suspension;
+    }
+
+    public void revokeSuspension(){
+
+        Suspension activeSuspension = getSuspension();
+        if(activeSuspension == null|| !suspension.isActive()){
+            throw new IllegalStateException("Member is not suspended");
+        }
+
+        activeSuspension.revoke();
+    }
+
+    public boolean isSuspended(){
+        if(suspension==null)
+            return false;
+        return suspension.isActive();
+    }
+
+    public Suspension getSuspension(){
+            return suspension;
     }
 }
