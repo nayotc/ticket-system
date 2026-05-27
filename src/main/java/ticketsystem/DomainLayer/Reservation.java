@@ -1,18 +1,14 @@
 package ticketsystem.DomainLayer;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-
-import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.lottery.Lottery;
-import ticketsystem.DomainLayer.lottery.LotteryRegistration;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
@@ -87,6 +83,9 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
     }
 }
     //2.8 checkout
+    public void canPurchaseByEventPolicy(Event event, int ticketCount, int buyerAge) {
+        event.canPurchase(ticketCount, buyerAge);
+    }
 
     public BigDecimal submitActiveOrderForCheckout(ActiveOrder order, Event event) {
         if(order==null|| event==null) {
@@ -145,7 +144,14 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
                     }
                 return false;
             }
+    public boolean timeAboutToExpire(Event event, ActiveOrder order) {
+    if (event == null || order == null) {
+        return false;
+    }
 
+    return order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT
+            && order.isAboutToExpire();
+}
     //expire order and release tickets back to event
     public void expire(Event event , ActiveOrder order) {
       

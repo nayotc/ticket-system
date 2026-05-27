@@ -11,17 +11,21 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
-import ticketsystem.DomainLayer.event.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Permission;
-import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import java.util.Objects;
+
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
+import ticketsystem.DomainLayer.history.Purchase;
 
 public class EventService {
 
@@ -30,13 +34,19 @@ public class EventService {
     private final MembershipDomainService membershipDomain;
     private final List<EventUpdatesListener> eventUpdatesListeners = new ArrayList<>();
     private final ISystemLogger logger;
+    private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
+    private final INotifier notificationsService;
+    private final IHistoryRepository historyRepository;
 
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
-            MembershipDomainService membershipDomain, ISystemLogger logger) {
+            MembershipDomainService membershipDomain, ISystemLogger logger,
+            INotifier notificationsService, IHistoryRepository historyRepository) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
+        this.notificationsService = notificationsService;
+        this.historyRepository = historyRepository;
     }
 
     public Boolean insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
@@ -185,6 +195,10 @@ public class EventService {
             if (notificateUsers) {
                 notifyEventUpdatedListeners(existingEvent.getId(), eventDTO.date(), eventDTO.location(), message);
                 logger.logEvent("Notified users - updateEvent. " + context, LogLevel.DEBUG);
+                notifyPurchasedBuyers(
+                existingEvent.getId(),
+                "The details of the event \"" + existingEvent.getName() + "\" have been updated. Please check your ticket details."
+            );
             }
             existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
             eventRepository.updateEvent(existingEvent);
@@ -337,6 +351,10 @@ public class EventService {
             event.cancel();
             eventRepository.updateEvent(event); // update event status to cancelled
             notifyEventCanceledListeners(eventId);
+            notifyPurchasedBuyers(
+            eventId,
+            "The event \"" + event.getName() + "\" was canceled."
+           );
             logger.logEvent("Completed - cancelEvent. " + context, LogLevel.INFO);
             return true;
         } catch (IllegalArgumentException e) {
@@ -412,6 +430,60 @@ public class EventService {
         return "eventId=" + eventDTO.id()
                 + ", companyId=" + eventDTO.companyId()
                 + ", version=" + eventDTO.version();
+    }
+  private void notifyPurchasedBuyers(Long eventId, String message) {
+    if (notificationsService == null || historyRepository == null || eventId == null
+            || message == null || message.isBlank()) {
+        return;
+    }
+
+    List<Long> buyerMemberIds = historyRepository.getPurchasesByEventId(eventId)
+            .stream()
+            .map(Purchase::getMemberId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+
+    if (buyerMemberIds.isEmpty()) {
+        return;
+    }
+
+    notificationsService.notifyMembers(buyerMemberIds, message);
+}
+
+public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
+    try {
+        Event event = canEditPurchasePolicy(token, eventId);
+
+        PurchasePolicy policy = mapper.toDomain(policyDTO);
+
+        event.setPurchasePolicy(policy);
+
+        eventRepository.updateEvent(event);
+
+    } catch (Exception e) {
+        logger.logEvent(
+                "Failed to set purchase policy for event, id: " + eventId,
+                ISystemLogger.LogLevel.WARN
+        );
+        throw e;
+    }
+}
+    private Event canEditPurchasePolicy(String token,Long eventId) throws Exception{
+        tokenService.validateToken(token);
+
+            Long memberId = tokenService.extractUserId(token);
+
+            Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+
+        if (!membershipDomain.validatePermission(memberId,event.getCompanyId(),Permission.SET_PURCHASING_POLICY)){
+            throw new IllegalArgumentException(
+                "User does not have permission to manage event purchasing policy");
+        }
+            return event;
     }
 
     // add visible discount to event
@@ -561,4 +633,6 @@ public class EventService {
 
         return event;
     }
+
 }
+

@@ -9,6 +9,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,7 +21,7 @@ import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
 
-@PageTitle("TixNow - תוצאות חיפוש")
+@PageTitle("TixNow | Search Results")
 @Route(value = UiRoutes.SEARCH_RESULTS, layout = MainLayout.class)
 public class SearchResults extends PageContainer implements BeforeEnterObserver {
 
@@ -151,31 +152,46 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
 
         grid.add(
                 new EventCard(
-                        "פסטיבל",
-                        "NIGHTFALL Festival 2026",
-                        "24 אוקטובר, 22:00",
+                        "מופע עשור",
+                        "פסטיבל אורות הלילה",
+                        "24 אוקטובר, 21:00",
                         "פארק הירקון, תל אביב",
-                        "₪250",
-                        Photos.EVENT_ELECTRONIC,
+                        "₪249",
+                        Photos.EVENT_LIGHTS,
+                        true,
+                        "Amazing Events",
+                        2L,
+                        30L,
+                        SaleStatus.PRE_SALE,
                         true
                 ),
                 new EventCard(
-                        "מסיבה",
-                        "Underground Beats",
-                        "1 נובמבר, 23:30",
-                        "מועדון הבלוק, תל אביב",
-                        "₪120",
-                        Photos.EVENT_LIGHTS,
+                        "סטנדאפ",
+                        "מרתון צחוק תל אביבי",
+                        "15 נובמבר, 22:30",
+                        "מועדון זאפה, הרצליה",
+                        "₪119",
+                        Photos.EVENT_STANDUP,
+                        false,
+                        "Laugh Factory",
+                        3L,
+                        20L,
+                        SaleStatus.ENDED,
                         false
                 ),
                 new EventCard(
-                        "פסטיבל",
-                        "Desert Mirage 2026",
-                        "15-17 נובמבר",
-                        "חוות הנוקדים, נגב",
-                        "₪450",
-                        Photos.VIP_EXPERIENCE,
-                        false
+                        "מסיבה",
+                        "ליין שישי אלקטרוני",
+                        "20 אוקטובר, 23:55",
+                        "האומן 17, תל אביב",
+                        "₪90",
+                        Photos.EVENT_ELECTRONIC,
+                        false,
+                        "TixNow Productions",
+                        1L,
+                        15L,
+                        SaleStatus.NOT_STARTED,
+                        true
                 )
         );
 

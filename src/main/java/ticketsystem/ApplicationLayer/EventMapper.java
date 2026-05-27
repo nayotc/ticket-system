@@ -13,16 +13,7 @@ import ticketsystem.DTO.Event.SeatDTO;
 import ticketsystem.DTO.Event.SeatPositionDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
-import ticketsystem.DomainLayer.event.Element;
-import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.DomainLayer.event.EventCategory;
-import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.EventMap;
-import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.DomainLayer.event.Seat;
-import ticketsystem.DomainLayer.event.SeatPosition;
-import ticketsystem.DomainLayer.event.SeatingArea;
-import ticketsystem.DomainLayer.event.StandingArea;
+import ticketsystem.DomainLayer.event.*;
 
 public class EventMapper {
     private EventMapper() {
@@ -180,6 +171,10 @@ public class EventMapper {
 
     public static Seat.SeatStatus toSeatStatus(String status) {
         return Seat.SeatStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
+    }
+
+    public static SaleStatus toSaleStatus(String status) {
+        return SaleStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
     }
 
 }

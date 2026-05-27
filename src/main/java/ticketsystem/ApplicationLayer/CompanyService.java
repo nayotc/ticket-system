@@ -2,17 +2,18 @@ package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
-
 
 public class CompanyService {
 
@@ -20,24 +21,17 @@ public class CompanyService {
     private final ITokenService tokenService;
     private final ISystemLogger logger;
     private final MembershipDomainService membershipDomain;
-    /**
-     * Constructor without logger. Kept for backward compatibility with existing
-     * tests and code.
-     */
-    public CompanyService(ICompanyRepository repo,
-                        ITokenService tokenService,
-                        MembershipDomainService membershipDomain) {
-        this(repo, tokenService, membershipDomain, null);
-    }
-
+    private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
+    private final INotifier notificationsService;
     public CompanyService(ICompanyRepository repo,
                         ITokenService tokenService,
                         MembershipDomainService membershipDomain,
-                        ISystemLogger logger) {
+                        ISystemLogger logger, INotifier notifier) {
         this.companyRepository = repo;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
+        this.notificationsService=notifier;
     }
 
     /**
@@ -99,7 +93,7 @@ public class CompanyService {
         Company newCompany = new Company(
                 companyName,
                 memberId,
-                new PurchasePolicy(),
+                PurchasePolicy.noRestrictions(),
                 new DiscountPolicy(DiscountCompositionType.MAX)//defult
         );
 
@@ -149,7 +143,10 @@ public class CompanyService {
             membershipDomain.validateFounder(memberId, companyId);
             company.closeOrSuspend();
             companyRepository.save(company);
-
+            notifyCompanyStaff(
+            company,
+            "The production company \"" + company.getName() + "\" has been closed and is no longer active."
+            );
             logEvent("UC 4.13 completed: company closed, companyId=" + companyId
                     + ", founderId=" + memberId,
                     ISystemLogger.LogLevel.INFO);
@@ -192,7 +189,10 @@ public class CompanyService {
             membershipDomain.validateFounder(memberId, companyId);
             company.reopenCompany();
             companyRepository.save(company);
-
+            notifyCompanyStaff(
+            company,
+            "The production company \"" + company.getName() + "\" has been reopened and is now active."
+            );
             logEvent("UC 4.14 completed: company reopened, companyId=" + companyId
                     + ", founderId=" + memberId,
                     ISystemLogger.LogLevel.INFO);
@@ -288,7 +288,18 @@ public class CompanyService {
             throw e;
         }
     }
+    private void notifyCompanyStaff(Company company, String message) {
+        if (notificationsService == null || company == null || message == null || message.isBlank()) {
+            return;
+        }
 
+        Set<Long> recipients = membershipDomain.getManagementSubTreeMemberIds(
+                company.getFounderId(),
+                company.getId()
+        );
+
+        notificationsService.notifyMembers(recipients, message);
+    }
     /**
      * Writes an event log message if a logger was injected.
      *
@@ -441,4 +452,39 @@ public class CompanyService {
         }
             return company;
     }
+
+    public void setCompanyPurchasePolicy(String token, Long companyId, PurchasePolicyDTO policyDTO) throws Exception {
+        try {
+            Company company = canEditPurchasePolicy(token, companyId);
+
+            PurchasePolicy policy = mapper.toDomain(policyDTO);
+
+            company.setPurchasePolicy(policy);
+
+            companyRepository.save(company);
+
+        } catch (Exception e) {
+            logger.logEvent(
+                    "Failed to set purchase policy for company, id: " + companyId,
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
+        }
+    }
+    private Company canEditPurchasePolicy(String token,Long companyId) throws Exception{
+        tokenService.validateToken(token);
+
+            Long memberId = tokenService.extractUserId(token);
+
+            Company company = companyRepository.findById(companyId)
+                            .orElseThrow(() -> new Exception("Error: Company not found."));;
+
+        if (!membershipDomain.validatePermission(memberId,companyId,Permission.SET_PURCHASING_POLICY)){
+            throw new IllegalArgumentException(
+                "User does not have permission to manage company purchasing policy");
+        }
+            return company;
+    }
+
+
 }

@@ -45,6 +45,7 @@ public class ReservationIntegrationTest {
                                 100L);
 
                 event = createActiveEventWithSeatingAndStandingAreas(100L);
+                
         }
 
         @Test

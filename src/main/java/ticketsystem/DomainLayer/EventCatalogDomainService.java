@@ -1,14 +1,9 @@
 package ticketsystem.DomainLayer;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import io.jsonwebtoken.lang.Objects;
 import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
-import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 
@@ -94,5 +89,8 @@ public class EventCatalogDomainService {
             }
             return finalPrice;
 
+    }
+    public void canPurchaseByCompanyPolicy(long companyId, int ticketCount, int buyerAge) {
+        companyRepository.findById(companyId).orElseThrow(() -> new IllegalArgumentException("Company not found")).canPurchase(ticketCount, buyerAge);
     }
 }

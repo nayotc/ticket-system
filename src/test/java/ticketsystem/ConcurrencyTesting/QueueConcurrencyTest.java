@@ -3,6 +3,7 @@ package ticketsystem.ConcurrencyTesting;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -292,16 +293,27 @@ public class QueueConcurrencyTest {
             }
         };
     }
+private INotifier createFakeNotifications() {
+    return new INotifier() {
+        @Override
+        public void notifyGuest(String sessionId, String message) {
+            // No-op for concurrency tests
+        }
 
-    private INotifier createFakeNotifications() {
-        return new INotifier() {
-            public void notifyGuest(String sessionId, String message) {
-                // Do nothing
-            }
-            public void notifyMember(Long memberId, String message) {
-                // Do nothing
-            }
-        };
-    }
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            // No-op for concurrency tests
+        }
 
+        @Override
+        public void notifyMembers(Collection<Long> memberIds, String message) {
+            // No-op for concurrency tests
+        }
+
+        @Override
+        public void notifyGuests(Collection<String> guestTokens, String message) {
+            // No-op for concurrency tests
+        }
+    };
 }
+    }

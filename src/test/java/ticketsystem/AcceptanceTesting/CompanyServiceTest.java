@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,8 @@ import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.PurchasePolicyDTO;
+import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -35,13 +38,22 @@ import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.RoleStatus;
 
+import ticketsystem.DTO.PurchaseRuleDTO;
+
+import java.util.Collection;
+import java.util.ArrayList;
+import java.util.List;
+
+import ticketsystem.ApplicationLayer.INotifier;
+
+
 public class CompanyServiceTest {
 
     private CompanyService companyService;
     private UserService userService;
     private ITokenService tokenService;
     private ISystemLogger testLogger;
-
+    private FakeNotifier fakeNotifier;
     private String founderToken;
     private String nonFounderToken;
     private IUserRepository userRepository;
@@ -78,7 +90,8 @@ public class CompanyServiceTest {
         userService = new UserService(userRepository, tokenService, testLogger);
         membershipDomain = new MembershipDomainService(userRepository);
         userService = new UserService(userRepository, tokenService, testLogger);
-        companyService = new CompanyService(companyRepository, tokenService, membershipDomain, testLogger);
+        fakeNotifier = new FakeNotifier();
+        companyService = new CompanyService(companyRepository, tokenService, membershipDomain, testLogger, fakeNotifier);
 
         founderToken = createLoggedInMember("noa_user", "password123");
         nonFounderToken = createLoggedInMember("other_user", "password123");
@@ -210,6 +223,7 @@ public class CompanyServiceTest {
     @Test
     void GivenFounder_WhenAddVisibleDiscountToCompany_ThenDiscountIsAddedToCompany() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
 
         companyService.addVisibleDiscountToCompany(
                 founderToken,
@@ -346,5 +360,211 @@ public class CompanyServiceTest {
         assertThrows(Exception.class, () ->
                 companyService.removeDiscountFromCompany(founderToken, companyDTO.getId(), 999999L)
         );
-    }    
-}
+
+    }  
+    
+    // UC 4.3: Set company purchase policy
+    @Test
+        void GivenFounder_WhenSetCompanyPurchasePolicyWithMaxTicketsRule_ThenPolicyIsSavedOnCompany() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+        companyService.setCompanyPurchasePolicy(
+                founderToken,
+                companyDTO.getId(),
+                policyDTO
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        assertDoesNotThrow(() -> company.canPurchase(5, 20));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(6, 20)
+        );
+
+        assertEquals("Cannot purchase more than 5 tickets.", exception.getMessage());
+        }
+
+        @Test
+        void GivenFounder_WhenSetCompanyPurchasePolicyWithMinAgeRule_ThenPolicyIsSavedOnCompany() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO policyDTO = minAgePolicyDTO(18);
+
+        companyService.setCompanyPurchasePolicy(
+                founderToken,
+                companyDTO.getId(),
+                policyDTO
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        assertDoesNotThrow(() -> company.canPurchase(1, 18));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(1, 17)
+        );
+
+        assertEquals(
+                "Customer does not meet the minimum age requirement of 18",
+                exception.getMessage()
+        );
+        }
+    @Test
+    void GivenFounder_WhenSetCompanyPurchasePolicyWithNestedRule_ThenNestedPolicyIsSavedOnCompany() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO policyDTO = new PurchasePolicyDTO(
+                new PurchaseRuleDTO(
+                        PurchaseRuleType.AND,
+                        null,
+                        List.of(
+                                new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, 18, null),
+                                new PurchaseRuleDTO(
+                                        PurchaseRuleType.OR,
+                                        null,
+                                        List.of(
+                                                new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, 2, null),
+                                                new PurchaseRuleDTO(PurchaseRuleType.MIN_TICKETS, 100, null)
+                                        )
+                                )
+                        )
+                )
+        );
+
+        companyService.setCompanyPurchasePolicy(
+                founderToken,
+                companyDTO.getId(),
+                policyDTO
+        );
+
+        Company company = companyRepository.findById(companyDTO.getId())
+                .orElseThrow(() -> new Exception("Company not found in test"));
+
+        assertDoesNotThrow(() -> company.canPurchase(2, 18));
+        assertDoesNotThrow(() -> company.canPurchase(100, 18));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(50, 18)
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(2, 17)
+        );
+    }
+        @Test
+        void GivenUserWithoutPurchasePolicyPermission_WhenSetCompanyPurchasePolicy_ThenThrowsException() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> companyService.setCompanyPurchasePolicy(
+                        nonFounderToken,
+                        companyDTO.getId(),
+                        policyDTO
+                )
+        );
+        }
+
+        @Test
+        void GivenFounderAndNonExistingCompany_WhenSetCompanyPurchasePolicy_ThenThrowsException() {
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+
+        assertThrows(
+                Exception.class,
+                () -> companyService.setCompanyPurchasePolicy(
+                        founderToken,
+                        999999L,
+                        policyDTO
+                        )
+        );
+        }
+
+        @Test
+        void GivenFounderAndInvalidPurchasePolicyDTO_WhenSetCompanyPurchasePolicy_ThenThrowsException() throws Exception {
+        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        PurchasePolicyDTO invalidPolicyDTO = new PurchasePolicyDTO(
+                new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, null, null)
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> companyService.setCompanyPurchasePolicy(
+                        founderToken,
+                        companyDTO.getId(),
+                        invalidPolicyDTO
+                )
+        );
+
+        assertEquals("Minimum age is required", exception.getMessage());
+        }
+
+        private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {
+        return new PurchasePolicyDTO(
+                new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, maxTickets, null)
+        );
+        }
+
+        private PurchasePolicyDTO minAgePolicyDTO(int minAge) {
+        return new PurchasePolicyDTO(
+                new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, minAge, null)
+        );
+        }
+        private static class FakeNotifier implements INotifier {
+
+            private final List<String> messages = new ArrayList<>();
+
+            @Override
+            public void notifyMember(Long memberId, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyGuest(String guestToken, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyMembers(Collection<Long> memberIds, String message) {
+                if (memberIds == null) {
+                    return;
+                }
+
+                for (Long memberId : memberIds) {
+                    if (memberId != null) {
+                        notifyMember(memberId, message);
+                    }
+                }
+            }
+
+            @Override
+            public void notifyGuests(Collection<String> guestTokens, String message) {
+                if (guestTokens == null) {
+                    return;
+                }
+
+                for (String guestToken : guestTokens) {
+                    if (guestToken != null && !guestToken.isBlank()) {
+                        notifyGuest(guestToken, message);
+                    }
+                }
+            }
+
+            boolean containsMessage(String text) {
+                return messages.stream()
+                        .anyMatch(message -> message.contains(text));
+            }
+        }
+
+        }
