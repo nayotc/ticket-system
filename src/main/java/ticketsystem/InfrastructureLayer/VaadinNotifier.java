@@ -44,7 +44,9 @@ public class VaadinNotifier implements INotifier {
         }
 
         for (Long memberId : memberIds) {
-            notifyMember(memberId, message);
+            if (memberId != null) {
+                notifyMember(memberId, message);
+            }
         }
     }
 
@@ -55,7 +57,10 @@ public class VaadinNotifier implements INotifier {
         }
 
         for (String guestToken : guestTokens) {
-            notifyGuest(guestToken, message);
+            if (guestToken != null && !guestToken.isBlank()) {
+                notifyGuest(guestToken, message);
+            }
         }
+
     }
 }

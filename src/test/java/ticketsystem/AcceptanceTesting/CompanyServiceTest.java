@@ -416,9 +416,8 @@ public class CompanyServiceTest {
                 exception.getMessage()
         );
         }
-
-        @Test
-        void GivenFounder_WhenSetCompanyPurchasePolicyWithNestedRule_ThenNestedPolicyIsSavedOnCompany() throws Exception {
+    @Test
+    void GivenFounder_WhenSetCompanyPurchasePolicyWithNestedRule_ThenNestedPolicyIsSavedOnCompany() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         PurchasePolicyDTO policyDTO = new PurchasePolicyDTO(
@@ -460,8 +459,7 @@ public class CompanyServiceTest {
                 IllegalArgumentException.class,
                 () -> company.canPurchase(2, 17)
         );
-        }
-
+    }
         @Test
         void GivenUserWithoutPurchasePolicyPermission_WhenSetCompanyPurchasePolicy_ThenThrowsException() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);

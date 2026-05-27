@@ -2,6 +2,7 @@ package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -431,6 +432,9 @@ public class ReservationService {
         }
 
         eventRepository.updateEvent(event);
+        if (event != null && !event.isSoldOut()) {
+            soldOutNotificationSentEventIds.remove(event.getId());
+        }
     }
 
    private void expireOldOrders() {
@@ -503,6 +507,8 @@ private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutB
             return;
         }
 
+        Set<Long> recipients = new HashSet<>();
+
         for (Long memberId : staffMemberIds) {
             if (memberId != null
                     && membershipDomain.validatePermission(
@@ -510,13 +516,14 @@ private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutB
                             company.getId(),
                             Permission.MANAGE_EVENT_INVENTORY
                     )) {
-
-                notificationsService.notifyMember(
-                        memberId,
-                        "The event \"" + event.getName() + "\" is now sold out."
-                );
+                recipients.add(memberId);
             }
         }
+
+        notificationsService.notifyMembers(
+                recipients,
+                "The event \"" + event.getName() + "\" is now sold out."
+        );
 
         logger.logEvent(
                 "Sold out notification sent for eventId=" + event.getId()

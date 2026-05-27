@@ -431,7 +431,7 @@ public class EventService {
                 + ", companyId=" + eventDTO.companyId()
                 + ", version=" + eventDTO.version();
     }
-    private void notifyPurchasedBuyers(Long eventId, String message) {
+  private void notifyPurchasedBuyers(Long eventId, String message) {
     if (notificationsService == null || historyRepository == null || eventId == null
             || message == null || message.isBlank()) {
         return;
@@ -450,24 +450,25 @@ public class EventService {
 
     notificationsService.notifyMembers(buyerMemberIds, message);
 }
-    public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
-        try {
-            Event event = canEditPurchasePolicy(token, eventId);
 
-            PurchasePolicy policy = mapper.toDomain(policyDTO);
+public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
+    try {
+        Event event = canEditPurchasePolicy(token, eventId);
 
-            event.setPurchasePolicy(policy);
+        PurchasePolicy policy = mapper.toDomain(policyDTO);
 
-            eventRepository.updateEvent(event);
+        event.setPurchasePolicy(policy);
 
-        } catch (Exception e) {
-            logger.logEvent(
-                    "Failed to set purchase policy for event, id: " + eventId,
-                    ISystemLogger.LogLevel.WARN
-            );
-            throw e;
-        }
+        eventRepository.updateEvent(event);
+
+    } catch (Exception e) {
+        logger.logEvent(
+                "Failed to set purchase policy for event, id: " + eventId,
+                ISystemLogger.LogLevel.WARN
+        );
+        throw e;
     }
+}
     private Event canEditPurchasePolicy(String token,Long eventId) throws Exception{
         tokenService.validateToken(token);
 

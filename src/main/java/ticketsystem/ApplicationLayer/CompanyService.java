@@ -289,20 +289,16 @@ public class CompanyService {
         }
     }
     private void notifyCompanyStaff(Company company, String message) {
-    if (notificationsService == null || company == null || message == null || message.isBlank()) {
-        return;
-    }
-
-    Set<Long> recipients = membershipDomain.getManagementSubTreeMemberIds(
-            company.getFounderId(),
-            company.getId()
-    );
-
-    for (Long memberId : recipients) {
-        if (memberId != null) {
-            notificationsService.notifyMember(memberId, message);
+        if (notificationsService == null || company == null || message == null || message.isBlank()) {
+            return;
         }
-    }
+
+        Set<Long> recipients = membershipDomain.getManagementSubTreeMemberIds(
+                company.getFounderId(),
+                company.getId()
+        );
+
+        notificationsService.notifyMembers(recipients, message);
     }
     /**
      * Writes an event log message if a logger was injected.

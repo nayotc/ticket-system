@@ -148,23 +148,22 @@ public class SystemAdminService {
         }
     }
 
-    // Use Case 6.1: Close Production Company by System Admin
-    public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) throws Exception {
-        SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+   // Use Case 6.1: Close Production Company by System Admin
+public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) throws Exception {
+    SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
-        if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
-            logger.logEvent("Unauthorized access. Invalid admin credentials.",
-                    LogbackSystemLogger.LogLevel.WARN);
-            throw new Exception("Unauthorized access. Invalid admin credentials.");
-        }
+    if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
+        logger.logEvent("Unauthorized access. Invalid admin credentials.",
+                LogbackSystemLogger.LogLevel.WARN);
+        throw new Exception("Unauthorized access. Invalid admin credentials.");
+    }
 
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new Exception("Error: Company not found."));
+    Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new Exception("Error: Company not found."));
 
-        
-        Set<Long> staffMemberIds = membershipDomain.getManagementSubTreeMemberIds(
-        company.getFounderId(),
-        company.getId()
+    Set<Long> staffMemberIds = membershipDomain.getManagementSubTreeMemberIds(
+            company.getFounderId(),
+            company.getId()
     );
 
     membershipDomain.cancelAllRolesForCompany(companyId);

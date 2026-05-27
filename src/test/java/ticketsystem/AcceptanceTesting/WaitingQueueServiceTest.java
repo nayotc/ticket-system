@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -108,7 +110,7 @@ public class WaitingQueueServiceTest {
         waitingQueueService.releaseSpot(3, validToken1);
 
         // Assert
-        assertTrue(fakeNotifications.notifiedUsers.contains(validToken2),
+        assertTrue(fakeNotifications.wasNotified(validToken2),
                 "The queued user should have received a notification.");
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
@@ -137,7 +139,9 @@ public class WaitingQueueServiceTest {
         // Assert
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Capacity should drop to 1.");
-        assertTrue(fakeNotifications.notifiedUsers.isEmpty(),
+        assertEquals(0,
+                fakeNotifications.notificationCount(validToken1)
+                        + fakeNotifications.notificationCount(validToken2),
                 "No notifications should be sent since the queue is empty.");
     }
 
@@ -157,46 +161,101 @@ public class WaitingQueueServiceTest {
         assertEquals(0, savedEvent.getActiveReservationsCount(), "Active reservations should remain 0.");
         assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
     }
-private class FakeNotificationsService implements INotifier {
+    private static class FakeNotificationsService implements INotifier {
 
-    public List<String> notifiedUsers = new ArrayList<>();
-    public List<String> messages = new ArrayList<>();
+        private final Map<String, List<String>> messagesBySession = new HashMap<>();
+        private final Map<Long, List<String>> messagesByMember = new HashMap<>();
+        private final List<String> allMessages = new ArrayList<>();
 
-    @Override
-    public void notifyGuest(String sessionId, String message) {
-        notifiedUsers.add(sessionId);
-        messages.add(message);
+        @Override
+        public void notifyGuest(String sessionId, String message) {
+            messagesBySession
+                    .computeIfAbsent(sessionId, key -> new ArrayList<>())
+                    .add(message);
+
+            allMessages.add(message);
+        }
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messagesByMember
+                    .computeIfAbsent(memberId, key -> new ArrayList<>())
+                    .add(message);
+
+            allMessages.add(message);
+        }
+
+        @Override
+        public void notifyMembers(Collection<Long> memberIds, String message) {
+            if (memberIds == null) {
+                return;
+            }
+
+            for (Long memberId : memberIds) {
+                if (memberId != null) {
+                    notifyMember(memberId, message);
+                }
+            }
+        }
+
+        @Override
+        public void notifyGuests(Collection<String> guestTokens, String message) {
+            if (guestTokens == null) {
+                return;
+            }
+
+            for (String guestToken : guestTokens) {
+                if (guestToken != null && !guestToken.isBlank()) {
+                    notifyGuest(guestToken, message);
+                }
+            }
+        }
+
+        boolean wasNotified(String sessionId) {
+            return messagesBySession.containsKey(sessionId)
+                    && !messagesBySession.get(sessionId).isEmpty();
+        }
+
+        int notificationCount(String sessionId) {
+            return messagesBySession
+                    .getOrDefault(sessionId, List.of())
+                    .size();
+        }
+
+        String lastMessageFor(String sessionId) {
+            List<String> messages = messagesBySession.getOrDefault(sessionId, List.of());
+
+            if (messages.isEmpty()) {
+                return "";
+            }
+
+            return messages.get(messages.size() - 1);
+        }
+
+        boolean wasMemberNotified(Long memberId) {
+            return messagesByMember.containsKey(memberId)
+                    && !messagesByMember.get(memberId).isEmpty();
+        }
+
+        int memberNotificationCount(Long memberId) {
+            return messagesByMember
+                    .getOrDefault(memberId, List.of())
+                    .size();
+        }
+
+        String lastMessageForMember(Long memberId) {
+            List<String> messages = messagesByMember.getOrDefault(memberId, List.of());
+
+            if (messages.isEmpty()) {
+                return "";
+            }
+
+            return messages.get(messages.size() - 1);
+        }
+
+        boolean containsMessage(String text) {
+            return allMessages.stream()
+                    .anyMatch(message -> message.contains(text));
+        }
     }
-
-    @Override
-    public void notifyMember(Long memberId, String message) {
-        if (memberId != null) {
-            notifiedUsers.add(memberId.toString());
-        }
-        messages.add(message);
-    }
-
-    @Override
-    public void notifyMembers(Collection<Long> memberIds, String message) {
-        if (memberIds == null) {
-            return;
-        }
-
-        for (Long memberId : memberIds) {
-            notifyMember(memberId, message);
-        }
-    }
-
-    @Override
-    public void notifyGuests(Collection<String> guestTokens, String message) {
-        if (guestTokens == null) {
-            return;
-        }
-
-        for (String guestToken : guestTokens) {
-            notifyGuest(guestToken, message);
-        }
-    }
-}
-
 }

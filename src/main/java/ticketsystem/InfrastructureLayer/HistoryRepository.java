@@ -73,10 +73,10 @@ public class HistoryRepository implements IHistoryRepository {
     public long generateNextId() {
         return counter.getAndIncrement(); 
     }
+
     @Override
     public List<Purchase> getPurchasesByEventId(long eventId) {
         List<Purchase> purchases = purchasesByEventId.getOrDefault(eventId, new CopyOnWriteArrayList<>());
         return new ArrayList<>(purchases);
     }
-
 }

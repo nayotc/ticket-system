@@ -198,4 +198,5 @@ public class LotteryServiceTest {
                         .anyMatch(message -> message.contains(text));
             }
         }
+
 }

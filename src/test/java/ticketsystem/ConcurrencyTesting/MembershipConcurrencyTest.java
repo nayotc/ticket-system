@@ -18,10 +18,8 @@ import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -311,7 +309,7 @@ public class MembershipConcurrencyTest {
         Manager managerRole = (Manager) updatedTarget.getRoleInCompany(companyId);
         assertEquals(1, managerRole.getPermissions().size(), "Manager should end up with exactly 1 permission from the winning thread.");
     }
-        private static class FakeNotifier implements INotifier {
+private static class FakeNotifier implements INotifier {
 
             private final List<String> messages = new ArrayList<>();
 
@@ -356,4 +354,5 @@ public class MembershipConcurrencyTest {
                         .anyMatch(message -> message.contains(text));
             }
         }
+
 }

@@ -51,7 +51,7 @@ public class WaitingQueueService {
                     if (event.isSoldOut()) {
                         logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId,
                                 LogbackSystemLogger.LogLevel.INFO);
-                    notificationsService.notifyGuest(
+                    notifyTokenHolder(
                     tokenString,
                     "The event is sold out."
                     );
@@ -71,7 +71,7 @@ public class WaitingQueueService {
                     int position = queueRepository.getQueueSize(eventId);
                     logger.logEvent("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position,
                             LogbackSystemLogger.LogLevel.INFO);
-                    notificationsService.notifyGuest(
+                    notifyTokenHolder(
                     tokenString,
                     "You have entered the waiting queue. Your current position is: " + position + "."
                     );
@@ -113,7 +113,7 @@ public class WaitingQueueService {
                 eventRepository.updateEvent(eventToUpdate);
 
                 String sessionId = approvedUsers.get(0);
-                notificationsService.notifyGuest(sessionId,
+                notifyTokenHolder(sessionId,
                         "It's your turn! You can now purchase tickets for Event " + eventId);
                 logger.logEvent("Processed waiting queue for Event " + eventId + ". Approved users: 1",
                         LogbackSystemLogger.LogLevel.INFO);
@@ -157,7 +157,7 @@ public class WaitingQueueService {
 
     public void expireUserSession(long eventId, String sessionId) {
         releaseSpot(eventId, sessionId);
-        notificationsService.notifyGuest(
+        notifyTokenHolder(
         sessionId,
         "Your access time for ticket selection has expired. You were removed from the queue."
         );
@@ -165,12 +165,57 @@ public class WaitingQueueService {
 
     public void handleSoldOutEvent(long eventId) {
         List<String> remainingUsers = queueRepository.clearQueue(eventId);
-        for (String sessionId : remainingUsers) {
-        notificationsService.notifyGuest(
-                    sessionId,
-                    "The event is sold out. The waiting queue has been closed."
-            );
+
+        notifyTokenHolders(
+                remainingUsers,
+                "The event is sold out. The waiting queue has been closed."
+        );
+    }
+
+    private void notifyTokenHolder(String token, String message) {
+        if (notificationsService == null || token == null || token.isBlank()
+                || message == null || message.isBlank()) {
+            return;
         }
+
+        if (tokenService.isMemberToken(token)) {
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId != null) {
+                notificationsService.notifyMember(memberId, message);
+                return;
+            }
+        }
+
+        notificationsService.notifyGuest(token, message);
+    }
+
+    private void notifyTokenHolders(List<String> tokens, String message) {
+        if (notificationsService == null || tokens == null || tokens.isEmpty()
+                || message == null || message.isBlank()) {
+            return;
+        }
+
+        List<Long> memberIds = new java.util.ArrayList<>();
+        List<String> guestTokens = new java.util.ArrayList<>();
+
+        for (String token : tokens) {
+            if (token == null || token.isBlank()) {
+                continue;
+            }
+
+            if (tokenService.isMemberToken(token)) {
+                Long memberId = tokenService.extractUserId(token);
+                if (memberId != null) {
+                    memberIds.add(memberId);
+                    continue;
+                }
+            }
+
+            guestTokens.add(token);
+        }
+
+        notificationsService.notifyMembers(memberIds, message);
+        notificationsService.notifyGuests(guestTokens, message);
     }
 
 }
