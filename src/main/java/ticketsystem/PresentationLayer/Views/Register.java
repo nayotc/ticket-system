@@ -28,6 +28,7 @@ import ticketsystem.PresentationLayer.Components.FormCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.AuthLayout;
+import ticketsystem.PresentationLayer.Components.Notifications;
 
 @PageTitle("TixNow | Registration")
 @Route(value = UiRoutes.REGISTRATION, layout = AuthLayout.class)
@@ -197,8 +198,7 @@ public class Register extends PageContainer {
                     phone.getValue()
             );
 
-            Notification notification = Notification.show("ההרשמה נקלטה בהצלחה");
-            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            Notifications.success("ההרשמה נקלטה בהצלחה");
 
             UI.getCurrent().navigate(UiRoutes.LOGIN);
 
@@ -212,7 +212,6 @@ public class Register extends PageContainer {
     }
 
     private void showError(String message) {
-        Notification notification = Notification.show(message);
-        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        Notifications.error(message);
     }
 }
