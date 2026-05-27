@@ -1,4 +1,5 @@
 package ticketsystem.DomainLayer.user;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,6 +13,8 @@ public class Member extends User {
     private String phone;
     private long version;
     private ConcurrentHashMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
+    private Suspension suspension;
+
 
     public Member(Long memberId, String userName, String fullName, String phone) {
         this.memberId = memberId;
@@ -117,5 +120,40 @@ public class Member extends User {
         if (role != null && role instanceof Manager) {
             ((Manager) role).setPermissions(newPermissions);
         }
+    }
+
+    //Suspend
+     public void suspendMember(Long suspendedByAdminId,
+                      LocalDateTime startDate,
+                      LocalDateTime endDate,
+                      String reason){
+
+        if(isSuspended()){
+            throw new IllegalStateException("Member is already suspended");
+        }
+        //validation in the constructor
+        Suspension suspension=new Suspension(suspendedByAdminId, startDate ,endDate, reason);
+      
+        this.suspension=suspension;
+    }
+
+    public void revokeSuspension(){
+
+        Suspension activeSuspension = getSuspension();
+        if(activeSuspension == null|| !suspension.isActive()){
+            throw new IllegalStateException("Member is not suspended");
+        }
+
+        activeSuspension.revoke();
+    }
+
+    public boolean isSuspended(){
+        if(suspension==null)
+            return false;
+        return suspension.isActive();
+    }
+
+    public Suspension getSuspension(){
+            return suspension;
     }
 }

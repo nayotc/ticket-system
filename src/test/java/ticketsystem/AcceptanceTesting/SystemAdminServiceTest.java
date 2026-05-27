@@ -21,6 +21,7 @@ import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -60,6 +61,7 @@ public class SystemAdminServiceTest {
     private MembershipDomainService membershipDomain;
     private FakeNotifier fakeNotifier;
 
+    private UserAccessService userAccessService;
 
     @BeforeEach
     public void setUp() {
@@ -75,7 +77,8 @@ public class SystemAdminServiceTest {
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         membershipDomain = new MembershipDomainService(userRepo);
         fakeNotifier = new FakeNotifier();
-        companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger,fakeNotifier);
+        userAccessService=new UserAccessService(userRepo);
+        companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger,userAccessService,fakeNotifier);
         orderRepo = new OrderRepository();
         historyRepo = new HistoryRepository();
         systemAdminService = new SystemAdminService(
