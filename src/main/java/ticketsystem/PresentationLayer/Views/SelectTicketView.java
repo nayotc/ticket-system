@@ -214,7 +214,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
             Notifications.error(e.getMessage());
 
         } catch (Exception e) {
-            Notifications.error("לא ניתן להמשיך להזמנה. נסי שוב");
+            Notifications.error("לא ניתן להמשיך להזמנה. יש לנסות שוב");
         }
     }
 
