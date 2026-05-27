@@ -20,7 +20,6 @@ import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
@@ -29,6 +28,7 @@ import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 public class EventCatalogAcceptanceTest {
 
@@ -348,7 +348,7 @@ public class EventCatalogAcceptanceTest {
      * Adjust this method only if your Company constructor or methods are different.
      */
     private Company createCompany(String name, Long founderId, double rate) {
-        Company company = new Company(name, founderId, new PurchasePolicy(), new DiscountPolicy(DiscountCompositionType.MAX));
+        Company company = new Company(name, founderId, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
         company.setRate(rate);
 
         return company;

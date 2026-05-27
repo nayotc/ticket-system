@@ -1,15 +1,19 @@
 package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.ApplicationLayer.IPaymentService;
 import ticketsystem.ApplicationLayer.ISecureBarcode;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ReservationService;
@@ -20,6 +24,7 @@ import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
@@ -27,7 +32,6 @@ import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
@@ -42,13 +46,14 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
+import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 public class ReservationServiceTest {
-
     private ReservationService reservationService;
 
     private IOrderRepository orderRepository;
@@ -60,9 +65,11 @@ public class ReservationServiceTest {
     private TokenService tokenService;
     private UserService userService;
     private EventCatalogDomainService eventCatalogDomainService;
-
+    private IPaymentService paymentService;
     private TestSecureBarcode secureBarcode;
     private ISystemLogger logger;
+    private FakeNotifier fakeNotifier;
+    private MembershipDomainService membershipDomain;
 
     private String memberToken;
     private String guestToken;
@@ -71,13 +78,21 @@ public class ReservationServiceTest {
     private static final Long COMPANY_ID = 1L;
     private static final Long COMPANY_FOUNDER_ID = 1L;
 
+
     @BeforeEach
     void setUp() {
         orderRepository = new OrderRepository();
         eventRepository = new EventRepository();
-        lotteryRepository = LotteryRepository.getInstance();
+        lotteryRepository = new LotteryRepository();
         companyRepository = new CompanyRepository();
         userRepository = new UserRepository();
+
+        membershipDomain = new MembershipDomainService(userRepository);
+
+        paymentService = new PaymentServiceProxy();
+        secureBarcode = new TestSecureBarcode();
+        logger = new NoOpSystemLogger();
+        fakeNotifier = new FakeNotifier();
 
         ITokenRepository tokenRepository = new TokenRepository();
 
@@ -85,8 +100,6 @@ public class ReservationServiceTest {
                 "manual_test_secret_32_chars_long_for_tests",
                 tokenRepository
         );
-
-        logger = new NoOpSystemLogger();
 
         userService = new UserService(userRepository, tokenService, logger);
 
@@ -97,7 +110,7 @@ public class ReservationServiceTest {
         Company company = new Company(
                 "BGU Productions",
                 COMPANY_FOUNDER_ID,
-                new PurchasePolicy(),
+                PurchasePolicy.noRestrictions(),
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
@@ -110,17 +123,18 @@ public class ReservationServiceTest {
 
         resetPaymentProxy();
 
-        secureBarcode = new TestSecureBarcode();
-
         reservationService = new ReservationService(
                 orderRepository,
                 eventRepository,
+                companyRepository,
+                membershipDomain,
                 tokenService,
-                new PaymentServiceProxy(),
+                paymentService,
                 secureBarcode,
                 lotteryRepository,
                 eventCatalogDomainService,
-                logger
+                logger,
+                fakeNotifier
         );
     }
 
@@ -792,7 +806,8 @@ public class ReservationServiceTest {
     }
 
     private PaymentDetails createPaymentDetails() {
-        return new PaymentDetails("VISA", "Yosi");
+        return new PaymentDetails("VISA","Yosi", LocalDate.now());
+
     }
 
     private static class TestSecureBarcode implements ISecureBarcode {
@@ -827,4 +842,93 @@ public class ReservationServiceTest {
         public void logError(String errorMessage, Throwable exception) {
         }
     }
+
+private void useGuestTokenService() {
+    tokenService = new TokenService(
+            "manual_test_secret_32_chars_long",
+            new TokenRepository()
+    ) {
+        @Override
+        public boolean validateToken(String token) {
+            return true;
+        }
+
+        @Override
+        public boolean isGuestToken(String token) {
+            return true;
+        }
+
+        @Override
+        public boolean isMemberToken(String token) {
+            return false;
+        }
+
+        @Override
+        public Long extractUserId(String token) {
+            return null;
+        }
+    };
+
+    userService = new UserService(userRepository, tokenService, logger);
+
+    reservationService = new ReservationService(
+            orderRepository,
+            eventRepository,
+            companyRepository,
+            membershipDomain,
+            tokenService,
+            paymentService,
+            secureBarcode,
+            lotteryRepository,
+            eventCatalogDomainService,
+            logger,
+            fakeNotifier
+    );
+}
+
+private static class FakeNotifier implements INotifier {
+
+    private final List<String> messages = new ArrayList<>();
+
+    @Override
+    public void notifyMember(Long memberId, String message) {
+        messages.add(message);
+    }
+
+    @Override
+    public void notifyGuest(String guestToken, String message) {
+        messages.add(message);
+    }
+
+    @Override
+    public void notifyMembers(Collection<Long> memberIds, String message) {
+        if (memberIds == null) {
+            return;
+        }
+
+        for (Long memberId : memberIds) {
+            if (memberId != null) {
+                notifyMember(memberId, message);
+            }
+        }
+    }
+
+    @Override
+    public void notifyGuests(Collection<String> guestTokens, String message) {
+        if (guestTokens == null) {
+            return;
+        }
+
+        for (String guestToken : guestTokens) {
+            if (guestToken != null && !guestToken.isBlank()) {
+                notifyGuest(guestToken, message);
+            }
+        }
+    }
+
+    boolean containsMessage(String text) {
+        return messages.stream()
+                .anyMatch(message -> message.contains(text));
+    }
+}
 }

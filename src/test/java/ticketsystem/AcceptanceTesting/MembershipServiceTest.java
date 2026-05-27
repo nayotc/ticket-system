@@ -1,5 +1,6 @@
 package ticketsystem.AcceptanceTesting;
 
+import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
@@ -7,17 +8,20 @@ import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
-import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.*;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +42,7 @@ public class MembershipServiceTest {
     private MembershipDomainService domainService;
     private ISystemLogger systemLogger;
     private MembershipService membershipService;
-
+    private FakeNotifier fakeNotifier;
     // Test Data
     private final Long companyId = 1L;
     private Company testCompany;
@@ -70,12 +74,12 @@ public class MembershipServiceTest {
         this.companyRepository = new CompanyRepository();
         this.systemLogger = new LogbackSystemLogger();        
         this.domainService = new MembershipDomainService(userRepository);
-
+        fakeNotifier = new FakeNotifier();
         // Initialize service with null for notifications and the logger
-        this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService, null, systemLogger);
+        this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService, fakeNotifier, systemLogger);
 
         // 2. Setup Company state
-        testCompany = new Company("BGU Productions", founderId, new PurchasePolicy(), new DiscountPolicy(DiscountCompositionType.MAX));
+        testCompany = new Company("BGU Productions", founderId, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
         try { testCompany.setId(companyId); } catch (Exception e) {}
 
         // 3. Setup Founder - Active state
@@ -556,4 +560,51 @@ public class MembershipServiceTest {
                         || exception.getMessage().contains("Only Owners"),
                 "Manager should not be allowed to view the roles tree.");
     }
+        private static class FakeNotifier implements INotifier {
+
+            private final List<String> messages = new ArrayList<>();
+
+            @Override
+            public void notifyMember(Long memberId, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyGuest(String guestToken, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyMembers(Collection<Long> memberIds, String message) {
+                if (memberIds == null) {
+                    return;
+                }
+
+                for (Long memberId : memberIds) {
+                    if (memberId != null) {
+                        notifyMember(memberId, message);
+                    }
+                }
+            }
+
+            @Override
+            public void notifyGuests(Collection<String> guestTokens, String message) {
+                if (guestTokens == null) {
+                    return;
+                }
+
+                for (String guestToken : guestTokens) {
+                    if (guestToken != null && !guestToken.isBlank()) {
+                        notifyGuest(guestToken, message);
+                    }
+                }
+            }
+
+            boolean containsMessage(String text) {
+                return messages.stream()
+                        .anyMatch(message -> message.contains(text));
+            }
+        }
+
+    
 }

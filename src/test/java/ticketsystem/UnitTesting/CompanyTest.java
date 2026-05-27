@@ -1,4 +1,4 @@
-package ticketsystem.UnitTesting.company;
+package ticketsystem.UnitTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,7 +16,9 @@ import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountKind;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PolicyResult;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchaseRule;
 
 class CompanyTest {
 
@@ -25,7 +27,7 @@ class CompanyTest {
 
     @BeforeEach
     void setUp() {
-        company = new Company("BGU Productions", FOUNDER_ID, new PurchasePolicy(),
+        company = new Company("BGU Productions", FOUNDER_ID, PurchasePolicy.noRestrictions(),
                 new DiscountPolicy(DiscountCompositionType.MAX));
     }
 
@@ -40,7 +42,7 @@ class CompanyTest {
 
     @Test
     void GivenNewCompanies_WhenCreated_ThenIdsAreUniqueAndIncremented() {
-        Company secondCompany = new Company("Another Company", FOUNDER_ID, new PurchasePolicy(),
+        Company secondCompany = new Company("Another Company", FOUNDER_ID, PurchasePolicy.noRestrictions(),
                 new DiscountPolicy(DiscountCompositionType.MAX));
 
         assertTrue(company.getId() > 0, "Company ID should be a positive number.");
@@ -356,6 +358,121 @@ class CompanyTest {
         company.setDiscountCompositionType(DiscountCompositionType.MAX);
 
         assertEquals(DiscountCompositionType.MAX, company.getDiscountCompositionType());
+    }
+       @Test
+    void GivenAllowedPurchasePolicy_WhenCompanyCanPurchase_ThenDoesNotThrow() {
+        Company company = createCompanyWithPolicyResult(PolicyResult.allowed());
+
+        assertDoesNotThrow(() -> company.canPurchase(2, 20));
+    }
+
+    @Test
+    void GivenDeniedPurchasePolicy_WhenCompanyCanPurchase_ThenThrowIllegalArgumentException() {
+        Company company = createCompanyWithPolicyResult(
+                PolicyResult.denied("Purchase policy violation")
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(2, 20)
+        );
+    }
+
+    @Test
+    void GivenDeniedPurchasePolicy_WhenCompanyCanPurchase_ThenExceptionContainsPolicyMessage() {
+        String expectedMessage = "Cannot purchase more than 5 tickets.";
+
+        Company company = createCompanyWithPolicyResult(
+                PolicyResult.denied(expectedMessage)
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(6, 20)
+        );
+
+        assertEquals(expectedMessage, exception.getMessage());
+    }
+
+    @Test
+    void GivenDeniedPurchasePolicyWithNullMessage_WhenCompanyCanPurchase_ThenThrowDefaultMessage() {
+        Company company = createCompanyWithPolicyResult(
+                PolicyResult.denied(null)
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(2, 20)
+        );
+
+        assertEquals(
+                "User does not satisfy the purchase policy",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void GivenDeniedPurchasePolicyWithBlankMessage_WhenCompanyCanPurchase_ThenThrowDefaultMessage() {
+        Company company = createCompanyWithPolicyResult(
+                PolicyResult.denied("   ")
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> company.canPurchase(2, 20)
+        );
+
+        assertEquals(
+                "User does not satisfy the purchase policy",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void GivenPurchasePolicyReturnsNull_WhenCompanyCanPurchase_ThenThrowIllegalStateException() {
+        Company company = createCompanyWithPolicyResult(null);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> company.canPurchase(2, 20)
+        );
+    }
+
+    @Test
+    void GivenNullPurchasePolicy_WhenSetPurchasePolicy_ThenThrowIllegalArgumentException() {
+        Company company = createCompanyWithPolicyResult(PolicyResult.allowed());
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> company.setPurchasePolicy(null)
+        );
+    }
+
+    private Company createCompanyWithPolicyResult(PolicyResult result) {
+        PurchasePolicy purchasePolicy = new PurchasePolicy(
+                new FixedResultPurchaseRule(result)
+        );
+
+        return new Company(
+                "Test Company",
+                1L,
+                purchasePolicy,
+                new DiscountPolicy(DiscountCompositionType.MAX)
+        );
+    }
+
+    private static class FixedResultPurchaseRule implements PurchaseRule {
+
+        private final PolicyResult result;
+
+        private FixedResultPurchaseRule(PolicyResult result) {
+            this.result = result;
+        }
+
+        @Override
+        public PolicyResult isValid(int quantity, int age) {
+            return result;
+        }
     }
     
 }

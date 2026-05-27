@@ -2,75 +2,81 @@ package ticketsystem.ConcurrencyTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static java.util.Collections.synchronizedList;
-
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import ticketsystem.ApplicationLayer.*;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.*;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.event.*;
-import ticketsystem.DomainLayer.lottery.Lottery;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.*;
 
 public class ReservationServiceTest {
+private ReservationService reservationService;
 
-    private ReservationService reservationService;
+private IOrderRepository orderRepository;
+private IEventRepository eventRepository;
+private ILotteryRepository lotteryRepository;
+private ICompanyRepository companyRepository;
+private IUserRepository userRepository;
 
-    private IOrderRepository orderRepository;
-    private IEventRepository eventRepository;
-    private ILotteryRepository lotteryRepository;
-    private ICompanyRepository companyRepository;
-    private IUserRepository userRepository;
+private IPaymentService paymentService;
+private TestSecureBarcode secureBarcode;
+private TokenService tokenService;
+private UserService userService;
+private EventCatalogDomainService eventCatalogDomainService;
+private MembershipDomainService membershipDomain;
 
-    private TokenService tokenService;
-    private UserService userService;
-    private EventCatalogDomainService eventCatalogDomainService;
+private ISystemLogger logger;
+private FakeNotifier fakeNotifier;
 
-    private TestSecureBarcode secureBarcode;
-    private ISystemLogger logger;
+private String[] memberTokens;
 
-    private String[] memberTokens;
-
-    private static final Long COMPANY_ID = 1L;
-    private static final Long COMPANY_FOUNDER_ID = 1L;
+private static final Long COMPANY_ID = 1L;
+private static final Long COMPANY_FOUNDER_ID = 1L;
 
     @BeforeEach
     void setUp() {
         orderRepository = new OrderRepository();
         eventRepository = new EventRepository();
 
-        lotteryRepository = LotteryRepository.getInstance();
+        lotteryRepository = new LotteryRepository();
         ((LotteryRepository) lotteryRepository).clearForTests();
 
         companyRepository = new CompanyRepository();
         userRepository = new UserRepository();
+        membershipDomain = new MembershipDomainService(userRepository);
+
+        paymentService = new PaymentServiceProxy();
+        secureBarcode = new TestSecureBarcode();
+        logger = new NoOpSystemLogger();
+        fakeNotifier = new FakeNotifier();
 
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
                 new TokenRepository()
         );
 
-        logger = new NoOpSystemLogger();
         userService = new UserService(userRepository, tokenService, logger);
 
         Company company = new Company(
                 "BGU Productions",
                 COMPANY_FOUNDER_ID,
-                new PurchasePolicy(),
+                PurchasePolicy.noRestrictions(),
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
@@ -82,17 +88,18 @@ public class ReservationServiceTest {
 
         resetPaymentProxy();
 
-        secureBarcode = new TestSecureBarcode();
-
         reservationService = new ReservationService(
                 orderRepository,
                 eventRepository,
+                companyRepository,
+                membershipDomain,
                 tokenService,
-                new PaymentServiceProxy(),
+                paymentService,
                 secureBarcode,
                 lotteryRepository,
                 eventCatalogDomainService,
-                logger
+                logger,
+                fakeNotifier
         );
 
         memberTokens = new String[40];
@@ -100,7 +107,6 @@ public class ReservationServiceTest {
             memberTokens[i] = createLoggedInMember("user" + i, "password123");
         }
     }
-
     @Test
     void ConcurrencyTest_SelectSameSeat_WhenManyUsersTrySameSeat_ThenOnlyOneUserSucceeds()
             throws InterruptedException {
@@ -561,7 +567,7 @@ public class ReservationServiceTest {
     }
 
     private PaymentDetails createPaymentDetails() {
-        return new PaymentDetails("VISA", "Yosi");
+        return new PaymentDetails("VISA", "Yosi", LocalDate.now());
     }
 
     private String createLoggedInMember(String username, String password) {
@@ -620,4 +626,49 @@ public class ReservationServiceTest {
         public void logError(String errorMessage, Throwable exception) {
         }
     }
+        private static class FakeNotifier implements INotifier {
+
+            private final List<String> messages = new ArrayList<>();
+
+            @Override
+            public void notifyMember(Long memberId, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyGuest(String guestToken, String message) {
+                messages.add(message);
+            }
+
+            @Override
+            public void notifyMembers(Collection<Long> memberIds, String message) {
+                if (memberIds == null) {
+                    return;
+                }
+
+                for (Long memberId : memberIds) {
+                    if (memberId != null) {
+                        notifyMember(memberId, message);
+                    }
+                }
+            }
+
+            @Override
+            public void notifyGuests(Collection<String> guestTokens, String message) {
+                if (guestTokens == null) {
+                    return;
+                }
+
+                for (String guestToken : guestTokens) {
+                    if (guestToken != null && !guestToken.isBlank()) {
+                        notifyGuest(guestToken, message);
+                    }
+                }
+            }
+
+            boolean containsMessage(String text) {
+                return messages.stream()
+                        .anyMatch(message -> message.contains(text));
+            }
+        }
 }

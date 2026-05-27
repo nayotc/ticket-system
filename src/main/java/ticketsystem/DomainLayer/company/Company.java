@@ -1,5 +1,7 @@
 package ticketsystem.DomainLayer.company;
 
+import ticketsystem.DomainLayer.policy.PolicyResult;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicLong;
@@ -86,6 +88,9 @@ public class Company {
     }
 
     public void setPurchasePolicy(PurchasePolicy purchasePolicy) {
+        if (purchasePolicy == null) {
+            throw new IllegalArgumentException("Purchase policy cannot be null");
+        }
         this.purchasePolicy = purchasePolicy;
     }
 
@@ -148,6 +153,22 @@ public class Company {
 
         this.isActive = false;
     }
+
+    public void canPurchase(int quantity, int age) {
+        PolicyResult result = this.purchasePolicy.validate(quantity, age);
+        if (result == null) {
+            throw new IllegalStateException("Purchase policy validation failed");
+        }
+        if (!result.isAllowed()) {
+            String message = result.getMessage();
+
+            if (message == null || message.isBlank()) {
+                message = "User does not satisfy the purchase policy";
+            }
+
+            throw new IllegalArgumentException(message);
+        }
+     }
     public void setDiscountCompositionType(DiscountCompositionType compositionType){
         getDiscountPolicy().setDiscountCompositionType(compositionType);
 

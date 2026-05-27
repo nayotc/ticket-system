@@ -11,5 +11,5 @@ public interface IHistoryRepository {
     List<Purchase> getPurchasesByCompanyId(long companyId);
     List<Purchase> getAllPurchases();
     long generateNextId();
-    
+    List<Purchase> getPurchasesByEventId(long eventId);
 }

@@ -17,6 +17,10 @@ import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+import ticketsystem.DomainLayer.policy.PolicyResult;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
+
+
 
 public class Event {
 
@@ -45,6 +49,7 @@ public class Event {
     private int version;
     private AtomicLong discountId=new AtomicLong(0L);
     // waiting queue
+    private SaleStatus saleStatus = SaleStatus.NOT_STARTED;
 
     public Event(Long id, LocalDateTime date, String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
         this.id = id;
@@ -59,7 +64,7 @@ public class Event {
         this.category = category;
         this.TicketPrice = ticketPrice;
         this.map = new EventMap(mapSize);
-        this.purchasePolicy = new PurchasePolicy("Default purchase policy");
+        this.purchasePolicy = PurchasePolicy.noRestrictions();
         this.discountPolicy =new DiscountPolicy(DiscountCompositionType.MAX);//defult
         this.version = 0;
     }
@@ -196,6 +201,9 @@ public class Event {
     }
 
     public void setPurchasePolicy(PurchasePolicy purchasePolicy) {
+        if (purchasePolicy == null) {
+            throw new IllegalArgumentException("Purchase policy cannot be null");
+        }
         this.purchasePolicy = purchasePolicy;
     }
 
@@ -211,6 +219,20 @@ public class Event {
 
     public boolean isSoldOut() {
         return map.isSoldOut();
+    }
+
+    public SaleStatus getSaleStatus() {
+        return saleStatus;
+    }
+
+    public  void setSaleStatus(SaleStatus saleStatus) {
+        this.saleStatus = saleStatus;
+    }
+
+    public void SoldOut() {
+        if (this.map != null && this.map.isSoldOut()) {
+            this.saleStatus = SaleStatus.SOLD_OUT;
+        }
     }
 
     // use case: ticket reservation 
@@ -395,13 +417,30 @@ public class Event {
     }
 
     public void cancel() {
-        if (this.status == eventStatus.CANCELLED) {
-            throw new IllegalStateException("Event is already cancelled");
+    if (this.status == eventStatus.CANCELLED) {
+        throw new IllegalStateException("Event is already cancelled");
+    }
+    if (this.Date.isBefore(LocalDateTime.now())) {
+        throw new IllegalStateException("Cannot cancel an event that has already occurred");
+    }
+    this.status = eventStatus.CANCELLED;
+    }
+
+    public void canPurchase(int quantity, int age) {
+        PolicyResult result = this.purchasePolicy.validate(quantity, age);
+        if (result == null) {
+            throw new IllegalStateException("Purchase policy validation failed");
         }
-        if (this.Date.isBefore(LocalDateTime.now())) {
-            throw new IllegalStateException("Cannot cancel an event that has already occurred");
+
+        if (!result.isAllowed()) {
+            String message = result.getMessage();
+
+            if (message == null || message.isBlank()) {
+                message = "User does not satisfy the purchase policy";
+            }
+
+            throw new IllegalArgumentException(message);
         }
-        this.status = eventStatus.CANCELLED;
     }
 
     // discount related methods
@@ -428,12 +467,11 @@ public class Event {
         discountPolicy.addDiscount(discount);
     }
 
-    public void setDiscountCompositionType(DiscountCompositionType compositionType){
+    public void setDiscountCompositionType(DiscountCompositionType compositionType) {
         discountPolicy.setDiscountCompositionType(compositionType);
-
     }
-    
-    public BigDecimal calculateDiscountEvent(BigDecimal totalPrice, int ticketCount, String couponCode){
+
+    public BigDecimal calculateDiscountEvent(BigDecimal totalPrice, int ticketCount, String couponCode) {
         return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 
@@ -441,8 +479,8 @@ public class Event {
         discountPolicy.removeDiscount(discountId);
     }
 
-    public List<DiscountTypes> getDiscounts(){
+    public List<DiscountTypes> getDiscounts() {
         return discountPolicy.getDiscounts();
     }
 
-}
+    }

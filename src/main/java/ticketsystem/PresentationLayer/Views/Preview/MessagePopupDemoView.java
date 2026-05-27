@@ -5,12 +5,13 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import ticketsystem.PresentationLayer.Components.ActionBar;
+import ticketsystem.PresentationLayer.Components.LotteryResultPopup;
 import ticketsystem.PresentationLayer.Components.MessagePopup;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
 
-@PageTitle("TixNow | הודעות מערכת")
+@PageTitle("TixNow | Message preview")
 @Route(value = "ui-preview/messages", layout = MainLayout.class)
 public class MessagePopupDemoView extends PageContainer {
 
@@ -22,7 +23,9 @@ public class MessagePopupDemoView extends PageContainer {
         success.addClickListener(event -> MessagePopup.showSuccess("האירוע עודכן ונשמר במערכת"));
 
         Button error = new Button("הצג הודעת שגיאה");
-        error.addClickListener(event -> MessagePopup.showError("לא הצלחנו לשמור את השינויים. אנא בדוק את החיבור לאינטרנט ונסה שוב."));
+        error.addClickListener(event -> MessagePopup.showError(
+                "לא הצלחנו לשמור את השינויים. אנא בדוק את החיבור לאינטרנט ונסה שוב."
+        ));
 
         Button retryError = new Button("הצג שגיאה עם ניסיון חוזר");
         retryError.addClickListener(event -> MessagePopup.showError(
@@ -30,12 +33,19 @@ public class MessagePopupDemoView extends PageContainer {
                 () -> MessagePopup.showSuccess("הבקשה נשלחה שוב")
         ));
 
+        Button lotteryWinner = new Button("הצג זכייה בהגרלה");
+        lotteryWinner.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        lotteryWinner.addClickListener(event -> LotteryResultPopup.show(
+                "מרתון צחוק",
+                "TIX-2026-LUCKY"
+        ));
+
         add(
                 new ViewHeader(
                         "תצוגת הודעות",
-                        "Popup אחיד לשגיאות ולהצלחות מעל המסך הפעיל"
+                        "Popup אחיד לשגיאות, הצלחות וזכייה בהגרלת כרטיסים מעל המסך הפעיל"
                 ),
-                new ActionBar(success, error, retryError)
+                new ActionBar(success, error, retryError, lotteryWinner)
         );
     }
 }

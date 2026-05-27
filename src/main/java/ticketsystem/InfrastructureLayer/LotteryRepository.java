@@ -10,14 +10,9 @@ import ticketsystem.DomainLayer.lottery.Lottery;
 public class LotteryRepository implements ILotteryRepository {
     
     private final AtomicLong counter = new AtomicLong(1);
-    private static final LotteryRepository instance = new LotteryRepository();
     private final Map<Long, Lottery> allLotteries = new ConcurrentHashMap<>();
 
-    private LotteryRepository() { }
-    
-    public static LotteryRepository getInstance() {
-        return instance;
-    }
+    public LotteryRepository() { }
     
     @Override
     public Lottery findById(long lotteryId) {   
