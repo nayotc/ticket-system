@@ -26,7 +26,7 @@ public class OrPurchaseRule extends CompositePurchaseRule {
         }
 
         return PolicyResult.denied(
-                "יש לעמוד לפחות באחד מתנאי מדיניות הרכישה"
+                "All rules failed: " + String.join("; ", failureMessages)
         );
     }
 }

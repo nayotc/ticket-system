@@ -4,6 +4,9 @@ public class MaxTicketsRule implements PurchaseRule {
     private final int maxTickets;
 
     public MaxTicketsRule(int maxTickets) {
+        if(maxTickets <= 0) {
+            throw new IllegalArgumentException("Max tickets must be greater than zero");
+        }
         this.maxTickets = maxTickets;
     }
 

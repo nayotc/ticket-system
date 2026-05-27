@@ -13,8 +13,6 @@ import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
-import ticketsystem.ApplicationLayer.PurchasePolicyMapper;
-
 
 public class CompanyService {
 

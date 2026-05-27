@@ -3,15 +3,6 @@ package ticketsystem.ApplicationLayer;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
-
-import org.slf4j.ILoggerFactory;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DTO.ActiveOrderDTO;
@@ -25,13 +16,8 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.DomainLayer.exception.OptimisticLockException;
-import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
-import ticketsystem.DomainLayer.order.Ticket;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
-
 import java.time.LocalDate;
 import java.time.Period;
 
@@ -227,9 +213,13 @@ public class ReservationService {
             if (order == null || event == null) {
                 throw new IllegalStateException("No active order or event found");
             }
+            if(details == null| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
+                throw new IllegalArgumentException("Payment details are incomplete");
+            }
             int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();  
-            eventCatalogDomainService.canPurchase(event.getCompanyId(),order.getTickets().size(), buyerAge);
-            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event, buyerAge);
+            eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(),order.getTickets().size(), buyerAge);
+            reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
+            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
             BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
             boolean paymentResult = paymentService.pay(amountAfterDiscount, details);
 

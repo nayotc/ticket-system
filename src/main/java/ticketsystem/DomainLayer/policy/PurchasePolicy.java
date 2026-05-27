@@ -5,6 +5,9 @@ public class PurchasePolicy {
 
     public PurchasePolicy(PurchaseRule rootRule)
     {
+        if(rootRule == null) {
+            throw new IllegalArgumentException("Root rule cannot be null");
+        }
         this.rootRule = rootRule;
     }
 

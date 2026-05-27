@@ -39,7 +39,6 @@ import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
-import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
@@ -825,30 +824,4 @@ public class ReservationServiceTest {
         }
     }
 
-    private void useGuestTokenService() {
-    tokenService = new TokenService(
-            "manual_test_secret_32_chars_long",
-            new TokenRepository()
-    ) {
-        @Override
-        public boolean validateToken(String token) {
-            return true;
-        }
-
-        @Override
-        public boolean isGuestToken(String token) {
-            return true;
-        }
-
-        @Override
-        public boolean isMemberToken(String token) {
-            return false;
-        }
-
-        @Override
-        public Long extractUserId(String token) {
-            return null;
-        }
-    };
-}
 }

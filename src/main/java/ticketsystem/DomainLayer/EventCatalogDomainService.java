@@ -90,7 +90,7 @@ public class EventCatalogDomainService {
             return finalPrice;
 
     }
-    public void canPurchase(long companyId, int ticketCount, int buyerAge) {
+    public void canPurchaseByCompanyPolicy(long companyId, int ticketCount, int buyerAge) {
         companyRepository.findById(companyId).orElseThrow(() -> new IllegalArgumentException("Company not found")).canPurchase(ticketCount, buyerAge);
     }
 }

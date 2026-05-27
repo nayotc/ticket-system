@@ -443,7 +443,7 @@ public class EventService {
                 throw new IllegalArgumentException("Event not found");
             }
 
-        if (!membershipDomain.validatePermission(memberId,event.getCompanyId(),Permission.MANAGE_EVENT_INVENTORY)){
+        if (!membershipDomain.validatePermission(memberId,event.getCompanyId(),Permission.SET_PURCHASING_POLICY)){
             throw new IllegalArgumentException(
                 "User does not have permission to manage event purchasing policy");
         }
