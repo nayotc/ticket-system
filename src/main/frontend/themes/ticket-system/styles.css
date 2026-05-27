@@ -5689,3 +5689,292 @@ vaadin-date-picker-month-calendar {
         align-items: stretch;
     }
 }
+/* =========================
+   Lottery result popup
+   ========================= */
+
+.message-popup-card-lottery {
+    width: min(460px, calc(100vw - 32px));
+}
+
+.message-popup-icon-lottery {
+    font-size: 40px;
+}
+
+.lottery-popup-event-block {
+    width: 100%;
+    margin: 0 0 18px;
+    padding: 12px 14px;
+    box-sizing: border-box;
+    border-radius: 16px;
+    background: rgba(208, 188, 255, 0.10);
+    border: 1px solid rgba(208, 188, 255, 0.20);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+    z-index: 1;
+}
+
+.lottery-popup-event-label {
+    color: var(--tn-text-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.lottery-popup-event-name {
+    color: var(--tn-primary-fixed);
+    font-size: 18px;
+    line-height: 1.35;
+    font-weight: 900;
+}
+
+.lottery-popup-code-block {
+    width: 100%;
+    margin: 0 0 28px;
+    padding: 14px;
+    box-sizing: border-box;
+    border-radius: 14px;
+    background: var(--tn-surface-low);
+    border: 1px solid var(--tn-outline-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    position: relative;
+    z-index: 1;
+}
+
+.lottery-popup-code {
+    min-width: 0;
+    color: var(--tn-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 20px;
+    line-height: 1.3;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    direction: ltr;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+vaadin-button.lottery-popup-copy-button {
+    color: var(--tn-secondary);
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+vaadin-button.lottery-popup-copy-button:hover {
+    color: var(--tn-secondary-fixed);
+    background: rgba(68, 226, 205, 0.08);
+}
+
+.lottery-popup-actions {
+    margin-top: 0;
+}
+
+.message-popup-card-lottery {
+    width: min(460px, calc(100vw - 32px));
+    border-color: rgba(208, 188, 255, 0.34);
+    box-shadow: 0 0 34px rgba(208, 188, 255, 0.16), 0 24px 70px rgba(0, 0, 0, 0.48);
+}
+
+.message-popup-card-lottery .message-popup-glow {
+    background: var(--tn-primary);
+    opacity: 0.22;
+}
+
+.message-popup-icon-lottery {
+    font-size: 40px;
+    color: var(--tn-primary);
+    background: rgba(208, 188, 255, 0.14);
+    border: 1px solid rgba(208, 188, 255, 0.36);
+    box-shadow: 0 0 24px rgba(208, 188, 255, 0.30);
+}
+
+vaadin-button.lottery-popup-copy-button {
+    color: var(--tn-primary);
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+vaadin-button.lottery-popup-copy-button:hover {
+    color: var(--tn-primary-fixed);
+    background: rgba(208, 188, 255, 0.10);
+}
+
+.lottery-popup-note {
+    width: 100%;
+    margin: -10px 0 24px;
+    padding: 12px 14px;
+    box-sizing: border-box;
+    border-radius: 14px;
+    background: rgba(208, 188, 255, 0.10);
+    border: 1px solid rgba(208, 188, 255, 0.20);
+    color: var(--tn-text-muted);
+    font-size: 14px;
+    line-height: 1.55;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+vaadin-button.lottery-popup-confirm-button[theme~="primary"] {
+    min-width: 190px;
+    background: var(--tn-primary);
+    color: var(--tn-on-primary);
+    box-shadow: 0 0 18px rgba(208, 188, 255, 0.30);
+}
+
+vaadin-button.lottery-popup-confirm-button[theme~="primary"]:hover {
+    background: var(--tn-primary-fixed);
+    box-shadow: 0 0 24px rgba(208, 188, 255, 0.44);
+}
+
+@media (max-width: 600px) {
+    .lottery-popup-code-block {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .lottery-popup-code {
+        width: 100%;
+        text-align: center;
+    }
+
+    vaadin-button.lottery-popup-copy-button {
+        width: 100%;
+    }
+}
+
+/* =========================
+   Event card sale status
+   Append after the existing Event card CSS
+   ========================= */
+
+.event-card-sale-not-started .event-price,
+.event-card-pre-sale .event-price,
+.event-card-sale-ended .event-price {
+    color: var(--tn-primary);
+}
+
+vaadin-button.event-buy-button-pre-sale[theme~="primary"] {
+    background: var(--tn-primary-container);
+    color: var(--tn-on-primary);
+    box-shadow: 0 0 16px rgba(160, 120, 255, 0.30);
+}
+
+vaadin-button.event-buy-button-pre-sale[theme~="primary"]:hover {
+    background: var(--tn-primary-fixed);
+    color: var(--tn-on-primary);
+    box-shadow: 0 0 22px rgba(208, 188, 255, 0.42);
+}
+
+.event-sale-not-started-ribbon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    width: 138%;
+    padding: 3px 0;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    background: rgba(143, 239, 255, 0.94);
+    color: #002b35;
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 900;
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.24);
+}
+
+vaadin-button.event-buy-button-ended,
+vaadin-button.event-buy-button-ended[disabled] {
+    background: rgba(73, 68, 84, 0.55);
+    color: rgba(203, 195, 215, 0.70);
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+vaadin-button.event-buy-button-ended::part(label),
+vaadin-button.event-buy-button-ended::part(prefix) {
+    color: rgba(203, 195, 215, 0.70);
+}
+
+.pre-sale-code-dialog-card {
+    width: min(440px, calc(100vw - 32px));
+    padding: 28px;
+    box-sizing: border-box;
+    border-radius: 24px;
+    background: rgba(23, 31, 51, 0.92);
+    border: 1px solid rgba(208, 188, 255, 0.22);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 0 34px rgba(208, 188, 255, 0.12), 0 24px 70px rgba(0, 0, 0, 0.48);
+    color: var(--tn-text);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pre-sale-code-dialog-title {
+    margin: 0;
+    color: var(--tn-primary-fixed);
+    font-size: 24px;
+    line-height: 1.3;
+    font-weight: 800;
+    text-align: center;
+}
+
+.pre-sale-code-dialog-description {
+    margin: -6px 0 2px;
+    color: var(--tn-text-muted);
+    font-size: 15px;
+    line-height: 1.55;
+    text-align: center;
+}
+
+.pre-sale-code-field {
+    width: 100%;
+}
+
+.pre-sale-code-error {
+    color: var(--tn-error);
+    font-size: 13px;
+    line-height: 1.45;
+    font-weight: 700;
+    text-align: right;
+}
+
+.pre-sale-code-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.pre-sale-code-actions vaadin-button {
+    width: 100%;
+    min-height: 44px;
+}
+
+vaadin-button.pre-sale-code-submit-button[theme~="primary"] {
+    background: var(--tn-primary-container);
+    color: var(--tn-on-primary);
+    box-shadow: 0 0 16px rgba(160, 120, 255, 0.30);
+}
+
+vaadin-button.pre-sale-code-submit-button[theme~="primary"]:hover {
+    background: var(--tn-primary-fixed);
+    color: var(--tn-on-primary);
+    box-shadow: 0 0 22px rgba(208, 188, 255, 0.42);
+}
+
+@media (max-width: 600px) {
+    .pre-sale-code-actions {
+        grid-template-columns: 1fr;
+    }
+}
+

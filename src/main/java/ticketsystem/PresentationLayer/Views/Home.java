@@ -7,6 +7,7 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.PresentationLayer.Components.EventCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.PageHeader;
@@ -134,8 +135,7 @@ public class Home extends PageContainer {
                         "Amazing Events",
                         2L,
                         30L,
-                        true,
-                        false,
+                        SaleStatus.ONGOING,
                         false
                 ),
                 new EventCard(
@@ -149,9 +149,8 @@ public class Home extends PageContainer {
                         "Laugh Factory",
                         3L,
                         20L,
-                        true,
-                        false,
-                        true
+                        SaleStatus.SOLD_OUT,
+                        false
                 ),
                 new EventCard(
                         "מסיבה",
@@ -164,9 +163,8 @@ public class Home extends PageContainer {
                         "TixNow Productions",
                         1L,
                         15L,
-                        false,
-                        true,
-                        false
+                        SaleStatus.NOT_STARTED,
+                        true
                 )
         );
 

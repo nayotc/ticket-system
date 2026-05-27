@@ -32,10 +32,7 @@ import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.DomainLayer.event.EventCategory;
-import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.event.*;
 import ticketsystem.DomainLayer.user.Permission;
 
 public class EventServiceTest {
@@ -134,7 +131,7 @@ public class EventServiceTest {
                 ticketPrice,
                 null,
                 0.0,
-                false,
+                SaleStatus.ONGOING.name(),
                 false,
                 0,
                 version,

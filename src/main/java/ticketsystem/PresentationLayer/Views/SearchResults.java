@@ -9,6 +9,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,7 +21,7 @@ import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
 
-@PageTitle("TixNow - תוצאות חיפוש")
+@PageTitle("TixNow | Search Results")
 @Route(value = UiRoutes.SEARCH_RESULTS, layout = MainLayout.class)
 public class SearchResults extends PageContainer implements BeforeEnterObserver {
 
@@ -161,9 +162,8 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                         "Amazing Events",
                         2L,
                         30L,
-                        true,
-                        false,
-                        false
+                        SaleStatus.PRE_SALE,
+                        true
                 ),
                 new EventCard(
                         "סטנדאפ",
@@ -176,9 +176,8 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                         "Laugh Factory",
                         3L,
                         20L,
-                        true,
-                        false,
-                        true
+                        SaleStatus.ENDED,
+                        false
                 ),
                 new EventCard(
                         "מסיבה",
@@ -191,9 +190,8 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                         "TixNow Productions",
                         1L,
                         15L,
-                        false,
-                        true,
-                        false
+                        SaleStatus.NOT_STARTED,
+                        true
                 )
         );
 
