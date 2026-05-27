@@ -7,6 +7,7 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.PresentationLayer.Components.EventCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.PageHeader;
@@ -130,7 +131,12 @@ public class Home extends PageContainer {
                         "פארק הירקון, תל אביב",
                         "₪249",
                         Photos.EVENT_LIGHTS,
-                        true
+                        true,
+                        "Amazing Events",
+                        2L,
+                        30L,
+                        SaleStatus.ONGOING,
+                        false
                 ),
                 new EventCard(
                         "סטנדאפ",
@@ -139,6 +145,11 @@ public class Home extends PageContainer {
                         "מועדון זאפה, הרצליה",
                         "₪119",
                         Photos.EVENT_STANDUP,
+                        false,
+                        "Laugh Factory",
+                        3L,
+                        20L,
+                        SaleStatus.SOLD_OUT,
                         false
                 ),
                 new EventCard(
@@ -148,7 +159,12 @@ public class Home extends PageContainer {
                         "האומן 17, תל אביב",
                         "₪90",
                         Photos.EVENT_ELECTRONIC,
-                        false
+                        false,
+                        "TixNow Productions",
+                        1L,
+                        15L,
+                        SaleStatus.NOT_STARTED,
+                        true
                 )
         );
 

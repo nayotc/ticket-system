@@ -6,6 +6,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.RouterLayout;
 import ticketsystem.PresentationLayer.Components.FooterBar;
 import ticketsystem.PresentationLayer.Components.PublicHeader;
+//import ticketsystem.PresentationLayer.Notifications.GlobalNotificationSupport;
 
 public class PublicLayout extends VerticalLayout implements RouterLayout {
 
@@ -31,6 +32,7 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
         expand(content);
 
         renderHeader();
+        //registerGlobalNotifications();
     }
 
     @Override
@@ -38,6 +40,7 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
         content.getElement().removeAllChildren();
 
         renderHeader();
+        //registerGlobalNotifications();
 
         if (routerContent != null) {
             content.getElement().appendChild(routerContent.getElement());
@@ -56,4 +59,8 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
         headerContainer.removeAll();
         headerContainer.add(new PublicHeader(shouldShowAuthAction()));
     }
+
+//    private void registerGlobalNotifications() {
+//        GlobalNotificationSupport.registerForCurrentUi();
+//    }
 }

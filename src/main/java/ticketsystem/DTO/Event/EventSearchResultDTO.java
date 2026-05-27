@@ -15,7 +15,8 @@ public record EventSearchResultDTO(
         String artistName,
         BigDecimal ticketPrice,
         Double rate,
-        boolean soldOut
+        String saleStatus
+
 ) {
 
     public static EventSearchResultDTO from(Event event) {
@@ -33,7 +34,7 @@ public record EventSearchResultDTO(
                 event.getArtistName(),
                 event.getTicketPrice(),
                 event.getRate(),
-                event.isSoldOut()
+                event.getSaleStatus() == null ? null : event.getSaleStatus().name()
         );
     }
 }

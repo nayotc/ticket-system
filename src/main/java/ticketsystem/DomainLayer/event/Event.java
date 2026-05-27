@@ -49,6 +49,7 @@ public class Event {
     private int version;
     private AtomicLong discountId=new AtomicLong(0L);
     // waiting queue
+    private SaleStatus saleStatus = SaleStatus.NOT_STARTED;
 
     public Event(Long id, LocalDateTime date, String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
         this.id = id;
@@ -218,6 +219,20 @@ public class Event {
 
     public boolean isSoldOut() {
         return map.isSoldOut();
+    }
+
+    public SaleStatus getSaleStatus() {
+        return saleStatus;
+    }
+
+    public  void setSaleStatus(SaleStatus saleStatus) {
+        this.saleStatus = saleStatus;
+    }
+
+    public void SoldOut() {
+        if (this.map != null && this.map.isSoldOut()) {
+            this.saleStatus = SaleStatus.SOLD_OUT;
+        }
     }
 
     // use case: ticket reservation 

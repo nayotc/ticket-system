@@ -41,6 +41,10 @@ import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
+import ticketsystem.DomainLayer.event.Event.eventStatus;
+import ticketsystem.DomainLayer.event.SaleStatus;
+import ticketsystem.DomainLayer.user.User;
+import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.CompanyRole;
@@ -346,7 +350,7 @@ public class EventServiceAcceptanceTest {
                 BigDecimal.valueOf(149.99),
                 null,
                 savedEvent.getRate(),
-                savedEvent.isSoldOut(),
+                SaleStatus.ONGOING.name(),
                 savedEvent.isOverloaded(),
                 savedEvent.getActiveReservationsCount(),
                 savedEvent.getVersion(),
@@ -386,7 +390,7 @@ public class EventServiceAcceptanceTest {
                 BigDecimal.valueOf(149.99),
                 null,
                 savedEvent.getRate(),
-                savedEvent.isSoldOut(),
+                SaleStatus.ONGOING.name(),
                 savedEvent.isOverloaded(),
                 savedEvent.getActiveReservationsCount(),
                 savedEvent.getVersion(),
@@ -461,7 +465,7 @@ public class EventServiceAcceptanceTest {
                 BigDecimal.valueOf(149.99),
                 null,
                 0.0,
-                false,
+                SaleStatus.ONGOING.name(),
                 false,
                 0,
                 0,
@@ -506,7 +510,7 @@ public class EventServiceAcceptanceTest {
                 BigDecimal.valueOf(149.99),
                 null,
                 savedEvent.getRate(),
-                savedEvent.isSoldOut(),
+                SaleStatus.ONGOING.name(),
                 savedEvent.isOverloaded(),
                 savedEvent.getActiveReservationsCount(),
                 savedEvent.getVersion(),
@@ -544,7 +548,7 @@ public class EventServiceAcceptanceTest {
                 BigDecimal.valueOf(149.99),
                 null,
                 savedEvent.getRate(),
-                savedEvent.isSoldOut(),
+                SaleStatus.ONGOING.name(),
                 savedEvent.isOverloaded(),
                 savedEvent.getActiveReservationsCount(),
                 staleVersion,
@@ -679,7 +683,7 @@ public class EventServiceAcceptanceTest {
     }
 
     private Event createExistingEvent() {
-        return new Event(
+        Event event = new Event(
                 1L,
                 LocalDateTime.now().plusDays(10),
                 "Rock Concert",
@@ -691,6 +695,8 @@ public class EventServiceAcceptanceTest {
                 "The Rockers",
                 BigDecimal.valueOf(99.99),
                 new ticketsystem.DomainLayer.event.Pair<>(10, 20));
+        event.setSaleStatus(SaleStatus.ONGOING);
+        return event;
     }
 
     // --------------------view Event Map Tests -------------------
@@ -1258,7 +1264,7 @@ void GivenOwnerLoggedIn_WhenSetEventDiscountCompositionType_ThenCompositionTypeI
                 BigDecimal.valueOf(149.99),
                 null,
                 savedEvent.getRate(),
-                savedEvent.isSoldOut(),
+                SaleStatus.ONGOING.name(),
                 savedEvent.isOverloaded(),
                 savedEvent.getActiveReservationsCount(),
                 savedEvent.getVersion(),
