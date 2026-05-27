@@ -44,13 +44,14 @@ public class UserService {
 
     // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
     // username and password.
-    public boolean signUp(String sessionToken, String username, String password) {
+    public boolean signUp(String sessionToken, String username, String password, String fullName, String phone) {
         try {
             if (username == null || username.isBlank() || password == null || password.isBlank()) {
                 logger.logEvent("Sign-up rejected: blank username or password", LogLevel.WARN);
                 throw new IllegalArgumentException("Username and password are required.");
             }
-
+            String normalizedFullName = validateAndNormalizeFullName(fullName);
+            String normalizedPhone = validateAndNormalizePhone(phone);
             tokenService.validateToken(sessionToken);
 
             if (!tokenService.isGuestToken(sessionToken)) {
@@ -69,8 +70,7 @@ public class UserService {
             }
 
             String hashedPassword = passwordService.hashPassword(password);
-            userRepository.addRegisteredMember(newId, new Member(newId, username), hashedPassword);
-
+            userRepository.addRegisteredMember(newId, new Member(newId, username, normalizedFullName, normalizedPhone), hashedPassword);
             logger.logEvent("Sign-up succeeded: new member registered, username=" + username, LogLevel.INFO);
             return true;
 
@@ -313,6 +313,43 @@ public class UserService {
 
     public void removeUserLoginListener(UserLoginListener listener) {
         userLoginListeners.remove(listener);
+    }
+
+    private String validateAndNormalizePhone(String phone) {
+        if (phone == null || phone.isBlank()) {
+            logger.logEvent("Sign-up rejected: blank phone", LogLevel.WARN);
+            throw new IllegalArgumentException("Phone number is required.");
+        }
+
+        String normalizedPhone = phone.replaceAll("[\\s-]", "");
+
+        if (!normalizedPhone.matches("\\d+")) {
+            logger.logEvent("Sign-up rejected: invalid phone characters", LogLevel.WARN);
+            throw new IllegalArgumentException("Phone number must contain digits only.");
+        }
+
+        if (normalizedPhone.length() < 9 || normalizedPhone.length() > 10) {
+            logger.logEvent("Sign-up rejected: invalid phone length", LogLevel.WARN);
+            throw new IllegalArgumentException("Phone number must be 9 or 10 digits long.");
+        }
+
+        return normalizedPhone;
+    }
+
+    private String validateAndNormalizeFullName(String fullName) {
+        if (fullName == null || fullName.isBlank()) {
+            logger.logEvent("Sign-up rejected: blank full name", LogLevel.WARN);
+            throw new IllegalArgumentException("Full name is required.");
+        }
+
+        String normalizedFullName = fullName.trim();
+
+        if (normalizedFullName.length() < 2 || normalizedFullName.length() > 100) {
+            logger.logEvent("Sign-up rejected: invalid full name length", LogLevel.WARN);
+            throw new IllegalArgumentException("Full name must be between 2 and 100 characters.");
+        }
+
+        return normalizedFullName;
     }
 
 }
