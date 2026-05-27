@@ -1,4 +1,5 @@
 package ticketsystem.DomainLayer.user;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -108,16 +109,17 @@ public class Member extends User {
     }
 
     //Suspend
-     public void suspend(Suspension suspension){
-
-        if(suspension == null){
-            throw new IllegalArgumentException("Suspension cannot be null");
-        }
+     public void suspend(Long suspendedByAdminId,
+                      LocalDateTime startDate,
+                      LocalDateTime endDate,
+                      String reason){
 
         if(isSuspended()){
             throw new IllegalStateException("Member is already suspended");
         }
-
+        //validation in the constructor
+        Suspension suspension=new Suspension(suspendedByAdminId, startDate ,endDate, reason);
+      
         this.suspension=suspension;
     }
 

@@ -44,30 +44,6 @@ public class Suspension {
         this.reason = reason;
         this.revoked = false;
     }
-    // Permanent suspension
-    public Suspension(Long suspendedByAdminId,
-                      LocalDateTime startDate,
-                      String reason) {
-        if(suspendedByAdminId == null) {
-            throw new IllegalArgumentException(
-                    "Suspended by admin id cannot be null");
-        }
-
-        if(startDate == null) {
-            throw new IllegalArgumentException(
-                    "Start date cannot be null");
-        }
-
-        if(reason == null || reason.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Reason cannot be null or blank");
-        }
-        this.suspendedByAdminId = suspendedByAdminId;
-        this.startDate = startDate;
-        this.endDate = null;
-        this.reason = reason;
-        this.revoked = false;
-    }
 
     public boolean isActive() {
 
