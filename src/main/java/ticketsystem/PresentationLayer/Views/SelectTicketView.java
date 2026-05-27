@@ -14,8 +14,13 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.BookingLayout;
+import ticketsystem.PresentationLayer.Components.Notifications;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
+import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -46,8 +51,13 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     private final Button continueButton = new Button("המשך לסיכום הזמנה");
 
     private EventTicketSelectionDto eventData;
+    private final ReservationPresenter reservationPresenter;
+    private Long eventId;
 
-    public SelectTicketView() {
+    @Autowired
+    public SelectTicketView(ReservationPresenter reservationPresenter) {
+        this.reservationPresenter = reservationPresenter;
+
         addClassName("ticket-selection-page");
         setSizeFull();
 
@@ -66,12 +76,26 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        String eventId = event.getRouteParameters().get("eventId").orElse("demo");
+        String routeEventId = event.getRouteParameters().get("eventId").orElse("demo");
+        this.eventId = parseEventId(routeEventId);
 
         // Replace this line later with:
-        // setEventData(ticketSelectionPresenter.getEventMapAndAvailability(eventId));
-        setEventData(createDemoData(eventId));
+        // setEventData(ticketSelectionPresenter.getEventMapAndAvailability(routeEventId));
+        setEventData(createDemoData(routeEventId));
     }
+
+    private Long parseEventId(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
 
     public void setEventData(EventTicketSelectionDto eventData) {
         this.eventData = eventData;
