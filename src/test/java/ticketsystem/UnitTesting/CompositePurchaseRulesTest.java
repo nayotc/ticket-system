@@ -106,7 +106,7 @@ class CompositePurchaseRulesTest {
 
         assertFalse(result.isAllowed());
         assertEquals(
-                "יש לעמוד לפחות באחד מתנאי מדיניות הרכישה",
+                "All rules failed: Cannot purchase more than 2 tickets.; Insufficient tickets purchased, minimum required: 100",
                 result.getMessage()
         );
     }
@@ -155,7 +155,7 @@ class CompositePurchaseRulesTest {
 
         assertFalse(result.isAllowed());
         assertEquals(
-                "יש לעמוד לפחות באחד מתנאי מדיניות הרכישה",
+                "All rules failed: Cannot purchase more than 2 tickets.; Insufficient tickets purchased, minimum required: 100",
                 result.getMessage()
         );
     }
