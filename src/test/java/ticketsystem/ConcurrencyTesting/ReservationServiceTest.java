@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static java.util.Collections.synchronizedList;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,10 +21,9 @@ import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.IRepository.*;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.event.*;
-import ticketsystem.DomainLayer.lottery.Lottery;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.*;
 
 public class ReservationServiceTest {
@@ -70,7 +70,7 @@ public class ReservationServiceTest {
         Company company = new Company(
                 "BGU Productions",
                 COMPANY_FOUNDER_ID,
-                new PurchasePolicy(),
+                PurchasePolicy.noRestrictions(),
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
@@ -561,7 +561,7 @@ public class ReservationServiceTest {
     }
 
     private PaymentDetails createPaymentDetails() {
-        return new PaymentDetails("VISA", "Yosi");
+        return new PaymentDetails("VISA", "Yosi", LocalDate.now());
     }
 
     private String createLoggedInMember(String username, String password) {

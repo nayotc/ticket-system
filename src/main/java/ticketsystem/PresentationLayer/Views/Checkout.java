@@ -28,6 +28,7 @@ import ticketsystem.PresentationLayer.Session.UiSession;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -528,7 +529,7 @@ public class Checkout extends VerticalLayout {
         }
 
         try {
-            PaymentDetails details = new PaymentDetails(resolvePaymentMethodId(), payerName.getValue().trim());
+            PaymentDetails details = new PaymentDetails(resolvePaymentMethodId(), payerName.getValue().trim(), LocalDate.now() );
 
             boolean success = presenter.checkout(
                     resolveSessionToken(),

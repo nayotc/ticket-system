@@ -3,6 +3,7 @@ package ticketsystem.AcceptanceTesting;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,7 +28,6 @@ import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
@@ -46,6 +46,7 @@ import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 public class ReservationServiceTest {
 
@@ -97,7 +98,7 @@ public class ReservationServiceTest {
         Company company = new Company(
                 "BGU Productions",
                 COMPANY_FOUNDER_ID,
-                new PurchasePolicy(),
+                PurchasePolicy.noRestrictions(),
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
@@ -786,7 +787,8 @@ public class ReservationServiceTest {
     }
 
     private PaymentDetails createPaymentDetails() {
-        return new PaymentDetails("VISA", "Yosi");
+        return new PaymentDetails("VISA","Yosi", LocalDate.now());
+
     }
 
     private static class TestSecureBarcode implements ISecureBarcode {
@@ -821,4 +823,5 @@ public class ReservationServiceTest {
         public void logError(String errorMessage, Throwable exception) {
         }
     }
+
 }

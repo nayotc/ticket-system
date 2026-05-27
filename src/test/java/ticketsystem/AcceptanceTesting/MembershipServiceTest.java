@@ -7,15 +7,15 @@ import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
-import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.*;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -75,7 +75,7 @@ public class MembershipServiceTest {
         this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService, null, systemLogger);
 
         // 2. Setup Company state
-        testCompany = new Company("BGU Productions", founderId, new PurchasePolicy(), new DiscountPolicy(DiscountCompositionType.MAX));
+        testCompany = new Company("BGU Productions", founderId, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
         try { testCompany.setId(companyId); } catch (Exception e) {}
 
         // 3. Setup Founder - Active state

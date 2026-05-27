@@ -17,6 +17,10 @@ import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+import ticketsystem.DomainLayer.policy.PolicyResult;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
+
+
 
 public class Event {
 
@@ -59,7 +63,7 @@ public class Event {
         this.category = category;
         this.TicketPrice = ticketPrice;
         this.map = new EventMap(mapSize);
-        this.purchasePolicy = new PurchasePolicy("Default purchase policy");
+        this.purchasePolicy = PurchasePolicy.noRestrictions();
         this.discountPolicy =new DiscountPolicy(DiscountCompositionType.MAX);//defult
         this.version = 0;
     }
@@ -196,6 +200,9 @@ public class Event {
     }
 
     public void setPurchasePolicy(PurchasePolicy purchasePolicy) {
+        if (purchasePolicy == null) {
+            throw new IllegalArgumentException("Purchase policy cannot be null");
+        }
         this.purchasePolicy = purchasePolicy;
     }
 
@@ -404,6 +411,21 @@ public class Event {
         this.status = eventStatus.CANCELLED;
     }
 
+    public void canPurchase(int quantity, int age) {
+        PolicyResult result = this.purchasePolicy.validate(quantity, age);
+        if (result == null) {
+            throw new IllegalStateException("Purchase policy validation failed");
+        }
+        if (!result.isAllowed()) {
+            String message = result.getMessage();
+
+            if (message == null || message.isBlank()) {
+                message = "User does not satisfy the purchase policy";
+            }
+
+            throw new IllegalArgumentException(message);
+        }
+     }
     // discount related methods
     public void addVisibleDiscountToEvent(String name, BigDecimal percentage) {
         DiscountTypes discount = new VisibleDiscount(name, getNextDiscountId(), percentage);
