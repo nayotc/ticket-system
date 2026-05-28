@@ -91,7 +91,7 @@ public class EventService {
             Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,
                     artist, price, new Pair<>(mapHigh, mapWidth));
             eventRepository.addEvent(event);
-            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId + event.toString(),LogLevel.INFO);
+            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId + ", " + event.toString(),LogLevel.INFO);
             return eventId;
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - insertEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
