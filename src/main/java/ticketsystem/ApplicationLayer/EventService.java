@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -27,6 +28,7 @@ import java.util.Objects;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 
+@Service
 public class EventService {
 
     private final IEventRepository eventRepository;
@@ -47,10 +49,10 @@ public class EventService {
         this.userAccessService=userAccessService;
     }
 
-    public Boolean insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
-            EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
-            Integer mapHigh, Integer mapWidth) {
-        
+    public Long insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
+                               EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
+                               Integer mapHigh, Integer mapWidth) {
+
         String context = "SessionId=" + sessionId
                 + ", companyId=" + companyId
                 + ", eventName=" + eventName
@@ -89,8 +91,8 @@ public class EventService {
             Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,
                     artist, price, new Pair<>(mapHigh, mapWidth));
             eventRepository.addEvent(event);
-            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId,LogLevel.INFO);
-            return true;
+            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId + event.toString(),LogLevel.INFO);
+            return eventId;
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - insertEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
@@ -289,6 +291,35 @@ public class EventService {
             throw e;
         } catch (Exception e) {
             logger.logError("Failed - deleteEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    public EventDTO getEvent(String sessionId, Long eventId) {
+        String context = "eventId=" + eventId;
+        logger.logEvent("Started - getEvent. " + context, LogLevel.INFO);
+        try {
+            // precondition: user logged in
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+            logger.logEvent("Authenticated actor - getEvent. " + context, LogLevel.DEBUG);
+            // precondition: user has permission to view event details
+            Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+            logger.logEvent("Found event - getEvent. " + context, LogLevel.DEBUG);
+
+            // main scenario: return event details
+            logger.logEvent("Completed - getEvent. " + event.toString(), LogLevel.DEBUG);
+            return EventDTO.from(event);
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Failed - getEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+        catch (Exception e) {
+            logger.logError("Failed - getEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
     }

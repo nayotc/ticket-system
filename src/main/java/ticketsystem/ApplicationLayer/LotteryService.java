@@ -4,26 +4,31 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.Collections;
+
+import org.springframework.stereotype.Service;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.lottery.LotteryStatus;
 
+@Service
 public class LotteryService {
     
     private final ILotteryRepository lotteryRepository;
     private final ITokenService tokenService;
     private final INotifier notificationsService;
-    private final UserAccessService userAccessService; 
+    private final UserAccessService userAccessService;
+    private final ISystemLogger logger;
 
     public LotteryService(
             ILotteryRepository lotteryRepository,
             ITokenService tokenService,
-            INotifier notificationsService,UserAccessService userAccessService
+            INotifier notificationsService, UserAccessService userAccessService, ISystemLogger logger
     ) {
         this.lotteryRepository = lotteryRepository;
         this.tokenService = tokenService;
         this.notificationsService = notificationsService;
         this.userAccessService=userAccessService;
+        this.logger = logger;
     }
 
     // Method to create a new lottery
@@ -36,6 +41,7 @@ public class LotteryService {
             }
             long lotteryId = lotteryRepository.generateNextLotteryId();
             lotteryRepository.addLottery(new Lottery(lotteryId, eventId, winnersNumber));
+            logger.logEvent("Completed - Add Lottery. eventId=" + eventId + ", winnerNumber=" + winnersNumber , ISystemLogger.LogLevel.INFO);
             return lotteryId;
             
         } catch (IllegalArgumentException e) {
