@@ -16,6 +16,7 @@ public final class UiRoutes {
     public static final String REGISTRATION = "register";
 
     // Buyer flow
+    public static final String WAITING_QUEUE = "events/:eventId/queue";
     public static final String EVENT_MAP = "events/:eventId/map";
     public static final String TICKET_SELECTION = "events/:eventId/tickets";
     public static final String ACTIVE_ORDER_CART = "orders/active";
