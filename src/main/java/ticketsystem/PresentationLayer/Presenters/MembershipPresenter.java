@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.stripe.service.EventService;
@@ -332,16 +333,16 @@ public class MembershipPresenter {
     //     }
     // }
 
-    // public void cancelEvent(String sessionToken, Long companyId, Long eventId) {
-    //     try {
-    //          // boolean success = eventService.cancelEvent(sessionToken, companyId, eventId);
-    //          throw new PresentationException("ביטול אירוע טרם מומש.");
-    //     } catch (PresentationException e) {
-    //         throw e;
-    //     } catch (IllegalArgumentException | IllegalStateException e) {
-    //         throw new PresentationException(e.getMessage());
-    //     } catch (Exception e) {
-    //         throw new PresentationException("אירעה שגיאה בעת ביטול האירוע.");
-    //     }
-    // }
+    public void cancelEvent(String sessionToken, Long companyId, Long eventId) {
+        try {
+             // boolean success = eventService.cancelEvent(sessionToken, companyId, eventId);
+             throw new PresentationException("ביטול אירוע טרם מומש.");
+        } catch (PresentationException e) {
+            throw e;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new PresentationException(e.getMessage());
+        } catch (Exception e) {
+            throw new PresentationException("אירעה שגיאה בעת ביטול האירוע.");
+        }
+    }
 }
