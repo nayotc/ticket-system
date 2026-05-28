@@ -5,10 +5,13 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Repository;
+
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 
+@Repository
 public class CompanyRepository implements ICompanyRepository {
     private final ConcurrentHashMap<Long, Company> companies = new ConcurrentHashMap<>(); 
    @Override

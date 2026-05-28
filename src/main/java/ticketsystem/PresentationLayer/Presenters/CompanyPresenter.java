@@ -1,16 +1,12 @@
 package ticketsystem.PresentationLayer.Presenters;
 
+import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.DTO.CompanyDTO;
 
-/**
- * Presenter for production company actions.
- *
- * This presenter translates CompanyService failures into PresentationException,
- * so the View can display user-facing messages without interpreting service
- * exceptions directly.
- */
+@Component
 public class CompanyPresenter {
+
     private final CompanyService companyService;
 
     public CompanyPresenter(CompanyService companyService) {
