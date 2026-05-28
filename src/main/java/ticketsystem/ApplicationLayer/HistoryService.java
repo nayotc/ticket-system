@@ -23,13 +23,16 @@ public class HistoryService implements OrderCompletedListener {
     private ObjectMapper objectMapper = new ObjectMapper();
     private MembershipDomainService membershipDomainService;
     private ISystemLogger logger;
+    private final UserAccessService userAccessService; 
 
-    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger) {
+    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger,UserAccessService userAccessService) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
         this.logger = logger;
-    }
+        this.userAccessService=userAccessService;
+}
+
     
     @Override
     // This method is called when an order is completed. It takes the order details, converts them into a Purchase object, and stores it in the history repository.
@@ -126,7 +129,7 @@ public class HistoryService implements OrderCompletedListener {
             if (memberId == null) {
                 throw new IllegalArgumentException("Could not extract user id from token");
             }
-
+            userAccessService.validateCanPerformNonViewAction(memberId);
             if (!membershipDomainService.validatePermission(
                     memberId,
                     companyId,

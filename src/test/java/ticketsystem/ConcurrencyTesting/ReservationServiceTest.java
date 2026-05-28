@@ -40,6 +40,7 @@ private TokenService tokenService;
 private UserService userService;
 private EventCatalogDomainService eventCatalogDomainService;
 private MembershipDomainService membershipDomain;
+private UserAccessService userAccessService;
 
 private ISystemLogger logger;
 private FakeNotifier fakeNotifier;
@@ -65,7 +66,7 @@ private static final Long COMPANY_FOUNDER_ID = 1L;
         secureBarcode = new TestSecureBarcode();
         logger = new NoOpSystemLogger();
         fakeNotifier = new FakeNotifier();
-
+        userAccessService=new UserAccessService(userRepository);
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
                 new TokenRepository()
@@ -99,7 +100,7 @@ private static final Long COMPANY_FOUNDER_ID = 1L;
                 lotteryRepository,
                 eventCatalogDomainService,
                 logger,
-                fakeNotifier
+                fakeNotifier,userAccessService
         );
 
         memberTokens = new String[40];

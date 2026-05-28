@@ -13,6 +13,7 @@ import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.LotteryService;
 import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
@@ -33,18 +34,19 @@ public class LotteryServiceTest {
     private IUserRepository userRepository;
     private UserService userService;
     private FakeNotifier fakeNotifier;
-
+    private UserAccessService userAccessService;
     @BeforeEach
     void setUp() {
         tokenRepository = new TokenRepository();
         LotteryRepository repo = new LotteryRepository();
         repo.clearForTests(); 
         lotteryRepository = repo; 
-        
+        userRepository = new UserRepository();
+        userAccessService=new UserAccessService(userRepository);
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         fakeNotifier = new FakeNotifier(); 
-        lotteryService = new LotteryService(lotteryRepository, tokenService,fakeNotifier);
-        userRepository = new UserRepository(); 
+        lotteryService = new LotteryService(lotteryRepository, tokenService,fakeNotifier,userAccessService);
+        
         userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
     }
 

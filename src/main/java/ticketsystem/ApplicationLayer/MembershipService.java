@@ -19,14 +19,17 @@ public class MembershipService {
     private final MembershipDomainService membershipDomain;
     private final INotifier notificationsService;
     private final ISystemLogger logger;
+    private final UserAccessService userAccessService; 
 
-    public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService membershipDomain, INotifier notificationsService, ISystemLogger logger) {
+
+    public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService membershipDomain, INotifier notificationsService, ISystemLogger logger,UserAccessService userAccessService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
         this.membershipDomain = membershipDomain;
         this.notificationsService = notificationsService;
         this.logger = logger;
+        this.userAccessService=userAccessService;
     }
 
     /**
@@ -94,7 +97,7 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
         if (appointer == null) {
             throw new IllegalArgumentException("Appointer not found.");
         }
-
+        userAccessService.validateCanPerformNonViewAction(appointerId);
         // Retrieve target member information
         Member targetMember = userRepository.getMemberById(targetMemberId);
         if (targetMember == null) {
@@ -164,6 +167,7 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             if (appointer == null) {
                 throw new IllegalArgumentException("Appointer not found.");
             }
+            userAccessService.validateCanPerformNonViewAction(appointerId);
 
             // Retrieve target member information
             Member targetMember = userRepository.getMemberById(targetMemberId);
@@ -240,7 +244,7 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             if (appointer == null) {
                 throw new IllegalArgumentException("Appointer not found.");
             }
-
+            userAccessService.validateCanPerformNonViewAction(appointerId);
             Member targetMember = userRepository.getMemberById(targetMemberId);
             if (targetMember == null) {
                 throw new IllegalArgumentException("Target Member not found.");
@@ -306,7 +310,7 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             if (targetMember == null) {
                 throw new IllegalArgumentException("Member not found.");
             }
-            
+            userAccessService.validateCanPerformNonViewAction(memberId);
             logger.logEvent("Loaded data - giveUpOwnership. resigning memberId=" + memberId, LogLevel.DEBUG);
             
             membershipDomain.validateOwnerResignation(targetMember.getRoleInCompany(companyId));
@@ -381,7 +385,7 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             if (appointer == null) {
                 throw new IllegalArgumentException("Appointer not found.");
             }
-
+             userAccessService.validateCanPerformNonViewAction(appointerId);
             // Retrieve target member information
             Member targetManager = userRepository.getMemberById(managerId);
             if (targetManager == null) {
@@ -442,6 +446,7 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             
             // 2. Retrieve appointer and target member information
             Long appointerId = tokenService.extractUserId(sessionToken);
+            userAccessService.validateCanPerformNonViewAction(appointerId);
             Member appointer = userRepository.getMemberById(appointerId);
             if (appointer == null) {
                 throw new IllegalArgumentException("Appointer not found.");
@@ -506,7 +511,7 @@ public boolean approveAssignment(String sessionToken, Long companyId) throws Exc
         if (appointee == null) {
             throw new IllegalArgumentException("Appointee not found.");
         }
-
+        userAccessService.validateCanPerformNonViewAction(appointeeId);
         Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
         if (appointerId == null) {
             throw new IllegalArgumentException("The appointer ID could not be determined.");
@@ -586,7 +591,7 @@ public boolean rejectAssignment(String sessionToken, Long companyId) throws Exce
         if (appointee == null) {
             throw new IllegalArgumentException("Appointee not found.");
         }
-
+        userAccessService.validateCanPerformNonViewAction(memberId);
         Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
         if (appointerId == null) {
             throw new IllegalArgumentException("The appointer ID could not be determined.");
