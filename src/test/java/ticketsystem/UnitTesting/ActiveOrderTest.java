@@ -55,7 +55,7 @@ public class ActiveOrderTest {
         assertEquals(OrderStatus.ACTIVE, order.getStatus());
         assertNotNull(order.getTickets());
         assertTrue(order.getTickets().isEmpty());
-        //assertFalse(order.isStopped());
+        // assertFalse(order.isStopped());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class ActiveOrderTest {
 
         assertEquals(OrderStatus.PENDING_CHECKOUT, order.getStatus());
         assertTrue(order.isPendingCheckout());
-       // assertTrue(order.isStopped());
+        // assertTrue(order.isStopped());
     }
 
     @Test
@@ -116,7 +116,6 @@ public class ActiveOrderTest {
 
         assertEquals(OrderStatus.PAYMENT_FAILED, order.getStatus());
     }
-
 
     @Test
     void givenOrderWithNoTickets_whenValidateHasTickets_thenThrowException() {
@@ -151,7 +150,6 @@ public class ActiveOrderTest {
 
         assertEquals(10, order.getTickets().size());
     }
-
 
     @Test
     void givenOrderWithoutTickets_whenValidateCanBeSubmittedBy_thenThrowException() {
@@ -197,159 +195,156 @@ public class ActiveOrderTest {
     void givenNewActiveOrder_whenCheckExpiredImmediately_thenReturnFalse() {
         assertFalse(order.isExpired());
     }
+
     @Test
-void givenTicketFromDifferentEvent_whenAddTicket_thenThrowException() {
-    // Arrange
-    Ticket ticket = mock(Ticket.class);
+    void givenTicketFromDifferentEvent_whenAddTicket_thenThrowException() {
+        // Arrange
+        Ticket ticket = mock(Ticket.class);
 
-    when(ticket.getTicketId()).thenReturn(1L);
-    when(ticket.getEventId()).thenReturn(999L);
+        when(ticket.getTicketId()).thenReturn(1L);
+        when(ticket.getEventId()).thenReturn(999L);
 
-    // Act & Assert
-    assertThrows(IllegalStateException.class,
-            () -> order.addTicket(ticket));
-}
+        // Act & Assert
+        assertThrows(IllegalStateException.class,
+                () -> order.addTicket(ticket));
+    }
 
-@Test
-void givenOrderInPaymentFailedStatus_whenValidateCanBeSubmittedBy_thenDoesNotThrow() {
-    // Arrange
-    order.addTicket(createMockTicket(1L, new BigDecimal(50)));
-    order.paymentFailed();
+    @Test
+    void givenOrderInPaymentFailedStatus_whenValidateCanBeSubmittedBy_thenDoesNotThrow() {
+        // Arrange
+        order.addTicket(createMockTicket(1L, new BigDecimal(50)));
+        order.paymentFailed();
 
-    // Act & Assert
-    assertDoesNotThrow(() -> order.validateCanBeSubmittedBy());
-}
+        // Act & Assert
+        assertDoesNotThrow(() -> order.validateCanBeSubmittedBy());
+    }
 
-@Test
-void givenOrderCloseToExpiration_whenIsAboutToExpire_thenReturnTrue() {
-    // Arrange
-    ActiveOrder expiringOrder = new ActiveOrder(
-            orderId,
-            sessionToken,
-            userId,
-            eventId,
-            java.time.LocalDateTime.now().plusMinutes(1)
-    );
+    @Test
+    void givenOrderCloseToExpiration_whenIsAboutToExpire_thenReturnTrue() {
+        // Arrange
+        ActiveOrder expiringOrder = new ActiveOrder(
+                orderId,
+                sessionToken,
+                userId,
+                eventId,
+                java.time.LocalDateTime.now().plusMinutes(1));
 
-    // Act & Assert
-    assertTrue(expiringOrder.isAboutToExpire());
-}
+        // Act & Assert
+        assertTrue(expiringOrder.isAboutToExpire());
+    }
 
-@Test
-void givenOrderFarFromExpiration_whenIsAboutToExpire_thenReturnFalse() {
-    // Arrange
-    ActiveOrder nonExpiringOrder = new ActiveOrder(
-            orderId,
-            sessionToken,
-            userId,
-            eventId,
-            java.time.LocalDateTime.now().plusMinutes(10)
-    );
+    @Test
+    void givenOrderFarFromExpiration_whenIsAboutToExpire_thenReturnFalse() {
+        // Arrange
+        ActiveOrder nonExpiringOrder = new ActiveOrder(
+                orderId,
+                sessionToken,
+                userId,
+                eventId,
+                java.time.LocalDateTime.now().plusMinutes(10));
 
-    // Act & Assert
-    assertFalse(nonExpiringOrder.isAboutToExpire());
-}
+        // Act & Assert
+        assertFalse(nonExpiringOrder.isAboutToExpire());
+    }
 
-@Test
-void givenExpiredOrder_whenIsAboutToExpire_thenReturnFalse() {
-    // Arrange
-    ActiveOrder expiredOrder = new ActiveOrder(
-            orderId,
-            sessionToken,
-            userId,
-            eventId,
-            java.time.LocalDateTime.now().minusMinutes(1)
-    );
+    @Test
+    void givenExpiredOrder_whenIsAboutToExpire_thenReturnFalse() {
+        // Arrange
+        ActiveOrder expiredOrder = new ActiveOrder(
+                orderId,
+                sessionToken,
+                userId,
+                eventId,
+                java.time.LocalDateTime.now().minusMinutes(1));
 
-    // Act & Assert
-    assertFalse(expiredOrder.isAboutToExpire());
-}
+        // Act & Assert
+        assertFalse(expiredOrder.isAboutToExpire());
+    }
 
-@Test
-void givenExpiredOrder_whenIsExpired_thenReturnTrue() {
-    // Arrange
-    ActiveOrder expiredOrder = new ActiveOrder(
-            orderId,
-            sessionToken,
-            userId,
-            eventId,
-            java.time.LocalDateTime.now().minusMinutes(1)
-    );
+    @Test
+    void givenExpiredOrder_whenIsExpired_thenReturnTrue() {
+        // Arrange
+        ActiveOrder expiredOrder = new ActiveOrder(
+                orderId,
+                sessionToken,
+                userId,
+                eventId,
+                java.time.LocalDateTime.now().minusMinutes(1));
 
-    // Act & Assert
-    assertTrue(expiredOrder.isExpired());
-}
+        // Act & Assert
+        assertTrue(expiredOrder.isExpired());
+    }
 
-@Test
-void givenPendingCheckoutOrder_whenCheckPendingCheckout_thenReturnTrue() {
-    // Arrange
-    order.submitForCheckout();
+    @Test
+    void givenPendingCheckoutOrder_whenCheckPendingCheckout_thenReturnTrue() {
+        // Arrange
+        order.submitForCheckout();
 
-    // Act & Assert
-    assertTrue(order.isPendingCheckout());
-}
+        // Act & Assert
+        assertTrue(order.isPendingCheckout());
+    }
 
-@Test
-void givenActiveOrder_whenCheckPendingCheckout_thenReturnFalse() {
-    // Act & Assert
-    assertFalse(order.isPendingCheckout());
-}
+    @Test
+    void givenActiveOrder_whenCheckPendingCheckout_thenReturnFalse() {
+        // Act & Assert
+        assertFalse(order.isPendingCheckout());
+    }
 
-@Test
-void givenOrder_whenActivateOrder_thenStatusBecomesActive() {
-    // Arrange
-    order.cancelOrder();
+    @Test
+    void givenOrder_whenActivateOrder_thenStatusBecomesActive() {
+        // Arrange
+        order.cancelOrder();
 
-    // Act
-    order.activeOrder();
+        // Act
+        order.activeOrder();
 
-    // Assert
-    assertEquals(OrderStatus.ACTIVE, order.getStatus());
-}
+        // Assert
+        assertEquals(OrderStatus.ACTIVE, order.getStatus());
+    }
 
-@Test
-void givenOrder_whenIncrementVersion_thenVersionIncreases() {
-    // Arrange
-    int initialVersion = order.getVersion();
+    @Test
+    void givenOrder_whenIncrementVersion_thenVersionIncreases() {
+        // Arrange
+        int initialVersion = order.getVersion();
 
-    // Act
-    order.incrementVersion();
+        // Act
+        order.incrementVersion();
 
-    // Assert
-    assertEquals(initialVersion + 1, order.getVersion());
-}
+        // Assert
+        assertEquals(initialVersion + 1, order.getVersion());
+    }
 
-@Test
-void givenOrderWithTickets_whenCopyConstructor_thenCreatesCopy() {
-    // Arrange
-    Ticket ticket = createMockTicket(1L, new BigDecimal(50));
-    Ticket copiedTicket = createMockTicket(1L, new BigDecimal(50));
+    @Test
+    void givenOrderWithTickets_whenCopyConstructor_thenCreatesCopy() {
+        // Arrange
+        Ticket ticket = createMockTicket(1L, new BigDecimal(50));
+        Ticket copiedTicket = createMockTicket(1L, new BigDecimal(50));
 
-    when(ticket.copy()).thenReturn(copiedTicket);
+        when(ticket.copy()).thenReturn(copiedTicket);
 
-    order.addTicket(ticket);
+        order.addTicket(ticket);
 
-    // Act
-    ActiveOrder copiedOrder = new ActiveOrder(order);
+        // Act
+        ActiveOrder copiedOrder = new ActiveOrder(order);
 
-    // Assert
-    assertEquals(order.getOrderId(), copiedOrder.getOrderId());
-    assertEquals(order.getUserId(), copiedOrder.getUserId());
-    assertEquals(order.getSessionToken(), copiedOrder.getSessionToken());
-    assertEquals(order.getEventId(), copiedOrder.getEventId());
-    assertEquals(order.getStatus(), copiedOrder.getStatus());
-    assertEquals(1, copiedOrder.getTickets().size());
-    assertSame(copiedTicket, copiedOrder.getTickets().get(0));
-}
+        // Assert
+        assertEquals(order.getOrderId(), copiedOrder.getOrderId());
+        assertEquals(order.getUserId(), copiedOrder.getUserId());
+        assertEquals(order.getSessionToken(), copiedOrder.getSessionToken());
+        assertEquals(order.getEventId(), copiedOrder.getEventId());
+        assertEquals(order.getStatus(), copiedOrder.getStatus());
+        assertEquals(1, copiedOrder.getTickets().size());
+        assertSame(copiedTicket, copiedOrder.getTickets().get(0));
+    }
 
-@Test
-void givenOrder_whenSetUserIdAndSessionToken_thenValuesUpdated() {
-    // Act
-    order.setUserId(999L);
-    order.setSessionToken("new-token");
+    @Test
+    void givenOrder_whenSetUserIdAndSessionToken_thenValuesUpdated() {
+        // Act
+        order.setUserId(999L);
+        order.setSessionToken("new-token");
 
-    // Assert
-    assertEquals(999L, order.getUserId());
-    assertEquals("new-token", order.getSessionToken());
-}
+        // Assert
+        assertEquals(999L, order.getUserId());
+        assertEquals("new-token", order.getSessionToken());
+    }
 }

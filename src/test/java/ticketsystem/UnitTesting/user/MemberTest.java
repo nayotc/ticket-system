@@ -1,4 +1,5 @@
 package ticketsystem.UnitTesting.user;
+
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Manager;
 import ticketsystem.DomainLayer.user.Member;
@@ -61,7 +62,7 @@ public class MemberTest {
         Set<Permission> initialPerms = new HashSet<>();
         initialPerms.add(Permission.MANAGE_INQUIRIES);
         member.addManagerRole(companyId, 50L, initialPerms);
-        
+
         // Act: Update permissions
         Set<Permission> newPerms = new HashSet<>();
         newPerms.add(Permission.MANAGE_EVENT_INVENTORY);
@@ -72,218 +73,212 @@ public class MemberTest {
         assertTrue(updatedManager.getPermissionKeys().contains(Permission.MANAGE_EVENT_INVENTORY.getKey()));
         assertFalse(updatedManager.getPermissionKeys().contains(Permission.MANAGE_INQUIRIES.getKey()));
     }
+
     @Test
-void GivenMember_WhenSetUserNameFullNameAndPhone_ThenValuesAreUpdated() {
-    // Act
-    member.setUserName("new_user");
-    member.setFullName("New Name");
-    member.setPhone("0522222222");
+    void GivenMember_WhenSetUserNameFullNameAndPhone_ThenValuesAreUpdated() {
+        // Act
+        member.setUserName("new_user");
+        member.setFullName("New Name");
+        member.setPhone("0522222222");
 
-    // Assert
-    assertEquals("new_user", member.getUserName());
-    assertEquals("New Name", member.getFullName());
-    assertEquals("0522222222", member.getPhone());
-}
+        // Assert
+        assertEquals("new_user", member.getUserName());
+        assertEquals("New Name", member.getFullName());
+        assertEquals("0522222222", member.getPhone());
+    }
 
-@Test
-void GivenMember_WhenSetVersion_ThenVersionIsUpdated() {
-    // Act
-    member.setVersion(5L);
+    @Test
+    void GivenMember_WhenSetVersion_ThenVersionIsUpdated() {
+        // Act
+        member.setVersion(5L);
 
-    // Assert
-    assertEquals(5L, member.getVersion());
-}
+        // Assert
+        assertEquals(5L, member.getVersion());
+    }
 
-@Test
-void GivenMemberWithoutRole_WhenHasPermission_ThenReturnFalse() {
-    // Act & Assert
-    assertFalse(member.hasPermission(companyId, Permission.MANAGE_INQUIRIES));
-}
+    @Test
+    void GivenMemberWithoutRole_WhenHasPermission_ThenReturnFalse() {
+        // Act & Assert
+        assertFalse(member.hasPermission(companyId, Permission.MANAGE_INQUIRIES));
+    }
 
-@Test
-void GivenManagerRoleWithPermission_WhenHasPermission_ThenReturnTrue() {
-    // Arrange
-    Set<Permission> permissions = new HashSet<>();
-    permissions.add(Permission.MANAGE_INQUIRIES);
-    member.addManagerRole(companyId, 50L, permissions);
-    member.getRoleInCompany(companyId).activate();
+    @Test
+    void GivenManagerRoleWithPermission_WhenHasPermission_ThenReturnTrue() {
+        // Arrange
+        Set<Permission> permissions = new HashSet<>();
+        permissions.add(Permission.MANAGE_INQUIRIES);
+        member.addManagerRole(companyId, 50L, permissions);
+        member.getRoleInCompany(companyId).activate();
 
-    // Act & Assert
-    assertTrue(member.hasPermission(companyId, Permission.MANAGE_INQUIRIES));
-}
+        // Act & Assert
+        assertTrue(member.hasPermission(companyId, Permission.MANAGE_INQUIRIES));
+    }
 
-@Test
-void GivenManagerRoleWithoutPermission_WhenHasPermission_ThenReturnFalse() {
-    // Arrange
-    Set<Permission> permissions = new HashSet<>();
-    permissions.add(Permission.MANAGE_EVENT_INVENTORY);
-    member.addManagerRole(companyId, 50L, permissions);
+    @Test
+    void GivenManagerRoleWithoutPermission_WhenHasPermission_ThenReturnFalse() {
+        // Arrange
+        Set<Permission> permissions = new HashSet<>();
+        permissions.add(Permission.MANAGE_EVENT_INVENTORY);
+        member.addManagerRole(companyId, 50L, permissions);
 
-    // Act & Assert
-    assertFalse(member.hasPermission(companyId, Permission.MANAGE_INQUIRIES));
-}
+        // Act & Assert
+        assertFalse(member.hasPermission(companyId, Permission.MANAGE_INQUIRIES));
+    }
 
-@Test
-void GivenMember_WhenAddOwnerRole_ThenRoleIsAdded() {
-    // Act
-    boolean result = member.addOwnerRole(companyId, 50L);
+    @Test
+    void GivenMember_WhenAddOwnerRole_ThenRoleIsAdded() {
+        // Act
+        boolean result = member.addOwnerRole(companyId, 50L);
 
-    // Assert
-    assertTrue(result);
-    assertNotNull(member.getRoleInCompany(companyId));
-}
+        // Assert
+        assertTrue(result);
+        assertNotNull(member.getRoleInCompany(companyId));
+    }
 
-@Test
-void GivenMember_WhenAddManagerRole_ThenRoleIsAdded() {
-    // Arrange
-    Set<Permission> permissions = new HashSet<>();
-    permissions.add(Permission.MANAGE_INQUIRIES);
+    @Test
+    void GivenMember_WhenAddManagerRole_ThenRoleIsAdded() {
+        // Arrange
+        Set<Permission> permissions = new HashSet<>();
+        permissions.add(Permission.MANAGE_INQUIRIES);
 
-    // Act
-    boolean result = member.addManagerRole(companyId, 50L, permissions);
+        // Act
+        boolean result = member.addManagerRole(companyId, 50L, permissions);
 
-    // Assert
-    assertTrue(result);
-    assertNotNull(member.getRoleInCompany(companyId));
-    assertTrue(member.getRoleInCompany(companyId) instanceof Manager);
-}
+        // Assert
+        assertTrue(result);
+        assertNotNull(member.getRoleInCompany(companyId));
+        assertTrue(member.getRoleInCompany(companyId) instanceof Manager);
+    }
 
-@Test
-void GivenMemberWithExistingRole_WhenAddAnotherRoleToSameCompany_ThenRoleIsNotAdded() {
-    // Arrange
-    member.addFounderRole(companyId);
+    @Test
+    void GivenMemberWithExistingRole_WhenAddAnotherRoleToSameCompany_ThenRoleIsNotAdded() {
+        // Arrange
+        member.addFounderRole(companyId);
 
-    // Act
-    boolean result = member.addOwnerRole(companyId, 50L);
+        // Act
+        boolean result = member.addOwnerRole(companyId, 50L);
 
-    // Assert
-    assertFalse(result);
-    assertTrue(member.getRoleInCompany(companyId) instanceof Founder);
-}
+        // Assert
+        assertFalse(result);
+        assertTrue(member.getRoleInCompany(companyId) instanceof Founder);
+    }
 
-@Test
-void GivenMemberWithRoles_WhenGetAllRoles_ThenReturnAllRoles() {
-    // Arrange
-    member.addFounderRole(1L);
-    member.addOwnerRole(2L, 50L);
+    @Test
+    void GivenMemberWithRoles_WhenGetAllRoles_ThenReturnAllRoles() {
+        // Arrange
+        member.addFounderRole(1L);
+        member.addOwnerRole(2L, 50L);
 
-    // Act & Assert
-    assertEquals(2, member.getAllRoles().size());
-}
+        // Act & Assert
+        assertEquals(2, member.getAllRoles().size());
+    }
 
-@Test
-void GivenMemberWithoutRole_WhenDeleteRoleInCompany_ThenReturnFalse() {
-    // Act
-    boolean result = member.deleteRoleInCompany(companyId);
+    @Test
+    void GivenMemberWithoutRole_WhenDeleteRoleInCompany_ThenReturnFalse() {
+        // Act
+        boolean result = member.deleteRoleInCompany(companyId);
 
-    // Assert
-    assertFalse(result);
-}
+        // Assert
+        assertFalse(result);
+    }
 
-@Test
-void GivenOwnerRole_WhenUpdateManagerPermissions_ThenRoleDoesNotChange() {
-    // Arrange
-    member.addOwnerRole(companyId, 50L);
+    @Test
+    void GivenOwnerRole_WhenUpdateManagerPermissions_ThenRoleDoesNotChange() {
+        // Arrange
+        member.addOwnerRole(companyId, 50L);
 
-    Set<Permission> newPermissions = new HashSet<>();
-    newPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
+        Set<Permission> newPermissions = new HashSet<>();
+        newPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
-    // Act
-    member.updateManagerPermissions(companyId, newPermissions);
+        // Act
+        member.updateManagerPermissions(companyId, newPermissions);
 
-    // Assert
-    assertFalse(member.getRoleInCompany(companyId) instanceof Manager);
-}
+        // Assert
+        assertFalse(member.getRoleInCompany(companyId) instanceof Manager);
+    }
 
-@Test
-void GivenMemberWithoutManagerRole_WhenUpdateManagerPermissions_ThenNoExceptionIsThrown() {
-    // Arrange
-    Set<Permission> newPermissions = new HashSet<>();
-    newPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
+    @Test
+    void GivenMemberWithoutManagerRole_WhenUpdateManagerPermissions_ThenNoExceptionIsThrown() {
+        // Arrange
+        Set<Permission> newPermissions = new HashSet<>();
+        newPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
-    // Act & Assert
-    assertDoesNotThrow(() ->
-            member.updateManagerPermissions(companyId, newPermissions)
-    );
-}
+        // Act & Assert
+        assertDoesNotThrow(() -> member.updateManagerPermissions(companyId, newPermissions));
+    }
 
-@Test
-void GivenMember_WhenSuspendMember_ThenMemberIsSuspended() {
-    // Arrange
-    LocalDateTime startDate = LocalDateTime.now().minusDays(1);
-    LocalDateTime endDate = LocalDateTime.now().plusDays(1);
+    @Test
+    void GivenMember_WhenSuspendMember_ThenMemberIsSuspended() {
+        // Arrange
+        LocalDateTime startDate = LocalDateTime.now().minusDays(1);
+        LocalDateTime endDate = LocalDateTime.now().plusDays(1);
 
-    // Act
-    member.suspendMember(1L, startDate, endDate, "Violation");
+        // Act
+        member.suspendMember(1L, startDate, endDate, "Violation");
 
-    // Assert
-    assertTrue(member.isSuspended());
-    assertNotNull(member.getSuspension());
-}
+        // Assert
+        assertTrue(member.isSuspended());
+        assertNotNull(member.getSuspension());
+    }
 
-@Test
-void GivenSuspendedMember_WhenSuspendAgain_ThenExceptionIsThrown() {
-    // Arrange
-    LocalDateTime startDate = LocalDateTime.now().minusDays(1);
-    LocalDateTime endDate = LocalDateTime.now().plusDays(1);
-    member.suspendMember(1L, startDate, endDate, "Violation");
+    @Test
+    void GivenSuspendedMember_WhenSuspendAgain_ThenExceptionIsThrown() {
+        // Arrange
+        LocalDateTime startDate = LocalDateTime.now().minusDays(1);
+        LocalDateTime endDate = LocalDateTime.now().plusDays(1);
+        member.suspendMember(1L, startDate, endDate, "Violation");
 
-    // Act & Assert
-    assertThrows(IllegalStateException.class, () ->
-            member.suspendMember(2L, startDate, endDate, "Another violation")
-    );
-}
+        // Act & Assert
+        assertThrows(IllegalStateException.class,
+                () -> member.suspendMember(2L, startDate, endDate, "Another violation"));
+    }
 
-@Test
-void GivenSuspendedMember_WhenRevokeSuspension_ThenMemberIsNotSuspended() {
-    // Arrange
-    LocalDateTime startDate = LocalDateTime.now().minusDays(1);
-    LocalDateTime endDate = LocalDateTime.now().plusDays(1);
-    member.suspendMember(1L, startDate, endDate, "Violation");
+    @Test
+    void GivenSuspendedMember_WhenRevokeSuspension_ThenMemberIsNotSuspended() {
+        // Arrange
+        LocalDateTime startDate = LocalDateTime.now().minusDays(1);
+        LocalDateTime endDate = LocalDateTime.now().plusDays(1);
+        member.suspendMember(1L, startDate, endDate, "Violation");
 
-    // Act
-    member.revokeSuspension();
+        // Act
+        member.revokeSuspension();
 
-    // Assert
-    assertFalse(member.isSuspended());
-    assertTrue(member.getSuspension().isRevoked());
-}
+        // Assert
+        assertFalse(member.isSuspended());
+        assertTrue(member.getSuspension().isRevoked());
+    }
 
-@Test
-void GivenMemberWithoutSuspension_WhenRevokeSuspension_ThenExceptionIsThrown() {
-    // Act & Assert
-    assertThrows(IllegalStateException.class, () ->
-            member.revokeSuspension()
-    );
-}
+    @Test
+    void GivenMemberWithoutSuspension_WhenRevokeSuspension_ThenExceptionIsThrown() {
+        // Act & Assert
+        assertThrows(IllegalStateException.class, () -> member.revokeSuspension());
+    }
 
-@Test
-void GivenMemberWithExpiredSuspension_WhenRevokeSuspension_ThenExceptionIsThrown() {
-    // Arrange
-    LocalDateTime startDate = LocalDateTime.now().minusDays(2);
-    LocalDateTime endDate = LocalDateTime.now().minusDays(1);
-    member.suspendMember(1L, startDate, endDate, "Expired violation");
+    @Test
+    void GivenMemberWithExpiredSuspension_WhenRevokeSuspension_ThenExceptionIsThrown() {
+        // Arrange
+        LocalDateTime startDate = LocalDateTime.now().minusDays(2);
+        LocalDateTime endDate = LocalDateTime.now().minusDays(1);
+        member.suspendMember(1L, startDate, endDate, "Expired violation");
 
-    // Act & Assert
-    assertThrows(IllegalStateException.class, () ->
-            member.revokeSuspension()
-    );
-}
+        // Act & Assert
+        assertThrows(IllegalStateException.class, () -> member.revokeSuspension());
+    }
 
-@Test
-void GivenMemberWithRole_WhenCopyConstructor_ThenCopiedMemberHasSameDataAndRole() {
-    // Arrange
-    member.addFounderRole(companyId);
+    @Test
+    void GivenMemberWithRole_WhenCopyConstructor_ThenCopiedMemberHasSameDataAndRole() {
+        // Arrange
+        member.addFounderRole(companyId);
 
-    // Act
-    Member copiedMember = new Member(member);
+        // Act
+        Member copiedMember = new Member(member);
 
-    // Assert
-    assertEquals(member.getId(), copiedMember.getId());
-    assertEquals(member.getUserName(), copiedMember.getUserName());
-    assertEquals(member.getFullName(), copiedMember.getFullName());
-    assertEquals(member.getPhone(), copiedMember.getPhone());
-    assertNotNull(copiedMember.getRoleInCompany(companyId));
-    assertTrue(copiedMember.getRoleInCompany(companyId) instanceof Founder);
-}
+        // Assert
+        assertEquals(member.getId(), copiedMember.getId());
+        assertEquals(member.getUserName(), copiedMember.getUserName());
+        assertEquals(member.getFullName(), copiedMember.getFullName());
+        assertEquals(member.getPhone(), copiedMember.getPhone());
+        assertNotNull(copiedMember.getRoleInCompany(companyId));
+        assertTrue(copiedMember.getRoleInCompany(companyId) instanceof Founder);
+    }
 }
