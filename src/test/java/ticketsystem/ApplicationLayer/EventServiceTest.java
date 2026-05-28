@@ -56,12 +56,6 @@ public class EventServiceTest {
     private ISystemLogger logger;
 
     @Mock
-    private INotifier mockNotifier;
-
-    @Mock
-    private IHistoryRepository mockHistoryRepository;
-
-    @Mock
     private UserAccessService mockUserAccessService;
     private EventService eventService;
     private final String validSessionId = "valid-session";
@@ -73,15 +67,14 @@ public class EventServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
+    //notification
         eventService = new EventService(
                 mockEventRepository,
                 mockTokenService,
                 mockMembershipDomainService,
                 logger,
-                mockNotifier,
-                mockHistoryRepository,mockUserAccessService
+                mockUserAccessService
         );
-        when(mockHistoryRepository.getAllPurchases()).thenReturn(List.of());
         when(mockTokenService.validateToken(validSessionId)).thenReturn(true);
         when(mockTokenService.extractUserId(validSessionId)).thenReturn(validUserId);
 

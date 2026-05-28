@@ -35,19 +35,15 @@ public class EventService {
     private final List<EventUpdatesListener> eventUpdatesListeners = new ArrayList<>();
     private final ISystemLogger logger;
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
-    private final INotifier notificationsService;
-    private final IHistoryRepository historyRepository;
     private final UserAccessService userAccessService;
 
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
             MembershipDomainService membershipDomain, ISystemLogger logger,
-            INotifier notificationsService, IHistoryRepository historyRepository,UserAccessService userAccessService) {
+            UserAccessService userAccessService) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
-        this.notificationsService = notificationsService;
-        this.historyRepository = historyRepository;
         this.userAccessService=userAccessService;
     }
 
@@ -198,11 +194,7 @@ public class EventService {
             logger.logEvent("Validated details - updateEvent. " + context, LogLevel.DEBUG);
             if (notificateUsers) {
                 notifyEventUpdatedListeners(existingEvent.getId(), eventDTO.date(), eventDTO.location(), message);
-                logger.logEvent("Notified users - updateEvent. " + context, LogLevel.DEBUG);
-                notifyPurchasedBuyers(
-                existingEvent.getId(),
-                "The details of the event \"" + existingEvent.getName() + "\" have been updated. Please check your ticket details."
-            );
+                logger.logEvent("Notified event update listeners - updateEvent. " + context, LogLevel.DEBUG);
             }
             existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
             eventRepository.updateEvent(existingEvent);
@@ -358,10 +350,6 @@ public class EventService {
             event.cancel();
             eventRepository.updateEvent(event); // update event status to cancelled
             notifyEventCanceledListeners(eventId);
-            notifyPurchasedBuyers(
-            eventId,
-            "The event \"" + event.getName() + "\" was canceled."
-           );
             logger.logEvent("Completed - cancelEvent. " + context, LogLevel.INFO);
             return true;
         } catch (IllegalArgumentException e) {
@@ -438,25 +426,7 @@ public class EventService {
                 + ", companyId=" + eventDTO.companyId()
                 + ", version=" + eventDTO.version();
     }
-  private void notifyPurchasedBuyers(Long eventId, String message) {
-    if (notificationsService == null || historyRepository == null || eventId == null
-            || message == null || message.isBlank()) {
-        return;
-    }
-
-    List<Long> buyerMemberIds = historyRepository.getPurchasesByEventId(eventId)
-            .stream()
-            .map(Purchase::getMemberId)
-            .filter(Objects::nonNull)
-            .distinct()
-            .toList();
-
-    if (buyerMemberIds.isEmpty()) {
-        return;
-    }
-
-    notificationsService.notifyMembers(buyerMemberIds, message);
-}
+ 
 
 public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
     try {

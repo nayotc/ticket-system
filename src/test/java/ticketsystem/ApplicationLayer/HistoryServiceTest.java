@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -32,6 +33,7 @@ import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
+
 public class HistoryServiceTest {
 
     private IHistoryRepository historyRepository;
@@ -42,6 +44,7 @@ public class HistoryServiceTest {
     private HistoryService historyService;
     private ICompanyRepository companyRepository;
     private UserAccessService userAccessService;
+    private FakeNotifier fakeNotifier;
 
     @BeforeEach
     void setUp() {
@@ -56,8 +59,15 @@ public class HistoryServiceTest {
         this.userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
         this.companyRepository = new CompanyRepository();
         userAccessService=new UserAccessService(userRepository);
-        this.historyService = new HistoryService(historyRepository, tokenService, new MembershipDomainService(userRepository), new LogbackSystemLogger(),userAccessService);
-    }
+        fakeNotifier = new FakeNotifier();
+        this.historyService = new HistoryService(
+                historyRepository,
+                tokenService,
+                new MembershipDomainService(userRepository),
+                new LogbackSystemLogger(),
+                userAccessService,
+                fakeNotifier
+        );    }
 
     /**
      * Helper method to simulate a full user registration and login flow.
@@ -527,5 +537,49 @@ public class HistoryServiceTest {
         );
     }
 
-    
+    private static class FakeNotifier implements INotifier {
+
+    private final List<String> messages = new ArrayList<>();
+
+    @Override
+    public void notifyMember(Long memberId, String message) {
+        messages.add(message);
+    }
+
+    @Override
+    public void notifyGuest(String guestToken, String message) {
+        messages.add(message);
+    }
+
+    @Override
+    public void notifyMembers(Collection<Long> memberIds, String message) {
+        if (memberIds == null) {
+            return;
+        }
+
+        for (Long memberId : memberIds) {
+            if (memberId != null) {
+                notifyMember(memberId, message);
+            }
+        }
+    }
+
+    @Override
+    public void notifyGuests(Collection<String> guestTokens, String message) {
+        if (guestTokens == null) {
+            return;
+        }
+
+        for (String guestToken : guestTokens) {
+            if (guestToken != null && !guestToken.isBlank()) {
+                notifyGuest(guestToken, message);
+            }
+        }
+    }
+
+    boolean containsMessage(String text) {
+        return messages.stream()
+                .anyMatch(message -> message.contains(text));
+    }
+}
 }
