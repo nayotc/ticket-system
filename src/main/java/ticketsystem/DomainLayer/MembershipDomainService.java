@@ -691,4 +691,17 @@ public class MembershipDomainService {
         transferAppointees(ownerToCancel, appointer, companyId);
         userRepository.updateMember(appointer);
     }
+
+    public Set<Long> getCompanyIdsByMember(Long memberId) throws Exception {
+        Member member = userRepository.getMemberById(memberId);
+        if (member == null) {
+            throw new Exception("Member not found.");
+        }
+        List<CompanyRole> roles = member.getAllRoles();
+        Set<Long> companyIds = new HashSet<>();
+        for (CompanyRole role : roles) {
+            companyIds.add(role.getCompanyId());
+        }
+        return companyIds;
+    }
 }

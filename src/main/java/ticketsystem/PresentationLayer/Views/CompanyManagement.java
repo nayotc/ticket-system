@@ -32,6 +32,16 @@ import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
+import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
+import ticketsystem.PresentationLayer.Presenters.MembershipPresenter;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.CompanyStats;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.EventManagementItem;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.ManagedCompanyItem;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.PolicySummary;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.RoleType;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.TeamMemberItem;
+
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -42,7 +52,8 @@ import java.util.stream.Collectors;
 @Route(value = UiRoutes.COMPANY_MANAGEMENT, layout = ManagementLayout.class)
 public class CompanyManagement extends Div implements BeforeEnterObserver {
 
-    private final CompanyManagementPresenter presenter;
+    private final MembershipPresenter membershipPresenter;
+    private final CompanyPresenter companyPresenter;
     private CompanyManagementState state;
 
     private final TextField managerMemberId = new TextField("מזהה מנוי למינוי מנהל");
@@ -50,11 +61,12 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
     private final CheckboxGroup<Permission> managerPermissions = new CheckboxGroup<>("הרשאות מנהל");
 
     public CompanyManagement() {
-        this(null);
+        this(null, null);
     }
 
-    public CompanyManagement(CompanyManagementPresenter presenter) {
-        this.presenter = presenter;
+    public CompanyManagement(MembershipPresenter membershipPresenter, CompanyPresenter companyPresenter) {
+        this.membershipPresenter = membershipPresenter;
+        this.companyPresenter = companyPresenter;
         addClassName("company-management-page");
         getElement().setAttribute("dir", "rtl");
         configureFields();
@@ -84,10 +96,10 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
 
     private void loadState(Long requestedCompanyId) {
         try {
-            if (presenter == null) {
+            if (membershipPresenter == null) {
                 state = demoState(requestedCompanyId);
             } else {
-                state = presenter.loadCompanyManagement(UiSession.getMemberToken(), requestedCompanyId);
+                state = membershipPresenter.loadCompanyManagement(UiSession.getMemberToken(), requestedCompanyId);
             }
             render();
         } catch (Exception e) {
@@ -410,7 +422,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 "השהיית חברה",
                 "החברה תהפוך ללא פעילה ולא תופיע בתוצאות החיפוש הכללי.",
                 () -> runPresenterAction(
-                        () -> presenter.closeProductionCompany(UiSession.getMemberToken(), state.selectedCompany().id()),
+                        () -> companyPresenter.closeProductionCompany(UiSession.getMemberToken(), state.selectedCompany().id()),
                         "החברה הושהתה בהצלחה"
                 )
         ));
@@ -423,7 +435,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 "פתיחת חברה מחדש",
                 "החברה תחזור להיות פעילה ותוכל להופיע בתוצאות החיפוש.",
                 () -> runPresenterAction(
-                        () -> presenter.reopenProductionCompany(UiSession.getMemberToken(), state.selectedCompany().id()),
+                        () -> companyPresenter.reopenProductionCompany(UiSession.getMemberToken(), state.selectedCompany().id()),
                         "החברה נפתחה מחדש"
                 )
         ));
@@ -435,7 +447,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 "ויתור על בעלות",
                 "הפעולה תסיר ממך את תפקיד הבעלים בהתאם ללוגיקת המינויים במערכת.",
                 () -> runPresenterAction(
-                        () -> presenter.giveUpOwnership(UiSession.getMemberToken(), state.selectedCompany().id()),
+                        () -> membershipPresenter.giveUpOwnership(UiSession.getMemberToken(), state.selectedCompany().id()),
                         "ויתור הבעלות בוצע בהצלחה"
                 )
         ));
@@ -521,7 +533,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         }
 
         runPresenterAction(
-                () -> presenter.requestManagerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), targetMemberId, permissions),
+                () -> membershipPresenter.requestManagerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), targetMemberId, permissions),
                 "בקשת מינוי המנהל נשלחה לאישור"
         );
     }
@@ -534,7 +546,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
 
         Set<Permission> permissions = managerPermissions.getSelectedItems();
         runPresenterAction(
-                () -> presenter.updateManagerPermissions(UiSession.getMemberToken(), state.selectedCompany().id(), managerId, permissions),
+                () -> membershipPresenter.updateManagerPermissions(UiSession.getMemberToken(), state.selectedCompany().id(), managerId, permissions),
                 "הרשאות המנהל עודכנו"
         );
     }
@@ -546,7 +558,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         }
 
         runPresenterAction(
-                () -> presenter.requestOwnerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), targetMemberId),
+                () -> membershipPresenter.requestOwnerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), targetMemberId),
                 "בקשת מינוי הבעלים נשלחה לאישור"
         );
     }
@@ -564,9 +576,9 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 () -> runPresenterAction(
                         () -> {
                             if (member.roleType() == RoleType.OWNER) {
-                                presenter.removeOwnerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), member.memberId());
+                                membershipPresenter.removeOwnerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), member.memberId());
                             } else {
-                                presenter.removeManagerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), member.memberId());
+                                membershipPresenter.removeManagerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), member.memberId());
                             }
                         },
                         "התפקיד הוסר בהצלחה"
@@ -585,7 +597,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
 
     private void runPresenterAction(ThrowingRunnable action, String successMessage) {
         try {
-            if (presenter == null) {
+            if (membershipPresenter == null || companyPresenter == null) {
                 showWarning("הפעולה מוכנה לחיבור Presenter. כרגע מוצג מידע דמו בלבד.");
                 return;
             }
@@ -752,64 +764,4 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         void cancelEvent(String sessionToken, Long companyId, Long eventId) throws Exception;
     }
 
-    public record CompanyManagementState(
-            List<ManagedCompanyItem> companies,
-            ManagedCompanyItem selectedCompany,
-            boolean owner,
-            boolean canManageTeam,
-            List<TeamMemberItem> teamMembers,
-            List<EventManagementItem> events,
-            CompanyStats stats,
-            PolicySummary policySummary
-    ) {
-        public static ManagedCompanyItem companyFromDto(CompanyDTO companyDTO) {
-            return ManagedCompanyItem.from(companyDTO);
-        }
-    }
-
-    public record ManagedCompanyItem(long id, String name, long founderId, String founderName, boolean active) {
-        public static ManagedCompanyItem from(CompanyDTO dto) {
-            return new ManagedCompanyItem(
-                    dto.getId(),
-                    dto.getName(),
-                    dto.getFounderId(),
-                    "Member #" + dto.getFounderId(),
-                    dto.isActive()
-            );
-        }
-    }
-
-    public record EventManagementItem(long eventId, String title) {
-    }
-
-    public record CompanyStats(int activeEvents, int pendingAssignments) {
-    }
-
-    public record PolicySummary(String purchasePolicySummary, String discountPolicySummary) {
-    }
-
-    public enum RoleType {
-        FOUNDER,
-        OWNER,
-        MANAGER
-    }
-
-    public record TeamMemberItem(
-            Long memberId,
-            String displayName,
-            String roleLabel,
-            RoleType roleType,
-            Set<Permission> permissions,
-            boolean removable
-    ) {
-        public String permissionLabels() {
-            if (permissions == null || permissions.isEmpty()) {
-                return "";
-            }
-
-            return permissions.stream()
-                    .map(permission -> permission.name().replace('_', ' '))
-                    .collect(Collectors.joining(", "));
-        }
-    }
 }
