@@ -1,5 +1,6 @@
 package ticketsystem.PresentationLayer.Presenters;
 
+<<<<<<< HEAD
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -25,11 +26,21 @@ import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.EventMan
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.TeamMemberItem;
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.PolicySummary;
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.RoleType;
+=======
+import java.util.Set;
+
+import org.springframework.stereotype.Component;
+
+import ticketsystem.ApplicationLayer.MembershipService;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.PresentationLayer.Views.CompanyManagement.CompanyManagementState;
+>>>>>>> 2c78382 (Start to implement company management presenter)
 
 @Component
 public class MembershipPresenter {
     
     private final MembershipService membershipService;
+<<<<<<< HEAD
     private final ITokenService tokenService;
     private final UserService userService;
     private final CompanyService companyService;
@@ -41,10 +52,20 @@ public class MembershipPresenter {
         this.userService = userService;
         this.companyService = companyService;
         this.eventService = eventService;
+=======
+    private final CompanyService companyService;
+    private final EventService eventService;
+
+    public MembershipPresenter(MembershipService membershipService) {
+        this.membershipService = membershipService;
+        // this.companyService = companyService;
+        // this.eventService = eventService;
+>>>>>>> 2c78382 (Start to implement company management presenter)
     }
 
     public CompanyManagementState loadCompanyManagement(String sessionToken, Long requestedCompanyId) {
         try {
+<<<<<<< HEAD
             // 1. אימות תקינות הטוקן ושליפת מזהה המשתמש הנוכחי
             Long currentUserId = tokenService.extractUserId(sessionToken);
             if (currentUserId == null) {
@@ -201,6 +222,19 @@ public class MembershipPresenter {
         } catch (Exception e) {
             // חסימת שגיאות מערכת פנימיות (כמו בעיות תקשורת עם ה-DB) והצגת הודעה כללית ומאובטחת
             throw new PresentationException("אירעה שגיאה בלתי צפויה בעת טעינת נתוני ניהול החברה.");
+=======
+            // כאן יש לקרוא לשירותי האפליקציה ששולפים את כל הנתונים (חברות, צוות, אירועים)
+            // ולהרכיב את אובייקט ה-CompanyManagementState
+            // return companyService.getCompanyManagementState(sessionToken, requestedCompanyId);
+            
+            throw new PresentationException("טעינת נתוני החברה טרם מומשה בשכבת האפליקציה.");
+        } catch (PresentationException e) {
+            throw e;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new PresentationException(e.getMessage());
+        } catch (Exception e) {
+            throw new PresentationException("אירעה שגיאה בעת טעינת נתוני החברה.");
+>>>>>>> 2c78382 (Start to implement company management presenter)
         }
     }
 
@@ -322,16 +356,25 @@ public class MembershipPresenter {
 
     public void cancelEvent(String sessionToken, Long companyId, Long eventId) {
         try {
+<<<<<<< HEAD
              boolean success = eventService.cancelEvent(sessionToken, eventId);
             if (!success) {
                 throw new PresentationException("ביטול אירוע טרם מומש.");
             }
+=======
+             // boolean success = eventService.cancelEvent(sessionToken, companyId, eventId);
+             throw new PresentationException("ביטול אירוע טרם מומש.");
+>>>>>>> 2c78382 (Start to implement company management presenter)
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new PresentationException(e.getMessage());
         } catch (Exception e) {
+<<<<<<< HEAD
             throw new PresentationException("Failed to cancel event. Please try again later.");
+=======
+            throw new PresentationException("אירעה שגיאה בעת ביטול האירוע.");
+>>>>>>> 2c78382 (Start to implement company management presenter)
         }
     }
 }
