@@ -66,7 +66,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     private SalesReportDTO currentReport = new SalesReportDTO(0, BigDecimal.ZERO, "לא נטענו נתונים");
     private List<OrderDTO> currentTransactions = new ArrayList<>();
 
-    // Change 1: The constructor receives the Presenter via Spring
     @Autowired
     public SalesReport(SalesReportPresenter salesReportPresenter) {
         this.presenter = salesReportPresenter;
@@ -195,20 +194,12 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
 
         String token = UiSession.getMemberToken();
 
-<<<<<<< HEAD
         // 1. Unauthenticated user - redirect to the login page before the view loads
         if (token == null || token.isBlank()) {
             showError("יש להתחבר כדי לצפות בדוח המכירות.");
             event.forwardTo(UiRoutes.LOGIN);
             return;
         }
-=======
-    private void loadFromPresenterOrDemo() {
-        // if (presenter == null) {
-        //     loadDemoData();
-        //     return;
-        // }
->>>>>>> 151b13a (Throw only Presentation Exceptions from view and delete loadDemoData for test the connection with the Presentor, and add necessary annotations)
 
         // 2. Authenticated user - attempt to fetch data
         try {
@@ -235,13 +226,8 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             SalesReportDTO report = presenter.generateSalesReport(token, companyId);
             List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
             bindSalesReport(report, transactions);
-<<<<<<< HEAD
             Notifications.success("הנתונים רעננו בהצלחה");
         } catch (PresentationException e) {
-=======
-        } catch (PresentationException e) {
-            bindSalesReport(new SalesReportDTO(0, BigDecimal.ZERO, e.getMessage()), List.of());
->>>>>>> 151b13a (Throw only Presentation Exceptions from view and delete loadDemoData for test the connection with the Presentor, and add necessary annotations)
             showError(e.getMessage());
             UI.getCurrent().navigate(UiRoutes.HOME);
         }
@@ -290,15 +276,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         H3 title = new H3("עסקאות החברה");
         title.addClassName("sales-report-card-title");
 
-<<<<<<< HEAD
         header.add(title);
-=======
-        // TODO: remove this helper message from Transactions Card.
-        Span helper = new Span("מוצגות רק עסקאות המשויכות לחברה הנוכחית.");
-        helper.addClassName("sales-report-card-helper");
-
-        header.add(title, helper);
->>>>>>> 151b13a (Throw only Presentation Exceptions from view and delete loadDemoData for test the connection with the Presentor, and add necessary annotations)
 
         Div tableWrapper = new Div(transactionsGrid);
         tableWrapper.addClassName("sales-report-table-wrapper");
@@ -407,14 +385,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
 
         H3 title = new H3("הכנסות לפי אירוע");
         title.addClassName("sales-report-card-title");
-
-<<<<<<< HEAD
-=======
-        // TODO: remove this helper message from chart.
-        Span helper = new Span("מבוסס על OrderDTO הקיימים. אין פילוח לפי סוג כרטיס ואין אחוז המרה.");
-        helper.addClassName("sales-report-card-helper");
-
->>>>>>> 151b13a (Throw only Presentation Exceptions from view and delete loadDemoData for test the connection with the Presentor, and add necessary annotations)
         Div chart = new Div();
         chart.addClassName("sales-report-chart");
 
@@ -626,8 +596,4 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     private record EventRevenue(String eventName, BigDecimal revenue) {
     }
 
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 151b13a (Throw only Presentation Exceptions from view and delete loadDemoData for test the connection with the Presentor, and add necessary annotations)
