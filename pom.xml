@@ -156,6 +156,11 @@
                     <exclude>**/generated/**</exclude>
                     <exclude>**/Generated/**</exclude>
                     <exclude>**/*Generated*.class</exclude>
+                    <!-- InfrastructureLayer -->
+                   
+                    <exclude>ticketsystem/InfrastructureLayer/**</exclude>
+                    <!-- Root package classes -->
+                    <exclude>ticketsystem/*.class</exclude>
 
                 </excludes>
             </configuration>

@@ -45,6 +45,18 @@ public class Suspension {
         this.revoked = false;
     }
 
+    //copy constructor
+    public Suspension(Suspension other) {
+        if (other == null) {
+            throw new IllegalArgumentException("Suspension cannot be null");
+        }
+
+        this.suspendedByAdminId = other.suspendedByAdminId;
+        this.startDate = other.startDate;
+        this.endDate = other.endDate;
+        this.reason = other.reason;
+        this.revoked = other.revoked;
+    }
     public boolean isActive() {
 
         if (revoked) {
@@ -62,7 +74,8 @@ public class Suspension {
     public boolean isRevoked(){
         return revoked;
     }
-    void revoke(){
+    
+    public void revoke(){
         this.revoked = true;
     }
 
