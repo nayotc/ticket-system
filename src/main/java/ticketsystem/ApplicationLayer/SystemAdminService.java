@@ -3,16 +3,20 @@ package ticketsystem.ApplicationLayer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.SuspentionUserDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
@@ -23,7 +27,8 @@ import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import java.util.Map;
 import java.util.Set;
-
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Suspension;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -282,6 +287,96 @@ public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) th
             List<String> allLines = lines.collect(Collectors.toList());
             int start = Math.max(0, allLines.size() - maxLines);
             return allLines.subList(start, allLines.size());
+        }
+    }
+
+    //uc 6.7 - Suspend Member by Admin
+    public boolean suspendMemberByAdmin(long adminId, long memberId, LocalDateTime startDate,
+                      LocalDateTime endDate, String reason ) {
+        try{
+            SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+            if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                logger.logEvent("Unauthorized access. Invalid admin credentials.",
+                        LogbackSystemLogger.LogLevel.WARN);
+                        throw new IllegalArgumentException("Unauthorized access. Invalid admin credentials.");
+            }
+            Member member = userRepository.getMemberById(memberId);
+            if (member == null) {
+                logger.logEvent("Member with ID " + memberId + " was not found.",
+                        LogbackSystemLogger.LogLevel.INFO);
+                        throw new IllegalArgumentException("Member with ID " + memberId + " was not found.");
+            }
+            member.suspendMember(adminId, startDate, endDate, reason);
+            return userRepository.updateMember(member);
+        }
+        catch(Exception e){
+            logger.logEvent("An unexpected error occurred while suspending the member: " + e.getMessage(),
+                    LogbackSystemLogger.LogLevel.INFO);
+            throw e;
+        }
+    }
+
+    //uc 6.8 - Revoke Suspension of Member by Admin
+    public boolean revokeMemberByAdmin(long adminId, long memberId) {
+        try {
+            SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+            if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                logger.logEvent("Unauthorized access. Invalid admin credentials.",
+                        LogbackSystemLogger.LogLevel.WARN);
+                throw new IllegalArgumentException("Unauthorized access. Invalid admin credentials.");
+            }
+            Member member = userRepository.getMemberById(memberId);
+            if (member == null) {
+                logger.logEvent("Member with ID " + memberId + " was not found.",
+                        LogbackSystemLogger.LogLevel.INFO);
+                throw new IllegalArgumentException("Member with ID " + memberId + " was not found.");
+            }
+            member.revokeSuspension();
+            return userRepository.updateMember(member);
+        } catch (Exception e) {
+            logger.logEvent("An unexpected error occurred while revoking the member: " + e.getMessage(),
+                    LogbackSystemLogger.LogLevel.INFO);
+            throw e;
+        }
+    }
+
+    //uc 6.9 - View Suspended Members by Admin
+    public List<SuspentionUserDTO> viewSuspendedMembersByAdmin(long adminId) {
+        try {
+            SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+            if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                logger.logEvent("Unauthorized access. Invalid admin credentials.",
+                        LogbackSystemLogger.LogLevel.WARN);
+                throw new IllegalArgumentException("Unauthorized access. Invalid admin credentials.");
+            }
+            List<SuspentionUserDTO> suspendedUsersDTOs = userRepository.getAllMembers().stream()
+                    .filter(Member::isSuspended)
+                    .map(member -> {
+                        Suspension suspension = member.getSuspension();
+                        LocalDateTime start = suspension.getStartDate();
+                        LocalDateTime end = suspension.getEndDate();
+                        Long durationInDays = null;
+                        if (end != null && start != null) {
+                            durationInDays = ChronoUnit.DAYS.between(start, end);
+                        }
+                        
+                        return new SuspentionUserDTO(
+                                member.getId(),
+                                suspension.getReason(),
+                                start,
+                                end,
+                                durationInDays
+                        );
+                    })
+                    .collect(Collectors.toList());
+            if (suspendedUsersDTOs.isEmpty()) {
+                throw new IllegalStateException("No suspended members found.");
+            }
+            return suspendedUsersDTOs;
+        } catch (Exception e) {
+            logger.logEvent("An unexpected error occurred while viewing suspended members: " + e.getMessage(),
+                    LogbackSystemLogger.LogLevel.INFO);
+            throw e;
         }
     }
 }
