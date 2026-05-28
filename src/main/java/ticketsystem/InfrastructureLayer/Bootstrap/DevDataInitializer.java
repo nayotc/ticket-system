@@ -15,7 +15,7 @@ import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.company.PurchasePolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.user.Member;
@@ -64,7 +64,7 @@ public class DevDataInitializer implements CommandLineRunner {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD);
+        userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000");
 
         System.out.println("Dev user created:");
         System.out.println("username: " + TEST_USERNAME);

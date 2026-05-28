@@ -12,6 +12,9 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.server.StreamResource;
+
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.SalesReportDTO;
@@ -38,6 +41,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayInputStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -71,17 +77,19 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         Button refreshButton = createHeaderButton("רענון", VaadinIcon.REFRESH, false);
         refreshButton.addClickListener(event -> refreshData());
 
-        Button exportButton = createHeaderButton("ייצוא", VaadinIcon.DOWNLOAD, false);
-        exportButton.addClickListener(event -> showInfo("ייצוא הדוח יחובר בהמשך דרך ה-Presenter."));
+        // Button exportButton = createHeaderButton("ייצוא", VaadinIcon.DOWNLOAD, false);
+        // exportButton.addClickListener(event -> showInfo("ייצוא הדוח יחובר בהמשך דרך ה-Presenter."));
 
-        Button periodButton = createHeaderButton("30 ימים אחרונים", VaadinIcon.CALENDAR, true);
-        periodButton.addClickListener(event -> showInfo("סינון לפי תאריכים יחובר בהמשך כאשר DTO יכלול תאריך עסקה."));
+        // Button periodButton = createHeaderButton("30 ימים אחרונים", VaadinIcon.CALENDAR, true);
+        // periodButton.addClickListener(event -> showInfo("סינון לפי תאריכים יחובר בהמשך כאשר DTO יכלול תאריך עסקה."));
+
+        // Call the helper method to keep the constructor clean
+        Anchor exportAnchor = createExportButtonWithAnchor();
 
         ViewHeader header = new ViewHeader(
                 "דוח מכירות",
                 "סקירה של הכנסות, כרטיסים שנמכרו ועסקאות של חברת ההפקה.",
-                periodButton,
-                exportButton,
+                exportAnchor, // Pass the returned anchor to the header
                 refreshButton
         );
 
@@ -104,6 +112,60 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         // Change 2: Remove the call to loadDemoData().
         // Instead, the beforeEnter method will call loadFromPresenterOrDemo()
         // when the screen loads, and it will use the real Presenter injected by Spring.
+    }
+
+    /**
+     * Creates the export button wrapped in an Anchor tag to trigger the CSV download.
+     * Uses the official Vaadin StreamResource approach for dynamic, lazy-loaded file generation.
+     */
+    private Anchor createExportButtonWithAnchor() {
+        Button exportButton = createHeaderButton("ייצוא", VaadinIcon.DOWNLOAD, false);
+
+        // 1. Create the StreamResource.
+        // The data generation logic inside the lambda only executes when the user clicks the button.
+        StreamResource csvResource = new StreamResource("sales_report.csv", () -> {
+            String token = UiSession.getMemberToken();
+            
+            if (token == null || token.isBlank()) {
+                return new ByteArrayInputStream("Error: Unauthenticated user.".getBytes(StandardCharsets.UTF_8));
+            }
+            
+            try {
+                // Fetch the dynamically generated CSV data stream from the Presenter layer
+                return presenter.exportTransactionsToCsv(token, companyId);
+                
+            } catch (PresentationException e) {
+                return new ByteArrayInputStream(("Error: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                return new ByteArrayInputStream("Error: An unexpected error occurred.".getBytes(StandardCharsets.UTF_8));
+            }
+        });
+
+        // 2. Create the Anchor and attach the StreamResource to it
+        Anchor exportAnchor = new Anchor(csvResource, "");
+        
+        // Required to ensure the browser triggers a file download instead of navigating to the resource URL.
+        exportAnchor.getElement().setAttribute("download", true);
+        
+        // Wrap the button inside the anchor
+        exportAnchor.add(exportButton);
+        
+        return exportAnchor;
+    }
+
+    /**
+     * Helper method to safely write error messages directly into the downloaded text file.
+     * This provides immediate feedback to the user via the file itself if the download process fails mid-stream.
+     * * @param outputStream The browser's output stream provided by the DownloadHandler event
+     * @param errorMessage The specific error message to write into the file
+     */
+    private void writeErrorToDownload(java.io.OutputStream outputStream, String errorMessage) {
+        try {
+            outputStream.write(errorMessage.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            // Silently ignore I/O exceptions here (e.g., if the user canceled the download 
+            // or the browser abruptly closed the connection before the error could be written).
+        }
     }
 
     /**

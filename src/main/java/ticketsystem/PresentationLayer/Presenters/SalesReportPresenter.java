@@ -1,6 +1,9 @@
 package ticketsystem.PresentationLayer.Presenters;
 
 import java.util.List;
+import java.io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.DTO.OrderDTO;
@@ -50,6 +53,20 @@ public class SalesReportPresenter {
         } catch (Exception e) {
             // Handling a general error to protect the screen
             throw new PresentationException("An error occurred while loading the company transaction history.");
+        }
+    }
+
+    public InputStream exportTransactionsToCsv(String token, long companyId) {
+        try {
+            return historyService.exportCompanyTransactionsToCsv(token, companyId);
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new PresentationException(e.getMessage());
+        } catch (Exception e) {
+            // Log the error internally if needed, but return a safe exception to the UI
+            throw new PresentationException("An error occurred while generating the CSV export file.");
         }
     }
 }
