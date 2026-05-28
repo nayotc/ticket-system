@@ -11,21 +11,23 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.timepicker.TimePicker;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+import org.springframework.beans.factory.annotation.Autowired;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.PresentationLayer.Components.AppCard;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
 import java.math.BigDecimal;
@@ -51,6 +53,8 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
     private final ComboBox<EventLocation> location = new ComboBox<>("מיקום");
     private final TextField ticketPrice = new TextField("מחיר כרטיס");
     private final TextField trafficThreshold = new TextField("רף עומס");
+    private final ComboBox<SaleOpeningOption> saleOpening = new ComboBox<>("אופן פתיחת המכירה");
+    private final IntegerField lotteryWinnersNumber = new IntegerField("מספר זוכים בהגרלה");
     private final ComboBox<MapSizeOption> mapSize = new ComboBox<>("גודל מפה");
 
     private final Span selectedMapSizeText = new Span();
@@ -60,6 +64,7 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         this(null);
     }
 
+    @Autowired
     public CreateEvent(CreateEventPresenter presenter) {
         this.presenter = presenter;
 
@@ -99,6 +104,7 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         artistName.setPlaceholder("לדוגמה: עומר אדם, Coldplay, Tech Summit");
         ticketPrice.setPlaceholder("לדוגמה: 149.90");
         trafficThreshold.setPlaceholder("לדוגמה: 1000");
+        lotteryWinnersNumber.setPlaceholder("לדוגמה: 250");
 
         eventName.setPrefixComponent(VaadinIcon.TICKET.create());
         artistName.setPrefixComponent(VaadinIcon.MICROPHONE.create());
@@ -121,6 +127,17 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         location.setItems(EventLocation.values());
         location.setItemLabelGenerator(this::prettyEnum);
 
+        saleOpening.setItems(saleOpeningOptions());
+        saleOpening.setItemLabelGenerator(SaleOpeningOption::label);
+        saleOpening.setValue(SaleOpeningOption.REGULAR);
+        saleOpening.addValueChangeListener(event -> refreshSaleOpeningFields());
+
+        lotteryWinnersNumber.setMin(1);
+        lotteryWinnersNumber.setStep(1);
+        lotteryWinnersNumber.setStepButtonsVisible(true);
+        lotteryWinnersNumber.setVisible(false);
+        lotteryWinnersNumber.getElement().setAttribute("dir", "rtl");
+
         eventDate.setMin(LocalDate.now());
         eventTime.setStep(Duration.ofMinutes(15));
 
@@ -138,6 +155,7 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
                 location,
                 ticketPrice,
                 trafficThreshold,
+                saleOpening,
                 mapSize
         );
 
@@ -146,6 +164,9 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
             component.getElement().getStyle().set("width", "100%");
         });
 
+        lotteryWinnersNumber.getElement().getStyle().set("width", "100%");
+
+        refreshSaleOpeningFields();
         refreshMapPreview();
     }
 
@@ -242,6 +263,23 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         return section;
     }
 
+    private Component createSaleOpeningSection() {
+        Div wrapper = new Div();
+        wrapper.addClassName("create-event-sale-options");
+
+        H3 title = new H3("פתיחת מכירה");
+        title.addClassName("create-event-subsection-title");
+
+        Paragraph description = new Paragraph("בחר האם האירוע ייפתח במכירה רגילה או בהגרלת זכות רכישה למכירה מוקדמת.");
+        description.addClassName("create-event-section-subtitle");
+
+        Paragraph lotteryHint = new Paragraph("בהגרלה, רק מנויים שיעלו בגורל יקבלו קוד רכישה למכירה המוקדמת.");
+        lotteryHint.addClassName("create-event-sale-hint");
+
+        wrapper.add(title, description, saleOpening, lotteryWinnersNumber, lotteryHint);
+        return wrapper;
+    }
+
     private Component createMapSection() {
         VerticalLayout section = new VerticalLayout();
         section.addClassName("create-event-section");
@@ -265,7 +303,14 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         previewOverlay.add(mapGridPreview);
         preview.add(previewOverlay);
 
-        section.add(title, subtitle, mapSize, preview, createMapInfoCard());
+        section.add(
+                title,
+                subtitle,
+                mapSize,
+                preview,
+                createMapInfoCard(),
+                createSaleOpeningSection()
+        );
 
         return section;
     }
@@ -311,32 +356,20 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         try {
             CreateEventRequest request = readRequestFromFields();
 
-            if (presenter == null) {
-                showInfo("הטופס תקין. חיבור ל־Presenter יתווסף בשלב הבא.");
-                return;
-            }
+            Long eventId = presenter.createEvent(request);
 
-            CreateEventResult result = presenter.createEvent(request);
-
-            if (result == null || !result.success()) {
-                showError(result != null && result.message() != null
-                        ? result.message()
-                        : "יצירת האירוע נכשלה.");
-                return;
-            }
-
-            showSuccess(result.message() != null ? result.message() : "האירוע נוצר בהצלחה.");
-
-            if (result.eventId() != null) {
+            if (eventId != null) {
+                showSuccess("טיוטת האירוע נוצרה בהצלחה. כעת ניתן להגדיר את מלאי הכרטיסים");
                 UI.getCurrent().navigate(
                         UiRoutes.HALL_MAP_BUILDER
                                 .replace(":companyId", String.valueOf(companyId))
-                                .replace(":eventId", String.valueOf(result.eventId()))
+                                .replace(":eventId", String.valueOf(eventId))
                 );
             } else {
+                showError("אירעה שגיאה בעת יצירת האירוע. נסו שוב.");
                 navigateToCompanyManagement();
             }
-        } catch (IllegalArgumentException e) {
+        } catch (PresentationException e) {
             showError(e.getMessage());
         } catch (Exception e) {
             showError("אירעה שגיאה לא צפויה בעת יצירת האירוע.");
@@ -347,11 +380,11 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         String sessionToken = UiSession.getMemberToken();
 
         if (sessionToken == null || sessionToken.isBlank()) {
-            throw new IllegalArgumentException("יש להתחבר למערכת לפני יצירת אירוע.");
+            throw new PresentationException("יש להתחבר למערכת לפני יצירת אירוע.");
         }
 
         if (companyId == null) {
-            throw new IllegalArgumentException("לא נמצא מזהה חברה תקין.");
+            throw new PresentationException("לא נמצא מזהה חברה תקין.");
         }
 
         String name = readRequiredText(eventName, "שם האירוע");
@@ -361,10 +394,12 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         LocalDateTime dateTime = readDateTime();
         BigDecimal price = readPrice();
         Long threshold = readTrafficThreshold();
+        SaleOpeningOption selectedSaleOpening = readRequiredValue(saleOpening, "אופן פתיחת המכירה");
+        Integer winnersNumber = readLotteryWinnersNumber(selectedSaleOpening);
         MapSizeOption selectedMapSize = readRequiredValue(mapSize, "גודל מפה");
 
         if (dateTime.isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("תאריך האירוע חייב להיות עתידי.");
+            throw new PresentationException("תאריך האירוע חייב להיות עתידי.");
         }
 
         return new CreateEventRequest(
@@ -378,7 +413,9 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
                 artist,
                 price,
                 selectedMapSize.height(),
-                selectedMapSize.width()
+                selectedMapSize.width(),
+                selectedSaleOpening,
+                winnersNumber
         );
     }
 
@@ -386,7 +423,7 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         String value = field.getValue();
 
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("חובה למלא " + label + ".");
+            throw new PresentationException("חובה למלא " + label + ".");
         }
 
         return value.trim();
@@ -396,7 +433,7 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         T value = field.getValue();
 
         if (value == null) {
-            throw new IllegalArgumentException("חובה לבחור " + label + ".");
+            throw new PresentationException("חובה לבחור " + label + ".");
         }
 
         return value;
@@ -407,11 +444,11 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         LocalTime time = eventTime.getValue();
 
         if (date == null) {
-            throw new IllegalArgumentException("חובה לבחור תאריך.");
+            throw new PresentationException("חובה לבחור תאריך.");
         }
 
         if (time == null) {
-            throw new IllegalArgumentException("חובה לבחור שעה.");
+            throw new PresentationException("חובה לבחור שעה.");
         }
 
         return LocalDateTime.of(date, time);
@@ -421,19 +458,19 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         String rawValue = ticketPrice.getValue();
 
         if (rawValue == null || rawValue.isBlank()) {
-            throw new IllegalArgumentException("חובה להזין מחיר כרטיס.");
+            throw new PresentationException("חובה להזין מחיר כרטיס.");
         }
 
         try {
             BigDecimal price = new BigDecimal(rawValue.trim());
 
             if (price.compareTo(BigDecimal.ZERO) < 0) {
-                throw new IllegalArgumentException("מחיר כרטיס לא יכול להיות שלילי.");
+                throw new PresentationException("מחיר כרטיס לא יכול להיות שלילי.");
             }
 
             return price.setScale(2, RoundingMode.HALF_UP);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("מחיר כרטיס חייב להיות מספר תקין.");
+            throw new PresentationException("מחיר כרטיס חייב להיות מספר תקין.");
         }
     }
 
@@ -441,19 +478,44 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         String rawValue = trafficThreshold.getValue();
 
         if (rawValue == null || rawValue.isBlank()) {
-            throw new IllegalArgumentException("חובה להזין רף עומס.");
+            throw new PresentationException("חובה להזין רף עומס.");
         }
 
         try {
             long value = Long.parseLong(rawValue.trim());
 
             if (value <= 0) {
-                throw new IllegalArgumentException("רף עומס חייב להיות מספר חיובי.");
+                throw new PresentationException("רף עומס חייב להיות מספר חיובי.");
             }
 
             return value;
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("רף עומס חייב להיות מספר שלם תקין.");
+            throw new PresentationException("רף עומס חייב להיות מספר שלם תקין.");
+        }
+    }
+
+    private Integer readLotteryWinnersNumber(SaleOpeningOption selectedSaleOpening) {
+        if (selectedSaleOpening == null || !selectedSaleOpening.hasLottery()) {
+            return null;
+        }
+
+        Integer value = lotteryWinnersNumber.getValue();
+
+        if (value == null || value <= 0) {
+            throw new PresentationException("כאשר נבחרת הגרלה חובה להזין מספר זוכים חיובי.");
+        }
+
+        return value;
+    }
+
+    private void refreshSaleOpeningFields() {
+        SaleOpeningOption selected = saleOpening.getValue();
+        boolean lotteryMode = selected != null && selected.hasLottery();
+
+        lotteryWinnersNumber.setVisible(lotteryMode);
+
+        if (!lotteryMode) {
+            lotteryWinnersNumber.clear();
         }
     }
 
@@ -501,6 +563,13 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         mapGridPreview.add(canvas);
     }
 
+    private List<SaleOpeningOption> saleOpeningOptions() {
+        return List.of(
+                SaleOpeningOption.REGULAR,
+                SaleOpeningOption.LOTTERY_PRE_SALE
+        );
+    }
+
     private List<MapSizeOption> mapSizeOptions() {
         return List.of(
                 new MapSizeOption("קטנה", "אולם קטן / מופע אינטימי", 20, 30),
@@ -535,22 +604,19 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
     }
 
     private void showSuccess(String message) {
-        Notification notification = Notification.show(message, 3500, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        Notifications.success(message);
     }
 
     private void showInfo(String message) {
-        Notification notification = Notification.show(message, 3500, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_PRIMARY);
+        Notifications.info(message);
     }
 
     private void showError(String message) {
-        Notification notification = Notification.show(message, 4500, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        Notifications.error(message);
     }
 
     public interface CreateEventPresenter {
-        CreateEventResult createEvent(CreateEventRequest request);
+        Long createEvent(CreateEventRequest request);
     }
 
     public record CreateEventRequest(
@@ -564,15 +630,35 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
             String artist,
             BigDecimal price,
             Integer mapHigh,
-            Integer mapWidth
+            Integer mapWidth,
+            SaleOpeningOption saleOpening,
+            Integer lotteryWinnersNumber
     ) {
+
+        public boolean hasLottery() {
+            return saleOpening != null && saleOpening.hasLottery();
+        }
     }
 
-    public record CreateEventResult(
-            boolean success,
-            Long eventId,
-            String message
-    ) {
+    public enum SaleOpeningOption {
+        REGULAR("מכירה רגילה", false),
+        LOTTERY_PRE_SALE("הגרלת זכות רכישה למכירה מוקדמת", true);
+
+        private final String label;
+        private final boolean hasLottery;
+
+        SaleOpeningOption(String label, boolean hasLottery) {
+            this.label = label;
+            this.hasLottery = hasLottery;
+        }
+
+        public String label() {
+            return label;
+        }
+
+        public boolean hasLottery() {
+            return hasLottery;
+        }
     }
 
     private record MapSizeOption(
