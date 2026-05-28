@@ -660,45 +660,44 @@ public class ReservationServiceTest {
         assertTrue(PaymentServiceProxy.wasRefundCalled);
         assertTrue(secureBarcode.wasGenerateCalled.get());
     }
-//הטסט נופל, הגוסט טוקן מזוהה כID ואז לא מוצא ברפיזטורי של יוזר. כנראה בעיה בלוגיקה של טוקן
-//     @Test
-//     void AcceptanceTest_GuestCheckout_WhenPaymentAndTicketIssuingSucceed_ThenOrderIsCompletedAndBarcodeIssued() {
-//         Long eventId = 4L;
-//         Long areaId = 1L;
+    @Test
+    void AcceptanceTest_GuestCheckout_WhenPaymentAndTicketIssuingSucceed_ThenOrderIsCompletedAndBarcodeIssued() {
+        Long eventId = 4L;
+        Long areaId = 1L;
 
-//         Event event = createActiveEvent(eventId);
-//         eventRepository.addEvent(event);
+        Event event = createActiveEvent(eventId);
+        eventRepository.addEvent(event);
 
-//         AtomicReference<OrderDTO> completedOrder = new AtomicReference<>();
-//         reservationService.addOrderListener(completedOrder::set);
+        AtomicReference<OrderDTO> completedOrder = new AtomicReference<>();
+        reservationService.addOrderListener(completedOrder::set);
 
-//         boolean selected = reservationService.selectStandingTicket(
-//                 guestToken,
-//                 eventId,
-//                 areaId,
-//                 1,
-//                 null
-//         );
+        boolean selected = reservationService.selectStandingTicket(
+                guestToken,
+                eventId,
+                areaId,
+                1,
+                null
+        );
 
-//         assertTrue(selected);
+        assertTrue(selected);
 
-//         boolean checkoutResult = reservationService.checkout(
-//                 guestToken,
-//                 eventId,
-//                 createPaymentDetails(),
-//                 null
-//         );
+        boolean checkoutResult = reservationService.checkout(
+                guestToken,
+                eventId,
+                createPaymentDetails(),
+                null
+        );
 
-//         assertTrue(checkoutResult);
+        assertTrue(checkoutResult);
 
-//         assertTrue(PaymentServiceProxy.wasPayCalled);
-//         assertFalse(PaymentServiceProxy.wasRefundCalled);
-//         assertTrue(secureBarcode.wasGenerateCalled.get());
+        assertTrue(PaymentServiceProxy.wasPayCalled);
+        assertFalse(PaymentServiceProxy.wasRefundCalled);
+        assertTrue(secureBarcode.wasGenerateCalled.get());
 
-//         assertNotNull(completedOrder.get());
-//         assertFalse(completedOrder.get().getTickets().isEmpty());
-//         assertNotNull(completedOrder.get().getTickets().get(0).getSecureBarcode());
-//     }
+        assertNotNull(completedOrder.get());
+        assertFalse(completedOrder.get().getTickets().isEmpty());
+        assertNotNull(completedOrder.get().getTickets().get(0).getSecureBarcode());
+    }
 
     @Test
     void GivenExpiredOrder_WhenSelectSeatTicket_ThenExpiredOrderIsCancelledAndNewTicketIsSelected() {
@@ -740,6 +739,230 @@ public class ReservationServiceTest {
         assertEquals(1, newActiveOrder.getTickets().size());
         assertNotEquals(expiredOrderId, newActiveOrder.getOrderId());
     }
+
+    @Test
+void AcceptanceTest_ViewActiveOrder_WhenOrderBelongsToAnotherMember_ThenThrowsSecurityException() {
+    Long eventId = 40L;
+    Long areaId = 1L;
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    reservationService.selectStandingTicket(
+            memberToken,
+            eventId,
+            areaId,
+            1,
+            null
+    );
+
+    ActiveOrder order = orderRepository.getActiveOrderByUserId(memberId);
+
+    SecurityException exception = assertThrows(
+            SecurityException.class,
+            () -> reservationService.viewActiveOrder(
+                    guestToken,
+                    order.getOrderId()
+            )
+    );
+
+    assertEquals("User is not allowed to view this order", exception.getMessage());
+}
+
+@Test
+void AcceptanceTest_SelectStandingTicket_WhenQuantityIsZero_ThenThrowsException() {
+    Long eventId = 41L;
+    Long areaId = 1L;
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectStandingTicket(
+                    memberToken,
+                    eventId,
+                    areaId,
+                    0,
+                    null
+            )
+    );
+
+    assertEquals("Quantity must be greater than zero", exception.getMessage());
+}
+
+@Test
+void AcceptanceTest_SelectStandingTicket_WhenEventDoesNotExist_ThenThrowsException() {
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.selectStandingTicket(
+                    memberToken,
+                    9999L,
+                    1L,
+                    1,
+                    null
+            )
+    );
+
+    assertEquals("Event not found", exception.getMessage());
+}
+
+@Test
+void AcceptanceTest_Checkout_WhenPaymentDetailsMissing_ThenThrowsException() {
+    Long eventId = 42L;
+    Long areaId = 1L;
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    reservationService.selectStandingTicket(
+            memberToken,
+            eventId,
+            areaId,
+            1,
+            null
+    );
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.checkout(
+                    memberToken,
+                    eventId,
+                    null,
+                    null
+            )
+    );
+
+    assertEquals("Payment details are incomplete", exception.getMessage());
+}
+
+@Test
+void AcceptanceTest_Checkout_WhenBirthDateMissing_ThenThrowsException() {
+    Long eventId = 43L;
+    Long areaId = 1L;
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    reservationService.selectStandingTicket(
+            memberToken,
+            eventId,
+            areaId,
+            1,
+            null
+    );
+
+    PaymentDetails invalidDetails =
+            new PaymentDetails("VISA", "Yosi", null);
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> reservationService.checkout(
+                    memberToken,
+                    eventId,
+                    invalidDetails,
+                    null
+            )
+    );
+
+    assertEquals("Payment details are incomplete", exception.getMessage());
+}
+
+@Test
+void AcceptanceTest_Checkout_WhenRefundFails_ThenThrowsRefundFailureException() {
+    Long eventId = 44L;
+    Long areaId = 1L;
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    reservationService.selectStandingTicket(
+            memberToken,
+            eventId,
+            areaId,
+            1,
+            null
+    );
+
+    secureBarcode.shouldGenerateSucceed = false;
+    PaymentServiceProxy.isRefundSuccessful = false;
+
+    IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> reservationService.checkout(
+                    memberToken,
+                    eventId,
+                    createPaymentDetails(),
+                    null
+            )
+    );
+
+    assertEquals(
+            "Ticket issuing failed and refund failed.",
+            exception.getMessage()
+    );
+}
+
+@Test
+void AcceptanceTest_Checkout_WhenListenerThrowsException_ThenCheckoutStillSucceeds() {
+    Long eventId = 45L;
+    Long areaId = 1L;
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    reservationService.addOrderListener(order -> {
+        throw new RuntimeException("Listener failed");
+    });
+
+    reservationService.selectStandingTicket(
+            memberToken,
+            eventId,
+            areaId,
+            1,
+            null
+    );
+
+    boolean result = reservationService.checkout(
+            memberToken,
+            eventId,
+            createPaymentDetails(),
+            null
+    );
+
+    assertTrue(result);
+}
+
+@Test
+void GivenAboutToExpireOrder_WhenAnyActionOccurs_ThenExpirationWarningNotificationIsSent() {
+    Long eventId = 46L;
+    Long areaId = 1L;
+
+    Event event = createActiveEvent(eventId);
+    eventRepository.addEvent(event);
+
+    reservationService.selectStandingTicket(
+            memberToken,
+            eventId,
+            areaId,
+            1,
+            null
+    );
+
+    ActiveOrder order = orderRepository.getActiveOrderByUserId(memberId);
+
+    order.setExpiresAt(LocalDateTime.now().plusMinutes(2));
+    orderRepository.updateOrder(order);
+
+    reservationService.viewActiveOrder(
+            memberToken,
+            order.getOrderId()
+    );
+
+    assertTrue(
+            fakeNotifier.containsMessage("about to expire")
+    );
+}
 
     private Event createActiveEvent(Long eventId) {
         Event event = new Event(

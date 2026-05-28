@@ -62,7 +62,8 @@ public class Suspension {
     public boolean isRevoked(){
         return revoked;
     }
-    void revoke(){
+    
+    public void revoke(){
         this.revoked = true;
     }
 

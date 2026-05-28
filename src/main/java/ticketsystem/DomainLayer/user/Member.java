@@ -33,6 +33,7 @@ public class Member extends User {
         this.phone = other.phone;
         this.version = other.version;
         this.myRoles = new ConcurrentHashMap<>();
+        this.suspension=other.suspension;
         
         // Deep copy of the roles map to prevent shared memory references between threads
         for (java.util.Map.Entry<Long, CompanyRole> entry : other.myRoles.entrySet()) {

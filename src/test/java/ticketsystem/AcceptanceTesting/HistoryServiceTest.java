@@ -1,4 +1,4 @@
-package ticketsystem.ApplicationLayer;
+package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -11,6 +11,11 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.ApplicationLayer.HistoryService;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.ApplicationLayer.UserAccessService;
+import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.SalesReportDTO;
@@ -526,6 +531,117 @@ public class HistoryServiceTest {
                 "Report should include the completed order revenue"
         );
     }
+    @Test
+void GivenCompletedPurchase_WhenEventCanceled_ThenTicketsBecomeCanceledAndReportDoesNotCountThem() {
+    String ownerToken = getValidMemberToken("cancel_event_owner", "Pass123!");
+    long ownerId = tokenService.extractUserId(ownerToken);
 
+    Company company = createCompanyWithFounderRole(ownerId);
+
+    OrderDTO order = createSalesReportOrderDTO(
+            ownerId,
+            company.getId(),
+            ownerId,
+            "Canceled Event",
+            new BigDecimal("100.0"),
+            new BigDecimal("150.0")
+    );
+
+    historyService.onOrderCompleted(order);
+
+    historyService.onEventCanceled(20L);
+
+    Purchase purchase = historyRepository.getAllPurchases().get(0);
+
+    assertTrue(purchase.getTickets().stream()
+            .allMatch(ticket -> ticket.getStatus().name().equals("CANCELED")));
+
+    SalesReportDTO report = historyService.generateSalesReport(ownerToken, company.getId());
+
+    assertEquals(0, report.getTotalTicketsSold());
+    assertEquals(0, BigDecimal.ZERO.compareTo(report.getTotalRevenue()));
+    assertEquals("No sales data was found", report.getMessage());
+}
+
+@Test
+void GivenCanceledDifferentEvent_WhenEventCanceled_ThenTicketsRemainActive() {
+    String ownerToken = getValidMemberToken("cancel_other_event_owner", "Pass123!");
+    long ownerId = tokenService.extractUserId(ownerToken);
+
+    Company company = createCompanyWithFounderRole(ownerId);
+
+    OrderDTO order = createSalesReportOrderDTO(
+            ownerId,
+            company.getId(),
+            ownerId,
+            "Active Event",
+            new BigDecimal("100.0")
+    );
+
+    historyService.onOrderCompleted(order);
+
+    historyService.onEventCanceled(999L);
+
+    Purchase purchase = historyRepository.getAllPurchases().get(0);
+
+    assertTrue(purchase.getTickets().stream()
+            .noneMatch(ticket -> ticket.getStatus().name().equals("CANCELED")));
+}
+
+@Test
+void GivenGuestToken_WhenGetHistoryForUser_ThenThrowsException() {
+    String guestToken = userService.visitSystem();
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> historyService.getHistoryForUser(guestToken)
+    );
+
+    assertEquals("Only members can view personal purchase history", exception.getMessage());
+}
+
+@Test
+void GivenGuestToken_WhenGetHistoryForCompany_ThenThrowsException() {
+    String guestToken = userService.visitSystem();
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> historyService.getHistoryForCompany(guestToken, 1L)
+    );
+
+    assertEquals("Only members can view personal purchase history", exception.getMessage());
+}
+
+@Test
+void GivenInvalidToken_WhenGenerateSalesReport_ThenThrowsException() {
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> historyService.generateSalesReport("invalid-token", 1L)
+    );
+}
+
+@Test
+void GivenGuestToken_WhenGenerateSalesReport_ThenThrowsException() {
+    String guestToken = userService.visitSystem();
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> historyService.generateSalesReport(guestToken, 1L)
+    );
+
+    assertEquals("Only members can generate sales reports", exception.getMessage());
+}
+
+@Test
+void GivenMemberWithoutSalesReportPermission_WhenGenerateSalesReport_ThenThrowsException() {
+    String token = getValidMemberToken("no_sales_permission_user", "Pass123!");
+
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> historyService.generateSalesReport(token, 1L)
+    );
+
+    assertEquals("Insufficient permissions to generate sales report", exception.getMessage());
+}
     
 }

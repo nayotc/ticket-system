@@ -666,5 +666,161 @@ public class UserServiceTest {
         assertTrue(tokenService.isActiveSession(sessionToken),
                 "Original guest token should still be active after failed logout");
     }
+    @Test
+void TestSignUpWithBlankUsername_ThenThrowsException() {
+    String sessionToken = userService.visitSystem();
+
+    assertThrows(IllegalArgumentException.class, () ->
+            userService.signUp(sessionToken, "   ", "password123", "Test User", "0500000000")
+    );
+}
+
+@Test
+void TestSignUpWithBlankPassword_ThenThrowsException() {
+    String sessionToken = userService.visitSystem();
+
+    assertThrows(IllegalArgumentException.class, () ->
+            userService.signUp(sessionToken, "user", "   ", "Test User", "0500000000")
+    );
+}
+
+@Test
+void TestSignUpWithMemberToken_ThenThrowsException() {
+    String guestToken = userService.visitSystem();
+    userService.signUp(guestToken, "user", "password123", "Test User", "0500000000");
+    String memberToken = userService.login(guestToken, "user", "password123");
+
+    assertThrows(IllegalStateException.class, () ->
+            userService.signUp(memberToken, "anotherUser", "password123", "Another User", "0500000001")
+    );
+}
+
+@Test
+void TestLoginWithBlankUsername_ThenThrowsException() {
+    String sessionToken = userService.visitSystem();
+
+    assertThrows(IllegalArgumentException.class, () ->
+            userService.login(sessionToken, "   ", "password123")
+    );
+}
+
+@Test
+void TestLoginWithBlankPassword_ThenThrowsException() {
+    String sessionToken = userService.visitSystem();
+
+    assertThrows(IllegalArgumentException.class, () ->
+            userService.login(sessionToken, "user", "   ")
+    );
+}
+
+@Test
+void TestLoginWithMemberToken_ThenThrowsException() {
+    String guestToken = userService.visitSystem();
+    userService.signUp(guestToken, "user", "password123", "Test User", "0500000000");
+    String memberToken = userService.login(guestToken, "user", "password123");
+
+    assertThrows(IllegalStateException.class, () ->
+            userService.login(memberToken, "user", "password123")
+    );
+}
+
+@Test
+void TestLoginWithListener_ThenListenerIsCalled() {
+    String guestToken = userService.visitSystem();
+    userService.signUp(guestToken, "listenerUser", "password123", "Listener User", "0500000000");
+
+    final boolean[] wasCalled = {false};
+
+    userService.addUserLoginListener((oldGuestToken, newMemberToken) -> {
+        wasCalled[0] = true;
+        assertEquals(guestToken, oldGuestToken);
+        assertNotNull(newMemberToken);
+    });
+
+    String memberToken = userService.login(guestToken, "listenerUser", "password123");
+
+    assertNotNull(memberToken);
+    assertTrue(wasCalled[0]);
+}
+
+@Test
+void TestLoginWithRemovedListener_ThenListenerIsNotCalled() {
+    String guestToken = userService.visitSystem();
+    userService.signUp(guestToken, "removedListenerUser", "password123", "Removed Listener User", "0500000000");
+
+    final boolean[] wasCalled = {false};
+
+    ticketsystem.ApplicationLayer.Events.UserLoginListener listener =
+            (oldGuestToken, newMemberToken) -> wasCalled[0] = true;
+
+    userService.addUserLoginListener(listener);
+    userService.removeUserLoginListener(listener);
+
+    String memberToken = userService.login(guestToken, "removedListenerUser", "password123");
+
+    assertNotNull(memberToken);
+    assertFalse(wasCalled[0]);
+}
+
+@Test
+void TestLoginWhenListenerThrows_ThenLoginFailsAndMemberTokenIsRolledBack() {
+    String guestToken = userService.visitSystem();
+    userService.signUp(guestToken, "failingListenerUser", "password123", "Failing Listener User", "0500000000");
+
+    userService.addUserLoginListener((oldGuestToken, newMemberToken) -> {
+        throw new RuntimeException("listener failed");
+    });
+
+    IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
+            userService.login(guestToken, "failingListenerUser", "password123")
+    );
+
+    assertEquals("Login failed. Please try again.", exception.getMessage());
+    assertTrue(tokenService.isActiveSession(guestToken));
+}
+
+@Test
+void TestUpdateMemberUsernameWithBlankCurrentUsername_ThenThrowsException() {
+    assertThrows(IllegalArgumentException.class, () ->
+            userService.updateMemberUsername("token", "password", "   ", "newUser")
+    );
+}
+
+@Test
+void TestUpdateMemberUsernameWithBlankNewUsername_ThenThrowsException() {
+    assertThrows(IllegalArgumentException.class, () ->
+            userService.updateMemberUsername("token", "password", "user", "   ")
+    );
+}
+
+@Test
+void TestUpdateMemberUsernameToSameUsername_ThenSucceeds() {
+    String guestToken = userService.visitSystem();
+    userService.signUp(guestToken, "sameUser", "password123", "Same User", "0500000000");
+    String memberToken = userService.login(guestToken, "sameUser", "password123");
+
+    boolean result = userService.updateMemberUsername(
+            memberToken,
+            "password123",
+            "sameUser",
+            "sameUser"
+    );
+
+    assertTrue(result);
+}
+
+@Test
+void TestUpdateMemberPasswordWithBlankUsername_ThenThrowsException() {
+    assertThrows(IllegalArgumentException.class, () ->
+            userService.updateMemberPassword("token", "password", "   ", "newPassword")
+    );
+}
+
+@Test
+void TestUpdateMemberPasswordWithBlankNewPassword_ThenThrowsException() {
+    assertThrows(IllegalArgumentException.class, () ->
+            userService.updateMemberPassword("token", "password", "user", "   ")
+    );
+}
 
 }

@@ -878,4 +878,145 @@ public class MembershipDomainServiceTest {
 
         assertEquals("Only Owners or Founder can perform this action.", exception.getMessage());
     }
+
+    //add tests
+    @Test
+public void GivenMemberDoesNotExist_WhenIsMemberInCompany_ThenReturnFalse() {
+    assertFalse(domainService.isMemberInCompany(999L, companyId));
+}
+
+@Test
+public void GivenMemberWithoutRole_WhenIsMemberInCompany_ThenReturnFalse() {
+    assertFalse(domainService.isMemberInCompany(100L, companyId));
+}
+
+@Test
+public void GivenMemberWithPendingRole_WhenIsMemberInCompany_ThenReturnFalse() {
+    appointingMember.addOwnerRole(companyId, 999L);
+    userRepository.updateMember(appointingMember);
+
+    assertFalse(domainService.isMemberInCompany(100L, companyId));
+}
+
+@Test
+public void GivenMemberWithActiveRole_WhenIsMemberInCompany_ThenReturnTrue() {
+    appointingMember.addFounderRole(companyId);
+    userRepository.updateMember(appointingMember);
+
+    assertTrue(domainService.isMemberInCompany(100L, companyId));
+}
+@Test
+public void GivenNonExistingMember_WhenAssignFounderRole_ThenThrowsException() {
+    Exception exception = assertThrows(Exception.class, () -> {
+        domainService.assignFounderRole(999L, companyId);
+    });
+
+    assertEquals("Member not found.", exception.getMessage());
+}
+
+@Test
+public void GivenMemberAlreadyHasActiveRole_WhenAssignFounderRole_ThenThrowsException() {
+    appointingMember.addOwnerRole(companyId, 999L);
+    appointingMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+    userRepository.updateMember(appointingMember);
+
+    Exception exception = assertThrows(Exception.class, () -> {
+        domainService.assignFounderRole(100L, companyId);
+    });
+
+    assertEquals("Member already has a role in this company.", exception.getMessage());
+}
+
+@Test
+public void GivenCancelledRole_WhenAssignFounderRole_ThenReplaceRoleWithFounder() throws Exception {
+    appointingMember.addOwnerRole(companyId, 999L);
+    appointingMember.getRoleInCompany(companyId).cancel();
+
+    userRepository.updateMember(appointingMember);
+
+    domainService.assignFounderRole(100L, companyId);
+
+    Member updated = userRepository.getMemberById(100L);
+
+    assertTrue(updated.getRoleInCompany(companyId) instanceof Founder);
+}
+@Test
+public void GivenAnyInput_WhenValidatePermissionBySession_ThenReturnFalse() {
+    assertFalse(domainService.validatePermission("session", companyId,
+            Permission.MANAGE_EVENT_INVENTORY.getKey()));
+}
+@Test
+public void GivenFounderRole_WhenGetAppointerId_ThenReturnNull() {
+    appointingMember.addFounderRole(companyId);
+
+    assertNull(domainService.getAppointerId(appointingMember, companyId));
+}
+
+@Test
+public void GivenOwnerRole_WhenGetAppointerId_ThenReturnOwnerAppointerId() {
+    appointingMember.addOwnerRole(companyId, 777L);
+
+    assertEquals(777L,
+            domainService.getAppointerId(appointingMember, companyId));
+}
+
+@Test
+public void GivenMemberWithoutRole_WhenGetAppointerId_ThenReturnNull() {
+    assertNull(domainService.getAppointerId(appointingMember, companyId));
+}
+@Test
+public void GivenNullRole_WhenValidateOwnerResignation_ThenThrowsException() {
+    Exception exception = assertThrows(Exception.class, () -> {
+        domainService.validateOwnerResignation(null);
+    });
+
+    assertEquals("You do not have a role in this company.", exception.getMessage());
+}
+
+@Test
+public void GivenPendingOwner_WhenValidateOwnerResignation_ThenThrowsException() {
+    appointingMember.addOwnerRole(companyId, 999L);
+
+    Exception exception = assertThrows(Exception.class, () -> {
+        domainService.validateOwnerResignation(
+                appointingMember.getRoleInCompany(companyId));
+    });
+
+    assertEquals("Your role is not active yet. You cannot update others permissions.",
+            exception.getMessage());
+}
+@Test
+public void GivenNonExistingMember_WhenHasActiveRoleInCompany_ThenReturnFalse() {
+    assertFalse(domainService.hasActiveRoleInCompany(999L, companyId));
+}
+
+@Test
+public void GivenPendingRole_WhenHasActiveRoleInCompany_ThenReturnFalse() {
+    appointingMember.addOwnerRole(companyId, 999L);
+
+    userRepository.updateMember(appointingMember);
+
+    assertFalse(domainService.hasActiveRoleInCompany(100L, companyId));
+}
+@Test
+public void GivenFounderWithHierarchy_WhenGetManagementSubTree_ThenReturnAllMembers() {
+    appointingMember.addFounderRole(companyId);
+    appointingMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+    targetMember.addOwnerRole(companyId, 100L);
+    targetMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+
+    Founder founder = (Founder) appointingMember.getRoleInCompany(companyId);
+    founder.addAppointee(200L);
+
+    userRepository.updateMember(appointingMember);
+    userRepository.updateMember(targetMember);
+
+    Set<Long> result =
+            domainService.getManagementSubTreeMemberIds(100L, companyId);
+
+    assertTrue(result.contains(100L));
+    assertTrue(result.contains(200L));
+}
 }

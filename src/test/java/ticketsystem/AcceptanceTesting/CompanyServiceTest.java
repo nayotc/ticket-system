@@ -514,6 +514,132 @@ public class CompanyServiceTest {
         assertEquals("Minimum age is required", exception.getMessage());
         }
 
+        @Test
+void GivenActiveCompanyAndGuest_WhenGetCompanyDetails_ThenReturnsCompanyDTO() throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    String guestToken = userService.visitSystem();
+
+    // Act
+    CompanyDTO result = companyService.getCompanyDetails(guestToken, companyDTO.getId());
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(companyDTO.getId(), result.getId());
+    assertEquals(VALID_COMPANY_NAME, result.getName());
+}
+
+@Test
+void GivenInvalidToken_WhenGetCompanyDetails_ThenThrowsException() {
+    // Act & Assert
+    Exception exception = assertThrows(Exception.class, () ->
+            companyService.getCompanyDetails("invalid-token", 1L)
+    );
+
+    assertTrue(exception.getMessage().contains("Invalid")
+            || exception.getMessage().contains("expired"));
+}
+
+@Test
+void GivenValidTokenAndMissingCompany_WhenGetCompanyDetails_ThenThrowsException() {
+    // Act & Assert
+    Exception exception = assertThrows(Exception.class, () ->
+            companyService.getCompanyDetails(founderToken, 999999L)
+    );
+
+    assertEquals("Error: Company not found.", exception.getMessage());
+}
+
+@Test
+void GivenInactiveCompanyAndGuest_WhenGetCompanyDetails_ThenThrowsException() throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    companyService.closeProductionCompany(founderToken, companyDTO.getId());
+
+    String guestToken = userService.visitSystem();
+
+    // Act & Assert
+    Exception exception = assertThrows(Exception.class, () ->
+            companyService.getCompanyDetails(guestToken, companyDTO.getId())
+    );
+
+    assertEquals("Error: User does not have permission to view this company.", exception.getMessage());
+}
+
+@Test
+void GivenInactiveCompanyAndFounder_WhenGetCompanyDetails_ThenReturnsCompanyDTO() throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    companyService.closeProductionCompany(founderToken, companyDTO.getId());
+
+    // Act
+    CompanyDTO result = companyService.getCompanyDetails(founderToken, companyDTO.getId());
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(companyDTO.getId(), result.getId());
+}
+
+@Test
+void GivenInactiveCompanyAndRegularMember_WhenGetCompanyDetails_ThenThrowsException() throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    companyService.closeProductionCompany(founderToken, companyDTO.getId());
+
+    // Act & Assert
+    Exception exception = assertThrows(Exception.class, () ->
+            companyService.getCompanyDetails(nonFounderToken, companyDTO.getId())
+    );
+
+    assertEquals("Error: User does not have permission to view this company.", exception.getMessage());
+}
+
+@Test
+void GivenFounder_WhenSetCompositionTypeToSum_ThenCompositionTypeIsUpdated() throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    // Act
+    companyService.setCompositionType(
+            founderToken,
+            companyDTO.getId(),
+            DiscountCompositionType.SUM
+    );
+
+    // Assert
+    Company company = companyRepository.findById(companyDTO.getId())
+            .orElseThrow(() -> new Exception("Company not found in test"));
+
+    assertEquals(DiscountCompositionType.SUM,
+            company.getDiscountPolicy().getDiscountCompositionType());
+}
+
+@Test
+void GivenUserWithoutDiscountPermission_WhenSetCompositionType_ThenThrowsException() throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    // Act & Assert
+    assertThrows(IllegalArgumentException.class, () ->
+            companyService.setCompositionType(
+                    nonFounderToken,
+                    companyDTO.getId(),
+                    DiscountCompositionType.SUM
+            )
+    );
+}
+
+@Test
+void GivenFounderAndNonExistingCompany_WhenSetCompositionType_ThenThrowsException() {
+    // Act & Assert
+    assertThrows(Exception.class, () ->
+            companyService.setCompositionType(
+                    founderToken,
+                    999999L,
+                    DiscountCompositionType.SUM
+            )
+    );
+}
         private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {
         return new PurchasePolicyDTO(
                 new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, maxTickets, null)
@@ -570,5 +696,6 @@ public class CompanyServiceTest {
                         .anyMatch(message -> message.contains(text));
             }
         }
+
 
         }
