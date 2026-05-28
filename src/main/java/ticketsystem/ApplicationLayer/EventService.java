@@ -37,16 +37,18 @@ public class EventService {
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
     private final INotifier notificationsService;
     private final IHistoryRepository historyRepository;
+    private final UserAccessService userAccessService;
 
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
             MembershipDomainService membershipDomain, ISystemLogger logger,
-            INotifier notificationsService, IHistoryRepository historyRepository) {
+            INotifier notificationsService, IHistoryRepository historyRepository,UserAccessService userAccessService) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
         this.notificationsService = notificationsService;
         this.historyRepository = historyRepository;
+        this.userAccessService=userAccessService;
     }
 
     public Boolean insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
@@ -71,6 +73,7 @@ public class EventService {
             Long userId = tokenService.extractUserId(sessionId);
             logger.logEvent("Authenticated actor - insertEvent. userId=" + userId + ", companyId=" + companyId, LogLevel.DEBUG);
             // precondition: user has permission to create an event
+            userAccessService.validateCanPerformNonViewAction(userId);
             if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to create an event");
             }
@@ -131,6 +134,7 @@ public class EventService {
             logger.logEvent("Validated input - updateEvent. " + context, LogLevel.DEBUG);
             // precondition: user has permission to update event
             Long userId = tokenService.extractUserId(SessionId);
+            userAccessService.validateCanPerformNonViewAction(userId);
             if (!membershipDomain.validatePermission(userId, eventDTO.companyId(), Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to update event");
             }
@@ -230,6 +234,7 @@ public class EventService {
             }
             logger.logEvent("Found event - defineEventMap. " + context, LogLevel.DEBUG);
             Long userId = tokenService.extractUserId(sessionId);
+            userAccessService.validateCanPerformNonViewAction(userId);
             if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.CONFIGURE_HALL_AND_MAP)) {
                 throw new IllegalArgumentException("User does not have permission to define event map");
             }
@@ -273,6 +278,7 @@ public class EventService {
             Long companyId = event.getCompanyId();
             // precondition: user has permission to remove an event
             Long userId = tokenService.extractUserId(sessionId);
+            userAccessService.validateCanPerformNonViewAction(userId);
             if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to remove an event");
             }
@@ -341,6 +347,7 @@ public class EventService {
             Long companyId = event.getCompanyId();
             // precondition: user has permission to cancel an event
             Long userId = tokenService.extractUserId(sessionId);
+            userAccessService.validateCanPerformNonViewAction(userId);
             if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to cancel an event");
             }
@@ -473,7 +480,7 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
         tokenService.validateToken(token);
 
             Long memberId = tokenService.extractUserId(token);
-
+            userAccessService.validateCanPerformNonViewAction(memberId);
             Event event = eventRepository.getEventById(eventId);
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
@@ -613,7 +620,7 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
         tokenService.validateToken(token);
 
         Long memberId = tokenService.extractUserId(token);
-
+        userAccessService.validateCanPerformNonViewAction(memberId);
         Event event = eventRepository.getEventById(eventId);
 
         if (event == null) {

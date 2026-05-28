@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.Permission;
@@ -15,6 +18,7 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 
+@Service
 public class CompanyService {
 
     private final ICompanyRepository companyRepository;
@@ -35,6 +39,7 @@ public class CompanyService {
         this(repo, tokenService, membershipDomain, null,userAccessService,notifier);
     }
 
+    @Autowired
     public CompanyService(ICompanyRepository repo,
                         ITokenService tokenService,
                         MembershipDomainService membershipDomain,
@@ -149,6 +154,7 @@ public class CompanyService {
 
         try {
             long memberId = getRegisteredMemberId(sessionId);
+            userAccessService.validateCanPerformNonViewAction(memberId);
 
             Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
@@ -195,7 +201,7 @@ public class CompanyService {
 
         try {
             long memberId = getRegisteredMemberId(sessionId);
-
+            userAccessService.validateCanPerformNonViewAction(memberId);
             Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
@@ -455,6 +461,7 @@ public class CompanyService {
         tokenService.validateToken(token);
 
             Long memberId = tokenService.extractUserId(token);
+            userAccessService.validateCanPerformNonViewAction(memberId);
 
             Company company = companyRepository.findById(companyId)
                             .orElseThrow(() -> new Exception("Error: Company not found."));;
@@ -488,7 +495,7 @@ public class CompanyService {
         tokenService.validateToken(token);
 
             Long memberId = tokenService.extractUserId(token);
-
+            userAccessService.validateCanPerformNonViewAction(memberId);
             Company company = companyRepository.findById(companyId)
                             .orElseThrow(() -> new Exception("Error: Company not found."));;
 

@@ -5,6 +5,7 @@ import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
@@ -36,6 +37,7 @@ public class MembershipConcurrencyTest {
 
     private IUserRepository userRepository;
     private MembershipService membershipService;
+    private UserAccessService userAccessService;
 
     private final Long companyId = 1L;
     private final Long targetMemberId = 200L;
@@ -54,6 +56,7 @@ public class MembershipConcurrencyTest {
         MembershipDomainService domainService = new MembershipDomainService(userRepository);
         ISystemLogger logger = new LogbackSystemLogger();
         notifier = new FakeNotifier();
+        userAccessService= new UserAccessService(userRepository);
         // Initialize Application Service
         this.membershipService = new MembershipService(
                 tokenService,
@@ -61,7 +64,7 @@ public class MembershipConcurrencyTest {
                 companyRepository,
                 domainService,
                 notifier,
-                logger
+                logger,userAccessService
         );        
         // Setup Company
         Company company = new Company("BGU Productions", 100L, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));

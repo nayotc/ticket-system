@@ -1,5 +1,6 @@
 package ticketsystem.PresentationLayer.Views;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -18,13 +19,16 @@ import ticketsystem.PresentationLayer.Components.AppCard;
 import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
+import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Components.Notifications;
 
 @PageTitle("TixNow | My productions")
 @Route(value = UiRoutes.CREATE_PRODUCTION_COMPANY, layout = MainLayout.class)
 public class CreateProductionCompany extends Div {
 
-    private final CreateProductionCompanyPresenter presenter;
+    private final CompanyPresenter presenter;
     private final TextField companyName = new TextField("שם החברה");
     private final Button revealFormButton = new Button("חברה חדשה", VaadinIcon.PLUS.create());
     private final Div form = new Div();
@@ -33,7 +37,8 @@ public class CreateProductionCompany extends Div {
         this(null);
     }
 
-    public CreateProductionCompany(CreateProductionCompanyPresenter presenter) {
+    @Autowired
+    public CreateProductionCompany(CompanyPresenter presenter) {
         this.presenter = presenter;
         addClassName("create-production-company-page");
         getElement().setAttribute("dir", "rtl");
@@ -120,11 +125,6 @@ public class CreateProductionCompany extends Div {
             return;
         }
 
-        if (presenter == null) {
-            showWarning("העמוד מוכן לחיבור Presenter. חבר כאן את CompanyService.createProductionCompany.");
-            return;
-        }
-
         createButton.setEnabled(false);
 
         try {
@@ -136,7 +136,7 @@ public class CreateProductionCompany extends Div {
             }
             Notifications.success("חברת ההפקה נוצרה בהצלחה");
             UI.getCurrent().navigate(UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(company.getId())));
-        } catch (Exception e) {
+        } catch (PresentationException e) {
             createButton.setEnabled(true);
             showError(e.getMessage());
         }
@@ -150,7 +150,4 @@ public class CreateProductionCompany extends Div {
         Notifications.error(message);
     }
 
-    public interface CreateProductionCompanyPresenter {
-        CompanyDTO createProductionCompany(String sessionToken, String companyName) throws Exception;
-    }
 }

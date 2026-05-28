@@ -61,6 +61,8 @@ public class EventServiceTest {
     @Mock
     private IHistoryRepository mockHistoryRepository;
 
+    @Mock
+    private UserAccessService mockUserAccessService;
     private EventService eventService;
     private final String validSessionId = "valid-session";
     private final Long validUserId = 1L;
@@ -77,7 +79,7 @@ public class EventServiceTest {
                 mockMembershipDomainService,
                 logger,
                 mockNotifier,
-                mockHistoryRepository
+                mockHistoryRepository,mockUserAccessService
         );
         when(mockHistoryRepository.getAllPurchases()).thenReturn(List.of());
         when(mockTokenService.validateToken(validSessionId)).thenReturn(true);

@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Repository;
+
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
