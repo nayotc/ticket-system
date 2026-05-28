@@ -19,7 +19,7 @@ public final class UiRoutes {
     public static final String EVENT_MAP = "events/:eventId/map";
     public static final String TICKET_SELECTION = "events/:eventId/tickets";
     public static final String ACTIVE_ORDER_CART = "orders/active";
-    public static final String CHECKOUT = "checkout";
+    public static final String CHECKOUT = "checkout/:eventId";
 
     // User account
     public static final String MY_ACCOUNT = "account";

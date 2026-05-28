@@ -207,7 +207,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
                 );
             }
 
-            UI.getCurrent().navigate(UiRoutes.CHECKOUT);
+            UI.getCurrent().navigate(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(eventId)));
 
         } catch (PresentationException e) {
             Notifications.error(e.getMessage());
