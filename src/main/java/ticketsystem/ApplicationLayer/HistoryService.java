@@ -3,9 +3,13 @@ package ticketsystem.ApplicationLayer;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.SalesReportDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
@@ -21,6 +25,10 @@ import java.util.Objects;
 
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
 public class HistoryService implements OrderCompletedListener, EventUpdatesListener {
     private final IHistoryRepository historyRepository;
     private final ITokenService tokenService;
@@ -30,12 +38,8 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
     private final UserAccessService userAccessService;
     private final INotifier notificationsService; 
 
-    public HistoryService(IHistoryRepository historyRepository,
-                        ITokenService tokenService,
-                        MembershipDomainService membershipDomainService,
-                        ISystemLogger logger,
-                        UserAccessService userAccessService,
-                        INotifier notificationsService) {
+    @Autowired
+    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger, UserAccessService userAccessService, INotifier notificationsService) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
@@ -215,6 +219,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
                 "An event you purchased tickets for was canceled."
         );
     }
+    
     @Override
     public void onEventUpdated(Long eventId, LocalDateTime date, String location, String updateMessage) {
         if (eventId == null) {
@@ -244,4 +249,41 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
     notificationsService.notifyMembers(buyerMemberIds, message);
 }
 
+    public InputStream exportCompanyTransactionsToCsv(String token, long companyId) throws Exception {
+        // 1. Fetch the data using existing logic (this also validates permissions)
+        List<OrderDTO> transactions = getHistoryForCompany(token, companyId);
+        
+        StringBuilder csvBuilder = new StringBuilder();
+        
+        // 2. Add UTF-8 BOM so Excel reads Hebrew characters correctly
+        csvBuilder.append('\ufeff');
+        
+        // 3. Append CSV Headers
+        csvBuilder.append("מספר עסקה,שם אירוע,מיקום,מזהה משתמש,סכום לתשלום\n");
+        
+        // 4. Append Data Rows
+        for (OrderDTO order : transactions) {
+            BigDecimal totalAmount = order.getTickets().stream()
+                .map(PurchaseDTO::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                
+            csvBuilder.append(order.getPurchaseId()).append(",")
+                      .append(escapeCsv(order.getEventName())).append(",")
+                      .append(escapeCsv(order.getLocation())).append(",")
+                      .append(order.getMemberId()).append(",")
+                      .append(totalAmount).append("\n");
+        }
+        
+        // 5. Convert the string to an InputStream that Vaadin can send to the browser
+        return new ByteArrayInputStream(csvBuilder.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    // Helper method to prevent commas in the text from breaking the CSV format
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",")) {
+            return "\"" + value + "\"";
+        }
+        return value;
+    }
 }

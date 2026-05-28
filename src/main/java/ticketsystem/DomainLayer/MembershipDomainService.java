@@ -4,8 +4,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.springframework.stereotype.Service;
-
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.CompanyRole;
@@ -15,6 +13,7 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Manager;
 import ticketsystem.DomainLayer.user.Member;
+import org.springframework.stereotype.Service;
 
 @Service
 public class MembershipDomainService {
