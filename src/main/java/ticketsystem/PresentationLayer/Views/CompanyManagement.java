@@ -520,6 +520,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 "ביטול אירוע",
                 "האירוע " + eventItem.title() + " יבוטל לאחר אישור הפעולה.",
                 () -> runPresenterAction(
+                    // TODO: implement cancelEvent in presenter and connect to real logic.
                         () -> membershipPresenter.cancelEvent(UiSession.getMemberToken(), state.selectedCompany().id(), eventItem.eventId()),
                         "בקשת ביטול האירוע נשלחה"
                 )
