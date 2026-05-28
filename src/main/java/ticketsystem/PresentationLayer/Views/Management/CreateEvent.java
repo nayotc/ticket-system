@@ -464,8 +464,8 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         try {
             BigDecimal price = new BigDecimal(rawValue.trim());
 
-            if (price.compareTo(BigDecimal.ZERO) < 0) {
-                throw new PresentationException("מחיר כרטיס לא יכול להיות שלילי.");
+            if (price.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new PresentationException("מחיר כרטיס חייב להיות מספר חיובי.");
             }
 
             return price.setScale(2, RoundingMode.HALF_UP);
