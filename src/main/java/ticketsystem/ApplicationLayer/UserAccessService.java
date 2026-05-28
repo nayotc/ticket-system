@@ -1,9 +1,11 @@
 package ticketsystem.ApplicationLayer;
 
+import org.springframework.stereotype.Service;
 
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Member;
 
+@Service
 public class UserAccessService {
     private final IUserRepository userRepository;
 

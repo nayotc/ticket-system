@@ -58,7 +58,7 @@ public class DevDataInitializer implements CommandLineRunner {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, FOUNDER_USERNAME, FOUNDER_PASSWORD);
+        userService.signUp(guestToken, FOUNDER_USERNAME, FOUNDER_PASSWORD, "Test Founder", "0500000000");
 
         System.out.println("Dev user created:");
         System.out.println("username: " + FOUNDER_USERNAME);
