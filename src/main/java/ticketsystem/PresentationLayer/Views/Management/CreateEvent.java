@@ -629,7 +629,7 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
             EventCategory category,
             String artist,
             BigDecimal price,
-            Integer mapHigh,
+            Integer mapHeight,
             Integer mapWidth,
             SaleOpeningOption saleOpening,
             Integer lotteryWinnersNumber
