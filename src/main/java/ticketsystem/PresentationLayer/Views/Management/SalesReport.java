@@ -1,5 +1,6 @@
 package ticketsystem.PresentationLayer.Views.Management;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
@@ -68,7 +69,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         setSpacing(false);
 
         Button refreshButton = createHeaderButton("רענון", VaadinIcon.REFRESH, false);
-        refreshButton.addClickListener(event -> loadFromPresenterOrDemo());
+        refreshButton.addClickListener(event -> refreshData());
 
         Button exportButton = createHeaderButton("ייצוא", VaadinIcon.DOWNLOAD, false);
         exportButton.addClickListener(event -> showInfo("ייצוא הדוח יחובר בהמשך דרך ה-Presenter."));
@@ -105,14 +106,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         // when the screen loads, and it will use the real Presenter injected by Spring.
     }
 
-    // /**
-    //  * Allows the real presenter to be attached later without changing the view structure.
-    //  */
-    // public void setPresenter(SalesReportPresenter presenter) {
-    //     this.presenter = presenter;
-    //     loadFromPresenterOrDemo();
-    // }
-
     /**
      * Entry point for the future presenter.
      * The view keeps a defensive company filter so the table never shows transactions from another company.
@@ -130,22 +123,33 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
                 .flatMap(this::tryParseLong)
                 .ifPresent(id -> companyId = id);
 
-        loadFromPresenterOrDemo();
+        String token = UiSession.getMemberToken();
+
+        // 1. Unauthenticated user - redirect to the login page before the view loads
+        if (token == null || token.isBlank()) {
+            showError("יש להתחבר כדי לצפות בדוח המכירות.");
+            event.forwardTo(UiRoutes.LOGIN);
+            return;
+        }
+
+        // 2. Authenticated user - attempt to fetch data
+        try {
+            SalesReportDTO report = presenter.generateSalesReport(token, companyId);
+            List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
+            bindSalesReport(report, transactions);
+        } catch (PresentationException e) {
+            showError(e.getMessage());
+            event.forwardTo(UiRoutes.HOME);
+        }
     }
 
-    private void loadFromPresenterOrDemo() {
-        // if (presenter == null) {
-        //     loadDemoData();
-        //     return;
-        // }
-
+    // This function is triggered only by clicking the "Refresh" button while already on the page.
+    private void refreshData() {
         String token = UiSession.getMemberToken();
+        
         if (token == null || token.isBlank()) {
-            bindSalesReport(
-                    new SalesReportDTO(0, BigDecimal.ZERO, "יש להתחבר כדי לצפות בדוח המכירות"),
-                    List.of()
-            );
-            showError("יש להתחבר כדי לצפות בדוח המכירות.");
+            showError("פג תוקף החיבור, אנא התחבר מחדש.");
+            UI.getCurrent().navigate(UiRoutes.LOGIN);
             return;
         }
 
@@ -153,9 +157,10 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             SalesReportDTO report = presenter.generateSalesReport(token, companyId);
             List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
             bindSalesReport(report, transactions);
+            Notifications.success("הנתונים רעננו בהצלחה");
         } catch (PresentationException e) {
-            bindSalesReport(new SalesReportDTO(0, BigDecimal.ZERO, e.getMessage()), List.of());
             showError(e.getMessage());
+            UI.getCurrent().navigate(UiRoutes.HOME);
         }
     }
 
