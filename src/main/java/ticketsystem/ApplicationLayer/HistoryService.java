@@ -16,22 +16,33 @@ import ticketsystem.DomainLayer.user.Permission;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.time.LocalDateTime;
+import java.util.Objects;
 
-public class HistoryService implements OrderCompletedListener {
+import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+
+public class HistoryService implements OrderCompletedListener, EventUpdatesListener {
     private final IHistoryRepository historyRepository;
     private final ITokenService tokenService;
     private ObjectMapper objectMapper = new ObjectMapper();
     private MembershipDomainService membershipDomainService;
     private ISystemLogger logger;
-    private final UserAccessService userAccessService; 
+    private final UserAccessService userAccessService;
+    private final INotifier notificationsService; 
 
-    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger,UserAccessService userAccessService) {
+    public HistoryService(IHistoryRepository historyRepository,
+                        ITokenService tokenService,
+                        MembershipDomainService membershipDomainService,
+                        ISystemLogger logger,
+                        UserAccessService userAccessService,
+                        INotifier notificationsService) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
         this.logger = logger;
-        this.userAccessService=userAccessService;
-}
+        this.userAccessService = userAccessService;
+        this.notificationsService = notificationsService;
+    }
 
     
     @Override
@@ -68,7 +79,6 @@ public class HistoryService implements OrderCompletedListener {
 
             List<Purchase> purchases = historyRepository.getPurchasesByMemberId(memberId);
             if(purchases.isEmpty()){
-                //notification
             }
             List<OrderDTO> historyDtoList = objectMapper.convertValue(
                 purchases, 
@@ -186,19 +196,52 @@ public class HistoryService implements OrderCompletedListener {
         }
     }
 
+    @Override
     public void onEventCanceled(Long eventId) {
-        List<Purchase> purchases =
-                historyRepository.getAllPurchases();
-        List<PurchasedTicket> purchasedTickets; 
+        if (eventId == null) {
+            return;
+        }
+
+        List<Purchase> purchases = historyRepository.getPurchasesByEventId(eventId);
 
         for (Purchase purchase : purchases) {
-            if (purchase.getEventId().equals(eventId)) {
-                purchasedTickets =purchase.getTickets();
-                for(PurchasedTicket ticket : purchasedTickets){
-                    ticket.setStatus(TicketStatus.CANCELED);
-                }
+            for (PurchasedTicket ticket : purchase.getTickets()) {
+                ticket.setStatus(TicketStatus.CANCELED);
             }
         }
+
+        notifyPurchasedBuyers(
+                purchases,
+                "An event you purchased tickets for was canceled."
+        );
     }
+    @Override
+    public void onEventUpdated(Long eventId, LocalDateTime date, String location, String updateMessage) {
+        if (eventId == null) {
+            return;
+        }
+
+        List<Purchase> purchases = historyRepository.getPurchasesByEventId(eventId);
+
+        notifyPurchasedBuyers(purchases, updateMessage);
+    }
+    private void notifyPurchasedBuyers(List<Purchase> purchases, String message) {
+    if (notificationsService == null || purchases == null || purchases.isEmpty()
+            || message == null || message.isBlank()) {
+        return;
+    }
+
+    List<Long> buyerMemberIds = purchases.stream()
+            .map(Purchase::getMemberId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+
+    if (buyerMemberIds.isEmpty()) {
+        return;
+    }
+
+    notificationsService.notifyMembers(buyerMemberIds, message);
+}
 
 }
