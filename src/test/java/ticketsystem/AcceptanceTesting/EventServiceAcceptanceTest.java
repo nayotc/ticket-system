@@ -1501,179 +1501,179 @@ void GivenOwnerLoggedIn_WhenSetEventDiscountCompositionType_ThenCompositionTypeI
 
 // -------------------- Set Event Purchase Policy Tests -------------------
 
-@Test
-void GivenOwnerLoggedInEventExistsAndMaxTicketsPolicy_WhenSetEventPurchasePolicy_ThenPolicyIsSavedAndEnforced() throws Exception {
-    Event event = createExistingEvent();
-    eventRepository.addEvent(event);
+    @Test
+    void GivenOwnerLoggedInEventExistsAndMaxTicketsPolicy_WhenSetEventPurchasePolicy_ThenPolicyIsSavedAndEnforced() throws Exception {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
 
-    PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
 
-    eventService.setEventPurchasePolicy(
-            validOwnerSessionId,
-            event.getId(),
-            policyDTO
-    );
+        eventService.setEventPurchasePolicy(
+                validOwnerSessionId,
+                event.getId(),
+                policyDTO
+        );
 
-    Event updatedEvent = eventRepository.getEventById(event.getId());
+        Event updatedEvent = eventRepository.getEventById(event.getId());
 
-    assertNotNull(updatedEvent);
-    assertDoesNotThrow(() -> updatedEvent.canPurchase(5, 20));
+        assertNotNull(updatedEvent);
+        assertDoesNotThrow(() -> updatedEvent.canPurchase(5, 20));
 
-    IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> updatedEvent.canPurchase(6, 20)
-    );
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> updatedEvent.canPurchase(6, 20)
+        );
 
-    assertTrue(exception.getMessage().contains("Cannot purchase more than 5 tickets"));
-}
+        assertTrue(exception.getMessage().contains("Cannot purchase more than 5 tickets"));
+    }
 
-@Test
-void GivenOwnerLoggedInEventExistsAndMinAgePolicy_WhenSetEventPurchasePolicy_ThenPolicyIsSavedAndEnforced() throws Exception {
-    Event event = createExistingEvent();
-    eventRepository.addEvent(event);
+    @Test
+    void GivenOwnerLoggedInEventExistsAndMinAgePolicy_WhenSetEventPurchasePolicy_ThenPolicyIsSavedAndEnforced() throws Exception {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
 
-    PurchasePolicyDTO policyDTO = minAgePolicyDTO(18);
+        PurchasePolicyDTO policyDTO = minAgePolicyDTO(18);
 
-    eventService.setEventPurchasePolicy(
-            validOwnerSessionId,
-            event.getId(),
-            policyDTO
-    );
+        eventService.setEventPurchasePolicy(
+                validOwnerSessionId,
+                event.getId(),
+                policyDTO
+        );
 
-    Event updatedEvent = eventRepository.getEventById(event.getId());
+        Event updatedEvent = eventRepository.getEventById(event.getId());
 
-    assertNotNull(updatedEvent);
-    assertDoesNotThrow(() -> updatedEvent.canPurchase(1, 18));
+        assertNotNull(updatedEvent);
+        assertDoesNotThrow(() -> updatedEvent.canPurchase(1, 18));
 
-    IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> updatedEvent.canPurchase(1, 17)
-    );
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> updatedEvent.canPurchase(1, 17)
+        );
 
-    assertTrue(exception.getMessage().contains("minimum age requirement of 18"));
-}
+        assertTrue(exception.getMessage().contains("minimum age requirement of 18"));
+    }
 
-@Test
-void GivenOwnerLoggedInEventExistsAndNestedPurchasePolicy_WhenSetEventPurchasePolicy_ThenNestedPolicyIsSavedAndEnforced() throws Exception {
-    Event event = createExistingEvent();
-    eventRepository.addEvent(event);
+    @Test
+    void GivenOwnerLoggedInEventExistsAndNestedPurchasePolicy_WhenSetEventPurchasePolicy_ThenNestedPolicyIsSavedAndEnforced() throws Exception {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
 
-    PurchasePolicyDTO policyDTO = nestedPolicyDTO();
+        PurchasePolicyDTO policyDTO = nestedPolicyDTO();
 
-    eventService.setEventPurchasePolicy(
-            validOwnerSessionId,
-            event.getId(),
-            policyDTO
-    );
+        eventService.setEventPurchasePolicy(
+                validOwnerSessionId,
+                event.getId(),
+                policyDTO
+        );
 
-    Event updatedEvent = eventRepository.getEventById(event.getId());
+        Event updatedEvent = eventRepository.getEventById(event.getId());
 
-    assertNotNull(updatedEvent);
+        assertNotNull(updatedEvent);
 
-    assertDoesNotThrow(() -> updatedEvent.canPurchase(2, 18));
-    assertDoesNotThrow(() -> updatedEvent.canPurchase(100, 18));
+        assertDoesNotThrow(() -> updatedEvent.canPurchase(2, 18));
+        assertDoesNotThrow(() -> updatedEvent.canPurchase(100, 18));
 
-    assertThrows(
-            IllegalArgumentException.class,
-            () -> updatedEvent.canPurchase(50, 18)
-    );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> updatedEvent.canPurchase(50, 18)
+        );
 
-    assertThrows(
-            IllegalArgumentException.class,
-            () -> updatedEvent.canPurchase(2, 17)
-    );
-}
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> updatedEvent.canPurchase(2, 17)
+        );
+    }
 
-@Test
-void GivenLoggedInUserWithoutPermission_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
-    Event event = createExistingEvent();
-    eventRepository.addEvent(event);
+    @Test
+    void GivenLoggedInUserWithoutPermission_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
 
-    String sessionWithoutPermission = "session-without-policy-permission";
-    Long plainUserId = 2L;
+        String sessionWithoutPermission = "session-without-policy-permission";
+        Long plainUserId = 2L;
 
-    Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002");
-    userRepository.addRegisteredMember(plainUserId, plainUser, "password");
-    tokenService.addValidSession(sessionWithoutPermission, plainUserId);
+        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002");
+        userRepository.addRegisteredMember(plainUserId, plainUser, "password");
+        tokenService.addValidSession(sessionWithoutPermission, plainUserId);
 
-    PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
 
-    IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> eventService.setEventPurchasePolicy(
-                    sessionWithoutPermission,
-                    event.getId(),
-                    policyDTO
-            )
-    );
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.setEventPurchasePolicy(
+                        sessionWithoutPermission,
+                        event.getId(),
+                        policyDTO
+                )
+        );
 
-    Event unchangedEvent = eventRepository.getEventById(event.getId());
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
 
-    assertTrue(exception.getMessage().contains("permission"));
-    assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
-}
+        assertTrue(exception.getMessage().contains("permission"));
+        assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
+    }
 
-@Test
-void GivenEventDoesNotExist_WhenSetEventPurchasePolicy_ThenSystemRejectsTheRequest() {
-    PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+    @Test
+    void GivenEventDoesNotExist_WhenSetEventPurchasePolicy_ThenSystemRejectsTheRequest() {
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
 
-    IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> eventService.setEventPurchasePolicy(
-                    validOwnerSessionId,
-                    999L,
-                    policyDTO
-            )
-    );
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.setEventPurchasePolicy(
+                        validOwnerSessionId,
+                        999L,
+                        policyDTO
+                )
+        );
 
-    assertTrue(exception.getMessage().contains("Event not found"));
-}
+        assertTrue(exception.getMessage().contains("Event not found"));
+    }
 
-@Test
-void GivenInvalidPurchasePolicyDTO_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
-    Event event = createExistingEvent();
-    eventRepository.addEvent(event);
+    @Test
+    void GivenInvalidPurchasePolicyDTO_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
 
-    PurchasePolicyDTO invalidPolicyDTO = new PurchasePolicyDTO(
-            new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, null, null)
-    );
+        PurchasePolicyDTO invalidPolicyDTO = new PurchasePolicyDTO(
+                new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, null, null)
+        );
 
-    IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> eventService.setEventPurchasePolicy(
-                    validOwnerSessionId,
-                    event.getId(),
-                    invalidPolicyDTO
-            )
-    );
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.setEventPurchasePolicy(
+                        validOwnerSessionId,
+                        event.getId(),
+                        invalidPolicyDTO
+                )
+        );
 
-    Event unchangedEvent = eventRepository.getEventById(event.getId());
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
 
-    assertTrue(exception.getMessage().contains("Maximum tickets is required"));
-    assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
-}
+        assertTrue(exception.getMessage().contains("Maximum tickets is required"));
+        assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
+    }
 
-@Test
-void GivenInvalidSession_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
-    Event event = createExistingEvent();
-    eventRepository.addEvent(event);
+    @Test
+    void GivenInvalidSession_WhenSetEventPurchasePolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
 
-    PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
+        PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
 
-    IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> eventService.setEventPurchasePolicy(
-                    invalidSessionId,
-                    event.getId(),
-                    policyDTO
-            )
-    );
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.setEventPurchasePolicy(
+                        invalidSessionId,
+                        event.getId(),
+                        policyDTO
+                )
+        );
 
-    Event unchangedEvent = eventRepository.getEventById(event.getId());
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
 
-    assertTrue(exception.getMessage().contains("permission"));
-    assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
-}
+        assertTrue(exception.getMessage().contains("permission"));
+        assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
+    }
 
 private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {
     return new PurchasePolicyDTO(

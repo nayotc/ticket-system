@@ -29,8 +29,12 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.policy.PurchaseRule;
 import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 
 public class EventTest {
@@ -829,6 +833,248 @@ public class EventTest {
         );
 
         assertEquals("Purchase policy cannot be null", exception.getMessage());
+    }
+    // --- Discount Policy: Add Discount To Event ---
+
+    @Test
+    void GivenValidVisibleDiscount_WhenAddVisibleDiscountToEvent_ThenDiscountIsAdded() {
+        event.addVisibleDiscountToEvent("Student Discount", BigDecimal.valueOf(10));
+
+        assertEquals(1, event.getDiscounts().size());
+        assertTrue(event.getDiscounts().get(0) instanceof VisibleDiscount);
+    }
+
+    @Test
+    void GivenNullName_WhenAddVisibleDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addVisibleDiscountToEvent(null, BigDecimal.valueOf(10))
+        );
+    }
+
+    @Test
+    void GivenEmptyName_WhenAddVisibleDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addVisibleDiscountToEvent("", BigDecimal.valueOf(10))
+        );
+    }
+
+    @Test
+    void GivenNullPercentage_WhenAddVisibleDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addVisibleDiscountToEvent("Discount", null)
+        );
+    }
+
+    @Test
+    void GivenNegativePercentage_WhenAddVisibleDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addVisibleDiscountToEvent("Discount", BigDecimal.valueOf(-1))
+        );
+    }
+
+    @Test
+    void GivenPercentageAbove100_WhenAddVisibleDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addVisibleDiscountToEvent("Discount", BigDecimal.valueOf(101))
+        );
+    }
+
+
+    // --- Discount Policy: Add Coupon Discount To Event ---
+
+    @Test
+    void GivenValidCouponDiscount_WhenAddCouponDiscountToEvent_ThenDiscountIsAdded() {
+        event.addCouponDiscountToEvent(
+                "Coupon Discount",
+                "BGU10",
+                BigDecimal.valueOf(10),
+                LocalDateTime.now().plusDays(7)
+        );
+
+        assertEquals(1, event.getDiscounts().size());
+        assertTrue(event.getDiscounts().get(0) instanceof CouponDiscount);
+    }
+
+    @Test
+    void GivenNullCouponCode_WhenAddCouponDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addCouponDiscountToEvent(
+                        "Coupon Discount",
+                        null,
+                        BigDecimal.valueOf(10),
+                        LocalDateTime.now().plusDays(7)
+                )
+        );
+    }
+
+    @Test
+    void GivenEmptyCouponCode_WhenAddCouponDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addCouponDiscountToEvent(
+                        "Coupon Discount",
+                        "",
+                        BigDecimal.valueOf(10),
+                        LocalDateTime.now().plusDays(7)
+                )
+        );
+    }
+
+
+    // --- Discount Policy: Add Conditional Discount To Event ---
+
+    @Test
+    void GivenValidMinTicketCondition_WhenAddConditionalDiscountToEvent_ThenDiscountIsAdded() {
+        event.addConditionalDiscountToEvent(
+                "Min Ticket Discount",
+                null,
+                null,
+                BigDecimal.valueOf(15),
+                Condition.MIN_TICKET,
+                2
+        );
+
+        assertEquals(1, event.getDiscounts().size());
+        assertTrue(event.getDiscounts().get(0) instanceof ConditionalDiscount);
+    }
+
+    @Test
+    void GivenValidMaxTicketCondition_WhenAddConditionalDiscountToEvent_ThenDiscountIsAdded() {
+        event.addConditionalDiscountToEvent(
+                "Max Ticket Discount",
+                null,
+                null,
+                BigDecimal.valueOf(15),
+                Condition.MAX_TICKET,
+                5
+        );
+
+        assertEquals(1, event.getDiscounts().size());
+        assertTrue(event.getDiscounts().get(0) instanceof ConditionalDiscount);
+    }
+
+    @Test
+    void GivenValidDateCondition_WhenAddConditionalDiscountToEvent_ThenDiscountIsAdded() {
+        event.addConditionalDiscountToEvent(
+                "Date Discount",
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(7),
+                BigDecimal.valueOf(15),
+                Condition.DATE,
+                null
+        );
+
+        assertEquals(1, event.getDiscounts().size());
+        assertTrue(event.getDiscounts().get(0) instanceof ConditionalDiscount);
+    }
+
+    @Test
+    void GivenNullCondition_WhenAddConditionalDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addConditionalDiscountToEvent(
+                        "Conditional Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        null,
+                        2
+                )
+        );
+    }
+
+    @Test
+    void GivenMinTicketConditionAndNullThreshold_WhenAddConditionalDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addConditionalDiscountToEvent(
+                        "Min Ticket Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        Condition.MIN_TICKET,
+                        null
+                )
+        );
+    }
+
+    @Test
+    void GivenMaxTicketConditionAndNegativeThreshold_WhenAddConditionalDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addConditionalDiscountToEvent(
+                        "Max Ticket Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        Condition.MAX_TICKET,
+                        -1
+                )
+        );
+    }
+
+    @Test
+    void GivenDateConditionAndNullDates_WhenAddConditionalDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addConditionalDiscountToEvent(
+                        "Date Discount",
+                        null,
+                        null,
+                        BigDecimal.valueOf(15),
+                        Condition.DATE,
+                        null
+                )
+        );
+    }
+
+    @Test
+    void GivenDateConditionAndEndBeforeStart_WhenAddConditionalDiscountToEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.addConditionalDiscountToEvent(
+                        "Date Discount",
+                        LocalDateTime.now().plusDays(7),
+                        LocalDateTime.now().minusDays(1),
+                        BigDecimal.valueOf(15),
+                        Condition.DATE,
+                        null
+                )
+        );
+    }
+
+
+    // --- Discount Policy: Remove Discount From Event ---
+
+    @Test
+    void GivenExistingDiscount_WhenRemoveDiscountFromEvent_ThenDiscountIsRemoved() {
+        event.addVisibleDiscountToEvent("Discount", BigDecimal.valueOf(10));
+
+        Long discountId = event.getDiscounts()
+                .get(0)
+                .getDiscountId();
+
+        event.removeDiscountFromEvent(discountId);
+
+        assertEquals(0, event.getDiscounts().size());
+    }
+
+    @Test
+    void GivenNonExistingDiscount_WhenRemoveDiscountFromEvent_ThenExceptionIsThrown() {
+        assertThrows(IllegalArgumentException.class, () ->
+                event.removeDiscountFromEvent(999L)
+        );
+    }
+
+
+    // --- Discount Policy: Composition Type ---
+
+    @Test
+    void GivenCompositionTypeSum_WhenSetDiscountCompositionType_ThenTypeIsUpdated() {
+        event.setDiscountCompositionType(DiscountCompositionType.SUM);
+
+        assertEquals(DiscountCompositionType.SUM, event.getDiscountPolicy().getDiscountCompositionType());
+    }
+
+    @Test
+    void GivenCompositionTypeMax_WhenSetDiscountCompositionType_ThenTypeIsUpdated() {
+        event.setDiscountCompositionType(DiscountCompositionType.MAX);
+
+        assertEquals(DiscountCompositionType.MAX, event.getDiscountPolicy().getDiscountCompositionType());
     }
 
     private static class FixedResultPurchaseRule implements PurchaseRule {

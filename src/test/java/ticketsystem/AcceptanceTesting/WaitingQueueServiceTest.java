@@ -161,6 +161,7 @@ public class WaitingQueueServiceTest {
         assertEquals(0, savedEvent.getActiveReservationsCount(), "Active reservations should remain 0.");
         assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
     }
+
     private static class FakeNotificationsService implements INotifier {
 
         private final Map<String, List<String>> messagesBySession = new HashMap<>();
@@ -258,4 +259,197 @@ public class WaitingQueueServiceTest {
                     .anyMatch(message -> message.contains(text));
         }
     }
+
+    @Test
+    public void givenNonExistingEvent_whenTryReserve_thenReturnEventNotFound() {
+        // Arrange
+        String validToken = tokenService.addActiveSession(new Guest());
+
+        // Act
+        String result = waitingQueueService.tryReserve(999L, validToken);
+
+        // Assert
+        assertEquals("ERROR: Event not found", result);
+    }
+
+    @Test
+    public void givenSoldOutEvent_whenTryReserve_thenUserGetsSoldOutNotification() {
+        // Arrange
+        Event event = new Event(
+                6L,
+                LocalDateTime.now().plusDays(1),
+                "Sold Out Concert",
+                1L,
+                1L,
+                EventLocation.NEW_YORK,
+                1L,
+                EventCategory.CONCERT,
+                "Artist",
+                BigDecimal.valueOf(100),
+                new Pair<>(10, 10));
+
+        EventRepo.addEvent(event);
+
+        String firstToken = tokenService.addActiveSession(new Guest());
+        String secondToken = tokenService.addActiveSession(new Guest());
+
+        // ממלאים את המקום היחיד
+        assertEquals("APPROVED", waitingQueueService.tryReserve(6L, firstToken));
+
+        // Act
+        String result = waitingQueueService.tryReserve(6L, secondToken);
+
+        // Assert
+        assertEquals("QUEUED", result);
+        assertTrue(fakeNotifications.wasNotified(secondToken));
+    }
+
+    @Test
+    public void givenQueuedUser_whenLeaveQueue_thenUserRemovedFromQueue() {
+        // Arrange
+        Event event = new Event(
+                7L,
+                LocalDateTime.now().plusDays(1),
+                "Busy Event",
+                1L,
+                1L,
+                EventLocation.NEW_YORK,
+                1L,
+                EventCategory.CONCERT,
+                "Artist",
+                BigDecimal.valueOf(100),
+                new Pair<>(10, 10));
+
+        EventRepo.addEvent(event);
+
+        String token1 = tokenService.addActiveSession(new Guest());
+        String token2 = tokenService.addActiveSession(new Guest());
+
+        waitingQueueService.tryReserve(7L, token1);
+        waitingQueueService.tryReserve(7L, token2);
+
+        assertEquals(1, realQueueRepo.getQueueSize(7L));
+
+        // Act
+        waitingQueueService.leaveQueue(7L, token2);
+
+        // Assert
+        assertEquals(0, realQueueRepo.getQueueSize(7L));
+    }
+
+    @Test
+    public void givenApprovedUser_whenExpireSession_thenSpotReleasedAndNotificationSent() {
+        // Arrange
+        Event event = new Event(
+                8L,
+                LocalDateTime.now().plusDays(1),
+                "Expire Event",
+                1L,
+                1L,
+                EventLocation.NEW_YORK,
+                1L,
+                EventCategory.CONCERT,
+                "Artist",
+                BigDecimal.valueOf(100),
+                new Pair<>(10, 10));
+
+        EventRepo.addEvent(event);
+
+        String token = tokenService.addActiveSession(new Guest());
+
+        waitingQueueService.tryReserve(8L, token);
+
+        // Act
+        waitingQueueService.expireUserSession(8L, token);
+
+        // Assert
+        Event updatedEvent = EventRepo.getEventById(8L);
+
+        assertEquals(0, updatedEvent.getActiveReservationsCount());
+
+        assertTrue(fakeNotifications.wasNotified(token));
+
+        assertTrue(
+                fakeNotifications.lastMessageFor(token)
+                        .contains("expired"));
+    }
+
+    @Test
+    public void givenQueuedUsers_whenEventSoldOut_thenQueueClearedAndUsersNotified() {
+        // Arrange
+        Event event = new Event(
+                9L,
+                LocalDateTime.now().plusDays(1),
+                "Queue Event",
+                1L,
+                1L,
+                EventLocation.NEW_YORK,
+                1L,
+                EventCategory.CONCERT,
+                "Artist",
+                BigDecimal.valueOf(100),
+                new Pair<>(10, 10));
+
+        EventRepo.addEvent(event);
+
+        String token1 = tokenService.addActiveSession(new Guest());
+        String token2 = tokenService.addActiveSession(new Guest());
+        String token3 = tokenService.addActiveSession(new Guest());
+
+        waitingQueueService.tryReserve(9L, token1);
+        waitingQueueService.tryReserve(9L, token2);
+        waitingQueueService.tryReserve(9L, token3);
+
+        assertEquals(2, realQueueRepo.getQueueSize(9L));
+
+        // Act
+        waitingQueueService.handleSoldOutEvent(9L);
+
+        // Assert
+        assertEquals(0, realQueueRepo.getQueueSize(9L));
+
+        assertTrue(fakeNotifications.wasNotified(token2));
+        assertTrue(fakeNotifications.wasNotified(token3));
+
+        assertTrue(fakeNotifications.containsMessage("sold out"));
+    }
+
+    @Test
+    public void givenMemberToken_whenQueued_thenMemberNotificationIsSent() {
+        // Arrange
+        Event event = new Event(
+                10L,
+                LocalDateTime.now().plusDays(1),
+                "Member Queue Event",
+                1L,
+                1L,
+                EventLocation.NEW_YORK,
+                1L,
+                EventCategory.CONCERT,
+                "Artist",
+                BigDecimal.valueOf(100),
+                new Pair<>(10, 10));
+
+        EventRepo.addEvent(event);
+
+        String guestToken = tokenService.addActiveSession(new Guest());
+
+        waitingQueueService.tryReserve(10L, guestToken);
+
+        String memberToken = tokenService.addActiveSession(
+                new ticketsystem.DomainLayer.user.Member(
+                        100L,
+                        "member",
+                        "Member User",
+                        "0500000000"));
+
+        // Act
+        String result = waitingQueueService.tryReserve(10L, memberToken);
+
+        // Assert
+        assertEquals("QUEUED", result);
+
+        assertTrue(fakeNotifications.wasMemberNotified(100L));
+    }
+
 }
