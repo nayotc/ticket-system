@@ -7,8 +7,6 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
@@ -25,6 +23,7 @@ import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.SalesReportPresenter;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
 import java.math.BigDecimal;
@@ -79,7 +78,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
 
         ViewHeader header = new ViewHeader(
                 "דוח מכירות",
-                "סקירה של הכנסות, כרטיסים שנמכרו ועסקאות של חברת ההפקה הנבחרת.",
+                "סקירה של הכנסות, כרטיסים שנמכרו ועסקאות של חברת ההפקה.",
                 periodButton,
                 exportButton,
                 refreshButton
@@ -106,13 +105,13 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         // when the screen loads, and it will use the real Presenter injected by Spring.
     }
 
-    /**
-     * Allows the real presenter to be attached later without changing the view structure.
-     */
-    public void setPresenter(SalesReportPresenter presenter) {
-        this.presenter = presenter;
-        loadFromPresenterOrDemo();
-    }
+    // /**
+    //  * Allows the real presenter to be attached later without changing the view structure.
+    //  */
+    // public void setPresenter(SalesReportPresenter presenter) {
+    //     this.presenter = presenter;
+    //     loadFromPresenterOrDemo();
+    // }
 
     /**
      * Entry point for the future presenter.
@@ -203,11 +202,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         H3 title = new H3("עסקאות החברה");
         title.addClassName("sales-report-card-title");
 
-        // TODO: remove this helper message from Transactions Card.
-        Span helper = new Span("מוצגות רק עסקאות המשויכות לחברה הנוכחית.");
-        helper.addClassName("sales-report-card-helper");
-
-        header.add(title, helper);
+        header.add(title);
 
         Div tableWrapper = new Div(transactionsGrid);
         tableWrapper.addClassName("sales-report-table-wrapper");
@@ -317,10 +312,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         H3 title = new H3("הכנסות לפי אירוע");
         title.addClassName("sales-report-card-title");
 
-        // TODO: remove this helper message from chart.
-        Span helper = new Span("מבוסס על OrderDTO הקיימים. אין פילוח לפי סוג כרטיס ואין אחוז המרה.");
-        helper.addClassName("sales-report-card-helper");
-
         Div chart = new Div();
         chart.addClassName("sales-report-chart");
 
@@ -338,7 +329,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             }
         }
 
-        chartCard.add(title, helper, chart);
+        chartCard.add(title, chart);
     }
 
     private Div createEventRevenueRow(EventRevenue eventRevenue, BigDecimal maxRevenue) {
@@ -522,13 +513,11 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     }
 
     private void showInfo(String message) {
-        Notification notification = Notification.show(message, 3000, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+        Notifications.info(message);
     }
 
     private void showError(String message) {
-        Notification notification = Notification.show(message, 4000, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        Notifications.error(message);
     }
 
     private record EventRevenue(String eventName, BigDecimal revenue) {

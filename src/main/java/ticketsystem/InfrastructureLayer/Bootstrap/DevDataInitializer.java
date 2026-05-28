@@ -94,7 +94,7 @@ public class DevDataInitializer implements CommandLineRunner {
         founder.addFounderRole(TEST_COMPANY_ID);
         userRepository.updateMember(founder);
 
-        Company company = new Company(COMPANY_NAME, founder.getId(), new PurchasePolicy(null), new DiscountPolicy(DiscountCompositionType.MAX));
+        Company company = new Company(COMPANY_NAME, founder.getId(), PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
         company.setId(TEST_COMPANY_ID); 
         companyRepository.save(company); 
         
