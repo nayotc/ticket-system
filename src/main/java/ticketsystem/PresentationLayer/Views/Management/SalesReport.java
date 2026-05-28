@@ -17,6 +17,7 @@ import com.vaadin.flow.server.streams.DownloadHandler;
 import com.vaadin.flow.server.streams.DownloadResponse;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import com.vaadin.flow.server.StreamResource;
 
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
@@ -76,12 +77,19 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         Button refreshButton = createHeaderButton("רענון", VaadinIcon.REFRESH, false);
         refreshButton.addClickListener(event -> refreshData());
 
-        Anchor exportButton = createExportAnchor();
+        // Button exportButton = createHeaderButton("ייצוא", VaadinIcon.DOWNLOAD, false);
+        // exportButton.addClickListener(event -> showInfo("ייצוא הדוח יחובר בהמשך דרך ה-Presenter."));
+
+        // Button periodButton = createHeaderButton("30 ימים אחרונים", VaadinIcon.CALENDAR, true);
+        // periodButton.addClickListener(event -> showInfo("סינון לפי תאריכים יחובר בהמשך כאשר DTO יכלול תאריך עסקה."));
+
+        // Call the helper method to keep the constructor clean
+        Anchor exportAnchor = createExportButtonWithAnchor();
 
         ViewHeader header = new ViewHeader(
                 "דוח מכירות",
                 "סקירה של הכנסות, כרטיסים שנמכרו ועסקאות של חברת ההפקה.",
-                exportButton, // Pass the returned anchor to the header
+                exportAnchor, // Pass the returned anchor to the header
                 refreshButton
         );
 
@@ -101,78 +109,63 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         add(header, metricsGrid, contentGrid, transactionsCard, emptyStateContainer);
 
         configureTransactionsGrid();
+        // Change 2: Remove the call to loadDemoData().
+        // Instead, the beforeEnter method will call loadFromPresenterOrDemo()
+        // when the screen loads, and it will use the real Presenter injected by Spring.
     }
 
     /**
      * Creates the export button wrapped in an Anchor tag to trigger the CSV download.
      * Uses the official Vaadin StreamResource approach for dynamic, lazy-loaded file generation.
      */
-    private Anchor createExportAnchor() {
-        DownloadHandler handler = DownloadHandler.fromInputStream(event -> {
-            String csv = buildSalesReportCsv();
-
-            return new DownloadResponse(
-                    new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)),
-                    "sales-report.csv",
-                    "text/csv;charset=UTF-8",
-                    -1
-            );
-        });
-
+    private Anchor createExportButtonWithAnchor() {
         Button exportButton = createHeaderButton("ייצוא", VaadinIcon.DOWNLOAD, false);
 
-        Anchor anchor = new Anchor(handler, "");
-        anchor.add(exportButton);
-        anchor.getElement().setAttribute("download", true);
+        // 1. Create the StreamResource.
+        // The data generation logic inside the lambda only executes when the user clicks the button.
+        StreamResource csvResource = new StreamResource("sales_report.csv", () -> {
+            String token = UiSession.getMemberToken();
+            
+            if (token == null || token.isBlank()) {
+                return new ByteArrayInputStream("Error: Unauthenticated user.".getBytes(StandardCharsets.UTF_8));
+            }
+            
+            try {
+                // Fetch the dynamically generated CSV data stream from the Presenter layer
+                return presenter.exportTransactionsToCsv(token, companyId);
+                
+            } catch (PresentationException e) {
+                return new ByteArrayInputStream(("Error: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                return new ByteArrayInputStream("Error: An unexpected error occurred.".getBytes(StandardCharsets.UTF_8));
+            }
+        });
 
-        return anchor;
+        // 2. Create the Anchor and attach the StreamResource to it
+        Anchor exportAnchor = new Anchor(csvResource, "");
+        
+        // Required to ensure the browser triggers a file download instead of navigating to the resource URL.
+        exportAnchor.getElement().setAttribute("download", true);
+        
+        // Wrap the button inside the anchor
+        exportAnchor.add(exportButton);
+        
+        return exportAnchor;
     }
 
     /**
-     * Builds a CSV string from the current transactions' data.
-     * This method is called lazily when the user clicks the export button, ensuring that the latest data is included in the download.
+     * Helper method to safely write error messages directly into the downloaded text file.
+     * This provides immediate feedback to the user via the file itself if the download process fails mid-stream.
+     * * @param outputStream The browser's output stream provided by the DownloadHandler event
+     * @param errorMessage The specific error message to write into the file
      */
-    private String buildSalesReportCsv() {
-        StringBuilder csv = new StringBuilder();
-
-        // Helps Excel detect UTF-8 correctly
-        csv.append('\uFEFF');
-
-        csv.append("Purchase ID,Event,Location,Member ID,Tickets,Amount\r\n");
-
-        for (OrderDTO order : currentTransactions) {
-            appendCsvValue(csv, order.getPurchaseId());
-            appendCsvValue(csv, safeText(order.getEventName()));
-            appendCsvValue(csv, safeText(order.getLocation()));
-
-            // Force Excel to keep long ID as text
-            appendCsvValue(csv, excelText(order.getMemberId()));
-
-            appendCsvValue(csv, countSoldTickets(order));
-            appendCsvValue(csv, calculateOrderTotal(order));
-            csv.append("\r\n");
+    private void writeErrorToDownload(java.io.OutputStream outputStream, String errorMessage) {
+        try {
+            outputStream.write(errorMessage.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            // Silently ignore I/O exceptions here (e.g., if the user canceled the download 
+            // or the browser abruptly closed the connection before the error could be written).
         }
-
-        return csv.toString();
-    }
-
-    private String excelText(Long value) {
-        if (value == null) {
-            return "";
-        }
-
-        return "=\"" + value + "\"";
-    }
-
-    private void appendCsvValue(StringBuilder csv, Object value) {
-        if (csv.length() > 0 && csv.charAt(csv.length() - 1) != '\n') {
-            csv.append(",");
-        }
-
-        String text = value == null ? "" : value.toString();
-        text = text.replace("\"", "\"\"");
-
-        csv.append("\"").append(text).append("\"");
     }
 
     /**
