@@ -31,7 +31,7 @@ public class EventPresenter implements CreateEvent.CreateEventPresenter {
                     request.category(),
                     request.artist(),
                     request.price(),
-                    request.mapHigh(),
+                    request.mapHeight(),
                     request.mapWidth()
             );
 
