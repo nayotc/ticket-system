@@ -46,6 +46,10 @@ public class HistoryService implements OrderCompletedListener {
             historyRepository.addPurchase(purchase);     //purchase is the object after you pay 
         } 
         catch (IllegalArgumentException e) {
+            logger.logEvent(
+                    "Failed to process completed order: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
             throw e;
         }
     }
@@ -77,6 +81,7 @@ public class HistoryService implements OrderCompletedListener {
             return historyDtoList;
         }
         catch (IllegalArgumentException e) {
+            logger.logEvent("Failed to retrieve personal purchase history: " + e.getMessage(), ISystemLogger.LogLevel.WARN);
             throw e;
         }
     }
