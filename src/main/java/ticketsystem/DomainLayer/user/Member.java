@@ -56,9 +56,6 @@ public class Member extends User {
                 this.myRoles.put(compId, copiedRole);
             }
         }
-        if (other.suspension != null) {
-            this.suspension = new Suspension(other.suspension); 
-        }
     }
 
     public Long getId() {
