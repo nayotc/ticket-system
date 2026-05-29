@@ -5,6 +5,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.MemberDTO;
@@ -17,9 +20,6 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
-
-import org.springframework.stereotype.Service;
 
 import ticketsystem.DTO.RoleTreeDTO;
 import ticketsystem.DomainLayer.user.Founder;
@@ -38,7 +38,7 @@ public class MembershipService {
     private final ISystemLogger logger;
     private final UserAccessService userAccessService; 
 
-
+    @Autowired
     public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService membershipDomain, INotifier notificationsService, ISystemLogger logger,UserAccessService userAccessService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
