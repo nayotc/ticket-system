@@ -5,25 +5,17 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import com.stripe.service.EventService;
 
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.ApplicationLayer.UserService;
-import ticketsystem.ApplicationLayer.EventCatalogService;
+import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.CompanyRoleDTO;
 import ticketsystem.DTO.MemberDTO;
 import ticketsystem.DTO.Event.EventDTO;
-import ticketsystem.DTO.Event.EventSearchResultDTO;
-import ticketsystem.DomainLayer.user.CompanyRole;
-import ticketsystem.DomainLayer.user.Founder;
-import ticketsystem.DomainLayer.user.Owner;
-import ticketsystem.DomainLayer.user.Manager;
 import ticketsystem.DomainLayer.user.Permission;
 
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState;
@@ -41,31 +33,15 @@ public class MembershipPresenter {
     private final ITokenService tokenService;
     private final UserService userService;
     private final CompanyService companyService;
-    private final EventCatalogService eventCatalogService;
+    private final EventService eventService;
 
-    public MembershipPresenter(MembershipService membershipService, ITokenService tokenService, UserService userService, CompanyService companyService, EventCatalogService eventCatalogService) {
+    public MembershipPresenter(MembershipService membershipService, ITokenService tokenService, UserService userService, CompanyService companyService, EventService eventService) {
         this.membershipService = membershipService;
         this.tokenService = tokenService;
         this.userService = userService;
         this.companyService = companyService;
-        this.eventCatalogService = eventCatalogService;
+        this.eventService = eventService;
     }
-
-    // public CompanyManagementState loadCompanyManagement(String sessionToken, Long requestedCompanyId) {
-    //     try {
-    //         // כאן יש לקרוא לשירותי האפליקציה ששולפים את כל הנתונים (חברות, צוות, אירועים)
-    //         // ולהרכיב את אובייקט ה-CompanyManagementState
-    //         // return companyService.getCompanyManagementState(sessionToken, requestedCompanyId);
-            
-    //         throw new PresentationException("טעינת נתוני החברה טרם מומשה בשכבת האפליקציה.");
-    //     } catch (PresentationException e) {
-    //         throw e;
-    //     } catch (IllegalArgumentException | IllegalStateException e) {
-    //         throw new PresentationException(e.getMessage());
-    //     } catch (Exception e) {
-    //         throw new PresentationException("אירעה שגיאה בעת טעינת נתוני החברה.");
-    //     }
-    // }
 
     public CompanyManagementState loadCompanyManagement(String sessionToken, Long requestedCompanyId) {
         try {
@@ -140,10 +116,19 @@ public class MembershipPresenter {
                 } else if ("MANAGER".equals(role.getRoleType())) {
                     uiRoleType = RoleType.MANAGER;
                     roleLabel = "Manager";
-                    // המרת ההרשאות ממחרוזות חזרה ל-Enum עבור ה-UI
+                    // המרת ההרשאות בצורה בטוחה שמתמודדת עם פורמטים מותאמים אישית של Enums
                     if (role.getPermissions() != null) {
                         uiPermissions = role.getPermissions().stream()
-                                .map(Permission::valueOf)
+                                .map(permStr -> {
+                                    for (Permission p : Permission.values()) {
+                                        // השוואה גם לשם הקבוע (name) וגם לערך המודפס (toString)
+                                        if (p.name().equals(permStr) || p.toString().equals(permStr)) {
+                                            return p;
+                                        }
+                                    }
+                                    return null; // במקרה שההרשאה לא זוהתה
+                                })
+                                .filter(p -> p != null) // סינון ערכים ריקים כדי למנוע קריסות
                                 .collect(Collectors.toSet());
                     }
                 } else {
@@ -174,16 +159,18 @@ public class MembershipPresenter {
                 ));
             }
 
-            // 6. שליפת רשימת אירועי החברה ומיפויים
-            List<EventSearchResultDTO> domainEvents = eventCatalogService.SearchByCompany(sessionToken, companyId, new ticketsystem.DomainLayer.SearchCriteria());
+            // 6. שליפת רשימת אירועי החברה ומיפויים דרך EventService
+            List<EventDTO> domainEvents = eventService.getEventsByCompany(sessionToken, companyId);
             
             List<EventManagementItem> uiEvents = domainEvents.stream()
-                    .map(e -> new EventManagementItem(e.id(), e.name()))
+                    // ב-record ניגשים לשדות דרך שם השדה: id() ו-name()
+                    .map(e -> new EventManagementItem(e.id(), e.name())) 
                     .collect(Collectors.toList());
 
             // 7. בניית הסטטיסטיקות ותמציות המדיניות
             int activeEventsCount = (int) domainEvents.stream()
-                    .filter(e -> e.saleStatus() != null && e.saleStatus().equals("OPEN")) 
+                    // בודקים אם שדה ה-status קיים ושווה למחרוזת "ACTIVE"
+                    .filter(e -> e.status() != null && e.status().equals("ACTIVE")) 
                     .count();
                     
             int pendingAssignmentsCount = membershipService.getPendingAssignmentsCount(companyId);
@@ -335,14 +322,16 @@ public class MembershipPresenter {
 
     public void cancelEvent(String sessionToken, Long companyId, Long eventId) {
         try {
-             // boolean success = eventService.cancelEvent(sessionToken, companyId, eventId);
-             throw new PresentationException("ביטול אירוע טרם מומש.");
+             boolean success = eventService.cancelEvent(sessionToken, eventId);
+            if (!success) {
+                throw new PresentationException("ביטול אירוע טרם מומש.");
+            }
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new PresentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("אירעה שגיאה בעת ביטול האירוע.");
+            throw new PresentationException("Failed to cancel event. Please try again later.");
         }
     }
 }
