@@ -58,8 +58,12 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
     private final CompanyPresenter companyPresenter;
     private CompanyManagementState state;
 
+    // private final TextField managerUsernameInput = new TextField("שם משתמש למינוי/עדכון מנהל");
+    // private final TextField ownerUsernameInput = new TextField("שם משתמש למינוי בעלים");
+
     private final TextField managerMemberId = new TextField("מזהה מנוי למינוי מנהל");
     private final TextField ownerMemberId = new TextField("מזהה מנוי למינוי בעלים");
+
     private final CheckboxGroup<Permission> managerPermissions = new CheckboxGroup<>("הרשאות מנהל");
 
     public CompanyManagement() {
@@ -87,10 +91,10 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
     }
 
     private void configureFields() {
-        managerMemberId.setPlaceholder("לדוגמה: 42");
+        managerMemberId.setPlaceholder("לדוגמה: 12345");
         managerMemberId.setWidthFull();
 
-        ownerMemberId.setPlaceholder("לדוגמה: 42");
+        ownerMemberId.setPlaceholder("לדוגמה: 67890");
         ownerMemberId.setWidthFull();
 
         managerPermissions.setItems(Permission.values());
@@ -518,7 +522,6 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 "ביטול אירוע",
                 "האירוע " + eventItem.title() + " יבוטל לאחר אישור הפעולה.",
                 () -> runPresenterAction(
-                    // TODO: implement cancelEvent in presenter and connect to real logic.
                         () -> membershipPresenter.cancelEvent(UiSession.getMemberToken(), state.selectedCompany().id(), eventItem.eventId()),
                         "בקשת ביטול האירוע נשלחה"
                 )
@@ -544,7 +547,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
     }
 
     private void updateManagerPermissions() {
-        Long managerId = readMemberId(managerMemberId, "מזהה מנהל לעדכון הרשאות");
+        Long managerId = readMemberId(managerMemberId, "מזהה מנוי למינוי מנהל");
         if (managerId == null) {
             return;
         }
@@ -747,26 +750,26 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         void run() throws Exception;
     }
 
-    public interface CompanyManagementPresenter {
-        CompanyManagementState loadCompanyManagement(String sessionToken, Long requestedCompanyId) throws Exception;
+    // public interface CompanyManagementPresenter {
+    //     CompanyManagementState loadCompanyManagement(String sessionToken, Long requestedCompanyId) throws Exception;
 
-        void requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) throws Exception;
+    //     void requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) throws Exception;
 
-        void requestOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception;
+    //     void requestOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception;
 
-        void updateManagerPermissions(String sessionToken, Long companyId, Long managerId, Set<Permission> permissions) throws Exception;
+    //     void updateManagerPermissions(String sessionToken, Long companyId, Long managerId, Set<Permission> permissions) throws Exception;
 
-        void removeManagerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception;
+    //     void removeManagerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception;
 
-        void removeOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception;
+    //     void removeOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception;
 
-        void closeProductionCompany(String sessionToken, Long companyId) throws Exception;
+    //     void closeProductionCompany(String sessionToken, Long companyId) throws Exception;
 
-        void reopenProductionCompany(String sessionToken, Long companyId) throws Exception;
+    //     void reopenProductionCompany(String sessionToken, Long companyId) throws Exception;
 
-        void giveUpOwnership(String sessionToken, Long companyId) throws Exception;
+    //     void giveUpOwnership(String sessionToken, Long companyId) throws Exception;
 
-        void cancelEvent(String sessionToken, Long companyId, Long eventId) throws Exception;
-    }
+    //     void cancelEvent(String sessionToken, Long companyId, Long eventId) throws Exception;
+    // }
 
 }

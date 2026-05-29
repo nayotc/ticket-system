@@ -3,9 +3,6 @@ package ticketsystem.ApplicationLayer;
 import java.math.BigDecimal;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -16,7 +13,6 @@ import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DomainLayer.event.Event;
 
-@Service
 public class EventCatalogService {
 
     private final EventCatalogDomainService domainService;
@@ -25,7 +21,6 @@ public class EventCatalogService {
     private final ITokenService tokenService;
     private final ISystemLogger logger;
     
-    @Autowired
     public EventCatalogService(EventCatalogDomainService domainService, IEventRepository eventRepository,ICompanyRepository companyRepository, ITokenService tokenService, ISystemLogger logger) {
         this.domainService = domainService;
         this.eventRepository = eventRepository;
