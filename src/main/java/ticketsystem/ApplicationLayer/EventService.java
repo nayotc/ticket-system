@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import ticketsystem.DTO.Event.*;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -20,13 +21,7 @@ import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.DTO.PurchasePolicyDTO;
-import ticketsystem.DTO.Event.EventDTO;
-import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
-import java.util.Objects;
-
-import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
-import ticketsystem.DomainLayer.history.Purchase;
 
 @Service
 public class EventService {
@@ -238,6 +233,9 @@ public class EventService {
             if (mapDTO == null) {
                 throw new IllegalArgumentException("Map data cannot be null");
             }
+
+            validateMapHasAtLeastOneTicketArea(mapDTO);
+
             EventMap map = EventMapper.toDomain(mapDTO);
             event.setMap(map);
             event.setStatus(eventStatus.ACTIVE);
@@ -446,6 +444,24 @@ public class EventService {
         if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Price must be a non-negative number");
         }
+    }
+
+    private void validateMapHasAtLeastOneTicketArea(EventMapDTO mapDTO) {
+        boolean hasTicketArea = mapDTO.getElementDTOs() != null
+                && mapDTO.getElementDTOs()
+                .stream()
+                .anyMatch(this::isTicketArea);
+
+        if (!hasTicketArea) {
+            throw new IllegalArgumentException(
+                    "Event map must contain at least one seating area or standing area"
+            );
+        }
+    }
+
+    private boolean isTicketArea(IMapElementDTO element) {
+        return element instanceof SeatingAreaDTO
+                || element instanceof StandingAreaDTO;
     }
 
     private String eventDTOContext(EventDTO eventDTO) {
