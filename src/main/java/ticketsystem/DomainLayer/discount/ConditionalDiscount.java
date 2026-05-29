@@ -113,4 +113,8 @@ public class ConditionalDiscount extends VisibleDiscount{
     MAX_TICKET,
     DATE
     }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
 }
