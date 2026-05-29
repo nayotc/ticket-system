@@ -70,9 +70,11 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         this(null, null);
     }
 
+    @Autowired
     public CompanyManagement(MembershipPresenter membershipPresenter, CompanyPresenter companyPresenter) {
         this.membershipPresenter = membershipPresenter;
         this.companyPresenter = companyPresenter;
+        
         addClassName("company-management-page");
         getElement().setAttribute("dir", "rtl");
         configureFields();
