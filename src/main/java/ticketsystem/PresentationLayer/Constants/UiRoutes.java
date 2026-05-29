@@ -10,6 +10,7 @@ public final class UiRoutes {
     public static final String EVENTS = "events";
     public static final String EVENT_SEARCH = "events/search";
     public static final String SEARCH_RESULTS = "events/results";
+    public static final String COMPANY_SEARCH_RESULTS = "companies/:companyId/events";
 
     // Auth
     public static final String LOGIN = "login";
