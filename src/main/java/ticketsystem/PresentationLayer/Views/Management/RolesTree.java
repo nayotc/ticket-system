@@ -22,6 +22,9 @@ import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import ticketsystem.DTO.RoleTreeDTO;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
+import ticketsystem.PresentationLayer.Presenters.RolesTreePresenter;
 
 @Route(value = UiRoutes.ROLES_AND_PERMISSIONS_TREE, layout = ManagementLayout.class)
 public class RolesTree extends Div implements BeforeEnterObserver {
@@ -44,12 +47,15 @@ public class RolesTree extends Div implements BeforeEnterObserver {
 
     private RoleNode rootNode;
 
-    public RolesTree() {
+    private final RolesTreePresenter presenter;
+
+    public RolesTree(RolesTreePresenter presenter) {
+        this.presenter = presenter;
+
         getElement().setAttribute("dir", "rtl");
         addClassName("role-tree-view");
 
         configureFilters();
-        rootNode = createPreviewTree();
 
         add(
                 createHeader(),
@@ -58,7 +64,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
                 createTreePanel()
         );
 
-        renderTree();
+        showEmptyTree("טוען את עץ התפקידים...");
         updateMetrics();
     }
 
@@ -66,9 +72,10 @@ public class RolesTree extends Div implements BeforeEnterObserver {
     public void beforeEnter(BeforeEnterEvent event) {
         event.getRouteParameters()
                 .get("companyId")
-                .ifPresent(this::setCompanyIdFromRoute);
+                .ifPresent(routeCompanyId -> setCompanyIdFromRoute(routeCompanyId));
 
         updateHeaderText();
+        loadRoleTree();
     }
 
     private void setCompanyIdFromRoute(String routeCompanyId) {
@@ -133,8 +140,9 @@ public class RolesTree extends Div implements BeforeEnterObserver {
 
         Button refreshButton = new Button("רענון");
         refreshButton.addClassName("role-tree-action-button");
+
         refreshButton.addClickListener(event -> {
-            renderTree();
+            loadRoleTree();
             Notification.show("עץ התפקידים רוענן", 2500, Notification.Position.TOP_CENTER);
         });
 
@@ -188,7 +196,17 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         permissionFilter.addClassName("role-tree-filter");
         permissionFilter.addValueChangeListener(event -> renderTree());
     }
+    private void loadRoleTree() {
+        try {
+            RoleTreeDTO root = presenter.loadRoleTree(companyId);
+            showRoleTree(toRoleNode(root));
 
+        } catch (PresentationException e) {
+            showError(e.getMessage());
+            showEmptyTree(e.getMessage());
+            updateMetrics();
+        }
+    }
     private void renderTree() {
         treeCanvas.removeAll();
 
@@ -391,7 +409,85 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         companyStatus.setText(company.isActive() ? "פעילה" : "לא פעילה");
         updateHeaderText();
     }
+    private RoleNode toRoleNode(RoleTreeDTO dto) {
+        List<RoleTreeDTO> dtoChildren = dto.children() == null ? List.of() : dto.children();
 
+        List<RoleNode> children = dtoChildren
+                .stream()
+                .map(this::toRoleNode)
+                .toList();
+
+        RoleKind kind = toRoleKind(dto.roleType());
+
+        List<String> permissions = dto.permissions() == null
+                ? List.of()
+                : dto.permissions().stream().map(this::toPermissionLabel).toList();
+
+        return new RoleNode(
+                dto.memberId(),
+                dto.memberName(),
+                toRoleTitle(kind),
+                kind,
+                toDescription(kind),
+                toAppointedByText(dto),
+                permissions,
+                children
+        );
+    }
+
+    private RoleKind toRoleKind(String roleType) {
+        if (roleType == null) {
+            return RoleKind.MANAGER;
+        }
+
+        return switch (roleType) {
+            case "FOUNDER" -> RoleKind.FOUNDER;
+            case "OWNER" -> RoleKind.OWNER;
+            case "MANAGER" -> RoleKind.MANAGER;
+            default -> RoleKind.MANAGER;
+        };
+    }
+
+    private String toRoleTitle(RoleKind kind) {
+        return switch (kind) {
+            case FOUNDER -> "מייסד החברה";
+            case OWNER -> "בעל חברה";
+            case MANAGER -> "מנהל";
+        };
+    }
+
+    private String toDescription(RoleKind kind) {
+        return switch (kind) {
+            case FOUNDER -> "פתח את חברת ההפקה ולכן אינו ממונה על ידי משתמש אחר.";
+            case OWNER -> "בעל הרשאות ניהול מלאות בחברה.";
+            case MANAGER -> "מנהל בחברה עם הרשאות פרטניות.";
+        };
+    }
+
+    private String toAppointedByText(RoleTreeDTO dto) {
+        if (dto.appointedByMemberId() == null) {
+            return "ללא ממנה";
+        }
+
+        if (dto.appointedByName() == null || dto.appointedByName().isBlank()) {
+            return "מונה על ידי משתמש מספר " + dto.appointedByMemberId();
+        }
+
+        return "מונה על ידי " + dto.appointedByName();
+    }
+
+    private String toPermissionLabel(String permissionKey) {
+        return switch (permissionKey) {
+            case "inventory:event:manage" -> "ניהול אירועים";
+            case "hall:config:setup" -> "מפת אולם";
+            case "policy:purchasing:setup" -> "מדיניות רכישה";
+            case "policy:discount:setup" -> "מדיניות הנחות";
+            case "inquiry:response:manage" -> "פניות";
+            case "history:purchases:view" -> "היסטוריית רכישות";
+            case "reports:sales:generate" -> "דוח מכירות";
+            default -> permissionKey;
+        };
+    }
     public void showRoleTree(RoleNode rootNode) {
         if (rootNode == null) {
             return;
@@ -404,74 +500,6 @@ public class RolesTree extends Div implements BeforeEnterObserver {
 
     public void showError(String message) {
         Notification.show(message, 4000, Notification.Position.TOP_CENTER);
-    }
-
-    private RoleNode createPreviewTree() {
-        RoleNode backendManager = new RoleNode(
-                201L,
-                "תומר לוי",
-                "מנהל Backend",
-                RoleKind.MANAGER,
-                "אחראי על שירותי ליבה, הזמנות ומלאי.",
-                "מונה על ידי יעל רון",
-                List.of("ניהול אירועים", "דוח מכירות"),
-                List.of()
-        );
-
-        RoleNode policyManager = new RoleNode(
-                202L,
-                "שירה גל",
-                "מנהלת מדיניות",
-                RoleKind.MANAGER,
-                "אחראית על מדיניות רכישה והנחות.",
-                "מונתה על ידי יעל רון",
-                List.of("מדיניות רכישה", "מדיניות הנחות"),
-                List.of()
-        );
-
-        RoleNode operationsManager = new RoleNode(
-                203L,
-                "נועה ברק",
-                "מנהלת תפעול אירועים",
-                RoleKind.MANAGER,
-                "אחראית על מפות אולם, פניות ותפעול שוטף.",
-                "מונתה על ידי אדם שוורץ",
-                List.of("מפת אולם", "פניות", "ניהול אירועים"),
-                List.of()
-        );
-
-        RoleNode ownerTech = new RoleNode(
-                101L,
-                "יעל רון",
-                "בעלת חברה",
-                RoleKind.OWNER,
-                "בעלת הרשאות ניהול מלאות בחברה.",
-                "מונתה על ידי מייסד החברה",
-                List.of("ניהול אירועים", "מפת אולם", "מדיניות רכישה", "מדיניות הנחות", "פניות", "דוח מכירות"),
-                List.of(backendManager, policyManager)
-        );
-
-        RoleNode ownerProduct = new RoleNode(
-                102L,
-                "אדם שוורץ",
-                "בעל חברה",
-                RoleKind.OWNER,
-                "בעל הרשאות ניהול מלאות בחברה.",
-                "מונה על ידי מייסד החברה",
-                List.of("ניהול אירועים", "מפת אולם", "פניות", "דוח מכירות"),
-                List.of(operationsManager)
-        );
-
-        return new RoleNode(
-                1L,
-                "דוד כהן",
-                "מייסד החברה",
-                RoleKind.FOUNDER,
-                "פתח את חברת ההפקה ולכן אינו ממונה על ידי משתמש אחר.",
-                "ללא ממנה",
-                List.of("ניהול אירועים", "מפת אולם", "מדיניות רכישה", "מדיניות הנחות", "פניות", "דוח מכירות"),
-                List.of(ownerTech, ownerProduct)
-        );
     }
 
     private int countNodes(RoleNode node) {
@@ -558,5 +586,14 @@ public class RolesTree extends Div implements BeforeEnterObserver {
             List<String> permissions,
             List<RoleNode> children
     ) {
+    }
+    private void showEmptyTree(String message) {
+        treeCanvas.removeAll();
+
+        Div empty = new Div();
+        empty.addClassName("role-tree-empty");
+        empty.setText(message);
+
+        treeCanvas.add(empty);
     }
 }
