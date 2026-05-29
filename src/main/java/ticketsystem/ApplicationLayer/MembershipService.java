@@ -5,6 +5,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.MemberDTO;
@@ -38,7 +41,7 @@ public class MembershipService {
     private final ISystemLogger logger;
     private final UserAccessService userAccessService;
 
-    public MembershipService(ITokenService tokenService, IUserRepository userRepository,
+    @Autowired    public MembershipService(ITokenService tokenService, IUserRepository userRepository,
             ICompanyRepository companyRepository, MembershipDomainService membershipDomain,
             INotifier notificationsService, ISystemLogger logger, UserAccessService userAccessService) {
         this.tokenService = tokenService;

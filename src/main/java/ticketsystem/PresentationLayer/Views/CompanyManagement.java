@@ -49,6 +49,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 @Route(value = UiRoutes.COMPANY_MANAGEMENT, layout = ManagementLayout.class)
 public class CompanyManagement extends Div implements BeforeEnterObserver {
 
@@ -64,9 +66,11 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         this(null, null);
     }
 
+    @Autowired
     public CompanyManagement(MembershipPresenter membershipPresenter, CompanyPresenter companyPresenter) {
         this.membershipPresenter = membershipPresenter;
         this.companyPresenter = companyPresenter;
+        
         addClassName("company-management-page");
         getElement().setAttribute("dir", "rtl");
         configureFields();
