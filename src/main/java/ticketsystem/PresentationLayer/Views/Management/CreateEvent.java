@@ -38,6 +38,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
+import com.vaadin.flow.component.datepicker.DatePicker.DatePickerI18n;
+import java.util.Locale;
 
 @Route(value = UiRoutes.CREATE_EVENT, layout = ManagementLayout.class)
 public class CreateEvent extends PageContainer implements BeforeEnterObserver {
@@ -145,6 +147,19 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         mapSize.setItemLabelGenerator(MapSizeOption::label);
         mapSize.setValue(mapSizeOptions().get(1));
         mapSize.addValueChangeListener(event -> refreshMapPreview());
+
+        DatePickerI18n datePickerI18n = new DatePickerI18n();
+        datePickerI18n.setDateFormat("d/M/yyyy");
+        datePickerI18n.setFirstDayOfWeek(0);
+        datePickerI18n.setToday("Today");
+        datePickerI18n.setCancel("Cancel");
+
+        eventDate.setI18n(datePickerI18n);
+        eventDate.setLocale(Locale.forLanguageTag("en-GB"));
+        eventDate.setMin(LocalDate.now());
+
+        eventTime.setLocale(Locale.forLanguageTag("en-GB"));
+        eventTime.setStep(Duration.ofMinutes(15));
 
         List<Component> requiredFields = List.of(
                 eventName,

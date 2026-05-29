@@ -2,26 +2,32 @@ package ticketsystem.PresentationLayer.Presenters;
 
 import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.EventService;
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.LotteryService;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.PresentationLayer.Views.Management.CreateEvent;
 
 @Component
-public class EventPresenter implements CreateEvent.CreateEventPresenter {
+public class ManageEventPresenter implements CreateEvent.CreateEventPresenter {
 
     private final EventService eventService;
     private final LotteryService lotteryService;
+    private final LogbackSystemLogger logger;
 
-    public EventPresenter(EventService eventService, LotteryService lotteryService) {
+    public ManageEventPresenter(EventService eventService, LotteryService lotteryService, LogbackSystemLogger logger) {
         this.eventService = eventService;
         this.lotteryService = lotteryService;
+        this.logger = logger;
     }
 
     @Override
     public Long createEvent(CreateEvent.CreateEventRequest request) {
+        Long eventId = null;
+
         try {
             validateRequest(request);
 
-            Long eventId = eventService.insertEvent(
+            eventId = eventService.insertEvent(
                     request.sessionId(),
                     request.eventName(),
                     request.companyId(),
@@ -36,18 +42,38 @@ public class EventPresenter implements CreateEvent.CreateEventPresenter {
             );
 
             if (request.hasLottery()) {
-                lotteryService.addLottery(
-                        request.sessionId(),
-                        eventId,
-                        request.lotteryWinnersNumber()
-                );
+                try {
+                    lotteryService.addLottery(
+                            request.sessionId(),
+                            eventId,
+                            request.lotteryWinnersNumber()
+                    );
+                } catch (Exception lotteryException) {
+                    rollbackCreatedEvent(request.sessionId(), eventId);
+                    logger.logEvent("Failed to create lottery for event " + eventId + ": " + lotteryException.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
+                    throw new PresentationException(
+                            "אירעה שגיאה בעת יצירת הגרלה. נסו שוב."
+                    );
+                }
             }
 
             return eventId;
+
         } catch (IllegalArgumentException | IllegalStateException exception) {
             throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             throw new PresentationException("אירעה שגיאה בעת יצירת האירוע. נסו שוב.");
+        }
+    }
+
+    private void rollbackCreatedEvent(String sessionId, Long eventId) {
+        try {
+            eventService.rollbackCreatedEvent(sessionId, eventId);
+        } catch (Exception rollbackException) {
+            logger.logEvent(rollbackException.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
+            throw new PresentationException(
+                    "יצירת ההגרלה נכשלה, האירוע לא נוצר. יש לפנות למנהל מערכת."
+            );
         }
     }
 

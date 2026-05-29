@@ -642,5 +642,67 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
         return event;
     }
 
+    public Boolean rollbackCreatedEvent(String sessionId, Long eventId) {
+        String context = "eventId=" + eventId;
+
+        logger.logEvent("Started - rollbackCreatedEvent. " + context, LogLevel.WARN);
+
+        try {
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+
+            if (eventId == null) {
+                throw new IllegalArgumentException("Event ID cannot be null");
+            }
+
+            Event event = eventRepository.getEventById(eventId);
+
+            if (event == null) {
+                logger.logEvent(
+                        "Rollback skipped - event already does not exist. " + context,
+                        LogLevel.WARN
+                );
+                return true;
+            }
+
+            Long userId = tokenService.extractUserId(sessionId);
+            userAccessService.validateCanPerformNonViewAction(userId);
+
+            if (!membershipDomain.validatePermission(
+                    userId,
+                    event.getCompanyId(),
+                    Permission.MANAGE_EVENT_INVENTORY
+            )) {
+                throw new IllegalArgumentException("User does not have permission to rollback event creation");
+            }
+
+            /*
+             * Safety check:
+             * rollback is allowed only for a fresh event creation failure.
+             * Do not use this method as a regular delete action.
+             */
+            if (event.getStatus() != eventStatus.DRAFT) {
+                throw new IllegalStateException("Only draft events can be rolled back after creation failure");
+            }
+
+            long expectedVersion = event.getVersion();
+            eventRepository.deleteEvent(eventId, expectedVersion);
+
+            logger.logEvent(
+                    "Completed - rollbackCreatedEvent. eventId=" + eventId,
+                    LogLevel.WARN
+            );
+            return true;
+
+        } catch (Exception e) {
+            logger.logError(
+                    "Failed - rollbackCreatedEvent. " + context + ". Error: " + e.getMessage(),
+                    e
+            );
+            throw e;
+        }
+    }
+
 }
 
