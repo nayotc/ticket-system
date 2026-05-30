@@ -17,10 +17,6 @@ import com.vaadin.flow.server.streams.DownloadHandler;
 import com.vaadin.flow.server.streams.DownloadResponse;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import com.vaadin.flow.server.streams.DownloadHandler;
-import com.vaadin.flow.server.streams.DownloadResponse;
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
@@ -70,6 +66,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     private SalesReportDTO currentReport = new SalesReportDTO(0, BigDecimal.ZERO, "לא נטענו נתונים");
     private List<OrderDTO> currentTransactions = new ArrayList<>();
 
+    // Change 1: The constructor receives the Presenter via Spring
     @Autowired
     public SalesReport(SalesReportPresenter salesReportPresenter) {
         this.presenter = salesReportPresenter;
@@ -389,6 +386,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
 
         H3 title = new H3("הכנסות לפי אירוע");
         title.addClassName("sales-report-card-title");
+
         Div chart = new Div();
         chart.addClassName("sales-report-chart");
 

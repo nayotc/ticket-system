@@ -25,8 +25,8 @@ public record CompanyManagementState(
     public record ManagedCompanyItem(long id, String name, long founderId, String founderEmailOrName, boolean active) {}
 
     // Sub-model representing an event within the company
-    public record EventManagementItem(String title, String status) {}
 
+    public record EventManagementItem(long eventId, String title, String status) {}
     // Sub-model for company statistics
     public record CompanyStats(int activeEvents, int pendingAssignments) {}
 
@@ -36,7 +36,7 @@ public record CompanyManagementState(
     // Sub-model representing a team member (uses Domain Permissions for Vaadin checkbox rendering)
     public record TeamMemberItem(
             Long memberId,
-            String emailOrUsername,
+            String userName,
             String roleLabel,
             RoleType roleType,
             Set<Permission> permissions,

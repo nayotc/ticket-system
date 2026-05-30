@@ -5,9 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
@@ -19,7 +17,6 @@ import ticketsystem.DTO.MemberDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DomainLayer.user.Permission;
 
-import ticketsystem.PresentationLayer.Presenters.CompanyManagementState;
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.CompanyStats;
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.ManagedCompanyItem;
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.EventManagementItem;
@@ -70,13 +67,15 @@ public class MembershipPresenter {
 
             Long companyId = selectedCompanyDto.getId();
 
+            String founderName = userService.getUserNameById(selectedCompanyDto.getFounderId());
+
             // המרת רשימת ה-DTOs של החברות ל-ManagedCompanyItem עבור התפריט במסך
             List<ManagedCompanyItem> managedCompanies = userCompanies.stream()
                     .map(dto -> new ManagedCompanyItem(
                             dto.getId(),
                             dto.getName(),
                             dto.getFounderId(),
-                            "Member #" + dto.getFounderId(),
+                            founderName != null ? founderName : "מייסד (ללא אימייל)", 
                             dto.isActive()
                     ))
                     .collect(Collectors.toList());
@@ -162,12 +161,15 @@ public class MembershipPresenter {
 
             // 6. שליפת רשימת אירועי החברה ומיפויים דרך EventService
             List<EventDTO> domainEvents = eventService.getEventsByCompany(sessionToken, companyId);
-            
-            List<EventManagementItem> uiEvents = domainEvents.stream()
-                    // ב-record ניגשים לשדות דרך שם השדה: id() ו-name()
-                    .map(e -> new EventManagementItem(e.id(), e.name())) 
-                    .collect(Collectors.toList());
 
+            List<EventManagementItem> uiEvents = domainEvents.stream()
+                    .map(e -> new EventManagementItem(
+                            e.id(),
+                            e.name(), 
+                            e.status() != null ? e.status() : "פעיל" 
+                    )) 
+                    .collect(Collectors.toList());
+            
             // 7. בניית הסטטיסטיקות ותמציות המדיניות
             int activeEventsCount = (int) domainEvents.stream()
                     // בודקים אם שדה ה-status קיים ושווה למחרוזת "ACTIVE"
@@ -205,9 +207,9 @@ public class MembershipPresenter {
         }
     }
 
-    public void requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) {
+    public void requestManagerAssignment(String sessionToken, Long companyId, String targetName, Set<Permission> permissions) {
         try {
-            boolean success = membershipService.requestManagerAssignment(sessionToken, companyId, targetMemberId, permissions);
+            boolean success = membershipService.requestManagerAssignment(sessionToken, companyId, targetName, permissions);
             if (!success) {
                 throw new PresentationException("בקשת מינוי המנהל נכשלה.");
             }
@@ -220,9 +222,9 @@ public class MembershipPresenter {
         }
     }
 
-    public void requestOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) {
+    public void requestOwnerAssignment(String sessionToken, Long companyId, String targetName) {
         try {
-            boolean success = membershipService.requestOwnerAssignment(sessionToken, companyId, targetMemberId);
+            boolean success = membershipService.requestOwnerAssignment(sessionToken, companyId, targetName);
             if (!success) {
                 throw new PresentationException("בקשת מינוי הבעלים נכשלה.");
             }
@@ -235,9 +237,9 @@ public class MembershipPresenter {
         }
     }
 
-    public void updateManagerPermissions(String sessionToken, Long companyId, Long managerId, Set<Permission> permissions) {
+    public void updateManagerPermissions(String sessionToken, Long companyId, String targetName, Set<Permission> permissions) {
         try {
-            boolean success = membershipService.updateManagerPermissions(sessionToken, companyId, managerId, permissions);
+            boolean success = membershipService.updateManagerPermissions(sessionToken, companyId, targetName, permissions);
             if (!success) {
                 throw new PresentationException("עדכון ההרשאות נכשל.");
             }

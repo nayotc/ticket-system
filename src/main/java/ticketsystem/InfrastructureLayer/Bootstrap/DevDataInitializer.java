@@ -1,34 +1,40 @@
 package ticketsystem.InfrastructureLayer.Bootstrap;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
-
+import java.util.List;
+import java.util.Set;
+// Spring Boot imports
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+//Services
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.EventService;
-import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.UserService;
-import ticketsystem.DTO.OrderDTO;
-import ticketsystem.DTO.PurchaseDTO;
+import ticketsystem.ApplicationLayer.HistoryService;
+// Repositories
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+// DTOs
+import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PurchaseDTO;
+// Domain Entities
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Founder;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Permission;
 
 @Component
 @Profile("dev")
@@ -45,7 +51,6 @@ public class DevDataInitializer implements CommandLineRunner {
     
     private static final long TEST_COMPANY_ID = 1L;
     private static final String COMPANY_NAME = "TixNow Productions"; 
-    
     
     private final UserService userService;
     private final IUserRepository userRepository;
@@ -71,10 +76,9 @@ public class DevDataInitializer implements CommandLineRunner {
         createTestFounder();              // 2. Create the company founder member
         createAdditionalTeamMembers();    // 3. Create extra members for management testing
         createTestCompany();              // 4. Create the main production company 
-        //createSecondCompany();            // 5. Create a second company to test UI Company Selector
-        assignTeamRoles();                // 6. Assign Owner, Manager, and Pending roles to members
-        createTestEvents();               // 7. Create actual Events in the system (Matching the mock sales)
-        createTestSalesData();            // 8. Generate transactions where test user is the buyer
+        assignTeamRoles();                // 5. Assign Owner, Manager, and Pending roles to members
+        createTestEvents();               // 6. Create actual Events in the system (Matching the mock sales)
+        createTestSalesData();            // 7. Generate transactions where test user is the buyer
     }
 
     private void createTestMember() {
@@ -137,22 +141,6 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println("Test company created: " + company.getName() + " [ID: " + company.getId() + "] owned by Founder ID: " + founder.getId());
     }
 
-    // /**
-    //  * Creates a secondary company so the ComboBox (company selector) in the UI appears.
-    //  */
-    // private void createSecondCompany() {
-    //     System.out.println("Creating second test production company...");
-    //     long secondCompanyId = 2L;
-        
-    //     var owner = (Member) userRepository.getMemberByUsername(OWNER_USERNAME);
-    //     owner.addFounderRole(secondCompanyId);
-    //     userRepository.updateMember(owner);
-
-    //     Company company2 = new Company("Festivals Israel", owner.getId(), PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.SUM));
-    //     company2.setId(secondCompanyId);
-    //     companyRepository.save(company2);
-    // }
-
     /**
      * Assigns Manager and Owner roles to the additional members for the main company,
      * including a PENDING role to test the pending assignments counter in the UI.
@@ -194,7 +182,7 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println("Team roles assigned successfully.");
     }
 
-        /**
+    /**
      * Creates real Event domain entities that match the mock sales data below.
      * This ensures the UI can pull real event details from the repository.
      */
