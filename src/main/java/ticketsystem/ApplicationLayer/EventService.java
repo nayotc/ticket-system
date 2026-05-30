@@ -235,6 +235,7 @@ public class EventService {
             }
 
             validateMapHasAtLeastOneTicketArea(mapDTO);
+            validateMapElementsInsideMapBounds(mapDTO);
 
             EventMap map = EventMapper.toDomain(mapDTO);
             event.setMap(map);
@@ -462,6 +463,114 @@ public class EventService {
     private boolean isTicketArea(IMapElementDTO element) {
         return element instanceof SeatingAreaDTO
                 || element instanceof StandingAreaDTO;
+    }
+
+    private void validateMapElementsInsideMapBounds(EventMapDTO mapDTO) {
+        if (mapDTO.size() == null
+                || mapDTO.size().first() == null
+                || mapDTO.size().second() == null) {
+            throw new IllegalArgumentException("Map size cannot be null");
+        }
+
+        int mapWidth = mapDTO.size().first();
+        int mapHeight = mapDTO.size().second();
+
+        if (mapWidth <= 0 || mapHeight <= 0) {
+            throw new IllegalArgumentException("Map size must be positive");
+        }
+
+        if (mapDTO.getElementDTOs() == null) {
+            throw new IllegalArgumentException("Map elements cannot be null");
+        }
+
+        for (IMapElementDTO element : mapDTO.getElementDTOs()) {
+            validateSingleElementInsideMapBounds(element, mapWidth, mapHeight);
+        }
+    }
+
+    private void validateSingleElementInsideMapBounds(IMapElementDTO element, int mapWidth, int mapHeight) {
+        if (element == null) {
+            throw new IllegalArgumentException("Map elements cannot contain null");
+        }
+
+        PairDTO<Integer, Integer> location = getElementLocation(element);
+        PairDTO<Integer, Integer> size = getElementSize(element);
+
+        String elementName = getElementName(element);
+
+        if (location == null || size == null) {
+            throw new IllegalArgumentException("Element location and size cannot be null: " + elementName);
+        }
+
+        if (location.first() == null || location.second() == null
+                || size.first() == null || size.second() == null) {
+            throw new IllegalArgumentException("Element location and size values cannot be null: " + elementName);
+        }
+
+        int x = location.first();
+        int y = location.second();
+        int width = size.first();
+        int height = size.second();
+
+        if (x < 0 || y < 0) {
+            throw new IllegalArgumentException("Element location cannot be negative: " + elementName);
+        }
+
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("Element size must be positive: " + elementName);
+        }
+
+        if (x + width > mapWidth || y + height > mapHeight) {
+            throw new IllegalArgumentException("Element is outside map bounds: " + elementName);
+        }
+    }
+
+    private PairDTO<Integer, Integer> getElementLocation(IMapElementDTO element) {
+        if (element instanceof SeatingAreaDTO seatingArea) {
+            return seatingArea.location();
+        }
+
+        if (element instanceof StandingAreaDTO standingArea) {
+            return standingArea.location();
+        }
+
+        if (element instanceof ElementDTO regularElement) {
+            return regularElement.location();
+        }
+
+        throw new IllegalArgumentException("Unsupported map element type: " + element.getClass().getSimpleName());
+    }
+
+    private PairDTO<Integer, Integer> getElementSize(IMapElementDTO element) {
+        if (element instanceof SeatingAreaDTO seatingArea) {
+            return seatingArea.size();
+        }
+
+        if (element instanceof StandingAreaDTO standingArea) {
+            return standingArea.size();
+        }
+
+        if (element instanceof ElementDTO regularElement) {
+            return regularElement.size();
+        }
+
+        throw new IllegalArgumentException("Unsupported map element type: " + element.getClass().getSimpleName());
+    }
+
+    private String getElementName(IMapElementDTO element) {
+        if (element instanceof SeatingAreaDTO seatingArea) {
+            return seatingArea.name();
+        }
+
+        if (element instanceof StandingAreaDTO standingArea) {
+            return standingArea.name();
+        }
+
+        if (element instanceof ElementDTO regularElement) {
+            return regularElement.name();
+        }
+
+        return element.getClass().getSimpleName();
     }
 
     private String eventDTOContext(EventDTO eventDTO) {

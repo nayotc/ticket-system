@@ -257,12 +257,12 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         Div toolsPanel = new Div();
         toolsPanel.addClassName("hall-builder-tools-panel");
-        toolsPanel.add(
-                createMapSettingsCard(),
+        toolsPanel.add(createPropertiesPanel(),
+                createStatsPanel(),
                 createToolButtonsCard(),
                 createAreaCards(),
-                createStatsPanel(),
-                createPropertiesPanel()
+                createMapSettingsCard()
+
         );
 
         workspace.add(canvasArea, toolsPanel);
@@ -873,7 +873,13 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                     false
             );
 
-            presenter.defineEventMap(token, eventId, mapDTO);
+            boolean saved = presenter.defineEventMap(token, eventId, mapDTO);
+
+            if (!saved) {
+                showError("שמירת המפה נכשלה");
+                return;
+            }
+
             showSuccess("המפה נשמרה והאירוע פורסם בהצלחה");
 
             if (companyId != null) {
