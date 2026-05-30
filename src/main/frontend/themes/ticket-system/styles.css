@@ -7244,3 +7244,716 @@ vaadin-button.waiting-queue-leave-button:hover {
 }
 
 
+/* =========================
+   Hall map builder
+   ========================= */
+
+.management-content.hall-map-builder-content {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    height: calc(100vh - 72px);
+    overflow: hidden;
+}
+
+.hall-map-builder-page {
+    width: 100%;
+    min-height: calc(100vh - 72px);
+    height: calc(100vh - 72px);
+    display: flex;
+    flex-direction: column;
+    background: var(--tn-background);
+    color: var(--tn-text);
+    overflow: hidden;
+}
+
+.hall-builder-header {
+    width: 100%;
+    min-height: 72px;
+    padding: 18px 24px;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 24px;
+    background: rgba(19, 27, 46, 0.92);
+    border-bottom: 1px solid rgba(73, 68, 84, 0.45);
+    direction: ltr;
+}
+
+.hall-builder-title-block {
+    justify-self: end;
+    direction: rtl;
+    text-align: right;
+    min-width: 0;
+}
+
+.hall-builder-header-left {
+    justify-self: start;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    direction: rtl;
+}
+
+.hall-builder-title {
+    color: var(--tn-text);
+    font-size: 32px;
+    line-height: 1.25;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hall-builder-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--tn-primary);
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+    margin-inline-start: 10px;
+}
+
+.hall-builder-zoom-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(23, 31, 51, 0.74);
+    border: 1px solid rgba(149, 142, 160, 0.26);
+}
+
+.hall-builder-step-bars {
+    display: flex;
+    gap: 4px;
+}
+
+.hall-builder-step-bar {
+    width: 32px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--tn-surface-highest);
+}
+
+.hall-builder-step-bar-active {
+    background: var(--tn-primary);
+    box-shadow: 0 0 15px rgba(208, 188, 255, 0.42);
+}
+
+.hall-builder-save-button {
+    min-height: 42px;
+}
+
+.hall-builder-secondary-button {
+    color: var(--tn-text-muted);
+    border: 1px solid rgba(149, 142, 160, 0.28);
+    background: rgba(23, 31, 51, 0.65);
+}
+
+.hall-builder-workspace {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    overflow: hidden;
+}
+
+.hall-builder-canvas-area {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--tn-surface-lowest);
+}
+
+.hall-builder-canvas {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 56px;
+    box-sizing: border-box;
+    cursor: crosshair;
+}
+
+.hall-builder-canvas::-webkit-scrollbar,
+.hall-builder-tools-panel::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.hall-builder-canvas::-webkit-scrollbar-track,
+.hall-builder-tools-panel::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.hall-builder-canvas::-webkit-scrollbar-thumb,
+.hall-builder-tools-panel::-webkit-scrollbar-thumb {
+    background: rgba(208, 188, 255, 0.26);
+    border-radius: 999px;
+}
+
+.hall-map-surface {
+    position: relative;
+    min-width: 720px;
+    min-height: 520px;
+    margin: 0 auto;
+    border-radius: 22px;
+    background: var(--tn-surface-lowest);
+    border: 1px solid rgba(149, 142, 160, 0.16);
+    box-shadow: inset 0 0 50px rgba(208, 188, 255, 0.04), 0 24px 60px rgba(0, 0, 0, 0.36);
+    overflow: hidden;
+}
+
+vaadin-button.hall-builder-secondary-button,
+vaadin-button.hall-builder-save-button {
+    min-height: 40px;
+    border-radius: 999px;
+    gap: 8px;
+}
+
+vaadin-button.hall-builder-secondary-button {
+    background: rgba(45, 52, 73, 0.70);
+    color: var(--tn-text-muted);
+    border: 1px solid rgba(149, 142, 160, 0.30);
+}
+
+vaadin-button.hall-builder-secondary-button:hover {
+    background: rgba(45, 52, 73, 0.95);
+    color: var(--tn-text);
+    border-color: rgba(255, 180, 171, 0.42);
+}
+
+.hall-map-grid {
+    position: absolute;
+    inset: 0;
+    background-size: var(--hall-cell-size) var(--hall-cell-size);
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    pointer-events: none;
+}
+
+.hall-map-other {
+    border-color: rgba(208, 188, 255, 0.45);
+    background: rgba(208, 188, 255, 0.10);
+}
+
+.hall-map-grid-labels {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.hall-grid-label {
+    position: absolute;
+    min-width: 18px;
+    height: 16px;
+    padding: 1px 4px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: rgba(6, 14, 32, 0.70);
+    color: rgba(203, 195, 215, 0.72);
+    font-size: 10px;
+    line-height: 14px;
+    font-weight: 800;
+    text-align: center;
+    user-select: none;
+}
+
+.hall-grid-label-x {
+    transform: translateX(-2px);
+}
+
+.hall-grid-label-y {
+    transform: translateY(-2px);
+}
+
+.hall-map-center-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(208, 188, 255, 0.60);
+    border-radius: 999px;
+    pointer-events: none;
+}
+
+.hall-map-center-indicator::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    background: var(--tn-primary);
+}
+
+.hall-map-empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(480px, calc(100% - 48px));
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--tn-text-muted);
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+    border-radius: 18px;
+    background: rgba(23, 31, 51, 0.70);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(14px);
+}
+
+.hall-map-empty-state vaadin-icon {
+    width: 36px;
+    height: 36px;
+    color: var(--tn-primary);
+}
+
+.hall-map-element {
+    position: absolute;
+    z-index: 2;
+    padding: 10px;
+    box-sizing: border-box;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    text-align: center;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    overflow: hidden;
+    background: rgba(23, 31, 51, 0.76);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.hall-map-element:hover {
+    transform: translateY(-1px);
+    border-color: rgba(208, 188, 255, 0.65);
+    box-shadow: 0 0 20px rgba(208, 188, 255, 0.14);
+}
+
+.hall-map-element:active {
+    cursor: grabbing;
+}
+
+.hall-map-element-dragging {
+    z-index: 100;
+    opacity: 0.96;
+    transform: none;
+    transition: none;
+    cursor: grabbing;
+    box-shadow: 0 0 28px rgba(68, 226, 205, 0.34), 0 18px 45px rgba(0, 0, 0, 0.35);
+}
+
+.hall-map-element-selected {
+    border-color: var(--tn-secondary);
+    box-shadow: 0 0 22px rgba(68, 226, 205, 0.28);
+}
+
+.hall-map-stage {
+    border-color: rgba(68, 226, 205, 0.80);
+    background: rgba(68, 226, 205, 0.10);
+}
+
+.hall-map-seating-area {
+    border-color: rgba(208, 188, 255, 0.65);
+    background: rgba(208, 188, 255, 0.08);
+}
+
+.hall-map-standing-area {
+    border-color: rgba(68, 226, 205, 0.58);
+    background: rgba(68, 226, 205, 0.08);
+}
+
+.hall-map-entrance,
+.hall-map-exit {
+    border-color: rgba(98, 250, 227, 0.45);
+}
+
+.hall-map-bar {
+    border-color: rgba(255, 175, 211, 0.45);
+}
+
+.hall-map-first-aid {
+    border-color: rgba(255, 180, 171, 0.50);
+}
+
+.hall-map-element-icon {
+    color: var(--tn-secondary);
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.hall-map-element-name {
+    color: var(--tn-text);
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.hall-map-element-meta {
+    color: var(--tn-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.hall-builder-tools-panel {
+    min-width: 0;
+    overflow-y: auto;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: rgba(23, 31, 51, 0.74);
+    border-right: 1px solid rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(16px);
+    box-shadow: 14px 0 40px rgba(0, 0, 0, 0.24);
+}
+
+.hall-builder-tools-panel .app-card,
+.hall-builder-tools-panel .form-card {
+    border-radius: 18px;
+    padding: 18px;
+}
+
+.hall-builder-two-fields {
+    gap: 12px;
+}
+
+.hall-builder-two-fields > * {
+    flex: 1;
+    min-width: 0;
+}
+
+.hall-tool-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+vaadin-button.hall-tool-button {
+    min-height: 74px;
+    border-radius: 14px;
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid rgba(149, 142, 160, 0.28);
+    background: rgba(19, 27, 46, 0.64);
+    color: var(--tn-text-muted);
+}
+
+vaadin-button.hall-tool-button:hover {
+    color: var(--tn-primary);
+    border-color: rgba(208, 188, 255, 0.65);
+    background: rgba(208, 188, 255, 0.10);
+}
+
+.hall-builder-areas {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.hall-area-card.app-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.hall-area-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--tn-primary);
+}
+
+.hall-standing-card .hall-area-title {
+    color: var(--tn-secondary);
+}
+
+.hall-area-title h3 {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.3;
+    font-weight: 800;
+}
+
+.hall-area-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+vaadin-button.hall-builder-outline-primary,
+vaadin-button.hall-builder-outline-secondary {
+    width: 100%;
+    border-radius: 12px;
+    background: transparent;
+    box-shadow: none;
+}
+
+vaadin-button.hall-builder-outline-primary {
+    color: var(--tn-primary);
+    border: 1px solid rgba(208, 188, 255, 0.55);
+}
+
+vaadin-button.hall-builder-outline-primary:hover {
+    background: rgba(208, 188, 255, 0.10);
+}
+
+vaadin-button.hall-builder-outline-secondary {
+    color: var(--tn-secondary);
+    border: 1px solid rgba(68, 226, 205, 0.48);
+}
+
+vaadin-button.hall-builder-outline-secondary:hover {
+    background: rgba(68, 226, 205, 0.10);
+}
+
+vaadin-button.hall-builder-zoom-button {
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 999px;
+    background: rgba(45, 52, 73, 0.86);
+    color: var(--tn-text);
+}
+
+.hall-builder-zoom-value {
+    min-width: 48px;
+    text-align: center;
+    color: var(--tn-text-muted);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.hall-builder-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.hall-stat-item {
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(19, 27, 46, 0.74);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    text-align: center;
+}
+
+.hall-stat-label {
+    display: block;
+    color: var(--tn-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.hall-stat-value {
+    display: block;
+    margin-top: 5px;
+    color: var(--tn-secondary);
+    font-size: 22px;
+    line-height: 1.1;
+    font-weight: 900;
+}
+
+.hall-builder-properties {
+    padding: 18px;
+    box-sizing: border-box;
+    border-radius: 18px;
+    background: rgba(19, 27, 46, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hall-properties-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.hall-properties-title {
+    margin: 0;
+    color: var(--tn-text);
+    font-size: 22px;
+    line-height: 1.25;
+    font-weight: 900;
+}
+
+.hall-selected-badge {
+    max-width: 140px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    color: var(--tn-text-muted);
+    background: rgba(45, 52, 73, 0.78);
+    border: 1px solid rgba(149, 142, 160, 0.24);
+    font-size: 11px;
+    font-weight: 800;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.hall-properties-empty {
+    margin: 0;
+    color: var(--tn-text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+vaadin-button.hall-delete-button {
+    width: 100%;
+    border-radius: 12px;
+}
+
+.hall-builder-canvas-area {
+    position: relative;
+}
+
+.hall-floating-zoom-controls {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba(18, 25, 43, 0.88);
+    border: 1px solid rgba(149, 142, 160, 0.30);
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(10px);
+    direction: ltr;
+}
+
+vaadin-button.hall-floating-zoom-button {
+    min-width: 38px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 999px;
+    background: rgba(45, 52, 73, 0.88);
+    color: var(--tn-text);
+    border: 1px solid rgba(149, 142, 160, 0.22);
+}
+
+vaadin-button.hall-floating-zoom-button:hover {
+    background: rgba(68, 226, 205, 0.18);
+    border-color: rgba(68, 226, 205, 0.45);
+    color: var(--tn-primary);
+}
+
+.hall-zoom-composite-icon {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hall-zoom-composite-icon vaadin-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.hall-zoom-sign {
+    position: absolute;
+    top: -5px;
+    right: -7px;
+    width: 15px;
+    height: 15px;
+    border-radius: 999px;
+    background: var(--tn-primary);
+    color: #06111f;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 15px;
+    text-align: center;
+}
+
+.hall-floating-zoom-value {
+    min-width: 48px;
+    text-align: center;
+    color: var(--tn-text);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+@media (max-width: 1100px) {
+    .hall-builder-workspace {
+        grid-template-columns: 1fr;
+        overflow: auto;
+    }
+
+    .hall-map-builder-page {
+        height: auto;
+        overflow: visible;
+    }
+
+    .hall-builder-canvas-area {
+        min-height: 620px;
+    }
+
+    .hall-builder-tools-panel {
+        border-right: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.10);
+        box-shadow: none;
+    }
+}
+
+@media (max-width: 700px) {
+    .hall-builder-header {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px;
+    }
+
+    .hall-builder-title-block {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .hall-builder-title {
+        font-size: 24px;
+        white-space: normal;
+    }
+
+    .hall-builder-canvas {
+        padding: 24px;
+    }
+
+    .hall-builder-tools-panel {
+        padding: 16px;
+    }
+
+    .hall-builder-stats {
+        grid-template-columns: 1fr;
+    }
+}
