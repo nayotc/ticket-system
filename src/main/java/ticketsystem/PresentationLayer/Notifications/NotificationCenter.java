@@ -7,11 +7,13 @@ import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.IBrodcaster;
 import ticketsystem.ApplicationLayer.NotificationService;
 import ticketsystem.DomainLayer.notifications.Notification;
+import ticketsystem.PresentationLayer.Components.MessagePopup;
 
 @Component
 public class NotificationCenter {
 
     private static final String PUSH_UNREGISTER_KEY = "pushUnregister";
+    private static final String PUSH_TARGET_KEY = "pushTargetId";
 
     private final IBrodcaster broadcaster;
     private final NotificationService notificationService;
@@ -27,6 +29,19 @@ public class NotificationCenter {
             return;
         }
 
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return;
+        }
+
+        Object currentTarget = session.getAttribute(PUSH_TARGET_KEY);
+        Object currentUnregister = session.getAttribute(PUSH_UNREGISTER_KEY);
+
+        if (targetId.equals(currentTarget) && currentUnregister instanceof Runnable) {
+            return;
+        }
+
         disconnect();
 
         Runnable unregister = broadcaster.registerListener(targetId, notification -> {
@@ -39,11 +54,8 @@ public class NotificationCenter {
             });
         });
 
-        VaadinSession session = VaadinSession.getCurrent();
-
-        if (session != null) {
-            session.setAttribute(PUSH_UNREGISTER_KEY, unregister);
-        }
+        session.setAttribute(PUSH_UNREGISTER_KEY, unregister);
+        session.setAttribute(PUSH_TARGET_KEY, targetId);
     }
 
     public void disconnect() {
@@ -57,8 +69,10 @@ public class NotificationCenter {
 
         if (unregister instanceof Runnable runnable) {
             runnable.run();
-            session.setAttribute(PUSH_UNREGISTER_KEY, null);
         }
+
+        session.setAttribute(PUSH_UNREGISTER_KEY, null);
+        session.setAttribute(PUSH_TARGET_KEY, null);
     }
 
     public void showPending(UI ui, String targetId) {
@@ -79,15 +93,7 @@ public class NotificationCenter {
 
     private void show(Notification notification) {
         String message = resolveMessage(notification);
-
-        com.vaadin.flow.component.notification.Notification popup =
-                com.vaadin.flow.component.notification.Notification.show(
-                        message,
-                        5000,
-                        com.vaadin.flow.component.notification.Notification.Position.TOP_CENTER
-                );
-
-        popup.addThemeVariants(NotificationVariant.LUMO_PRIMARY);
+        MessagePopup.showNotification(message);
     }
 
     private String resolveMessage(Notification notification) {
