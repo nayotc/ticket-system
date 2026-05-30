@@ -5,6 +5,10 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import ticketsystem.DomainLayer.event.SaleStatus;
+import ticketsystem.PresentationLayer.Constants.Photos;
+
+import java.util.List;
 
 /**
  * Presenter for event catalog UI actions.
@@ -90,5 +94,67 @@ public class EventCatalogPresenter {
         }
 
         return params;
+    }
+    public List<HomeEventCard> getFeaturedHomeEvents() {
+        return List.of(
+                new HomeEventCard(
+                        "מופע עשור",
+                        "פסטיבל אורות הלילה",
+                        "24 אוקטובר, 21:00",
+                        "פארק הירקון, תל אביב",
+                        "₪249",
+                        Photos.EVENT_LIGHTS,
+                        true,
+                        "Amazing Events",
+                        2L,
+                        30L,
+                        SaleStatus.ONGOING,
+                        false
+                ),
+                new HomeEventCard(
+                        "סטנדאפ",
+                        "מרתון צחוק תל אביבי",
+                        "15 נובמבר, 22:30",
+                        "מועדון זאפה, הרצליה",
+                        "₪119",
+                        Photos.EVENT_STANDUP,
+                        false,
+                        "Laugh Factory",
+                        3L,
+                        20L,
+                        SaleStatus.SOLD_OUT,
+                        false
+                ),
+                new HomeEventCard(
+                        "מסיבה",
+                        "ליין שישי אלקטרוני",
+                        "20 אוקטובר, 23:55",
+                        "האומן 17, תל אביב",
+                        "₪90",
+                        Photos.EVENT_ELECTRONIC,
+                        false,
+                        "TixNow Productions",
+                        1L,
+                        15L,
+                        SaleStatus.NOT_STARTED,
+                        true
+                )
+        );
+    }
+
+    public record HomeEventCard(
+            String category,
+            String title,
+            String date,
+            String location,
+            String priceText,
+            String imageUrl,
+            boolean urgent,
+            String companyName,
+            Long companyId,
+            Long eventId,
+            SaleStatus saleStatus,
+            boolean hasLottery
+    ) {
     }
 }

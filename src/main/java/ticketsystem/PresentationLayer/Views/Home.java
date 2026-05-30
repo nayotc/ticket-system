@@ -20,6 +20,7 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.router.QueryParameters;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
+import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.HomeEventCard;
 
 import java.util.Map;
 
@@ -158,56 +159,32 @@ public class Home extends PageContainer {
 
         Div grid = new Div();
         grid.addClassName("events-grid");
-
-        grid.add(
-                new EventCard(
-                        "מופע עשור",
-                        "פסטיבל אורות הלילה",
-                        "24 אוקטובר, 21:00",
-                        "פארק הירקון, תל אביב",
-                        "₪249",
-                        Photos.EVENT_LIGHTS,
-                        true,
-                        "Amazing Events",
-                        2L,
-                        30L,
-                        SaleStatus.ONGOING,
-                        false
-                ),
-                new EventCard(
-                        "סטנדאפ",
-                        "מרתון צחוק תל אביבי",
-                        "15 נובמבר, 22:30",
-                        "מועדון זאפה, הרצליה",
-                        "₪119",
-                        Photos.EVENT_STANDUP,
-                        false,
-                        "Laugh Factory",
-                        3L,
-                        20L,
-                        SaleStatus.SOLD_OUT,
-                        false
-                ),
-                new EventCard(
-                        "מסיבה",
-                        "ליין שישי אלקטרוני",
-                        "20 אוקטובר, 23:55",
-                        "האומן 17, תל אביב",
-                        "₪90",
-                        Photos.EVENT_ELECTRONIC,
-                        false,
-                        "TixNow Productions",
-                        1L,
-                        15L,
-                        SaleStatus.NOT_STARTED,
-                        true
-                )
-        );
+        eventCatalogPresenter.getFeaturedHomeEvents()
+                .stream()
+                .map(this::createEventCard)
+                .forEach(grid::add);
 
         sectionInner.add(titleRow, grid);
         section.add(sectionInner);
 
         return section;
+    }
+
+    private EventCard createEventCard(HomeEventCard event) {
+        return new EventCard(
+                event.category(),
+                event.title(),
+                event.date(),
+                event.location(),
+                event.priceText(),
+                event.imageUrl(),
+                event.urgent(),
+                event.companyName(),
+                event.companyId(),
+                event.eventId(),
+                event.saleStatus(),
+                event.hasLottery()
+        );
     }
 
     private Div createVipCard() {
