@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.springframework.stereotype.Repository;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.lottery.Lottery;
 

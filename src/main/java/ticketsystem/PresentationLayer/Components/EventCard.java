@@ -13,6 +13,9 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.textfield.TextField;
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import com.vaadin.flow.router.QueryParameters;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class EventCard extends AppCard {
 
@@ -115,7 +118,7 @@ public class EventCard extends AppCard {
         Button companyButton = new Button(companyName);
         companyButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         companyButton.addClassName("event-company-link");
-        companyButton.addClickListener(event -> navigate(routeForCompanyEvents(companyId)));
+        companyButton.addClickListener(event -> navigateToCompanyEvents(companyId, companyName));
 
         row.add(VaadinIcon.BUILDING.create(), companyButton);
         return row;
@@ -338,11 +341,26 @@ public class EventCard extends AppCard {
         return UiRoutes.TICKET_SELECTION.replace(":eventId", String.valueOf(eventId));
     }
 
-    private static String routeForCompanyEvents(Long companyId) {
-        if (companyId == null) {
-            return UiRoutes.EVENTS;
+    private static void navigateToCompanyEvents(Long companyId, String companyName) {
+        UI ui = UI.getCurrent();
+        if (ui == null) {
+            return;
         }
-        return UiRoutes.EVENTS + "?companyId=" + companyId;
+
+        if (companyId == null) {
+            ui.navigate(UiRoutes.EVENTS);
+            return;
+        }
+
+        Map<String, String> params = new LinkedHashMap<>();
+        if (companyName != null && !companyName.isBlank()) {
+            params.put("companyName", companyName.trim());
+        }
+
+        ui.navigate(
+                UiRoutes.COMPANY_SEARCH_RESULTS.replace(":companyId", String.valueOf(companyId)),
+                QueryParameters.simple(params)
+        );
     }
 
     public interface EventCardActionHandler {

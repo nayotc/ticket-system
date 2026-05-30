@@ -10,12 +10,14 @@ public final class UiRoutes {
     public static final String EVENTS = "events";
     public static final String EVENT_SEARCH = "events/search";
     public static final String SEARCH_RESULTS = "events/results";
+    public static final String COMPANY_SEARCH_RESULTS = "companies/:companyId/events";
 
     // Auth
     public static final String LOGIN = "login";
     public static final String REGISTRATION = "register";
 
     // Buyer flow
+    public static final String WAITING_QUEUE = "events/:eventId/queue";
     public static final String EVENT_MAP = "events/:eventId/map";
     public static final String TICKET_SELECTION = "events/:eventId/tickets";
     public static final String ACTIVE_ORDER_CART = "orders/active";

@@ -1,4 +1,4 @@
-package ticketsystem.UnitTesting;
+package ticketsystem.UnitTesting.user;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Permission;
 

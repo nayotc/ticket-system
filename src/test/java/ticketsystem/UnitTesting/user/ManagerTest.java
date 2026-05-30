@@ -1,4 +1,4 @@
-package ticketsystem.UnitTesting;
+package ticketsystem.UnitTesting.user;
 import ticketsystem.DomainLayer.user.Manager;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;

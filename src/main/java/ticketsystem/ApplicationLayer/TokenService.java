@@ -142,7 +142,7 @@ public class TokenService implements ITokenService {
         if (token == null)
             return null;
         String subject = extractSubject(token);
-        if (subject == null || subject.isBlank()) {
+        if (subject == null || subject.isBlank()|| isGuestToken(token)) {
             return null;
         }
         return Long.valueOf(subject);

@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -27,6 +28,7 @@ import java.util.Objects;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
 
+@Service
 public class EventService {
 
     private final IEventRepository eventRepository;
@@ -35,26 +37,22 @@ public class EventService {
     private final List<EventUpdatesListener> eventUpdatesListeners = new ArrayList<>();
     private final ISystemLogger logger;
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
-    private final INotifier notificationsService;
-    private final IHistoryRepository historyRepository;
     private final UserAccessService userAccessService;
 
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
             MembershipDomainService membershipDomain, ISystemLogger logger,
-            INotifier notificationsService, IHistoryRepository historyRepository,UserAccessService userAccessService) {
+            UserAccessService userAccessService) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
-        this.notificationsService = notificationsService;
-        this.historyRepository = historyRepository;
         this.userAccessService=userAccessService;
     }
 
-    public Boolean insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
-            EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
-            Integer mapHigh, Integer mapWidth) {
-        
+    public Long insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
+                               EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
+                               Integer mapHigh, Integer mapWidth) {
+
         String context = "SessionId=" + sessionId
                 + ", companyId=" + companyId
                 + ", eventName=" + eventName
@@ -93,8 +91,8 @@ public class EventService {
             Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,
                     artist, price, new Pair<>(mapHigh, mapWidth));
             eventRepository.addEvent(event);
-            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId,LogLevel.INFO);
-            return true;
+            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId + ", " + event.toString(),LogLevel.INFO);
+            return eventId;
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - insertEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
@@ -198,11 +196,7 @@ public class EventService {
             logger.logEvent("Validated details - updateEvent. " + context, LogLevel.DEBUG);
             if (notificateUsers) {
                 notifyEventUpdatedListeners(existingEvent.getId(), eventDTO.date(), eventDTO.location(), message);
-                logger.logEvent("Notified users - updateEvent. " + context, LogLevel.DEBUG);
-                notifyPurchasedBuyers(
-                existingEvent.getId(),
-                "The details of the event \"" + existingEvent.getName() + "\" have been updated. Please check your ticket details."
-            );
+                logger.logEvent("Notified event update listeners - updateEvent. " + context, LogLevel.DEBUG);
             }
             existingEvent.updateDetails(name, date, location, trafficThreshold, category, artistName, ticketPrice);
             eventRepository.updateEvent(existingEvent);
@@ -301,6 +295,35 @@ public class EventService {
         }
     }
 
+    public EventDTO getEvent(String sessionId, Long eventId) {
+        String context = "eventId=" + eventId;
+        logger.logEvent("Started - getEvent. " + context, LogLevel.INFO);
+        try {
+            // precondition: user logged in
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+            logger.logEvent("Authenticated actor - getEvent. " + context, LogLevel.DEBUG);
+            // precondition: user has permission to view event details
+            Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+            logger.logEvent("Found event - getEvent. " + context, LogLevel.DEBUG);
+
+            // main scenario: return event details
+            logger.logEvent("Completed - getEvent. " + event.toString(), LogLevel.DEBUG);
+            return EventDTO.from(event);
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Failed - getEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+        catch (Exception e) {
+            logger.logError("Failed - getEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
+            throw e;
+        }
+    }
+
     public EventMapDTO getEventMap(String sessionId, Long eventId) {
         String context = "eventId=" + eventId;
         logger.logEvent("Use-case started: getEventMap. " + context, LogLevel.INFO);
@@ -358,10 +381,6 @@ public class EventService {
             event.cancel();
             eventRepository.updateEvent(event); // update event status to cancelled
             notifyEventCanceledListeners(eventId);
-            notifyPurchasedBuyers(
-            eventId,
-            "The event \"" + event.getName() + "\" was canceled."
-           );
             logger.logEvent("Completed - cancelEvent. " + context, LogLevel.INFO);
             return true;
         } catch (IllegalArgumentException e) {
@@ -438,25 +457,7 @@ public class EventService {
                 + ", companyId=" + eventDTO.companyId()
                 + ", version=" + eventDTO.version();
     }
-  private void notifyPurchasedBuyers(Long eventId, String message) {
-    if (notificationsService == null || historyRepository == null || eventId == null
-            || message == null || message.isBlank()) {
-        return;
-    }
-
-    List<Long> buyerMemberIds = historyRepository.getPurchasesByEventId(eventId)
-            .stream()
-            .map(Purchase::getMemberId)
-            .filter(Objects::nonNull)
-            .distinct()
-            .toList();
-
-    if (buyerMemberIds.isEmpty()) {
-        return;
-    }
-
-    notificationsService.notifyMembers(buyerMemberIds, message);
-}
+ 
 
 public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
     try {
@@ -639,6 +640,68 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
         }
 
         return event;
+    }
+
+    public Boolean rollbackCreatedEvent(String sessionId, Long eventId) {
+        String context = "eventId=" + eventId;
+
+        logger.logEvent("Started - rollbackCreatedEvent. " + context, LogLevel.WARN);
+
+        try {
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+
+            if (eventId == null) {
+                throw new IllegalArgumentException("Event ID cannot be null");
+            }
+
+            Event event = eventRepository.getEventById(eventId);
+
+            if (event == null) {
+                logger.logEvent(
+                        "Rollback skipped - event already does not exist. " + context,
+                        LogLevel.WARN
+                );
+                return true;
+            }
+
+            Long userId = tokenService.extractUserId(sessionId);
+            userAccessService.validateCanPerformNonViewAction(userId);
+
+            if (!membershipDomain.validatePermission(
+                    userId,
+                    event.getCompanyId(),
+                    Permission.MANAGE_EVENT_INVENTORY
+            )) {
+                throw new IllegalArgumentException("User does not have permission to rollback event creation");
+            }
+
+            /*
+             * Safety check:
+             * rollback is allowed only for a fresh event creation failure.
+             * Do not use this method as a regular delete action.
+             */
+            if (event.getStatus() != eventStatus.DRAFT) {
+                throw new IllegalStateException("Only draft events can be rolled back after creation failure");
+            }
+
+            long expectedVersion = event.getVersion();
+            eventRepository.deleteEvent(eventId, expectedVersion);
+
+            logger.logEvent(
+                    "Completed - rollbackCreatedEvent. eventId=" + eventId,
+                    LogLevel.WARN
+            );
+            return true;
+
+        } catch (Exception e) {
+            logger.logError(
+                    "Failed - rollbackCreatedEvent. " + context + ". Error: " + e.getMessage(),
+                    e
+            );
+            throw e;
+        }
     }
 
 }

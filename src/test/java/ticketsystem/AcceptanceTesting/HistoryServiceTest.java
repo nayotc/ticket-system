@@ -1,9 +1,10 @@
-package ticketsystem.ApplicationLayer;
+package ticketsystem.AcceptanceTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -11,6 +12,12 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.ApplicationLayer.HistoryService;
+import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.ApplicationLayer.UserAccessService;
+import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.SalesReportDTO;
@@ -32,6 +39,7 @@ import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
+
 public class HistoryServiceTest {
 
     private IHistoryRepository historyRepository;
@@ -42,6 +50,7 @@ public class HistoryServiceTest {
     private HistoryService historyService;
     private ICompanyRepository companyRepository;
     private UserAccessService userAccessService;
+    private FakeNotifier fakeNotifier;
 
     @BeforeEach
     void setUp() {
@@ -50,15 +59,23 @@ public class HistoryServiceTest {
         this.historyRepository = hRepo;
 
         this.tokenRepository = new TokenRepository();
-        this.userRepository = new UserRepository(); 
-        
+        this.userRepository = new UserRepository();
+
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
         this.userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
         this.companyRepository = new CompanyRepository();
-        userAccessService=new UserAccessService(userRepository);
-        this.historyService = new HistoryService(historyRepository, tokenService, new MembershipDomainService(userRepository), new LogbackSystemLogger(),userAccessService);
-    }
+        userAccessService = new UserAccessService(userRepository);
+        fakeNotifier = new FakeNotifier();
 
+        this.historyService = new HistoryService(
+                historyRepository,
+                tokenService,
+                new MembershipDomainService(userRepository),
+                new LogbackSystemLogger(),
+                userAccessService,
+                fakeNotifier
+        );
+        }
     /**
      * Helper method to simulate a full user registration and login flow.
      */
@@ -69,8 +86,7 @@ public class HistoryServiceTest {
                 username,
                 password,
                 "Test User",
-                "0500000000"
-        );
+                "0500000000");
         return userService.login(guestToken, username, password);
     }
 
@@ -82,11 +98,12 @@ public class HistoryServiceTest {
         // --- Given (Arrange) ---
         String validToken = getValidMemberToken("reut_history_user", "Pass123!");
         long userId = tokenService.extractUserId(validToken);
-        
+
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId, 20L);
-        
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId,
+                20L);
+
         historyService.onOrderCompleted(orderDto);
 
         // --- When (Act) ---
@@ -126,7 +143,7 @@ public class HistoryServiceTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             historyService.getHistoryForUser(invalidToken);
         });
-        
+
         assertTrue(exception.getMessage().contains("token"), "Error message should mention token");
     }
 
@@ -138,7 +155,7 @@ public class HistoryServiceTest {
         // --- Arrange ---
         String validToken = getValidMemberToken("buyer_user", "Pass123!");
         long userId = tokenService.extractUserId(validToken);
-        
+
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
         OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L);
@@ -156,8 +173,7 @@ public class HistoryServiceTest {
                 "history_company_" + founderId,
                 founderId,
                 null,
-                null
-        );
+                null);
 
         companyRepository.save(company);
 
@@ -180,8 +196,7 @@ public class HistoryServiceTest {
                 1,
                 new BigDecimal("150.0"),
                 "ACTIVE",
-                ""
-        ));
+                ""));
 
         return new OrderDTO(
                 0L,
@@ -190,15 +205,15 @@ public class HistoryServiceTest {
                 "HaYarkon Park",
                 userId,
                 companyId,
-                userId, 
+                userId,
                 20L
 
         );
     }
 
     /**
-    * 4.5 View purchase and order history - Successful Scenario
-    */
+     * 4.5 View purchase and order history - Successful Scenario
+     */
     @Test
     void GivenOwnerAndExistingCompanyHistory_WhenGetHistoryForCompany_ThenReturnsCompanyHistory() {
         // --- Given (Arrange) ---
@@ -210,8 +225,7 @@ public class HistoryServiceTest {
         OrderDTO orderDto = createOrderDTO(
                 ownerId,
                 company.getId(),
-                "Company History Concert"
-        );
+                "Company History Concert");
 
         historyService.onOrderCompleted(orderDto);
 
@@ -225,7 +239,7 @@ public class HistoryServiceTest {
         assertEquals("Company History Concert", result.get(0).getEventName(), "Event name should match");
         assertEquals(company.getId(), result.get(0).getCompanyId(), "Company id should match");
     }
-    
+
     @Test
     void GivenMemberWithoutCompanyPermission_WhenGetHistoryForCompany_ThenThrowsIllegalArgumentException() {
         // --- Given (Arrange) ---
@@ -242,8 +256,7 @@ public class HistoryServiceTest {
 
         assertTrue(
                 exception.getMessage().contains("permissions"),
-                "Error message should mention insufficient permissions"
-        );
+                "Error message should mention insufficient permissions");
     }
 
     private OrderDTO createSalesReportOrderDTO(Long buyerMemberId, long companyId, Long managedByMemberId,
@@ -258,8 +271,7 @@ public class HistoryServiceTest {
                     1,
                     price,
                     "ACTIVE",
-                    ""
-            ));
+                    ""));
         }
 
         return new OrderDTO(
@@ -270,8 +282,7 @@ public class HistoryServiceTest {
                 buyerMemberId,
                 companyId,
                 managedByMemberId,
-                20L
-        );
+                20L);
     }
 
     private long createActiveManagerUnderFounder(long founderId, long companyId, String username) {
@@ -320,15 +331,14 @@ public class HistoryServiceTest {
         long managerId = createActiveManagerUnderFounder(
                 ownerId,
                 company.getId(),
-                "sales_report_manager"
-        );
+                "sales_report_manager");
 
         // --- FIX: Link the manager to the owner's tree in DB ---
-        // The helper method likely creates the manager but fails to add them 
+        // The helper method likely creates the manager but fails to add them
         // to the appointer's local list. We fix it here manually to build the tree.
         Member ownerMember = userRepository.getMemberById(ownerId);
         CompanyRole ownerRole = ownerMember.getRoleInCompany(company.getId());
-        
+
         if (ownerRole instanceof ticketsystem.DomainLayer.user.Founder) {
             ((ticketsystem.DomainLayer.user.Founder) ownerRole).addAppointee(managerId);
         } else if (ownerRole instanceof ticketsystem.DomainLayer.user.Owner) {
@@ -347,8 +357,7 @@ public class HistoryServiceTest {
                 ownerId,
                 "Owner Managed Event",
                 new BigDecimal("100.0"),
-                new BigDecimal("150.0")
-        );
+                new BigDecimal("150.0"));
 
         // Purchase managed by manager under owner's subtree: 1 ticket, total 200
         OrderDTO managerManagedOrder = createSalesReportOrderDTO(
@@ -356,8 +365,7 @@ public class HistoryServiceTest {
                 company.getId(),
                 managerId,
                 "Manager Managed Event",
-                new BigDecimal("200.0")
-        );
+                new BigDecimal("200.0"));
 
         // Purchase managed by someone outside owner's subtree: should not be counted
         OrderDTO outsideManagedOrder = createSalesReportOrderDTO(
@@ -365,8 +373,7 @@ public class HistoryServiceTest {
                 company.getId(),
                 outsideOwnerId,
                 "Outside Managed Event",
-                new BigDecimal("999.0")
-        );
+                new BigDecimal("999.0"));
 
         historyService.onOrderCompleted(ownerManagedOrder);
         historyService.onOrderCompleted(managerManagedOrder);
@@ -381,14 +388,13 @@ public class HistoryServiceTest {
         assertEquals(
                 0,
                 new BigDecimal("450.0").compareTo(report.getTotalRevenue()),
-                "Report revenue should include only owner + subtree sales"
-        );
+                "Report revenue should include only owner + subtree sales");
         assertEquals(
                 "Sales report generated successfully",
                 report.getMessage(),
-                "Success message should match"
-        );
+                "Success message should match");
     }
+
     /**
      * 4.6 Generate sales report - No sales data available
      */
@@ -409,17 +415,16 @@ public class HistoryServiceTest {
         assertEquals(
                 0,
                 BigDecimal.ZERO.compareTo(report.getTotalRevenue()),
-                "Revenue should be zero"
-        );
+                "Revenue should be zero");
         assertEquals(
                 "No sales data was found",
                 report.getMessage(),
-                "Empty report message should match"
-        );
+                "Empty report message should match");
     }
 
     /**
-     * 4.6 Generate sales report - Guest purchases are included in company sales report
+     * 4.6 Generate sales report - Guest purchases are included in company sales
+     * report
      */
     @Test
     void GivenGuestPurchase_WhenGenerateSalesReport_ThenGuestPurchaseIsIncludedInCompanyReport() {
@@ -435,8 +440,7 @@ public class HistoryServiceTest {
                 ownerId,
                 "Guest Buyer Event",
                 new BigDecimal("80.0"),
-                new BigDecimal("120.0")
-        );
+                new BigDecimal("120.0"));
 
         historyService.onOrderCompleted(guestOrder);
 
@@ -449,9 +453,9 @@ public class HistoryServiceTest {
         assertEquals(
                 0,
                 new BigDecimal("200.0").compareTo(report.getTotalRevenue()),
-                "Guest purchase revenue should be counted"
-        );
+                "Guest purchase revenue should be counted");
     }
+
     /**
      * 4.6 Generate sales report -
      * Verify that order-completed flow stores managedByMemberId correctly
@@ -474,21 +478,19 @@ public class HistoryServiceTest {
                 1,
                 new BigDecimal("100.0"),
                 "ACTIVE",
-                ""
-        ));
+                ""));
         tickets.add(new PurchaseDTO(
                 11L,
                 1,
                 2,
                 new BigDecimal("150.0"),
                 "ACTIVE",
-                ""
-        ));
+                ""));
 
         /*
-        * This simulates the production flow before onOrderCompleted:
-        * the completed order is populated with the event creator / event manager id.
-        */
+         * This simulates the production flow before onOrderCompleted:
+         * the completed order is populated with the event creator / event manager id.
+         */
         OrderDTO completedOrder = new OrderDTO(
                 0L,
                 tickets,
@@ -496,9 +498,8 @@ public class HistoryServiceTest {
                 "HaYarkon Park",
                 buyerId,
                 company.getId(),
-                ownerId,// managedByMemberId - should come from the event creator in the real flow
-                20L
-            );
+                ownerId, // managedByMemberId - should come from the event creator in the real flow
+                20L);
 
         // --- When (Act) ---
         historyService.onOrderCompleted(completedOrder);
@@ -513,8 +514,7 @@ public class HistoryServiceTest {
         assertEquals(
                 ownerId,
                 savedPurchase.getManagedByMemberId(),
-                "Purchase should store the event creator as managedByMemberId"
-        );
+                "Purchase should store the event creator as managedByMemberId");
 
         SalesReportDTO report = historyService.generateSalesReport(ownerToken, company.getId());
 
@@ -523,9 +523,158 @@ public class HistoryServiceTest {
         assertEquals(
                 0,
                 new BigDecimal("250.0").compareTo(report.getTotalRevenue()),
-                "Report should include the completed order revenue"
-        );
+                "Report should include the completed order revenue");
     }
 
-    
+    @Test
+    void GivenCompletedPurchase_WhenEventCanceled_ThenTicketsBecomeCanceledAndReportDoesNotCountThem() {
+        String ownerToken = getValidMemberToken("cancel_event_owner", "Pass123!");
+        long ownerId = tokenService.extractUserId(ownerToken);
+
+        Company company = createCompanyWithFounderRole(ownerId);
+
+        OrderDTO order = createSalesReportOrderDTO(
+                ownerId,
+                company.getId(),
+                ownerId,
+                "Canceled Event",
+                new BigDecimal("100.0"),
+                new BigDecimal("150.0"));
+
+        historyService.onOrderCompleted(order);
+
+        historyService.onEventCanceled(20L);
+
+        Purchase purchase = historyRepository.getAllPurchases().get(0);
+
+        assertTrue(purchase.getTickets().stream()
+                .allMatch(ticket -> ticket.getStatus().name().equals("CANCELED")));
+
+        SalesReportDTO report = historyService.generateSalesReport(ownerToken, company.getId());
+
+        assertEquals(0, report.getTotalTicketsSold());
+        assertEquals(0, BigDecimal.ZERO.compareTo(report.getTotalRevenue()));
+        assertEquals("No sales data was found", report.getMessage());
+    }
+
+    @Test
+    void GivenCanceledDifferentEvent_WhenEventCanceled_ThenTicketsRemainActive() {
+        String ownerToken = getValidMemberToken("cancel_other_event_owner", "Pass123!");
+        long ownerId = tokenService.extractUserId(ownerToken);
+
+        Company company = createCompanyWithFounderRole(ownerId);
+
+        OrderDTO order = createSalesReportOrderDTO(
+                ownerId,
+                company.getId(),
+                ownerId,
+                "Active Event",
+                new BigDecimal("100.0"));
+
+        historyService.onOrderCompleted(order);
+
+        historyService.onEventCanceled(999L);
+
+        Purchase purchase = historyRepository.getAllPurchases().get(0);
+
+        assertTrue(purchase.getTickets().stream()
+                .noneMatch(ticket -> ticket.getStatus().name().equals("CANCELED")));
+    }
+
+    @Test
+    void GivenGuestToken_WhenGetHistoryForUser_ThenThrowsException() {
+        String guestToken = userService.visitSystem();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> historyService.getHistoryForUser(guestToken));
+
+        assertEquals("Only members can view personal purchase history", exception.getMessage());
+    }
+
+    @Test
+    void GivenGuestToken_WhenGetHistoryForCompany_ThenThrowsException() {
+        String guestToken = userService.visitSystem();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> historyService.getHistoryForCompany(guestToken, 1L));
+
+        assertEquals("Only members can view personal purchase history", exception.getMessage());
+    }
+
+    @Test
+    void GivenInvalidToken_WhenGenerateSalesReport_ThenThrowsException() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> historyService.generateSalesReport("invalid-token", 1L));
+    }
+
+    @Test
+    void GivenGuestToken_WhenGenerateSalesReport_ThenThrowsException() {
+        String guestToken = userService.visitSystem();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> historyService.generateSalesReport(guestToken, 1L));
+
+        assertEquals("Only members can generate sales reports", exception.getMessage());
+    }
+
+    @Test
+    void GivenMemberWithoutSalesReportPermission_WhenGenerateSalesReport_ThenThrowsException() {
+        String token = getValidMemberToken("no_sales_permission_user", "Pass123!");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> historyService.generateSalesReport(token, 1L));
+
+        assertEquals("Insufficient permissions to generate sales report", exception.getMessage());
+    }
+
+    private static class FakeNotifier implements INotifier {
+
+    private final List<String> messages = new ArrayList<>();
+
+    @Override
+    public void notifyMember(Long memberId, String message) {
+        messages.add(message);
+    }
+
+    @Override
+    public void notifyGuest(String guestToken, String message) {
+        messages.add(message);
+    }
+
+    @Override
+    public void notifyMembers(Collection<Long> memberIds, String message) {
+        if (memberIds == null) {
+            return;
+        }
+
+        for (Long memberId : memberIds) {
+            if (memberId != null) {
+                notifyMember(memberId, message);
+            }
+        }
+    }
+
+    @Override
+    public void notifyGuests(Collection<String> guestTokens, String message) {
+        if (guestTokens == null) {
+            return;
+        }
+
+        for (String guestToken : guestTokens) {
+            if (guestToken != null && !guestToken.isBlank()) {
+                notifyGuest(guestToken, message);
+            }
+        }
+    }
+
+    boolean containsMessage(String text) {
+        return messages.stream()
+                .anyMatch(message -> message.contains(text));
+    }
+}
 }

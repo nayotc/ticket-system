@@ -9,12 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.ApplicationLayer.INotifier;
-import ticketsystem.ApplicationLayer.ITokenService;
-import ticketsystem.ApplicationLayer.LotteryService;
-import ticketsystem.ApplicationLayer.TokenService;
-import ticketsystem.ApplicationLayer.UserAccessService;
-import ticketsystem.ApplicationLayer.UserService;
+import ticketsystem.ApplicationLayer.*;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
@@ -35,6 +30,8 @@ public class LotteryServiceTest {
     private UserService userService;
     private FakeNotifier fakeNotifier;
     private UserAccessService userAccessService;
+    private ISystemLogger logger;
+
     @BeforeEach
     void setUp() {
         tokenRepository = new TokenRepository();
@@ -44,8 +41,9 @@ public class LotteryServiceTest {
         userRepository = new UserRepository();
         userAccessService=new UserAccessService(userRepository);
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
-        fakeNotifier = new FakeNotifier(); 
-        lotteryService = new LotteryService(lotteryRepository, tokenService,fakeNotifier,userAccessService);
+        fakeNotifier = new FakeNotifier();
+        logger = new LogbackSystemLogger();
+        lotteryService = new LotteryService(lotteryRepository, tokenService,fakeNotifier,userAccessService,logger);
         
         userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
     }
