@@ -187,35 +187,10 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
             Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
             return;
         }
-        try {
-            for (SelectedSeat seat : selectedSeats.values()) {
-                reservationPresenter.selectSeatTicket(
-                        eventId,
-                        seat.areaId(),
-                        seat.row(),
-                        seat.number(),
-                        null
-                );
-            }
 
-            for (SelectedStandingArea standingArea : selectedStandingAreas.values()) {
-                reservationPresenter.selectStandingTicket(
-                        eventId,
-                        standingArea.areaId(),
-                        standingArea.quantity(),
-                        null
-                );
-            }
-
-            UI.getCurrent().navigate(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(eventId)));
-
-        } catch (PresentationException e) {
-            Notifications.error(e.getMessage());
-
-        } catch (Exception e) {
-            Notifications.error("לא ניתן להמשיך להזמנה. יש לנסות שוב");
-        }
+        UI.getCurrent().navigate(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(eventId)));
     }
+
 
     private void renderMap() {
         mapCanvas.removeAll();
@@ -379,34 +354,113 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     }
 
     private void toggleSeat(SeatingAreaDto area, SeatDto seat) {
-        SeatKey key = new SeatKey(area.id(), seat.row(), seat.number());
-
-        if (selectedSeats.containsKey(key)) {
-            selectedSeats.remove(key);
-        } else if (seat.status() == SeatStatusDto.AVAILABLE) {
-            selectedSeats.put(key, new SelectedSeat(area.id(), area.name(), seat.row(), seat.number(), area.ticketPrice()));
+        if (eventId == null) {
+            Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+            return;
         }
 
-        renderMap();
-        refreshSummary();
+        SeatKey key = new SeatKey(area.id(), seat.row(), seat.number());
+
+        try {
+            if (selectedSeats.containsKey(key)) {
+                reservationPresenter.removeSeatTicketFromActiveOrder(
+                        eventId,
+                        area.id(),
+                        seat.row(),
+                        seat.number()
+                );
+
+                selectedSeats.remove(key);
+
+            } else if (seat.status() == SeatStatusDto.AVAILABLE) {
+                reservationPresenter.selectSeatTicket(
+                        eventId,
+                        area.id(),
+                        seat.row(),
+                        seat.number(),
+                        null
+                );
+
+                selectedSeats.put(
+                        key,
+                        new SelectedSeat(area.id(), area.name(), seat.row(), seat.number(), area.ticketPrice())
+                );
+            }
+
+            renderMap();
+            refreshSummary();
+
+        } catch (PresentationException e) {
+            Notifications.error(e.getMessage());
+
+        } catch (Exception e) {
+            Notifications.error("לא ניתן לעדכן את בחירת המושב. יש לנסות שוב");
+        }
     }
 
     private void updateStandingSelection(StandingAreaDto area, int quantity) {
+        if (eventId == null) {
+            Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+            return;
+        }
+
         int safeQuantity = Math.max(0, Math.min(quantity, area.availableCapacity()));
+        int currentQuantity = selectedStandingAreas
+                .getOrDefault(area.id(), SelectedStandingArea.empty(area))
+                .quantity();
 
-        if (safeQuantity == 0) {
-            selectedStandingAreas.remove(area.id());
-        } else {
-            selectedStandingAreas.put(area.id(), new SelectedStandingArea(area.id(), area.name(), safeQuantity, area.ticketPrice()));
+        int delta = safeQuantity - currentQuantity;
+
+        try {
+            if (delta > 0) {
+                reservationPresenter.selectStandingTicket(
+                        eventId,
+                        area.id(),
+                        delta,
+                        null
+                );
+            } else if (delta < 0) {
+                reservationPresenter.removeStandingTicketsFromActiveOrder(
+                        eventId,
+                        area.id(),
+                        -delta
+                );
+            }
+
+            if (safeQuantity == 0) {
+                selectedStandingAreas.remove(area.id());
+            } else {
+                selectedStandingAreas.put(
+                        area.id(),
+                        new SelectedStandingArea(area.id(), area.name(), safeQuantity, area.ticketPrice())
+                );
+            }
+
+            IntegerField field = standingQuantityFields.get(area.id());
+            if (field != null && !Integer.valueOf(safeQuantity).equals(field.getValue())) {
+                field.setValue(safeQuantity);
+            }
+
+            refreshSummary();
+
+        } catch (PresentationException e) {
+            Notifications.error(e.getMessage());
+
+            IntegerField field = standingQuantityFields.get(area.id());
+            if (field != null && !Integer.valueOf(currentQuantity).equals(field.getValue())) {
+                field.setValue(currentQuantity);
+            }
+
+        } catch (Exception e) {
+            Notifications.error("לא ניתן לעדכן את כמות כרטיסי העמידה. יש לנסות שוב");
+
+            IntegerField field = standingQuantityFields.get(area.id());
+            if (field != null && !Integer.valueOf(currentQuantity).equals(field.getValue())) {
+                field.setValue(currentQuantity);
+            }
         }
-
-        IntegerField field = standingQuantityFields.get(area.id());
-        if (field != null && !Integer.valueOf(safeQuantity).equals(field.getValue())) {
-            field.setValue(safeQuantity);
-        }
-
-        refreshSummary();
     }
+
 
     private void refreshSummary() {
         selectedTicketsList.removeAll();
@@ -449,9 +503,24 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         remove.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         remove.addClassName("selected-ticket-remove");
         remove.addClickListener(event -> {
-            selectedSeats.remove(new SeatKey(selectedSeat.areaId(), selectedSeat.row(), selectedSeat.number()));
-            renderMap();
-            refreshSummary();
+            try {
+                reservationPresenter.removeSeatTicketFromActiveOrder(
+                        eventId,
+                        selectedSeat.areaId(),
+                        selectedSeat.row(),
+                        selectedSeat.number()
+                );
+
+                selectedSeats.remove(new SeatKey(selectedSeat.areaId(), selectedSeat.row(), selectedSeat.number()));
+                renderMap();
+                refreshSummary();
+
+            } catch (PresentationException e) {
+                Notifications.error(e.getMessage());
+
+            } catch (Exception e) {
+                Notifications.error("לא ניתן להסיר את המושב מההזמנה. יש לנסות שוב");
+            }
         });
 
         row.add(text, price, remove);
@@ -473,12 +542,28 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         remove.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         remove.addClassName("selected-ticket-remove");
         remove.addClickListener(event -> {
-            selectedStandingAreas.remove(selectedArea.areaId());
-            IntegerField field = standingQuantityFields.get(selectedArea.areaId());
-            if (field != null) {
-                field.setValue(0);
+            try {
+                reservationPresenter.removeStandingTicketsFromActiveOrder(
+                        eventId,
+                        selectedArea.areaId(),
+                        selectedArea.quantity()
+                );
+
+                selectedStandingAreas.remove(selectedArea.areaId());
+
+                IntegerField field = standingQuantityFields.get(selectedArea.areaId());
+                if (field != null) {
+                    field.setValue(0);
+                }
+
+                refreshSummary();
+
+            } catch (PresentationException e) {
+                Notifications.error(e.getMessage());
+
+            } catch (Exception e) {
+                Notifications.error("לא ניתן להסיר את כרטיסי העמידה מההזמנה. יש לנסות שוב");
             }
-            refreshSummary();
         });
 
         row.add(text, price, remove);

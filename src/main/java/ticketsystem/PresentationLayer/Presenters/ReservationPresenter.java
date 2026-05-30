@@ -58,6 +58,52 @@ public class ReservationPresenter {
             throw presentationError("Ticket selection failed. Please try again.");
         }
     }
+
+    public boolean removeSeatTicketFromActiveOrder(Long eventId, Long areaId, int row, int chair) {
+        try {
+            String token = UiSession.getCurrentToken();
+
+            if (token == null) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            if (areaId == null || areaId <= 0) {
+                throw presentationError("Area id is invalid.");
+            }
+
+            if (row <= 0 || chair <= 0) {
+                throw presentationError("Seat position is invalid.");
+            }
+
+            boolean removed = reservationService.removeSeatTicketFromActiveOrder(
+                    token,
+                    eventId,
+                    areaId,
+                    new seatPositionDTO(row, chair)
+            );
+
+            if (!removed) {
+                throw presentationError("Ticket removal failed. Please try again.");
+            }
+
+            return true;
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Ticket removal failed. Please try again.");
+        }
+    }
+
+
     public boolean selectStandingTicket(Long eventId, Long areaId, int quantity, String lotteryCode) {
         try {
             String token = UiSession.getCurrentToken();
@@ -100,6 +146,50 @@ public class ReservationPresenter {
 
         } catch (Exception e) {
             throw presentationError("Ticket selection failed. Please try again.");
+        }
+    }
+
+    public boolean removeStandingTicketsFromActiveOrder(Long eventId, Long areaId, int quantity) {
+        try {
+            String token = UiSession.getCurrentToken();
+
+            if (token == null) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            if (areaId == null || areaId <= 0) {
+                throw presentationError("Area id is invalid.");
+            }
+
+            if (quantity <= 0) {
+                throw presentationError("Ticket quantity must be greater than zero.");
+            }
+
+            boolean removed = reservationService.removeStandingTicketsFromActiveOrder(
+                    token,
+                    eventId,
+                    areaId,
+                    quantity
+            );
+
+            if (!removed) {
+                throw presentationError("Ticket removal failed. Please try again.");
+            }
+
+            return true;
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Ticket removal failed. Please try again.");
         }
     }
 
