@@ -1,12 +1,15 @@
 package ticketsystem.PresentationLayer.Layouts;
 
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.HasElement;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.RouterLayout;
+import org.springframework.beans.factory.annotation.Autowired;
 import ticketsystem.PresentationLayer.Components.FooterBar;
 import ticketsystem.PresentationLayer.Components.PublicHeader;
-//import ticketsystem.PresentationLayer.Notifications.GlobalNotificationSupport;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
 public class PublicLayout extends VerticalLayout implements RouterLayout {
 
@@ -14,7 +17,12 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
     private final Div content = new Div();
     private final FooterBar footer = new FooterBar();
 
-    public PublicLayout() {
+    private final UiVisitCoordinator visitCoordinator;
+
+    @Autowired
+    public PublicLayout(UiVisitCoordinator visitCoordinator) {
+        this.visitCoordinator = visitCoordinator;
+
         getElement().setAttribute("dir", "rtl");
 
         addClassName("public-layout");
@@ -32,7 +40,18 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
         expand(content);
 
         renderHeader();
-        //registerGlobalNotifications();
+    }
+
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
+        visitCoordinator.ensureVisitAndNotifications(event.getUI());
+    }
+
+    @Override
+    protected void onDetach(DetachEvent event) {
+        visitCoordinator.disconnect();
+        super.onDetach(event);
     }
 
     @Override
@@ -40,7 +59,6 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
         content.getElement().removeAllChildren();
 
         renderHeader();
-        //registerGlobalNotifications();
 
         if (routerContent != null) {
             content.getElement().appendChild(routerContent.getElement());
@@ -57,10 +75,6 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
 
     private void renderHeader() {
         headerContainer.removeAll();
-        headerContainer.add(new PublicHeader(shouldShowAuthAction()));
+        headerContainer.add(new PublicHeader(shouldShowAuthAction(), visitCoordinator));
     }
-
-//    private void registerGlobalNotifications() {
-//        GlobalNotificationSupport.registerForCurrentUi();
-//    }
 }
