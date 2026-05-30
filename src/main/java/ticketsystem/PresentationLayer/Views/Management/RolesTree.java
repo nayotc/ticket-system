@@ -18,7 +18,7 @@ import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.PresentationLayer.Components.MetricCard;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
-
+import ticketsystem.PresentationLayer.Session.UiSession;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -65,7 +65,6 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         );
 
         showEmptyTree("טוען את עץ התפקידים...");
-        updateMetrics();
     }
 
     @Override
@@ -116,14 +115,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
 
     private Component createMetrics() {
         metricsGrid.addClassName("role-tree-metrics");
-
-        metricsGrid.add(
-                new MetricCard("סה״כ בעלי תפקידים", "6", "כולל מייסד, בעלים ומנהלים"),
-                new MetricCard("בעלים", "3", "כולל מייסד החברה"),
-                new MetricCard("מנהלים", "3", "לפי הרשאות פרטניות"),
-                new MetricCard("הרשאות פעילות", "6", "הרשאות ניהול זמינות")
-        );
-
+        updateMetrics();
         return metricsGrid;
     }
 
@@ -146,11 +138,10 @@ public class RolesTree extends Div implements BeforeEnterObserver {
             Notification.show("עץ התפקידים רוענן", 2500, Notification.Position.TOP_CENTER);
         });
 
-        Button exportButton = new Button("ייצוא PDF");
+        Button exportButton = new Button("ייצוא PDF בקרוב");
         exportButton.addClassName("role-tree-action-button");
-        exportButton.addClickListener(event ->
-                Notification.show("ייצוא PDF יחובר בהמשך דרך ה־Presenter", 3000, Notification.Position.TOP_CENTER)
-        );
+        exportButton.setEnabled(false);
+        exportButton.getElement().setAttribute("title", "ייצוא PDF לא נתמך כרגע");
 
         actions.add(refreshButton, exportButton);
 
@@ -198,10 +189,15 @@ public class RolesTree extends Div implements BeforeEnterObserver {
     }
     private void loadRoleTree() {
         try {
-            RoleTreeDTO root = presenter.loadRoleTree(companyId);
+            String memberToken = UiSession.getMemberToken();
+
+            showCompany(presenter.loadCompany(memberToken, companyId));
+
+            RoleTreeDTO root = presenter.loadRoleTree(memberToken, companyId);
             showRoleTree(toRoleNode(root));
 
         } catch (PresentationException e) {
+            rootNode = null;
             showError(e.getMessage());
             showEmptyTree(e.getMessage());
             updateMetrics();
@@ -232,7 +228,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         branch.addClassName("role-tree-branch");
         branch.addClassName("role-tree-depth-" + depth);
 
-        branch.add(createNodeCard(node, depth));
+        branch.add(createNodeCard(node));
 
         if (!node.children().isEmpty()) {
             Div children = new Div();
@@ -248,7 +244,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         return branch;
     }
 
-    private Component createNodeCard(RoleNode node, int depth) {
+    private Component createNodeCard(RoleNode node){
         Div card = new Div();
         card.addClassName("role-tree-node-card");
         card.addClassName("role-tree-node-" + node.kind().name().toLowerCase(Locale.ROOT));
@@ -363,7 +359,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
             case "מייסד" -> node.kind() == RoleKind.FOUNDER;
             case "בעלים" -> node.kind() == RoleKind.OWNER;
             case "מנהל" -> node.kind() == RoleKind.MANAGER;
-            default -> true;
+            default -> false;
         };
     }
 
@@ -399,7 +395,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         );
     }
 
-    public void showCompany(CompanyDTO company) {
+    private void showCompany(CompanyDTO company) {
         if (company == null) {
             return;
         }
@@ -436,15 +432,15 @@ public class RolesTree extends Div implements BeforeEnterObserver {
     }
 
     private RoleKind toRoleKind(String roleType) {
-        if (roleType == null) {
-            return RoleKind.MANAGER;
+        if (roleType == null || roleType.isBlank()) {
+            throw new PresentationException("התקבל סוג תפקיד חסר מהמערכת.");
         }
 
         return switch (roleType) {
             case "FOUNDER" -> RoleKind.FOUNDER;
             case "OWNER" -> RoleKind.OWNER;
             case "MANAGER" -> RoleKind.MANAGER;
-            default -> RoleKind.MANAGER;
+            default -> throw new PresentationException("התקבל סוג תפקיד לא נתמך מהמערכת: " + roleType);
         };
     }
 
@@ -488,7 +484,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
             default -> permissionKey;
         };
     }
-    public void showRoleTree(RoleNode rootNode) {
+    private void showRoleTree(RoleNode rootNode) {
         if (rootNode == null) {
             return;
         }
@@ -498,7 +494,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         updateMetrics();
     }
 
-    public void showError(String message) {
+    private void showError(String message) {
         Notification.show(message, 4000, Notification.Position.TOP_CENTER);
     }
 

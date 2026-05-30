@@ -3,27 +3,28 @@ package ticketsystem.PresentationLayer.Presenters;
 import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.DTO.RoleTreeDTO;
-import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.ApplicationLayer.CompanyService;
+import ticketsystem.DTO.CompanyDTO;
 
 @Component
 public class RolesTreePresenter {
 
     private final MembershipService membershipService;
+    private final CompanyService companyService;
 
-    public RolesTreePresenter(MembershipService membershipService) {
+    public RolesTreePresenter(MembershipService membershipService, CompanyService companyService) {
         this.membershipService = membershipService;
+        this.companyService = companyService;
     }
 
-    public RoleTreeDTO loadRoleTree(Long companyId) {
+    public RoleTreeDTO loadRoleTree(String memberToken, Long companyId) {
         try {
-            if (companyId == null || companyId <= 0) {
-                throw new PresentationException("מזהה החברה לא תקין.");
+            if (memberToken == null || memberToken.isBlank()) {
+                throw new PresentationException("יש להתחבר למערכת כדי לצפות בעץ התפקידים.");
             }
 
-            String memberToken = UiSession.getMemberToken();
-
-            if (memberToken == null) {
-                throw new PresentationException("יש להתחבר למערכת כדי לצפות בעץ התפקידים.");
+            if (companyId == null || companyId <= 0) {
+                throw new PresentationException("מזהה החברה לא תקין.");
             }
 
             RoleTreeDTO root = membershipService.viewRolesAndPermissionsTreeDto(memberToken, companyId);
@@ -40,11 +41,33 @@ public class RolesTreePresenter {
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new PresentationException(translateError(e.getMessage()));
 
-        }  catch (Exception e) {
-    throw new PresentationException(translateError(extractErrorMessage(e)));
-}
-        
-}        
+        } catch (Exception e) {
+            throw new PresentationException(translateError(extractErrorMessage(e)));
+        }
+    }
+    
+    public CompanyDTO loadCompany(String memberToken, Long companyId) {
+        try {
+            if (memberToken == null || memberToken.isBlank()) {
+                throw new PresentationException("יש להתחבר למערכת כדי לצפות בפרטי החברה.");
+            }
+
+            if (companyId == null || companyId <= 0) {
+                throw new PresentationException("מזהה החברה לא תקין.");
+            }
+
+            return companyService.getCompanyDetails(memberToken, companyId);
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new PresentationException(translateError(e.getMessage()));
+
+        } catch (Exception e) {
+            throw new PresentationException(translateError(extractErrorMessage(e)));
+        }
+    }
     private String extractErrorMessage(Exception e) {
         Throwable current = e;
 
