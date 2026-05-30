@@ -107,6 +107,6 @@ public class NotificationCenter {
             return "התקבלה התראה חדשה";
         }
 
-        return message;
+        return MessageTranslator.translate(message);
     }
 }
