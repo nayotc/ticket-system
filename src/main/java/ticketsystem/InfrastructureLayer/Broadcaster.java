@@ -8,9 +8,11 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
+import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.IBrodcaster;
 import ticketsystem.DomainLayer.notifications.Notification;
 
+@Component
 public class Broadcaster implements IBrodcaster {
 
     private static final Executor executor = Executors.newCachedThreadPool();
