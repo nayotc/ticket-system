@@ -17,12 +17,21 @@ import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.router.QueryParameters;
+import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
+
+import java.util.Map;
+
 @PageTitle("TixNow")
 @Route(value = UiRoutes.HOME, layout = MainLayout.class)
 public class Home extends PageContainer {
 
-    public Home() {
+    private final EventCatalogPresenter eventCatalogPresenter;
+
+    public Home(EventCatalogPresenter eventCatalogPresenter) {
         super();
+        this.eventCatalogPresenter = eventCatalogPresenter;
 
         add(
                 createHero(),
@@ -75,6 +84,7 @@ public class Home extends PageContainer {
 
     private Div createCenteredSearchPanel() {
         SearchPanel searchPanel = new SearchPanel();
+        searchPanel.getSearchButton().addClickListener(event -> navigateToSearchResults(searchPanel));
 
         searchPanel.getStyle()
                 .set("margin-left", "auto")
@@ -93,6 +103,32 @@ public class Home extends PageContainer {
                 .set("box-sizing", "border-box");
 
         return wrapper;
+    }
+
+    private void navigateToSearchResults(SearchPanel searchPanel) {
+        Map<String, String> params = eventCatalogPresenter.buildSearchQueryParameters(
+                searchPanel.getFreeText().getValue(),
+                searchPanel.getFromDate().getValue(),
+                searchPanel.getToDate().getValue(),
+                searchPanel.getLocation().getValue(),
+                searchPanel.getCategory().getValue(),
+                searchPanel.getArtist().getValue(),
+                searchPanel.getMinPriceValue(),
+                searchPanel.getMaxPriceValue(),
+                searchPanel.getMaxPriceLimit(),
+                searchPanel.getEventRateValue(),
+                searchPanel.getCompanyRateValue()
+        );
+
+        if (params.isEmpty()) {
+            UI.getCurrent().navigate(UiRoutes.SEARCH_RESULTS);
+            return;
+        }
+
+        UI.getCurrent().navigate(
+                UiRoutes.SEARCH_RESULTS,
+                QueryParameters.simple(params)
+        );
     }
 
     private Div createPopularEventsSection() {
