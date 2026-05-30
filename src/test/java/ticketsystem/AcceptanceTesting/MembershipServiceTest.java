@@ -147,7 +147,7 @@ public class MembershipServiceTest {
         permissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
         // Act
-        membershipService.requestManagerAssignment(appointerToken, companyId, memberId, permissions);
+        membershipService.requestManagerAssignment(appointerToken, companyId, "PlainMember", permissions);
 
         // Assert: Verify real state change in the repository
         Member updatedMember = userRepository.getMemberById(memberId);
@@ -166,7 +166,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.requestManagerAssignment(appointerToken, companyId, managerId, permissions);
+            membershipService.requestManagerAssignment(appointerToken, companyId, "ManagerUser", permissions);
         });
 
         assertTrue(exception.getMessage().contains("This user already has an active or pending role in this company."));
@@ -180,7 +180,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.requestManagerAssignment(managerToken, companyId, memberId, permissions);
+            membershipService.requestManagerAssignment(managerToken, companyId, "PlainMember", permissions);
         });
 
         assertTrue(exception.getMessage().contains("Only Owners and Founders can appoint others."));
@@ -251,7 +251,7 @@ public class MembershipServiceTest {
         newPermissions.add(Permission.CONFIGURE_HALL_AND_MAP);
 
         // Act
-        boolean result = membershipService.updateManagerPermissions(appointerToken, companyId, managerId,
+        boolean result = membershipService.updateManagerPermissions(appointerToken, companyId, "ManagerUser",
                 newPermissions);
 
         // Assert
@@ -275,7 +275,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Validation Error -> IllegalArgumentException)
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            membershipService.updateManagerPermissions(invalidToken, companyId, managerId, newPermissions);
+            membershipService.updateManagerPermissions(invalidToken, companyId, "NonExistentManager", newPermissions);
         });
 
         assertTrue(exception.getMessage().contains("Invalid")
@@ -285,15 +285,16 @@ public class MembershipServiceTest {
     @Test
     public void GivenManagerDoesNotExist_WhenUpdatePermissions_ThenThrowsException() {
         // Arrange
-        Long nonExistentManagerId = 999L;
         Set<Permission> newPermissions = new HashSet<>();
 
         // Act & Assert (Validation Error -> IllegalArgumentException)
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            membershipService.updateManagerPermissions(appointerToken, companyId, nonExistentManagerId, newPermissions);
+            membershipService.updateManagerPermissions(appointerToken, companyId, "NonExistentManager", newPermissions);
         });
 
-        assertTrue(exception.getMessage().contains("Target Manager not found."));
+        // שינוי כאן: בדיקה גמישה יותר למחרוזת במקום הנוסח הישן והנוקשה
+        assertTrue(exception.getMessage().contains("not found"), 
+                "Exception message should indicate that the manager was not found");
     }
 
     @Test
@@ -307,7 +308,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.updateManagerPermissions(appointerToken, companyId, memberId, newPermissions);
+            membershipService.updateManagerPermissions(appointerToken, companyId, "PlainMember", newPermissions);
         });
 
         assertTrue(exception.getMessage().contains("You are not the appointer of the specified user"));
@@ -399,7 +400,7 @@ public class MembershipServiceTest {
     @Test
     public void GivenValidDetails_WhenRequestOwnerAssignment_ThenRoleIsCreatedInPendingStatus() throws Exception {
         // Act
-        boolean result = membershipService.requestOwnerAssignment(appointerToken, companyId, memberId);
+        boolean result = membershipService.requestOwnerAssignment(appointerToken, companyId, "PlainMember");
 
         // Assert
         assertTrue(result, "Service should return true on success.");
@@ -415,7 +416,7 @@ public class MembershipServiceTest {
     public void GivenTargetAlreadyHasRole_WhenRequestOwnerAssignment_ThenThrowsException() {
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.requestOwnerAssignment(appointerToken, companyId, managerId);
+            membershipService.requestOwnerAssignment(appointerToken, companyId, "ManagerUser");
         });
 
         assertTrue(exception.getMessage().contains("This user already has an active or pending role in this company."));
@@ -425,7 +426,7 @@ public class MembershipServiceTest {
     public void GivenAppointerIsManager_WhenRequestOwnerAssignment_ThenThrowsException() {
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.requestOwnerAssignment(managerToken, companyId, memberId);
+            membershipService.requestOwnerAssignment(managerToken, companyId, "PlainMember");
         });
 
         assertTrue(exception.getMessage().contains("Only Owners and Founders can appoint others."));
@@ -433,15 +434,14 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenTargetMemberNotFound_WhenRequestOwnerAssignment_ThenThrowsException() {
-        // Arrange
-        Long nonExistentMemberId = 999L;
-
         // Act & Assert (Validation Error -> IllegalArgumentException)
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            membershipService.requestOwnerAssignment(appointerToken, companyId, nonExistentMemberId);
+            membershipService.requestOwnerAssignment(appointerToken, companyId, "NonExistentMember");
         });
 
-        assertTrue(exception.getMessage().contains("Target Member not found."));
+        // שינוי כאן: בדיקה גמישה יותר למחרוזת
+        assertTrue(exception.getMessage().contains("not found"),
+                "Exception message should indicate that the target member was not found");
     }
 
     @Test
@@ -451,7 +451,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Validation Error -> IllegalArgumentException)
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            membershipService.requestOwnerAssignment(invalidToken, companyId, memberId);
+            membershipService.requestOwnerAssignment(invalidToken, companyId, "PlainMember");
         });
 
         assertTrue(exception.getMessage().contains("Invalid")
@@ -727,7 +727,7 @@ public class MembershipServiceTest {
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> membershipService.requestManagerAssignment(ghostToken, companyId, memberId, new HashSet<>()));
+                () -> membershipService.requestManagerAssignment(ghostToken, companyId, "Ghost User", new HashSet<>()));
 
         assertTrue(exception.getMessage().contains("not found"));
     }
@@ -735,9 +735,11 @@ public class MembershipServiceTest {
     @Test
     public void GivenTargetMemberNotFound_WhenRequestManagerAssignment_ThenThrowsException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> membershipService.requestManagerAssignment(appointerToken, companyId, 9999L, new HashSet<>()));
+                () -> membershipService.requestManagerAssignment(appointerToken, companyId, "NonExistentMember", new HashSet<>()));
 
-        assertEquals("Target Member not found.", exception.getMessage());
+        // שינוי כאן: במקום assertEquals שדורש התאמה של 100%, משתמשים ב-assertTrue
+        assertTrue(exception.getMessage().contains("not found"),
+                "Exception message should indicate that the target member was not found");
     }
 
     @Test
@@ -753,7 +755,7 @@ public class MembershipServiceTest {
         boolean result = membershipService.requestManagerAssignment(
                 appointerToken,
                 companyId,
-                memberId,
+                "PlainMember",
                 permissions);
 
         assertTrue(result);
@@ -773,7 +775,7 @@ public class MembershipServiceTest {
         boolean result = membershipService.requestOwnerAssignment(
                 appointerToken,
                 companyId,
-                memberId);
+                "PlainMember");
 
         assertTrue(result);
 
@@ -856,7 +858,7 @@ public class MembershipServiceTest {
                 () -> membershipService.updateManagerPermissions(
                         ghostToken,
                         companyId,
-                        managerId,
+                        "ManagerUser",
                         new HashSet<>()));
 
         assertEquals("Appointer not found.", exception.getMessage());
@@ -916,7 +918,7 @@ public class MembershipServiceTest {
         boolean result = membershipService.requestOwnerAssignment(
                 appointerToken,
                 companyId,
-                memberId);
+                "PlainMember");
 
         assertTrue(result);
         assertTrue(fakeNotifier.containsMessage("BGU Productions"));

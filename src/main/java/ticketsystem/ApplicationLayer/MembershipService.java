@@ -100,10 +100,9 @@ public class MembershipService {
     /**
      * Use Case 4.7: Request to assign a manager to a company
      */
-    public boolean requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId,
-            Set<Permission> permissions) throws Exception {
+    public boolean requestManagerAssignment(String sessionToken, Long companyId, String targetName, Set<Permission> permissions) throws Exception {
 
-        String context = "companyId=" + companyId + ", targetMemberId=" + targetMemberId +
+        String context = "companyId=" + companyId + ", targetName=" + targetName +
                 ", permissionsCount=" + (permissions != null ? permissions.size() : 0);
 
         logger.logEvent("started - requestManagerAssignment. " + context, LogLevel.INFO);
@@ -121,11 +120,18 @@ public class MembershipService {
                 throw new IllegalArgumentException("Appointer not found.");
             }
             userAccessService.validateCanPerformNonViewAction(appointerId);
-            // Retrieve target member information
-            Member targetMember = userRepository.getMemberById(targetMemberId);
+            
+            // Find the target member by name securely using the repository
+            Member targetMember = userRepository.getAllMembers().stream()
+                    .filter(m -> m.getUserName() != null && m.getUserName().equalsIgnoreCase(targetName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Target member with name '" + targetName + "' not found."));
+            
             if (targetMember == null) {
                 throw new IllegalArgumentException("Target Member not found.");
             }
+
+            Long targetMemberId = targetMember.getId();
 
             logger.logEvent(
                     "Loaded data - requestManagerAssignment. appointerId=" + appointerId,
@@ -170,9 +176,9 @@ public class MembershipService {
     /**
      * Use Case 4.8: Request to assign an owner to a company
      */
-    public boolean requestOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception {
+    public boolean requestOwnerAssignment(String sessionToken, Long companyId, String targetName) throws Exception {
 
-        String context = "companyId=" + companyId + ", targetMemberId=" + targetMemberId;
+        String context = "companyId=" + companyId + ", targetName=" + targetName;
         logger.logEvent("started - requestOwnerAssignment. " + context, LogLevel.INFO);
 
         try {
@@ -189,11 +195,17 @@ public class MembershipService {
             }
             userAccessService.validateCanPerformNonViewAction(appointerId);
 
-            // Retrieve target member information
-            Member targetMember = userRepository.getMemberById(targetMemberId);
+            // Find the target member by name securely using the repository
+            Member targetMember = userRepository.getAllMembers().stream()
+                    .filter(m -> m.getUserName() != null && m.getUserName().equalsIgnoreCase(targetName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Target member with name '" + targetName + "' not found."));
+            
             if (targetMember == null) {
                 throw new IllegalArgumentException("Target Member not found.");
             }
+
+            Long targetMemberId = targetMember.getId();
 
             logger.logEvent(
                     "Loaded data - requestOwnerAssignment. appointerId=" + appointerId,
@@ -380,10 +392,10 @@ public class MembershipService {
     /**
      * Use Case 4.11: Update manager permissions
      */
-    public boolean updateManagerPermissions(String sessionToken, Long companyId, Long managerId,
+    public boolean updateManagerPermissions(String sessionToken, Long companyId, String managerName,
             Set<Permission> permissions) throws Exception {
 
-        String context = "companyId=" + companyId + ", managerId=" + managerId +
+        String context = "companyId=" + companyId + ", managerName=" + managerName +
                 ", permissionsCount=" + (permissions != null ? permissions.size() : 0);
         logger.logEvent("started - updateManagerPermissions. " + context, LogLevel.INFO);
 
@@ -399,10 +411,15 @@ public class MembershipService {
             if (appointer == null) {
                 throw new IllegalArgumentException("Appointer not found.");
             }
-            userAccessService.validateCanPerformNonViewAction(appointerId);
-            // Retrieve target member information
-            Member targetManager = userRepository.getMemberById(managerId);
-            if (targetManager == null) {
+             userAccessService.validateCanPerformNonViewAction(appointerId);
+            
+             // Find the manager by name securely using the repository
+            Member managerMember = userRepository.getAllMembers().stream()
+                    .filter(m -> m.getUserName() != null && m.getUserName().equalsIgnoreCase(managerName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Manager with name '" + managerName + "' not found."));
+            
+            if (managerMember == null) {
                 throw new IllegalArgumentException("Target Manager not found.");
             }
 
@@ -410,13 +427,14 @@ public class MembershipService {
                     "Loaded data - updateManagerPermissions. appointerId=" + appointerId,
                     LogLevel.DEBUG);
 
-            // Call the domain service to handle the business logic of updating manager's
-            // permissions
-            membershipDomain.setPermissionsToManager(appointer, targetManager, companyId, permissions);
+            // Call the domain service to handle the business logic of updating manager's permissions
+            membershipDomain.setPermissionsToManager(appointer, managerMember, companyId, permissions);
 
             // Update the repository with the changes to the target member
-            userRepository.updateMember(targetManager);
+            userRepository.updateMember(managerMember);
 
+            Long managerId = managerMember.getId();
+            
             if (notificationsService != null && managerId != null) {
                 notificationsService.notifyMember(
                         managerId,
