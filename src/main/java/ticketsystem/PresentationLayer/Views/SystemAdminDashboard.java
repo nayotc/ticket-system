@@ -24,6 +24,7 @@ import ticketsystem.PresentationLayer.Components.StatusBadge;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.AdminLayout;
+import ticketsystem.PresentationLayer.Presenters.SystemAdminPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.DTO.PurchaseDTO;
 
@@ -34,6 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("TixNow | Admin Dashboard")
 @Route(value = UiRoutes.ADMIN_DASHBOARD, layout = AdminLayout.class)
@@ -59,6 +62,7 @@ public class SystemAdminDashboard extends Div {
         this(null);
     }
 
+    @Autowired
     public SystemAdminDashboard(SystemAdminPresenter presenter) {
         this.presenter = presenter;
 
@@ -518,10 +522,10 @@ public class SystemAdminDashboard extends Div {
     }
 
     private void loadInitialData() {
-        if (presenter == null) {
-            loadDemoData();
-            return;
-        }
+        // if (presenter == null) {
+        //     loadDemoData();
+        //     return;
+        // }
 
         try {
             String token = UiSession.getMemberToken();
@@ -791,21 +795,21 @@ public class SystemAdminDashboard extends Div {
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 
-    public interface SystemAdminPresenter {
-        List<AdminUserRow> loadActiveUsers(String sessionToken) throws Exception;
+    // public interface SystemAdminPresenter {
+    //     List<AdminUserRow> loadActiveUsers(String sessionToken) throws Exception;
 
-        List<CompanyDTO> loadActiveCompanies(String sessionToken) throws Exception;
+    //     List<CompanyDTO> loadActiveCompanies(String sessionToken) throws Exception;
 
-        Map<Long, Map<String, List<OrderDTO>>> loadPurchaseHistoryByCompanyAndEvent(String sessionToken) throws Exception;
+    //     Map<Long, Map<String, List<OrderDTO>>> loadPurchaseHistoryByCompanyAndEvent(String sessionToken) throws Exception;
 
-        Map<Long, List<OrderDTO>> loadPurchaseHistoryByBuyer(String sessionToken) throws Exception;
+    //     Map<Long, List<OrderDTO>> loadPurchaseHistoryByBuyer(String sessionToken) throws Exception;
 
-        void deleteUser(String sessionToken, long memberId) throws Exception;
+    //     void deleteUser(String sessionToken, long memberId) throws Exception;
 
-        void removeUserFromAllCompanies(String sessionToken, long memberId) throws Exception;
+    //     void removeUserFromAllCompanies(String sessionToken, long memberId) throws Exception;
 
-        void closeCompany(String sessionToken, long companyId) throws Exception;
-    }
+    //     void closeCompany(String sessionToken, long companyId) throws Exception;
+    // }
 
     public record AdminUserRow(
             Long id,
