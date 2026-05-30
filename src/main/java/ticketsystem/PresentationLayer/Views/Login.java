@@ -29,6 +29,7 @@ import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Presenters.AuthPresenter;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Components.Notifications;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
 @PageTitle("TixNow | התחברות")
 @Route(value = UiRoutes.LOGIN, layout = AuthLayout.class)
@@ -36,11 +37,11 @@ public class Login extends PageContainer {
 
     private final EmailField email = createEmailField();
     private final PasswordField password = createPasswordField();
-    private final AuthPresenter authPresenter;
+    private final UiVisitCoordinator uiVisitCoordinator;
 
     @Autowired
-    public Login(AuthPresenter authPresenter) {
-        this.authPresenter = authPresenter;
+    public Login(UiVisitCoordinator uiVisitCoordinator) {
+        this.uiVisitCoordinator = uiVisitCoordinator;
 
         addClassName("auth-page");
         setSpacing(false);
@@ -160,19 +161,12 @@ public class Login extends PageContainer {
         }
 
         try {
-            if (UiSession.getGuestToken() == null) {
-                authPresenter.visitSystem();
-            }
 
-            authPresenter.login(email.getValue(), password.getValue());
-
-            /*
-             * Previous temporary development flow:
-             * String temporaryDevToken = "dev-member-token";
-             * UiSession.login(temporaryDevToken);
-             *
-             * Replaced with real authentication through AuthPresenter.
-             */
+            uiVisitCoordinator.login(
+                    UI.getCurrent(),
+                    email.getValue(),
+                    password.getValue()
+            );
 
             Notifications.success("התחברת בהצלחה");
 

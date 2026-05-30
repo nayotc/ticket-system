@@ -1,6 +1,7 @@
 package ticketsystem.PresentationLayer.Presenters;
 
 import org.springframework.stereotype.Component;
+import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
@@ -14,9 +15,11 @@ import ticketsystem.PresentationLayer.Session.UiSession;
 @Component
 public class AuthPresenter {
     private final UserService userService;
+    private final ITokenService tokenService;
 
-    public AuthPresenter(UserService userService) {
+    public AuthPresenter(UserService userService, ITokenService tokenService) {
         this.userService = userService;
+        this.tokenService = tokenService;
     }
 
     public String visitSystem() {
@@ -64,9 +67,8 @@ public class AuthPresenter {
 
 
 
-    public String login(String username, String password) {
+    public String login(String guestToken, String username, String password) {
         try {
-            String guestToken = UiSession.getGuestToken();
 
             if (guestToken == null) {
                 throw new PresentationException("Guest session is missing. Please refresh and try again.");
@@ -78,7 +80,7 @@ public class AuthPresenter {
                 throw new IllegalStateException("Login failed. Please try again.");
             }
 
-            UiSession.login(memberToken);
+            UiSession.login(memberToken, tokenService.extractUserId(memberToken).toString());
             return memberToken;
 
         } catch (PresentationException e) {
@@ -92,9 +94,8 @@ public class AuthPresenter {
         }
     }
 
-    public String logOut() {
+    public String logOut(String memberToken) {
         try {
-            String memberToken = UiSession.getMemberToken();
 
             if (memberToken == null) {
                 throw new PresentationException("You are not logged in.");

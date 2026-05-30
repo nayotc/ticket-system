@@ -20,6 +20,7 @@ public final class UiSession {
 
     public static final String GUEST_TOKEN = "guestToken";
     public static final String MEMBER_TOKEN = "memberToken";
+    public static final String NOTIFICATION_TARGET_ID = "notificationTargetId";
 
     /**
      * Starts a guest UI session.
@@ -34,8 +35,15 @@ public final class UiSession {
             return;
         }
 
-        VaadinSession.getCurrent().setAttribute(GUEST_TOKEN, guestToken);
-        VaadinSession.getCurrent().setAttribute(MEMBER_TOKEN, null);
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return;
+        }
+
+        session.setAttribute(GUEST_TOKEN, guestToken);
+        session.setAttribute(MEMBER_TOKEN, null);
+        session.setAttribute(NOTIFICATION_TARGET_ID, guestToken);
     }
 
     /**
@@ -46,13 +54,25 @@ public final class UiSession {
      *
      * @param memberToken active member session token returned from UserService
      */
-    public static void login(String memberToken) {
+    public static void login(String memberToken, String notificationTargetId) {
         if (memberToken == null || memberToken.isBlank()) {
             return;
         }
 
-        VaadinSession.getCurrent().setAttribute(MEMBER_TOKEN, memberToken);
-        VaadinSession.getCurrent().setAttribute(GUEST_TOKEN, null);
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return;
+        }
+
+        session.setAttribute(MEMBER_TOKEN, memberToken);
+        session.setAttribute(GUEST_TOKEN, null);
+
+        if (notificationTargetId == null || notificationTargetId.isBlank()) {
+            session.setAttribute(NOTIFICATION_TARGET_ID, null);
+        } else {
+            session.setAttribute(NOTIFICATION_TARGET_ID, notificationTargetId);
+        }
     }
 
     /**
@@ -68,8 +88,15 @@ public final class UiSession {
             return;
         }
 
-        VaadinSession.getCurrent().setAttribute(MEMBER_TOKEN, null);
-        VaadinSession.getCurrent().setAttribute(GUEST_TOKEN, guestToken);
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return;
+        }
+
+        session.setAttribute(MEMBER_TOKEN, null);
+        session.setAttribute(GUEST_TOKEN, guestToken);
+        session.setAttribute(NOTIFICATION_TARGET_ID, guestToken);
     }
 
     /**
@@ -83,6 +110,7 @@ public final class UiSession {
 
         if (session != null) {
             session.setAttribute(MEMBER_TOKEN, null);
+            session.setAttribute(NOTIFICATION_TARGET_ID, null);
         }
     }
 
@@ -97,8 +125,10 @@ public final class UiSession {
         if (session != null) {
             session.setAttribute(MEMBER_TOKEN, null);
             session.setAttribute(GUEST_TOKEN, null);
+            session.setAttribute(NOTIFICATION_TARGET_ID, null);
         }
     }
+
 
     /**
      * @return true if the current UI session has a member token
@@ -154,5 +184,28 @@ public final class UiSession {
 
         Object token = session.getAttribute(key);
         return token instanceof String value && !value.isBlank() ? value : null;
+    }
+
+    public static void setNotificationTargetId(String targetId) {
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return;
+        }
+
+        if (targetId == null || targetId.isBlank()) {
+            session.setAttribute(NOTIFICATION_TARGET_ID, null);
+            return;
+        }
+
+        session.setAttribute(NOTIFICATION_TARGET_ID, targetId);
+    }
+
+    public static String getNotificationTargetId() {
+        return getToken(NOTIFICATION_TARGET_ID);
+    }
+
+    public static boolean hasGuestSession() {
+        return getGuestToken() != null;
     }
 }

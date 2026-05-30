@@ -14,17 +14,23 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
 public class PublicHeader extends Header {
 
     private final HeaderPresenter presenter;
+    private final UiVisitCoordinator visitCoordinator;
 
-    public PublicHeader(boolean showAuthAction) {
-        this(showAuthAction, new EmptyHeaderPresenter());
+    public PublicHeader(boolean showAuthAction,
+                        UiVisitCoordinator visitCoordinator) {
+        this(showAuthAction, new EmptyHeaderPresenter(), visitCoordinator);
     }
 
-    public PublicHeader(boolean showAuthAction, HeaderPresenter presenter) {
+    public PublicHeader(boolean showAuthAction,
+                        HeaderPresenter presenter,
+                        UiVisitCoordinator visitCoordinator) {
         this.presenter = presenter == null ? new EmptyHeaderPresenter() : presenter;
+        this.visitCoordinator = visitCoordinator;
 
         addClassName("top-nav");
 
@@ -162,8 +168,9 @@ public class PublicHeader extends Header {
 
         button.addClickListener(event -> {
             if (UiSession.isLoggedIn()) {
-                UiSession.logout();
+                visitCoordinator.logoutToGuest(UI.getCurrent());
                 UI.getCurrent().navigate(UiRoutes.HOME);
+                UI.getCurrent().getPage().reload();
             } else {
                 UI.getCurrent().navigate(UiRoutes.LOGIN);
             }

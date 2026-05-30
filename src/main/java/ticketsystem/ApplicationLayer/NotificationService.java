@@ -2,9 +2,11 @@ package ticketsystem.ApplicationLayer;
 
 import java.util.List;
 
+import org.springframework.stereotype.Service;
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
 
+@Service
 public class NotificationService {
 
     private final INotificationsRepository notificationRepository;

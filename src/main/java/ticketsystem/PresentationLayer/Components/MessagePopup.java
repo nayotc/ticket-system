@@ -7,12 +7,14 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 
 public class MessagePopup extends Dialog {
 
     public enum Type {
         SUCCESS,
-        ERROR
+        ERROR,
+        NOTIFICATION
     }
 
     private MessagePopup(
@@ -51,6 +53,26 @@ public class MessagePopup extends Dialog {
 
     public static void showError(String message, Runnable onRetry) {
         error("אופס, משהו השתבש", message, onRetry).open();
+    }
+
+    public static void showNotification(String message) {
+        notification("התראה חדשה", message, null).open();
+    }
+
+    public static void showNotification(String message, Runnable onConfirm) {
+        notification("התראה חדשה", message, onConfirm).open();
+    }
+
+    public static MessagePopup notification(String title, String message, Runnable onConfirm) {
+        return new MessagePopup(
+                Type.NOTIFICATION,
+                title,
+                message,
+                "אישור",
+                onConfirm,
+                null,
+                null
+        );
     }
 
     public static MessagePopup success(String title, String message, Runnable onConfirm) {
@@ -100,9 +122,9 @@ public class MessagePopup extends Dialog {
     ) {
         Div card = new Div();
         card.addClassName("message-popup-card");
-        card.addClassName(type == Type.SUCCESS ? "message-popup-card-success" : "message-popup-card-error");
+        card.addClassName(resolveCardClass(type));
 
-        if (type == Type.SUCCESS) {
+        if (type == Type.SUCCESS || type == Type.NOTIFICATION) {
             Div glow = new Div();
             glow.addClassName("message-popup-glow");
             card.add(glow);
@@ -118,10 +140,33 @@ public class MessagePopup extends Dialog {
         return card;
     }
 
+    private String resolveCardClass(Type type) {
+        if (type == Type.SUCCESS) {
+            return "message-popup-card-success";
+        }
+
+        if (type == Type.ERROR) {
+            return "message-popup-card-error";
+        }
+
+        return "message-popup-card-notification";
+    }
+
     private Span createIcon(Type type) {
-        Span icon = new Span(type == Type.SUCCESS ? "✓" : "!");
+        Span icon = new Span();
+
+        if (type == Type.SUCCESS) {
+            icon.setText("✓");
+            icon.addClassName("message-popup-icon-success");
+        } else if (type == Type.ERROR) {
+            icon.setText("!");
+            icon.addClassName("message-popup-icon-error");
+        } else {
+            icon.add(VaadinIcon.BELL.create());
+            icon.addClassName("message-popup-icon-notification");
+        }
+
         icon.addClassName("message-popup-icon");
-        icon.addClassName(type == Type.SUCCESS ? "message-popup-icon-success" : "message-popup-icon-error");
         return icon;
     }
 
@@ -168,7 +213,12 @@ public class MessagePopup extends Dialog {
 
         if (primary) {
             button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-            button.addClassName(type == Type.SUCCESS ? "message-popup-success-button" : "message-popup-error-button");
+
+            if (type == Type.ERROR) {
+                button.addClassName("message-popup-error-button");
+            } else {
+                button.addClassName("message-popup-success-button");
+            }
         }
 
         button.addClickListener(event -> {
