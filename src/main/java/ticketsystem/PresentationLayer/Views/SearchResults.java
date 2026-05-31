@@ -47,7 +47,6 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
         setPadding(false);
 
         configureSearchPanel();
-        renderPage();
     }
 
     @Override
@@ -276,8 +275,15 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
     private void applyQueryParametersToPanel(Map<String, List<String>> parameters) {
         searchPanel.getFreeText().setValue(currentSearchTerm);
 
-        setComboBoxValueIfPresent(searchPanel.getLocation(), firstParam(parameters, "location", null));
-        setComboBoxValueIfPresent(searchPanel.getCategory(), firstParam(parameters, "category", null));
+        setComboBoxValueIfPresent(
+                searchPanel.getLocation(),
+                mapLocationParamToLabel(firstParam(parameters, "location", null))
+        );
+
+        setComboBoxValueIfPresent(
+                searchPanel.getCategory(),
+                mapCategoryParamToLabel(firstParam(parameters, "category", null))
+        );
 
         searchPanel.getFromDate().setValue(parseDate(firstParam(parameters, "fromDate", null)));
         searchPanel.getToDate().setValue(parseDate(firstParam(parameters, "toDate", null)));
@@ -322,6 +328,41 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
         if (value != null && !value.isBlank()) {
             comboBox.setValue(value);
         }
+    }
+
+    private String mapCategoryParamToLabel(String category) {
+        if (category == null || category.isBlank()) {
+            return null;
+        }
+
+        return switch (category) {
+            case "CONCERT" -> "הופעה";
+            case "SPORTS" -> "ספורט";
+            case "THEATER" -> "תיאטרון";
+            case "EXHIBITION" -> "תערוכה";
+            case "OTHER" -> "אחר";
+            default -> category;
+        };
+    }
+
+    private String mapLocationParamToLabel(String location) {
+        if (location == null || location.isBlank()) {
+            return null;
+        }
+
+        return switch (location) {
+            case "NEW_YORK" -> "ניו יורק";
+            case "LOS_ANGELES" -> "לוס אנג׳לס";
+            case "CHICAGO" -> "שיקגו";
+            case "HOUSTON" -> "יוסטון";
+            case "MIAMI" -> "מיאמי";
+            case "TEL_AVIV" -> "תל אביב";
+            case "JERUSALEM" -> "ירושלים";
+            case "BEER_SHEVA" -> "באר שבע";
+            case "HAIFA" -> "חיפה";
+            case "OTHER" -> "אחר";
+            default -> location;
+        };
     }
 
     private String firstParam(Map<String, List<String>> parameters, String key, String fallback) {
