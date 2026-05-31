@@ -1,7 +1,5 @@
 package ticketsystem.AcceptanceTesting;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,11 +7,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
@@ -21,11 +25,11 @@ import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.SalesReportDTO;
-import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.user.CompanyRole;
@@ -35,10 +39,9 @@ import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-
 
 public class HistoryServiceTest {
 
@@ -51,6 +54,7 @@ public class HistoryServiceTest {
     private ICompanyRepository companyRepository;
     private UserAccessService userAccessService;
     private FakeNotifier fakeNotifier;
+    private ISystemLogger logger;
 
     @BeforeEach
     void setUp() {
@@ -60,22 +64,22 @@ public class HistoryServiceTest {
 
         this.tokenRepository = new TokenRepository();
         this.userRepository = new UserRepository();
-
-        this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
-        this.userService = new UserService(userRepository, tokenService, new LogbackSystemLogger());
+        this.logger = new LogbackSystemLogger();
+        this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
+        this.userService = new UserService(userRepository, tokenService, logger);
         this.companyRepository = new CompanyRepository();
         userAccessService = new UserAccessService(userRepository);
         fakeNotifier = new FakeNotifier();
-
         this.historyService = new HistoryService(
                 historyRepository,
                 tokenService,
                 new MembershipDomainService(userRepository),
-                new LogbackSystemLogger(),
+                logger,
                 userAccessService,
                 fakeNotifier
         );
-        }
+    }
+
     /**
      * Helper method to simulate a full user registration and login flow.
      */
@@ -207,7 +211,6 @@ public class HistoryServiceTest {
                 companyId,
                 userId,
                 20L
-
         );
     }
 
@@ -457,8 +460,8 @@ public class HistoryServiceTest {
     }
 
     /**
-     * 4.6 Generate sales report -
-     * Verify that order-completed flow stores managedByMemberId correctly
+     * 4.6 Generate sales report - Verify that order-completed flow stores
+     * managedByMemberId correctly
      */
     @Test
     void GivenCompletedOrderWithEventCreator_WhenOnOrderCompleted_ThenPurchaseStoresManagedByMemberIdAndReportIncludesIt() {
@@ -634,47 +637,47 @@ public class HistoryServiceTest {
 
     private static class FakeNotifier implements INotifier {
 
-    private final List<String> messages = new ArrayList<>();
+        private final List<String> messages = new ArrayList<>();
 
-    @Override
-    public void notifyMember(Long memberId, String message) {
-        messages.add(message);
-    }
-
-    @Override
-    public void notifyGuest(String guestToken, String message) {
-        messages.add(message);
-    }
-
-    @Override
-    public void notifyMembers(Collection<Long> memberIds, String message) {
-        if (memberIds == null) {
-            return;
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messages.add(message);
         }
 
-        for (Long memberId : memberIds) {
-            if (memberId != null) {
-                notifyMember(memberId, message);
+        @Override
+        public void notifyGuest(String guestToken, String message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void notifyMembers(Collection<Long> memberIds, String message) {
+            if (memberIds == null) {
+                return;
+            }
+
+            for (Long memberId : memberIds) {
+                if (memberId != null) {
+                    notifyMember(memberId, message);
+                }
             }
         }
-    }
 
-    @Override
-    public void notifyGuests(Collection<String> guestTokens, String message) {
-        if (guestTokens == null) {
-            return;
-        }
+        @Override
+        public void notifyGuests(Collection<String> guestTokens, String message) {
+            if (guestTokens == null) {
+                return;
+            }
 
-        for (String guestToken : guestTokens) {
-            if (guestToken != null && !guestToken.isBlank()) {
-                notifyGuest(guestToken, message);
+            for (String guestToken : guestTokens) {
+                if (guestToken != null && !guestToken.isBlank()) {
+                    notifyGuest(guestToken, message);
+                }
             }
         }
-    }
 
-    boolean containsMessage(String text) {
-        return messages.stream()
-                .anyMatch(message -> message.contains(text));
+        boolean containsMessage(String text) {
+            return messages.stream()
+                    .anyMatch(message -> message.contains(text));
+        }
     }
-}
 }

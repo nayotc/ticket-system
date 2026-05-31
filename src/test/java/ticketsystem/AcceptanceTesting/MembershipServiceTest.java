@@ -1,40 +1,49 @@
 package ticketsystem.AcceptanceTesting;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
-import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
-import ticketsystem.DomainLayer.IRepository.IUserRepository;
-import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
-import ticketsystem.DomainLayer.user.*;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Founder;
+import ticketsystem.DomainLayer.user.Manager;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Owner;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.DomainLayer.policy.PurchasePolicy;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import ticketsystem.DomainLayer.discount.DiscountPolicy;
-
-import static org.junit.jupiter.api.Assertions.*;
+import ticketsystem.InfrastructureLayer.UserRepository;
 
 /**
- * Acceptance Tests for MembershipService.
- * This class uses real Domain objects and relies on existing Repository
- * implementations.
+ * Acceptance Tests for MembershipService. This class uses real Domain objects
+ * and relies on existing Repository implementations.
  */
 public class MembershipServiceTest {
 
@@ -72,10 +81,10 @@ public class MembershipServiceTest {
     void setUp() {
         // 1. Initialize Concrete Repositories and Services
         ITokenRepository tokenRepo = new TokenRepository();
-        this.tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo);
+        this.systemLogger = new LogbackSystemLogger();
+        this.tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo, systemLogger);
         this.userRepository = new UserRepository();
         this.companyRepository = new CompanyRepository();
-        this.systemLogger = new LogbackSystemLogger();
         this.domainService = new MembershipDomainService(userRepository);
         fakeNotifier = new FakeNotifier();
         userAccessService = new UserAccessService(userRepository);
@@ -131,7 +140,6 @@ public class MembershipServiceTest {
     // =========================================================================================
     // Use-case: Request Manager Assignment
     // =========================================================================================
-
     @Test
     public void GivenValidDetails_WhenRequestManagerAssignment_ThenRoleIsCreatedInPendingStatus() throws Exception {
         // Arrange
@@ -181,7 +189,6 @@ public class MembershipServiceTest {
     // =========================================================================================
     // Use-case: Approve Assignment
     // =========================================================================================
-
     @Test
     public void GivenPendingRole_WhenApproveAssignment_ThenStatusChangesToActive() throws Exception {
         // Arrange: Manually simulate a pending assignment state
@@ -209,7 +216,6 @@ public class MembershipServiceTest {
     // =========================================================================================
     // Use-case: Reject Assignment
     // =========================================================================================
-
     @Test
     public void GivenPendingRole_WhenRejectAssignment_ThenRoleIsSuccessfullyDeleted() throws Exception {
         // Arrange: Manually simulate a pending assignment state
@@ -237,7 +243,6 @@ public class MembershipServiceTest {
     // =========================================================================================
     // Use-case: Update Manager Permissions
     // =========================================================================================
-
     @Test
     public void GivenValidOwnerAndManager_WhenUpdatePermissions_ThenPermissionsAreSavedSuccessfully() throws Exception {
         // Arrange
@@ -311,7 +316,6 @@ public class MembershipServiceTest {
     // =========================================================================================
     // Use Case 4.12: Remove Manager Assignment
     // =========================================================================================
-
     @Test
     public void GivenValidDetails_WhenRemoveManagerAssignment_ThenReturnsTrue() throws Exception {
         // Act
@@ -330,8 +334,8 @@ public class MembershipServiceTest {
             membershipService.removeManagerAssignment(appointeeToken, companyId, managerId);
         });
 
-        assertTrue(exception.getMessage().contains("You are not the appointer") ||
-                exception.getMessage().contains("You do not have a role"));
+        assertTrue(exception.getMessage().contains("You are not the appointer")
+                || exception.getMessage().contains("You do not have a role"));
     }
 
     @Test
@@ -347,7 +351,6 @@ public class MembershipServiceTest {
     // =========================================================================================
     // Use Case 4.9: Remove Owner Assignment
     // =========================================================================================
-
     @Test
     public void GivenValidDetails_WhenRemoveOwnerAssignment_ThenReturnsTrueAndUpdatesDB() throws Exception {
         // Act
@@ -393,7 +396,6 @@ public class MembershipServiceTest {
     // =========================================================================================
     // Use-case: Request Owner Assignment
     // =========================================================================================
-
     @Test
     public void GivenValidDetails_WhenRequestOwnerAssignment_ThenRoleIsCreatedInPendingStatus() throws Exception {
         // Act
@@ -459,7 +461,6 @@ public class MembershipServiceTest {
     // =========================================================================================
     // Use-case: Give up ownership
     // =========================================================================================
-
     @Test
     public void GivenOwnerWithSubordinate_WhenResignFromOwnership_ThenReturnsTrueAndSubordinateIsTransferred()
             throws Exception {
@@ -504,8 +505,8 @@ public class MembershipServiceTest {
         });
 
         assertNotNull(exception);
-        assertTrue(exception.getMessage().contains("Session authentication failed") ||
-                exception.getMessage().toLowerCase().contains("token"));
+        assertTrue(exception.getMessage().contains("Session authentication failed")
+                || exception.getMessage().toLowerCase().contains("token"));
     }
 
     @Test
@@ -525,7 +526,6 @@ public class MembershipServiceTest {
     // =========================================================================================
     // Use Case 4.15: View roles and permissions tree
     // =========================================================================================
-
     @Test
     public void GivenCompanyAndFounder_WhenViewRolesAndPermissionsTree_ThenReturnsTreeWithRolesAndPermissions()
             throws Exception {

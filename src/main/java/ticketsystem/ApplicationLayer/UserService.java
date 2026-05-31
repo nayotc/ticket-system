@@ -3,8 +3,6 @@ package ticketsystem.ApplicationLayer;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.springframework.stereotype.Service;
 
@@ -16,7 +14,7 @@ import ticketsystem.DomainLayer.user.Member;
 
 @Service
 public class UserService {
-    
+
     private final IUserRepository userRepository;
     private final ITokenService tokenService;
     private final IPasswordService passwordService;
@@ -30,7 +28,6 @@ public class UserService {
         this.logger = logger;
         this.userLoginListeners = new ArrayList<>();
     }
-
 
     // 1. System Visit: Allows a guest to visit the system and receive a session
     // token.
@@ -84,6 +81,7 @@ public class UserService {
             return true;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
+            logger.logError("Sign-up failed: reason=" + e.getMessage() + ", username=" + username, e);
             throw e;
 
         } catch (Exception e) {
@@ -137,14 +135,14 @@ public class UserService {
             String memberToken = tokenService.addActiveSession(member);
             logger.logEvent(
                     "Login member session created: username=" + username
-                            + ", memberId=" + member.getId()
-                            + ", memberToken=" + maskToken(memberToken),
+                    + ", memberId=" + member.getId()
+                    + ", memberToken=" + maskToken(memberToken),
                     LogLevel.INFO);
 
             try {
                 logger.logEvent(
                         "Login post-processing started: notifying listeners, oldGuestToken=" + maskToken(sessionToken)
-                                + ", newMemberToken=" + maskToken(memberToken),
+                        + ", newMemberToken=" + maskToken(memberToken),
                         LogLevel.DEBUG);
 
                 notifyListeners(sessionToken, memberToken);
@@ -325,6 +323,7 @@ public class UserService {
             return true;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
+            logger.logError("Update member password failed", e);
             throw e;
 
         } catch (Exception e) {
@@ -335,34 +334,41 @@ public class UserService {
 
     private Member authenticateMemberForUpdate(String sessionToken, String password, String username) {
         if (password == null || password.isBlank() || username == null || username.isBlank()) {
+            logger.logEvent("Authentication rejected: one or more required fields are blank", LogLevel.WARN);
             return null;
         }
         tokenService.validateToken(sessionToken);
         if (!tokenService.isMemberToken(sessionToken)) {
+            logger.logEvent("Authentication rejected: invalid token type", LogLevel.WARN);
             return null;
         }
         Member member = userRepository.getMemberByUsername(username);
         if (member == null) {
+            logger.logEvent("Authentication rejected: member not found", LogLevel.WARN);
             return null;
         }
         if (!tokenService.extractUserId(sessionToken).equals(member.getId())) {
+            logger.logEvent("Authentication rejected: token does not belong to member", LogLevel.WARN);
             return null;
         }
         String hashedPassword = userRepository.getHashedPasswordByUsername(username);
         if (hashedPassword == null) {
+            logger.logEvent("Authentication rejected: hashed password not found", LogLevel.WARN);
             return null;
         }
         if (!passwordService.verifyPassword(password, hashedPassword)) {
+            logger.logEvent("Authentication rejected: invalid password", LogLevel.WARN);
             return null;
         }
+        logger.logEvent("Authentication successful for member update: username=" + username, LogLevel.INFO);
         return member;
     }
 
     private void notifyListeners(String guestToken, String memberToken) {
         logger.logEvent(
                 "Login listeners notification started: listeners=" + userLoginListeners.size()
-                        + ", guestToken=" + maskToken(guestToken)
-                        + ", memberToken=" + maskToken(memberToken),
+                + ", guestToken=" + maskToken(guestToken)
+                + ", memberToken=" + maskToken(memberToken),
                 LogLevel.DEBUG);
 
         for (UserLoginListener listener : userLoginListeners) {
@@ -377,7 +383,7 @@ public class UserService {
         userLoginListeners.add(listener);
         logger.logEvent(
                 "UserLoginListener added: listener=" + (listener == null ? "null" : listener.getClass().getSimpleName())
-                        + ", totalListeners=" + userLoginListeners.size(),
+                + ", totalListeners=" + userLoginListeners.size(),
                 LogLevel.DEBUG);
     }
 
@@ -385,7 +391,7 @@ public class UserService {
         userLoginListeners.remove(listener);
         logger.logEvent(
                 "UserLoginListener removed: listener=" + (listener == null ? "null" : listener.getClass().getSimpleName())
-                        + ", totalListeners=" + userLoginListeners.size(),
+                + ", totalListeners=" + userLoginListeners.size(),
                 LogLevel.DEBUG);
     }
 
@@ -406,7 +412,7 @@ public class UserService {
             logger.logEvent("Sign-up rejected: invalid phone length", LogLevel.WARN);
             throw new IllegalArgumentException("Phone number must be 9 or 10 digits long.");
         }
-
+        logger.logEvent("Validated and normalized phone number successfully - validateAndNormalizePhone", LogLevel.INFO);
         return normalizedPhone;
     }
 
@@ -422,7 +428,7 @@ public class UserService {
             logger.logEvent("Sign-up rejected: invalid full name length", LogLevel.WARN);
             throw new IllegalArgumentException("Full name must be between 2 and 100 characters.");
         }
-
+        logger.logEvent("Validated and normalized full name successfully - validateAndNormalizeFullName", LogLevel.INFO);
         return normalizedFullName;
     }
 
