@@ -7,6 +7,11 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.router.QueryParameters;
+
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.PresentationLayer.Components.EventCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
@@ -15,12 +20,12 @@ import ticketsystem.PresentationLayer.Components.SearchPanel;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
-
-import com.vaadin.flow.component.UI;
-import com.vaadin.flow.router.QueryParameters;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.HomeEventCard;
+import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
+import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
+
 
 import java.util.Map;
 
@@ -29,10 +34,15 @@ import java.util.Map;
 public class Home extends PageContainer {
 
     private final EventCatalogPresenter eventCatalogPresenter;
+    private final UiVisitCoordinator uiVisitCoordinator;
+    private final EventCardPresenter eventCardPresenter;
 
-    public Home(EventCatalogPresenter eventCatalogPresenter) {
+    public Home(EventCatalogPresenter eventCatalogPresenter, UiVisitCoordinator uiVisitCoordinator, EventCardPresenter eventCardPresenter) {
         super();
         this.eventCatalogPresenter = eventCatalogPresenter;
+        this.eventCardPresenter = eventCardPresenter;
+        this.uiVisitCoordinator = uiVisitCoordinator;
+        this.uiVisitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
 
         add(
                 createHero(),
@@ -154,13 +164,13 @@ public class Home extends PageContainer {
 
         Span viewAll = new Span("ראה הכל");
         viewAll.addClassName("section-link");
+        viewAll.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.SEARCH_RESULTS));
 
         titleRow.add(titleText, viewAll);
 
         Div grid = new Div();
         grid.addClassName("events-grid");
-        eventCatalogPresenter.getFeaturedHomeEvents()
-                .stream()
+        eventCatalogPresenter.getFeaturedHomeEvents(UiSession.getCurrentToken()).stream()
                 .map(this::createEventCard)
                 .forEach(grid::add);
 
@@ -170,8 +180,19 @@ public class Home extends PageContainer {
         return section;
     }
 
+    /**
+     * Creates a visual event card for the Home page and connects its user actions
+     * to the EventCardPresenter.
+     *
+     * The Home view is responsible only for creating the UI component and wiring
+     * the action handler. Navigation, lottery registration, and pre-sale code
+     * validation are delegated to EventCardPresenter.
+     *
+     * @param event data prepared by EventCatalogPresenter for displaying one event card
+     * @return configured EventCard component
+     */
     private EventCard createEventCard(HomeEventCard event) {
-        return new EventCard(
+        EventCard card = new EventCard(
                 event.category(),
                 event.title(),
                 event.date(),
@@ -185,6 +206,54 @@ public class Home extends PageContainer {
                 event.saleStatus(),
                 event.hasLottery()
         );
+
+        card.setActionHandler(createEventCardActionHandler());
+
+        return card;
+    }
+
+    /**
+     * Creates the action handler used by EventCard buttons.
+     *
+     * The handler keeps EventCard reusable and UI-focused: the card only reports
+     * user actions, while EventCardPresenter handles the actual presentation logic
+     * such as building navigation routes, registering to lotteries, and validating
+     * pre-sale lottery codes.
+     *
+     * @return action handler for purchase, lottery registration, and pre-sale flows
+     */
+    private EventCard.EventCardActionHandler createEventCardActionHandler() {
+        return new EventCard.EventCardActionHandler() {
+            @Override
+            public void onPurchaseRequested(Long eventId) {
+                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
+            }
+
+            @Override
+            public void onLotteryRegistrationRequested(Long eventId) {
+                eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
+
+                Notification.show(
+                        "נרשמת להגרלה בהצלחה.",
+                        3000,
+                        Notification.Position.TOP_CENTER
+                );
+            }
+
+            @Override
+            public boolean isPreSaleCodeValid(Long eventId, String lotteryCode) {
+                return eventCardPresenter.isPreSaleCodeValid(
+                        UiSession.getMemberToken(),
+                        eventId,
+                        lotteryCode
+                );
+            }
+
+            @Override
+            public void onPreSaleApproved(Long eventId, String lotteryCode) {
+                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
+            }
+        };
     }
 
     private Div createVipCard() {

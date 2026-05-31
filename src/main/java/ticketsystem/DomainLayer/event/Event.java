@@ -83,6 +83,7 @@ public class Event {
         this.TicketPrice = other.TicketPrice;
         this.map = new EventMap(other.map); // Deep copy of the map
         this.status = other.status;
+        this.saleStatus = other.saleStatus;
         this.rate = other.rate;
         this.totalRating = other.totalRating;
         this.ratingCount = other.ratingCount;

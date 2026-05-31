@@ -125,13 +125,14 @@ public class EventCard extends AppCard {
     }
 
     private Div createFooter(String priceText, SaleStatus saleStatus, boolean hasLottery) {
-        Span fromText = new Span("החל מ-");
-        fromText.addClassName("event-price-label");
+//        Span fromText = new Span("החל מ-");
+//        fromText.addClassName("event-price-label");
 
         Span price = new Span(priceText);
         price.addClassName("event-price");
 
-        Div priceBlock = new Div(fromText, price);
+//        Div priceBlock = new Div(fromText, price);
+        Div priceBlock =new Div(price);
         priceBlock.addClassName("event-price-block");
 
         Div actions = new Div();
