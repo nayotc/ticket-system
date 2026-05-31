@@ -43,7 +43,7 @@ public class QueueConcurrencyTest {
         IEventRepository eventRepo = new EventRepository();
         INotifier fakeNotifications = createFakeNotifications();
         TokenRepository tokenRepo = new TokenRepository();
-        TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
+        TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo, logger);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
         WaitingQueueService queueService = new WaitingQueueService(eventRepo, queueRepo, fakeNotifications,
@@ -125,7 +125,7 @@ public class QueueConcurrencyTest {
         IEventRepository fakeEventRepo = createFakeEventRepo();
         INotifier fakeNotifications = createFakeNotifications();
         ITokenRepository tokenRepo = new TokenRepository();
-        TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
+        TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo, logger);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
         WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications,
@@ -187,7 +187,7 @@ public class QueueConcurrencyTest {
         IEventRepository fakeEventRepo = createFakeEventRepo();
         INotifier fakeNotifications = createFakeNotifications();
         TokenRepository tokenRepo = new TokenRepository();
-        TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo);
+        TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo, logger);
         WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
         WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications,
@@ -293,27 +293,28 @@ public class QueueConcurrencyTest {
             }
         };
     }
-private INotifier createFakeNotifications() {
-    return new INotifier() {
-        @Override
-        public void notifyGuest(String sessionId, String message) {
-            // No-op for concurrency tests
-        }
 
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            // No-op for concurrency tests
-        }
+    private INotifier createFakeNotifications() {
+        return new INotifier() {
+            @Override
+            public void notifyGuest(String sessionId, String message) {
+                // No-op for concurrency tests
+            }
 
-        @Override
-        public void notifyMembers(Collection<Long> memberIds, String message) {
-            // No-op for concurrency tests
-        }
+            @Override
+            public void notifyMember(Long memberId, String message) {
+                // No-op for concurrency tests
+            }
 
-        @Override
-        public void notifyGuests(Collection<String> guestTokens, String message) {
-            // No-op for concurrency tests
-        }
-    };
-}
+            @Override
+            public void notifyMembers(Collection<Long> memberIds, String message) {
+                // No-op for concurrency tests
+            }
+
+            @Override
+            public void notifyGuests(Collection<String> guestTokens, String message) {
+                // No-op for concurrency tests
+            }
+        };
     }
+}

@@ -3,7 +3,6 @@ package ticketsystem.AcceptanceTesting;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +17,7 @@ import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class UserServiceTest {
+
     private UserRepository userRepository;
     private UserService userService;
     private ITokenService tokenService;
@@ -29,7 +29,7 @@ public class UserServiceTest {
         logger = new LogbackSystemLogger();
         userRepository = new UserRepository();
         tokenRepository = new TokenRepository();
-        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         userService = new UserService(userRepository, tokenService, logger);
     }
 
@@ -700,7 +700,7 @@ public class UserServiceTest {
         String guestToken = userService.visitSystem();
         userService.signUp(guestToken, "listenerUser", "password123", "Listener User", "0500000000");
 
-        final boolean[] wasCalled = { false };
+        final boolean[] wasCalled = {false};
 
         userService.addUserLoginListener((oldGuestToken, newMemberToken) -> {
             wasCalled[0] = true;
@@ -719,7 +719,7 @@ public class UserServiceTest {
         String guestToken = userService.visitSystem();
         userService.signUp(guestToken, "removedListenerUser", "password123", "Removed Listener User", "0500000000");
 
-        final boolean[] wasCalled = { false };
+        final boolean[] wasCalled = {false};
 
         ticketsystem.ApplicationLayer.Events.UserLoginListener listener = (oldGuestToken,
                 newMemberToken) -> wasCalled[0] = true;
