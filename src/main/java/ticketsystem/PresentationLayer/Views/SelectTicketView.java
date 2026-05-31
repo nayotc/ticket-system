@@ -14,19 +14,30 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.BookingLayout;
+import ticketsystem.PresentationLayer.Components.Notifications;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
+import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
+import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.EventTicketSelectionDto;
+import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.MapElementDto;
+import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.MapPositionDto;
+import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatDto;
+import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatStatusDto;
+import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatingAreaDto;
+import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.StandingAreaDto;
+import ticketsystem.PresentationLayer.Session.UiSession;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+
 
 @PageTitle("Ticket Selection")
 @Route(value = UiRoutes.TICKET_SELECTION, layout = BookingLayout.class)
@@ -46,8 +57,13 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     private final Button continueButton = new Button("המשך לסיכום הזמנה");
 
     private EventTicketSelectionDto eventData;
+    private final ReservationPresenter reservationPresenter;
+    private Long eventId;
 
-    public SelectTicketView() {
+    @Autowired
+    public SelectTicketView(ReservationPresenter reservationPresenter) {
+        this.reservationPresenter = reservationPresenter;
+
         addClassName("ticket-selection-page");
         setSizeFull();
 
@@ -66,11 +82,62 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        String eventId = event.getRouteParameters().get("eventId").orElse("demo");
+        String routeEventId = event.getRouteParameters().get("eventId").orElse(null);
+        this.eventId = parseEventId(routeEventId);
 
-        // Replace this line later with:
-        // setEventData(ticketSelectionPresenter.getEventMapAndAvailability(eventId));
-        setEventData(createDemoData(eventId));
+        if (this.eventId == null) {
+            Notifications.error("לא ניתן לטעון אירוע לא תקין");
+            setEventData(null);
+            return;
+        }
+
+        loadTicketSelectionEventData();
+    }
+
+    private Long parseEventId(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private void loadTicketSelectionEventData() {
+        String token = UiSession.getCurrentToken();
+
+        try {
+            EventTicketSelectionDto data = reservationPresenter.loadTicketSelectionEvent(token, eventId);
+            setEventData(data);
+
+        } catch (PresentationException e) {
+            Notifications.error(e.getMessage());
+            setEventData(null);
+
+        } catch (Exception e) {
+            Notifications.error("לא ניתן לטעון את מפת האירוע. יש לנסות שוב");
+            setEventData(null);
+        }
+    }
+
+    private void reloadTicketSelectionEventDataKeepingSelection() {
+        String token = UiSession.getCurrentToken();
+
+        try {
+            this.eventData = reservationPresenter.loadTicketSelectionEvent(token, eventId);
+            standingQuantityFields.clear();
+            renderMap();
+            refreshSummary();
+
+        } catch (PresentationException e) {
+            Notifications.error(e.getMessage());
+
+        } catch (Exception e) {
+            Notifications.error("לא ניתן לרענן את מפת האירוע. יש לנסות שוב");
+        }
     }
 
     public void setEventData(EventTicketSelectionDto eventData) {
@@ -150,13 +217,28 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
         continueButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         continueButton.addClassName("ticket-summary-continue-button");
-        continueButton.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.CHECKOUT));
+        continueButton.addClickListener(event -> handleContinue());
 
         totalBox.add(totalText, totalPrice, continueButton);
 
         summary.add(header, selectedTicketsList, emptySelection, totalBox);
         return summary;
     }
+
+    private void handleContinue() {
+        if (eventId == null) {
+            Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+            return;
+        }
+
+        if (selectedSeats.isEmpty() && selectedStandingAreas.isEmpty()) {
+            Notifications.error("יש לבחור לפחות כרטיס אחד לפני מעבר לתשלום");
+            return;
+        }
+
+        UI.getCurrent().navigate(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(eventId)));
+    }
+
 
     private void renderMap() {
         mapCanvas.removeAll();
@@ -320,34 +402,123 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     }
 
     private void toggleSeat(SeatingAreaDto area, SeatDto seat) {
-        SeatKey key = new SeatKey(area.id(), seat.row(), seat.number());
-
-        if (selectedSeats.containsKey(key)) {
-            selectedSeats.remove(key);
-        } else if (seat.status() == SeatStatusDto.AVAILABLE) {
-            selectedSeats.put(key, new SelectedSeat(area.id(), area.name(), seat.row(), seat.number(), area.ticketPrice()));
+        if (eventId == null) {
+            Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+            return;
         }
 
-        renderMap();
-        refreshSummary();
+        SeatKey key = new SeatKey(area.id(), seat.row(), seat.number());
+        String token = UiSession.getCurrentToken();
+
+        try {
+            if (selectedSeats.containsKey(key)) {
+                reservationPresenter.removeSeatTicketFromActiveOrder(
+                        token,
+                        eventId,
+                        area.id(),
+                        seat.row(),
+                        seat.number()
+                );
+
+                selectedSeats.remove(key);
+
+            } else if (seat.status() == SeatStatusDto.AVAILABLE) {
+                reservationPresenter.selectSeatTicket(
+                        token,
+                        eventId,
+                        area.id(),
+                        seat.row(),
+                        seat.number(),
+                        null
+                );
+
+                selectedSeats.put(
+                        key,
+                        new SelectedSeat(area.id(), area.name(), seat.row(), seat.number(), area.ticketPrice())
+                );
+            }
+
+            renderMap();
+            refreshSummary();
+
+        } catch (PresentationException e) {
+            Notifications.error(e.getMessage());
+            reloadTicketSelectionEventDataKeepingSelection();
+
+        } catch (Exception e) {
+            Notifications.error("לא ניתן לעדכן את בחירת המושב. יש לנסות שוב");
+            reloadTicketSelectionEventDataKeepingSelection();
+        }
     }
 
     private void updateStandingSelection(StandingAreaDto area, int quantity) {
-        int safeQuantity = Math.max(0, Math.min(quantity, area.availableCapacity()));
-
-        if (safeQuantity == 0) {
-            selectedStandingAreas.remove(area.id());
-        } else {
-            selectedStandingAreas.put(area.id(), new SelectedStandingArea(area.id(), area.name(), safeQuantity, area.ticketPrice()));
+        if (eventId == null) {
+            Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+            return;
         }
+
+        int safeQuantity = Math.max(0, Math.min(quantity, area.availableCapacity()));
+        int currentQuantity = selectedStandingAreas
+                .getOrDefault(area.id(), SelectedStandingArea.empty(area))
+                .quantity();
+
+        int delta = safeQuantity - currentQuantity;
+        String token = UiSession.getCurrentToken();
+        try {
+            if (delta > 0) {
+                reservationPresenter.selectStandingTicket(
+                        token,
+                        eventId,
+                        area.id(),
+                        delta,
+                        null
+                );
+            } else if (delta < 0) {
+                reservationPresenter.removeStandingTicketsFromActiveOrder(
+                        token,
+                        eventId,
+                        area.id(),
+                        -delta
+                );
+            }
+
+            if (safeQuantity == 0) {
+                selectedStandingAreas.remove(area.id());
+            } else {
+                selectedStandingAreas.put(
+                        area.id(),
+                        new SelectedStandingArea(area.id(), area.name(), safeQuantity, area.ticketPrice())
+                );
+            }
+
+            IntegerField field = standingQuantityFields.get(area.id());
+            if (field != null && !Integer.valueOf(safeQuantity).equals(field.getValue())) {
+                field.setValue(safeQuantity);
+            }
+
+            refreshSummary();
+
+        } catch (PresentationException e) {
+            Notifications.error(e.getMessage());
+
+            IntegerField field = standingQuantityFields.get(area.id());
+            if (field != null && !Integer.valueOf(currentQuantity).equals(field.getValue())) {
+                field.setValue(currentQuantity);
+            }
+            reloadTicketSelectionEventDataKeepingSelection();
+
+        } catch (Exception e) {
+        Notifications.error("לא ניתן לעדכן את כמות כרטיסי העמידה. יש לנסות שוב");
 
         IntegerField field = standingQuantityFields.get(area.id());
-        if (field != null && !Integer.valueOf(safeQuantity).equals(field.getValue())) {
-            field.setValue(safeQuantity);
+        if (field != null && !Integer.valueOf(currentQuantity).equals(field.getValue())) {
+            field.setValue(currentQuantity);
         }
 
-        refreshSummary();
+        reloadTicketSelectionEventDataKeepingSelection();
+        }
     }
+
 
     private void refreshSummary() {
         selectedTicketsList.removeAll();
@@ -390,9 +561,28 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         remove.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         remove.addClassName("selected-ticket-remove");
         remove.addClickListener(event -> {
-            selectedSeats.remove(new SeatKey(selectedSeat.areaId(), selectedSeat.row(), selectedSeat.number()));
-            renderMap();
-            refreshSummary();
+            try {
+                String token = UiSession.getCurrentToken();
+                reservationPresenter.removeSeatTicketFromActiveOrder(
+                        token,
+                        eventId,
+                        selectedSeat.areaId(),
+                        selectedSeat.row(),
+                        selectedSeat.number()
+                );
+
+                selectedSeats.remove(new SeatKey(selectedSeat.areaId(), selectedSeat.row(), selectedSeat.number()));
+                renderMap();
+                refreshSummary();
+
+            } catch (PresentationException e) {
+                Notifications.error(e.getMessage());
+                reloadTicketSelectionEventDataKeepingSelection();
+
+            } catch (Exception e) {
+                Notifications.error("לא ניתן להסיר את המושב מההזמנה. יש לנסות שוב");
+                reloadTicketSelectionEventDataKeepingSelection();
+            }
         });
 
         row.add(text, price, remove);
@@ -414,12 +604,32 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         remove.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         remove.addClassName("selected-ticket-remove");
         remove.addClickListener(event -> {
-            selectedStandingAreas.remove(selectedArea.areaId());
-            IntegerField field = standingQuantityFields.get(selectedArea.areaId());
-            if (field != null) {
-                field.setValue(0);
+            try {
+                String token = UiSession.getCurrentToken();
+                reservationPresenter.removeStandingTicketsFromActiveOrder(
+                        token,
+                        eventId,
+                        selectedArea.areaId(),
+                        selectedArea.quantity()
+                );
+
+                selectedStandingAreas.remove(selectedArea.areaId());
+
+                IntegerField field = standingQuantityFields.get(selectedArea.areaId());
+                if (field != null) {
+                    field.setValue(0);
+                }
+
+                refreshSummary();
+
+            } catch (PresentationException e) {
+                Notifications.error(e.getMessage());
+                reloadTicketSelectionEventDataKeepingSelection();
+
+            } catch (Exception e) {
+                Notifications.error("לא ניתן להסיר את כרטיסי העמידה מההזמנה. יש לנסות שוב");
+                reloadTicketSelectionEventDataKeepingSelection();
             }
-            refreshSummary();
         });
 
         row.add(text, price, remove);
@@ -437,78 +647,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         return "₪" + amount.setScale(0, RoundingMode.HALF_UP).toPlainString();
     }
 
-    private EventTicketSelectionDto createDemoData(String eventId) {
-        List<MapElementDto> elements = new ArrayList<>();
-        elements.add(new MapElementDto(1L, "במה", MapElementTypeDto.STAGE, new MapPositionDto(3, 7, 2, 10)));
-        elements.add(new MapElementDto(2L, "כניסה ראשית", MapElementTypeDto.ENTRANCE, new MapPositionDto(18, 8, 1, 4)));
-
-        elements.add(new SeatingAreaDto(
-                10L,
-                "אזור A - VIP",
-                new MapPositionDto(6, 5, 5, 14),
-                new BigDecimal("350"),
-                4,
-                12,
-                List.of(
-                        new SeatDto(1, 1, SeatStatusDto.SOLD),
-                        new SeatDto(1, 2, SeatStatusDto.SOLD),
-                        new SeatDto(1, 3, SeatStatusDto.AVAILABLE),
-                        new SeatDto(1, 4, SeatStatusDto.AVAILABLE),
-                        new SeatDto(1, 5, SeatStatusDto.AVAILABLE),
-                        new SeatDto(1, 6, SeatStatusDto.AVAILABLE),
-                        new SeatDto(1, 7, SeatStatusDto.RESERVED),
-                        new SeatDto(1, 8, SeatStatusDto.AVAILABLE),
-                        new SeatDto(1, 9, SeatStatusDto.AVAILABLE),
-                        new SeatDto(1, 10, SeatStatusDto.SOLD),
-                        new SeatDto(1, 11, SeatStatusDto.SOLD),
-                        new SeatDto(1, 12, SeatStatusDto.AVAILABLE)
-                )
-        ));
-
-        elements.add(new SeatingAreaDto(
-                11L,
-                "אזור B - אולם",
-                new MapPositionDto(12, 3, 5, 18),
-                new BigDecimal("220"),
-                5,
-                16,
-                demoSeats(5, 16)
-        ));
-
-        elements.add(new StandingAreaDto(
-                20L,
-                "רחבת עמידה",
-                new MapPositionDto(6, 20, 9, 8),
-                new BigDecimal("180"),
-                300,
-                42,
-                180
-        ));
-
-        return new EventTicketSelectionDto(
-                eventId,
-                "פסטיבל אורות הלילה",
-                LocalDateTime.of(2026, 10, 24, 21, 0),
-                "היכל מנורה, תל אביב",
-                new EventMapDto(20, 30, elements)
-        );
-    }
-
-    private List<SeatDto> demoSeats(int rows, int columns) {
-        List<SeatDto> seats = new ArrayList<>();
-
-        for (int row = 1; row <= rows; row++) {
-            for (int col = 1; col <= columns; col++) {
-                SeatStatusDto status = (row + col) % 6 == 0 ? SeatStatusDto.SOLD : SeatStatusDto.AVAILABLE;
-                if ((row * col) % 17 == 0) {
-                    status = SeatStatusDto.RESERVED;
-                }
-                seats.add(new SeatDto(row, col, status));
-            }
-        }
-
-        return seats;
-    }
 
     private record SeatKey(Long areaId, int row, int number) {
     }
@@ -522,147 +660,4 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         }
     }
 
-    public record EventTicketSelectionDto(
-            String eventId,
-            String eventName,
-            LocalDateTime date,
-            String location,
-            EventMapDto map
-    ) {
-    }
-
-    public record EventMapDto(
-            int rows,
-            int columns,
-            List<MapElementDto> elements
-    ) {
-    }
-
-    public record MapPositionDto(
-            int row,
-            int column,
-            int rowSpan,
-            int columnSpan
-    ) {
-    }
-
-    public enum MapElementTypeDto {
-        STAGE,
-        ENTRANCE,
-        EXIT,
-        GENERIC,
-        SEATING_AREA,
-        STANDING_AREA
-    }
-
-    public static class MapElementDto {
-        private final Long id;
-        private final String name;
-        private final MapElementTypeDto type;
-        private final MapPositionDto position;
-
-        public MapElementDto(Long id, String name, MapElementTypeDto type, MapPositionDto position) {
-            this.id = id;
-            this.name = name;
-            this.type = type;
-            this.position = position;
-        }
-
-        public Long id() {
-            return id;
-        }
-
-        public String name() {
-            return name;
-        }
-
-        public MapElementTypeDto type() {
-            return type;
-        }
-
-        public MapPositionDto position() {
-            return position;
-        }
-    }
-
-    public static class SeatingAreaDto extends MapElementDto {
-        private final BigDecimal ticketPrice;
-        private final int rows;
-        private final int columns;
-        private final List<SeatDto> seats;
-
-        public SeatingAreaDto(Long id, String name, MapPositionDto position, BigDecimal ticketPrice, int rows, int columns, List<SeatDto> seats) {
-            super(id, name, MapElementTypeDto.SEATING_AREA, position);
-            this.ticketPrice = ticketPrice;
-            this.rows = rows;
-            this.columns = columns;
-            this.seats = seats == null ? List.of() : seats;
-        }
-
-        public BigDecimal ticketPrice() {
-            return ticketPrice;
-        }
-
-        public int rows() {
-            return rows;
-        }
-
-        public int columns() {
-            return columns;
-        }
-
-        public List<SeatDto> seats() {
-            return seats;
-        }
-
-        public Optional<SeatDto> findSeat(int row, int number) {
-            return seats.stream()
-                    .filter(seat -> seat.row() == row && seat.number() == number)
-                    .findFirst();
-        }
-    }
-
-    public static class StandingAreaDto extends MapElementDto {
-        private final BigDecimal ticketPrice;
-        private final int capacity;
-        private final int reserved;
-        private final int sold;
-
-        public StandingAreaDto(Long id, String name, MapPositionDto position, BigDecimal ticketPrice, int capacity, int reserved, int sold) {
-            super(id, name, MapElementTypeDto.STANDING_AREA, position);
-            this.ticketPrice = ticketPrice;
-            this.capacity = capacity;
-            this.reserved = reserved;
-            this.sold = sold;
-        }
-
-        public BigDecimal ticketPrice() {
-            return ticketPrice;
-        }
-
-        public int capacity() {
-            return capacity;
-        }
-
-        public int reserved() {
-            return reserved;
-        }
-
-        public int sold() {
-            return sold;
-        }
-
-        public int availableCapacity() {
-            return Math.max(0, capacity - reserved - sold);
-        }
-    }
-
-    public record SeatDto(int row, int number, SeatStatusDto status) {
-    }
-
-    public enum SeatStatusDto {
-        AVAILABLE,
-        RESERVED,
-        SOLD
-    }
 }
