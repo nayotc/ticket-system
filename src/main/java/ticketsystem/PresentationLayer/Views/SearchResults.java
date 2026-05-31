@@ -194,6 +194,10 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
             return section;
         }
 
+        currentResults.stream()
+                .map(this::createEventCard)
+                .forEach(grid::add);
+
         inner.add(grid);
         section.add(inner);
 
