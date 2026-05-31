@@ -175,6 +175,38 @@ public class EventCatalogPresenter {
     }
 
     /**
+     * Loads company-specific event search results from URL query parameters.
+     *
+     * The CompanySearchResults view passes the company id and the raw query parameters.
+     * This presenter converts the parameters into search criteria, delegates the company
+     * search to EventCatalogService, and maps the returned events into card data.
+     *
+     * Company rating is intentionally ignored here because the search is already scoped
+     * to a single company.
+     *
+     * @param sessionToken active guest/member session token
+     * @param companyId company whose events should be searched
+     * @param parameters query parameters from the current route
+     * @return event card data matching the company-specific search criteria
+     */
+    public List<EventCardViewModel> getCompanySearchResultEvents(
+            String sessionToken,
+            Long companyId,
+            Map<String, List<String>> parameters
+    ) {
+        if (companyId == null) {
+            return List.of();
+        }
+
+        SearchCriteria criteria = buildCompanySearchCriteria(parameters);
+
+        return eventCatalogService.SearchByCompany(sessionToken, companyId, criteria)
+                .stream()
+                .map(event -> toEventCardViewModel(sessionToken, event))
+                .toList();
+    }
+
+    /**
      * View model used by EventCard-based screens.
      *
      * The presenter prepares this record so views do not need to know how to
@@ -242,6 +274,30 @@ public class EventCatalogPresenter {
                 parseBigDecimal(firstParam(safeParameters, "minPrice")),
                 parseBigDecimal(firstParam(safeParameters, "maxPrice")),
                 parseDouble(firstParam(safeParameters, "companyRate")),
+                parseDouble(firstParam(safeParameters, "eventRate"))
+        );
+    }
+
+    /**
+     * Builds search criteria for company-specific search.
+     *
+     * Company rating is not applicable here because the results are already scoped
+     * to one company. Passing companyRate into the domain company-search flow would
+     * be rejected by EventCatalogDomainService.
+     */
+    private SearchCriteria buildCompanySearchCriteria(Map<String, List<String>> parameters) {
+        Map<String, List<String>> safeParameters = parameters == null ? Map.of() : parameters;
+
+        return new SearchCriteria(
+                firstParam(safeParameters, "q"),
+                parseCategory(firstParam(safeParameters, "category")),
+                parseLocation(firstParam(safeParameters, "location")),
+                firstParam(safeParameters, "artist"),
+                parseStartDate(firstParam(safeParameters, "fromDate")),
+                parseEndDate(firstParam(safeParameters, "toDate")),
+                parseBigDecimal(firstParam(safeParameters, "minPrice")),
+                parseBigDecimal(firstParam(safeParameters, "maxPrice")),
+                null,
                 parseDouble(firstParam(safeParameters, "eventRate"))
         );
     }
