@@ -2477,10 +2477,14 @@ vaadin-button.message-popup-secondary-button:hover {
 }
 
 .map-standing-area {
-    justify-content: center;
+    position: relative;
     min-width: 0;
+    padding: 8px;
     border-color: rgba(68, 226, 205, 0.60);
     background: rgba(68, 226, 205, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .map-area-header {
@@ -2565,23 +2569,99 @@ vaadin-button.message-popup-secondary-button:hover {
     box-shadow: none;
 }
 
-.standing-area-icon {
+.map-standing-area .standing-area-icon {
     display: flex;
+    justify-content: center;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--tn-secondary-fixed);
+    text-shadow: 0 0 12px rgba(68, 226, 205, 0.24);
+}
+
+.map-standing-area {
+    position: relative;
+    min-width: 0;
+    padding: 8px;
+    border-color: rgba(68, 226, 205, 0.60);
+    background: rgba(68, 226, 205, 0.08);
+    display: flex;
+    align-items: center;
     justify-content: center;
 }
 
-.standing-availability {
+.standing-area-content {
+    width: 170px;
+    max-width: calc(100% - 12px);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+}
+
+.map-standing-area .standing-area-icon {
+    display: flex;
+    justify-content: center;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--tn-secondary-fixed);
+    text-shadow: 0 0 12px rgba(68, 226, 205, 0.24);
+}
+
+.map-standing-area .map-area-header {
+    width: 100%;
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 14px;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.map-standing-area .map-area-header span {
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.map-standing-area .map-area-header span:last-child {
+    color: var(--tn-secondary);
+    font-size: 12px;
+}
+
+.map-standing-area .standing-availability {
+    width: 100%;
     color: var(--tn-text-muted);
-    font-size: clamp(12px, calc(var(--ticket-cell-size) * 0.31), 15px);
+    font-size: 13px;
     text-align: center;
     line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.standing-quantity-field {
+.map-standing-area .standing-quantity-field {
+    width: 150px;
+    max-width: 100%;
+    align-self: center;
+}
+
+.map-standing-area .standing-quantity-field::part(label) {
     width: 100%;
+    text-align: center;
+    color: var(--tn-text-muted);
+    font-size: 12px;
+    font-weight: 800;
 }
 
-.standing-quantity-field::part(input-field) {
+.map-standing-area .standing-quantity-field::part(input-field) {
     min-height: 34px;
     border-radius: 12px;
 }

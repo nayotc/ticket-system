@@ -497,9 +497,15 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         areaCard.addClassName("map-area-card");
         areaCard.addClassName("map-standing-area");
 
-        int selectedQuantity = selectedStandingAreas.getOrDefault(area.id(), SelectedStandingArea.empty(area, ticketPrice())).quantity();
+        int selectedQuantity = selectedStandingAreas
+                .getOrDefault(area.id(), SelectedStandingArea.empty(area, ticketPrice()))
+                .quantity();
+
         int available = availableCapacity(area);
         int maxSelectable = available + selectedQuantity;
+
+        Div content = new Div();
+        content.addClassName("standing-area-content");
 
         Div icon = new Div();
         icon.addClassName("standing-area-icon");
@@ -507,10 +513,10 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
         Div header = new Div();
         header.addClassName("map-area-header");
-        header.add(new Span(safeText(area.name(), "אזור עמידה")), new Span(formatMoney(ticketPrice())));
-
-        Span availability = new Span("נותרו " + available + " מתוך " + area.capacity());
-        availability.addClassName("standing-availability");
+        header.add(
+                new Span(safeText(area.name(), "אזור עמידה")),
+                new Span(formatMoney(ticketPrice()))
+        );
 
         IntegerField quantity = new IntegerField();
         quantity.addClassName("standing-quantity-field");
@@ -527,7 +533,9 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
         standingQuantityFields.put(area.id(), quantity);
 
-        areaCard.add(icon, header, availability, quantity);
+        content.add(icon, header, quantity);
+        areaCard.add(content);
+
         return areaCard;
     }
 
