@@ -48,6 +48,7 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
                     lotteryService.addLottery(
                             request.sessionId(),
                             eventId,
+                            request.companyId(),
                             request.lotteryWinnersNumber()
                     );
                 } catch (Exception lotteryException) {
