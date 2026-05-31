@@ -32,7 +32,7 @@ public class Member extends User {
         this.fullName = other.fullName;
         this.phone = other.phone;
         this.version = other.version;
-        this.myRoles = new ConcurrentHashMap<>();//deep copy???
+        this.myRoles = new ConcurrentHashMap<>();
         this.suspension = other.suspension == null
         ? null
         : new Suspension(other.suspension);

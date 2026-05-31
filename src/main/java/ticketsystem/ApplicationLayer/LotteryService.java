@@ -5,10 +5,12 @@ import java.util.List;
 import java.util.UUID;
 import java.util.Collections;
 
+import ticketsystem.DomainLayer.MembershipDomainService;
 import org.springframework.stereotype.Service;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.lottery.LotteryStatus;
+import ticketsystem.DomainLayer.user.Permission;
 
 @Service
 public class LotteryService {
@@ -16,26 +18,38 @@ public class LotteryService {
     private final ILotteryRepository lotteryRepository;
     private final ITokenService tokenService;
     private final INotifier notificationsService;
-    private final UserAccessService userAccessService;
+    private final UserAccessService userAccessService; 
+    private final MembershipDomainService membershipDomainService;
     private final ISystemLogger logger;
 
     public LotteryService(
             ILotteryRepository lotteryRepository,
             ITokenService tokenService,
-            INotifier notificationsService, UserAccessService userAccessService, ISystemLogger logger
+            INotifier notificationsService,UserAccessService userAccessService, MembershipDomainService membershipDomainService, ISystemLogger logger
     ) {
         this.lotteryRepository = lotteryRepository;
         this.tokenService = tokenService;
         this.notificationsService = notificationsService;
         this.userAccessService=userAccessService;
-        this.logger = logger;
+        this.membershipDomainService=membershipDomainService;
+        this.logger=logger;
     }
-
-    // Method to create a new lottery
-    public long addLottery(String token, long eventId, int winnersNumber) {
+    public long addLottery(String token, long eventId, long companyId, int winnersNumber) {
         try {
             //need to validate that this event id id exists in the system and premission of the member to create lottery for this event
             tokenService.validateToken(token);
+            if(!tokenService.isMemberToken(token)){
+                throw new IllegalArgumentException("Only members can add lotteries");
+            }
+
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId == null){
+                throw new IllegalArgumentException("Could not extract user id from token");
+            }
+            if(!membershipDomainService.validatePermission(memberId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
+                throw new IllegalArgumentException("Insufficient permissions to add lottery");
+            }
+            userAccessService.validateCanPerformNonViewAction(memberId);
             if (winnersNumber <= 0) {
                 throw new IllegalArgumentException("Number of winners must be greater than zero.");
             }
@@ -45,6 +59,10 @@ public class LotteryService {
             return lotteryId;
             
         } catch (IllegalArgumentException e) {
+            logger.logEvent(
+                    "Failed to add lottery: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
             throw(e);
         }
 
@@ -56,6 +74,7 @@ public class LotteryService {
             tokenService.validateToken(token);
             long memberId = tokenService.extractUserId(token);
             Lottery lottery =lotteryRepository.findById(lotteryId);
+            userAccessService.validateCanPerformNonViewAction(memberId);
             if (lottery == null) {
                 throw new IllegalArgumentException("Lottery with ID " + lotteryId + " not found.");
             }
@@ -64,15 +83,27 @@ public class LotteryService {
             //notificationsService.notifyUser(token, "You have successfully registered for the lottery!");
             return true; 
         } catch(IllegalArgumentException e){
+            logger.logEvent(
+                    "Failed to register member to lottery: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
             throw(e);
         }
 
     }
 
     // Method to close lottery registration
-    public boolean closeLotteryRegistration(String token, long lotteryId) {
+    public boolean closeLotteryRegistration(String token, long lotteryId, long companyId) {
         try{
             tokenService.validateToken(token);
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId == null){
+                throw new IllegalArgumentException("Could not extract user id from token");
+            }
+            if(!membershipDomainService.validatePermission(memberId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
+                throw new IllegalArgumentException("Insufficient permissions to close lottery registration");
+            }
+            userAccessService.validateCanPerformNonViewAction(memberId);
             //need to validate that the user has permission to close the lottery registration
             Lottery lottery = lotteryRepository.findById(lotteryId);
             if (lottery == null) {
@@ -83,14 +114,26 @@ public class LotteryService {
             return true;
         }
         catch(IllegalArgumentException e){
+            logger.logEvent(
+                    "Failed to close lottery registration: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
             throw(e);
         }
     }
 
     // Method to conduct the lottery draw and select winners
-    public boolean conductLotteryDraw(String token, long lotteryId) {
+    public boolean conductLotteryDraw(String token, long lotteryId, long companyId) {
         try{
             tokenService.validateToken(token);
+            Long member = tokenService.extractUserId(token);
+            if (member == null){
+                throw new IllegalArgumentException("Could not extract user id from token");
+            }
+            if(!membershipDomainService.validatePermission(member, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
+                throw new IllegalArgumentException("Insufficient permissions to conduct lottery draw");
+            }
+            userAccessService.validateCanPerformNonViewAction(member);
             //need to validate that the user has permission to conduct the lottery draw 
             Lottery lottery = lotteryRepository.findById(lotteryId);
             if (lottery == null) {
@@ -122,6 +165,10 @@ public class LotteryService {
             return true;
         }
         catch(IllegalArgumentException e){
+            logger.logEvent(
+                    "Failed to conduct lottery draw: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
             throw(e);
         }
     }
@@ -151,4 +198,70 @@ public class LotteryService {
         return new ArrayList<>(winnersPool.subList(0, numberOfWinners));
     }
 
+    public boolean hasLotteryForEvent(long eventId) {
+        if (eventId <= 0) {
+            return false;
+        }
+
+        return lotteryRepository.findByEventId(eventId) != null;
+    }
+
+    public long getLotteryIdByEventId(long eventId) {
+        if (eventId <= 0) {
+            throw new IllegalArgumentException("Event ID is invalid.");
+        }
+
+        Lottery lottery = lotteryRepository.findByEventId(eventId);
+
+        if (lottery == null) {
+            throw new IllegalArgumentException("Lottery for event not found.");
+        }
+
+        return lottery.getLotteryId();
+    }
+
+    public boolean registerMemberToLotteryByEventId(String token, long eventId) {
+        if (eventId <= 0) {
+            throw new IllegalArgumentException("Event ID is invalid.");
+        }
+
+        Lottery lottery = lotteryRepository.findByEventId(eventId);
+
+        if (lottery == null) {
+            throw new IllegalArgumentException("Lottery for event not found.");
+        }
+
+        return registerMemberToLottery(token, lottery.getLotteryId());
+    }
+
+    public boolean validateWinnerCodeForEvent(String token, long eventId, String authCode) {
+        try {
+            tokenService.validateToken(token);
+
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId == null) {
+                throw new IllegalArgumentException("Member must be logged in to use a lottery code.");
+            }
+
+            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            if (eventId <= 0) {
+                throw new IllegalArgumentException("Event ID is invalid.");
+            }
+
+            if (authCode == null || authCode.isBlank()) {
+                return false;
+            }
+
+            Lottery lottery = lotteryRepository.findByEventId(eventId);
+            if (lottery == null) {
+                throw new IllegalArgumentException("Lottery for event not found.");
+            }
+
+            return lottery.validateWinnerCode(memberId, authCode.trim());
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+        }
+    }
 }

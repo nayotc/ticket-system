@@ -1,34 +1,36 @@
 package ticketsystem.AcceptanceTesting;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.ApplicationLayer.EventCatalogService;
-import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 public class EventCatalogAcceptanceTest {
 
@@ -417,6 +419,11 @@ public class EventCatalogAcceptanceTest {
         @Override
         public Long extractUserId(String token) {
             return null;
+        }
+
+        @Override
+        public String maskToken(String token) {
+            return "masked-" + token;
         }
     }
 }
