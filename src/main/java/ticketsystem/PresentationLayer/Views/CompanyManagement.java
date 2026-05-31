@@ -19,6 +19,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.user.Permission;
@@ -51,6 +52,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+@PageTitle("TixNow | Company Management")
 @Route(value = UiRoutes.COMPANY_MANAGEMENT, layout = ManagementLayout.class)
 public class CompanyManagement extends Div implements BeforeEnterObserver {
 

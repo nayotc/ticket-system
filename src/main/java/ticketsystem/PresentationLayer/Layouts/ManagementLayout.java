@@ -15,6 +15,7 @@ import com.vaadin.flow.router.RouterLayout;
 import ticketsystem.PresentationLayer.Components.ManagementHeader;
 import ticketsystem.PresentationLayer.Components.ManagementSideNav;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
 public class ManagementLayout extends Div implements RouterLayout, BeforeEnterObserver {
@@ -28,7 +29,7 @@ public class ManagementLayout extends Div implements RouterLayout, BeforeEnterOb
     }
 
     public ManagementLayout(
-            ManagementSideNav.CreateProductionCompanyPresenter companyPresenter,
+            CompanyPresenter companyPresenter,
             ManagementHeader.ManagementHeaderPresenter headerPresenter
     ) {
         this.sideNav = new ManagementSideNav(companyPresenter);
