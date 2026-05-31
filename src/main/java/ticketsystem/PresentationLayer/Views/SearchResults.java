@@ -1,5 +1,6 @@
 package ticketsystem.PresentationLayer.Views;
 
+
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -23,6 +24,7 @@ import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.EventCardViewModel;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
 @PageTitle("TixNow | Search Results")
 @Route(value = UiRoutes.SEARCH_RESULTS, layout = MainLayout.class)
@@ -35,12 +37,14 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
     private final SearchPanel searchPanel = new SearchPanel();
     private String currentSearchTerm = "";
     private Map<String, List<String>> currentParameters = Map.of();
+    private final UiVisitCoordinator visitCoordinator;
 
-    public SearchResults(EventCatalogPresenter eventCatalogPresenter, EventCardPresenter eventCardPresenter) {
+    public SearchResults(EventCatalogPresenter eventCatalogPresenter, EventCardPresenter eventCardPresenter, UiVisitCoordinator visitCoordinator) {
         super();
 
         this.eventCatalogPresenter = eventCatalogPresenter;
         this.eventCardPresenter = eventCardPresenter;
+        this.visitCoordinator = visitCoordinator;
 
         addClassName("search-results-view");
         setSpacing(false);
@@ -57,6 +61,8 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
 
         currentParameters = parameters;
         currentSearchTerm = firstParam(parameters, "q", DEFAULT_SEARCH_TERM);
+
+        visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
 
         applyQueryParametersToPanel(parameters);
         renderPage();
