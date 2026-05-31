@@ -4,6 +4,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
@@ -19,6 +20,9 @@ import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+
+import java.time.LocalDate;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import ticketsystem.PresentationLayer.Presenters.AuthPresenter;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
@@ -37,6 +41,7 @@ public class Register extends PageContainer {
     private final TextField fullName = createTextField("שם מלא", "לדוגמה: ישראל ישראלי", VaadinIcon.USER);
     private final EmailField email = createEmailField();
     private final TextField phone = createTextField("טלפון", "לדוגמה: 050-0000000", VaadinIcon.PHONE);
+    private final DatePicker birthDate = createBirthDateField();
     private final PasswordField password = createPasswordField("סיסמה");
     private final PasswordField confirmPassword = createPasswordField("אימות סיסמה");
     private final Checkbox termsAccepted = new Checkbox();
@@ -94,6 +99,7 @@ public class Register extends PageContainer {
                 fullName,
                 email,
                 phone,
+                birthDate,
                 password,
                 confirmPassword,
                 createTermsRow(),
@@ -157,6 +163,16 @@ public class Register extends PageContainer {
         field.addClassName("auth-field");
         return field;
     }
+    private DatePicker createBirthDateField() {
+        DatePicker field = new DatePicker("תאריך לידה");
+        field.setPlaceholder("בחר תאריך לידה");
+        field.setRequiredIndicatorVisible(true);
+        field.setMax(LocalDate.now());
+        field.setWidthFull();
+        field.addClassName("auth-field");
+        field.setErrorMessage("יש להזין תאריך לידה תקין");
+        return field;
+    }
 
     private PasswordField createPasswordField(String label) {
         PasswordField field = new PasswordField(label);
@@ -173,6 +189,16 @@ public class Register extends PageContainer {
         if (isBlank(fullName.getValue()) || isBlank(email.getValue()) || isBlank(phone.getValue())
                 || isBlank(password.getValue()) || isBlank(confirmPassword.getValue())) {
             showError("יש למלא את כל שדות החובה");
+            return;
+        }
+        if (isBlank(fullName.getValue()) || isBlank(email.getValue()) || isBlank(phone.getValue())
+            || birthDate.getValue() == null
+            || isBlank(password.getValue()) || isBlank(confirmPassword.getValue())) {
+        showError("יש למלא את כל שדות החובה");
+        return;
+        }
+        if (birthDate.getValue().isAfter(LocalDate.now())) {
+            showError("תאריך לידה לא יכול להיות בעתיד");
             return;
         }
 
@@ -195,7 +221,7 @@ public class Register extends PageContainer {
                     email.getValue(),
                     password.getValue(),
                     fullName.getValue(),
-                    phone.getValue()
+                    phone.getValue(),birthDate.getValue()
             );
 
             Notifications.success("ההרשמה נקלטה בהצלחה");

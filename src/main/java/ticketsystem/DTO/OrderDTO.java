@@ -1,6 +1,10 @@
 package ticketsystem.DTO;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class OrderDTO {
     
@@ -86,5 +90,18 @@ public class OrderDTO {
 
     public void setManagedByMemberId(Long managedByMemberId) {
         this.managedByMemberId = managedByMemberId;
+    }
+
+    @JsonIgnore
+    public BigDecimal getTotalPrice() {
+        if (tickets == null) {
+            return BigDecimal.ZERO;
+        }
+
+        return tickets.stream()
+                .filter(Objects::nonNull)
+                .map(PurchaseDTO::getPrice)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

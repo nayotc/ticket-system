@@ -3,6 +3,7 @@ package ticketsystem.InfrastructureLayer.Bootstrap;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 // Spring Boot imports
@@ -106,7 +107,7 @@ public class DevDataInitializer implements CommandLineRunner {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000");
+        userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000", LocalDate.of(2001, 1, 1));
 
         System.out.println("Dev user created:");
         System.out.println("username: " + TEST_USERNAME);
@@ -120,7 +121,7 @@ public class DevDataInitializer implements CommandLineRunner {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, FOUNDER_USERNAME, FOUNDER_PASSWORD, "Test Founder", "0500000001");
+        userService.signUp(guestToken, FOUNDER_USERNAME, FOUNDER_PASSWORD, "Test Founder", "0500000001",LocalDate.of(2001, 1, 1));
 
         System.out.println("Dev founder created:");
         System.out.println("username: " + FOUNDER_USERNAME);

@@ -1,5 +1,6 @@
 package ticketsystem.InfrastructureLayer.Bootstrap;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -144,7 +145,7 @@ public class DevRoleTreeDataInitializer {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, username, password, fullName, phone);
+        userService.signUp(guestToken, username, password, fullName, phone,LocalDate.of(2001, 1, 1));
 
         System.out.println("Dev role-tree user created:");
         System.out.println("username: " + username);

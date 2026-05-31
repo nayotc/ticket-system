@@ -1,4 +1,5 @@
 package ticketsystem.DomainLayer.user;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -11,16 +12,18 @@ public class Member extends User {
     private String userName;
     private String fullName;
     private String phone;
+    private LocalDate birthDate;
     private long version;
     private ConcurrentHashMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
     private Suspension suspension;
 
 
-    public Member(Long memberId, String userName, String fullName, String phone) {
+    public Member(Long memberId, String userName, String fullName, String phone,LocalDate birthDate) {
         this.memberId = memberId;
         this.userName = userName;
         this.fullName = fullName;
         this.phone = phone;
+        this.birthDate=birthDate;
         this.version = 0; // Initialize version
         this.myRoles = new ConcurrentHashMap<Long, CompanyRole>();
     }
@@ -31,6 +34,7 @@ public class Member extends User {
         this.userName = other.userName;
         this.fullName = other.fullName;
         this.phone = other.phone;
+        this.birthDate=other.birthDate;
         this.version = other.version;
         this.myRoles = new ConcurrentHashMap<>();
         this.suspension = other.suspension == null
@@ -68,6 +72,9 @@ public class Member extends User {
 
     public void setUserName(String userName) {
         this.userName = userName;
+    }
+    public LocalDate getBirthDate(){
+        return birthDate;
     }
 
     public String getFullName() { return this.fullName;}
