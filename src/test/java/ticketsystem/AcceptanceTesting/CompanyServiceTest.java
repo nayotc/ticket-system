@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
-import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
@@ -41,6 +40,7 @@ import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
@@ -65,23 +65,22 @@ public class CompanyServiceTest {
         companyRepository = new CompanyRepository();
         userRepository = new UserRepository();
         ITokenRepository tokenRepository = new TokenRepository();
+        testLogger = new LogbackSystemLogger();
 
         tokenService = new TokenService(
                 "default_secret_key_for_development_purposes_only_32_chars",
                 tokenRepository, testLogger);
 
-        testLogger = new ISystemLogger() {
-            @Override
-            public void logEvent(String message, LogLevel level) {
-                // No-op logger for acceptance tests
-            }
-
-            @Override
-            public void logError(String errorMessage, Throwable exception) {
-                // No-op logger for acceptance tests
-            }
-        };
-
+        // testLogger2 = new ISystemLogger() {
+        //     @Override
+        //     public void logEvent(String message, LogLevel level) {
+        //         // No-op logger for acceptance tests
+        //     }
+        //     @Override
+        //     public void logError(String errorMessage, Throwable exception) {
+        //         // No-op logger for acceptance tests
+        //     }
+        //};
         userService = new UserService(userRepository, tokenService, testLogger);
         membershipDomain = new MembershipDomainService(userRepository);
         userService = new UserService(userRepository, tokenService, testLogger);

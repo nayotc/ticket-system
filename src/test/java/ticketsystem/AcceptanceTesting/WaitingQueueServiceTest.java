@@ -46,8 +46,8 @@ public class WaitingQueueServiceTest {
         realQueueRepo = new WaitingQueueRepository();
         fakeNotifications = new FakeNotificationsService();
         tokenRepository = new TokenRepository();
-        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         logger = new LogbackSystemLogger();
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         waitingQueueService = new WaitingQueueService(EventRepo, realQueueRepo, fakeNotifications, tokenService,
                 logger);
     }
