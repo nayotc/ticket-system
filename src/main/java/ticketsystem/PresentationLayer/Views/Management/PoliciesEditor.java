@@ -25,6 +25,8 @@ import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
+import ticketsystem.PresentationLayer.Presenters.PoliciesEditorPresenter;
+import ticketsystem.PresentationLayer.Session.UiSession;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -32,10 +34,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 @Route(value = UiRoutes.POLICIES_EDITOR, layout = ManagementLayout.class)
 public class PoliciesEditor extends Div implements BeforeEnterObserver {
 
     private String companyId;
+
+    private final PoliciesEditorPresenter presenter;
 
     private final List<PurchaseRuleDTO> purchaseRules = new ArrayList<>();
     private final List<DiscountDTO> discounts = new ArrayList<>();
@@ -49,7 +55,10 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
     private final Button maximumDiscountButton = new Button("מקסימום");
     private final Button sumDiscountButton = new Button("סכום");
 
-    public PoliciesEditor() {
+    @Autowired
+    public PoliciesEditor(PoliciesEditorPresenter presenter) {
+        this.presenter = presenter;
+
         getElement().setAttribute("dir", "rtl");
         addClassName("policy-editor-page");
 
@@ -487,8 +496,27 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
     }
 
     private void loadDraftForCompany(String companyId) {
-        // TODO: Replace with presenter.loadPolicies(companyId) when PurchasePolicy and DiscountPolicy are implemented.
-        resetDraft();
+        try {
+            Long parsedCompanyId = Long.parseLong(companyId);
+            
+            PoliciesEditorPresenter.PoliciesDraftData data = 
+                    presenter.loadPolicies(UiSession.getMemberToken(), parsedCompanyId);
+
+            this.purchaseRules.clear();
+            this.purchaseRules.addAll(data.purchaseDraft().rules());
+            this.purchaseRootOperator.setValue(data.purchaseDraft().rootOperator());
+
+            this.discounts.clear();
+            this.discounts.addAll(data.discountDraft().discounts());
+            setDiscountCompositionStrategy(data.discountDraft().compositionStrategy());
+
+            refreshPurchaseRules();
+            refreshDiscounts();
+
+        } catch (Exception e) {
+            showError("שגיאה בטעינת המדיניות מהשרת: " + e.getMessage());
+            resetDraft();
+        }
     }
 
     private void resetDraft() {
@@ -532,11 +560,20 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         PurchasePolicyDraftDTO purchasePolicyDraft = getPurchasePolicyDraft();
         DiscountPolicyDraftDTO discountPolicyDraft = getDiscountPolicyDraft();
 
-        // TODO: Connect later to the relevant Presenter.
-        // presenter.savePolicies(companyId, purchasePolicyDraft, discountPolicyDraft);
-        // The View should only collect DTO data and display success/error results returned by the Presenter.
-
-        showSuccess("המדיניות מוכנה לשמירה. לאחר חיבור ה־Presenter הכפתור ישמור את הנתונים במערכת.");
+        try {
+            Long parsedCompanyId = Long.parseLong(companyId);
+            
+            presenter.savePolicies(
+                    UiSession.getMemberToken(), 
+                    parsedCompanyId, 
+                    purchasePolicyDraft, 
+                    discountPolicyDraft
+            );
+            
+            showSuccess("המדיניות נשמרה והתעדכנה בהצלחה במערכת!");
+        } catch (Exception e) {
+            showError("שגיאה בשמירת המדיניות: " + e.getMessage());
+        }
     }
 
     public PurchasePolicyDraftDTO getPurchasePolicyDraft() {

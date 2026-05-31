@@ -2,23 +2,25 @@ package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.DiscountDTO;
+import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 
 @Service
@@ -507,6 +509,205 @@ public class CompanyService {
                 "User does not have permission to manage company purchasing policy");
         }
             return company;
+    }
+
+/**
+     * Retrieves the purchase policy of a specified company and maps it to a DTO.
+     * Validates the user's session and permissions before allowing access.
+     *
+     * @param token     The authentication token of the current user.
+     * @param companyId The unique identifier of the target company.
+     * @return PurchasePolicyDTO representing the current purchase policy of the company.
+     * @throws Exception If the company is not found, the user lacks permission to view it, 
+     * or an internal retrieval error occurs.
+     */
+    public PurchasePolicyDTO getCompanyPurchasePolicy(String token, Long companyId) throws Exception {
+        try {
+            Company company = canViewCompanyDetails(token, companyRepository.findById(companyId)
+                    .orElseThrow(() -> new Exception("Error: Company not found."))) ?
+                    companyRepository.findById(companyId).get() : null;
+
+            if (company == null) {
+                throw new Exception("Error: User does not have permission to view this company's policies.");
+            }
+
+            return mapper.toDTO(company.getPurchasePolicy());
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new Exception(e.getMessage());
+        } catch (Exception e) {
+            throw new Exception("An error occurred while retrieving the purchase policy.");
+        }
+    }
+
+/**
+     * Retrieves the discount policy of a specified company and maps it to a DTO.
+     * Validates the user's session and permissions before allowing access.
+     * Automatically maps Domain discount types (Visible, Coupon, Conditional) back to DTOs,
+     * including translating internal Enums into readable text for the UI.
+     *
+     * @param token     The authentication token of the current user.
+     * @param companyId The unique identifier of the target company.
+     * @return DiscountPolicyDTO representing the current discount policy of the company.
+     * @throws Exception If the company is not found, the user lacks permission, or a retrieval error occurs.
+     */
+    public DiscountPolicyDTO getCompanyDiscountPolicy(String token, Long companyId) throws Exception {
+        try {
+            Company company = canViewCompanyDetails(token, companyRepository.findById(companyId)
+                    .orElseThrow(() -> new Exception("Error: Company not found."))) ?
+                    companyRepository.findById(companyId).get() : null;
+
+            if (company == null) {
+                throw new Exception("Error: User does not have permission to view this company's policies.");
+            }
+
+            DiscountPolicy domainPolicy = company.getDiscountPolicy();
+            
+            if (domainPolicy == null) {
+                return new DiscountPolicyDTO(); 
+            }
+
+            DiscountPolicyDTO dto = new DiscountPolicyDTO();
+            dto.setCompositionType(domainPolicy.getDiscountCompositionType());
+            
+            List<DiscountDTO> discountDTOs = new java.util.ArrayList<>();
+            
+            if (domainPolicy.getDiscounts() != null) {
+                for (DiscountTypes discount : domainPolicy.getDiscounts()) {
+                    DiscountDTO dDTO = new DiscountDTO();
+                    
+                    dDTO.setName(discount.getName());
+                    dDTO.setPercentage(discount.getPercentage());
+                    
+                    // בדיקת סוג ההנחה הספציפי והמרתו
+                    if (discount instanceof ticketsystem.DomainLayer.discount.CouponDiscount) {
+                        ticketsystem.DomainLayer.discount.CouponDiscount coupon = 
+                                (ticketsystem.DomainLayer.discount.CouponDiscount) discount;
+                        
+                        dDTO.setType("COUPON");
+                        dDTO.setCouponCode(coupon.getCouponCode());
+                        dDTO.setEndTime(coupon.getEndTime());
+                        
+                    } else if (discount instanceof ConditionalDiscount) {
+                        ConditionalDiscount cond = (ConditionalDiscount) discount;
+                        
+                        dDTO.setType("CONDITIONAL");
+                        dDTO.setEndTime(cond.getEndTime()); 
+                        
+                        String threshold = cond.getTicketThreshold() != null ? cond.getTicketThreshold().toString() : "1";
+                        
+                        if (cond.getCondition() == ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.MAX_TICKET) {
+                            dDTO.setConditionText("מקסימום " + threshold + " כרטיסים");
+                        } else if (cond.getCondition() == ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.DATE) {
+                            dDTO.setConditionText("הנחת תאריך");
+                        } else {
+                            dDTO.setConditionText("מינימום " + threshold + " כרטיסים");
+                        }
+                        
+                    } else if (discount instanceof ticketsystem.DomainLayer.discount.VisibleDiscount) {
+                        dDTO.setType("VISIBLE");
+                    }
+                    
+                    discountDTOs.add(dDTO);
+                }
+            }
+            
+            dto.setDiscounts(discountDTOs);
+            return dto;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new Exception(e.getMessage());
+        } catch (Exception e) {
+            throw new Exception("An error occurred while retrieving the discount policy.");
+        }
+    }
+
+    /**
+     * Sets or updates the discount policy for a specified company based on the provided DTO.
+     * Validates user permissions to ensure only authorized personnel can modify policies.
+     * Maps different discount types (Visible, Coupon, Conditional) from the DTO to Domain entities.
+     * Note: For conditional discounts, it attempts to parse the condition type and threshold 
+     * dynamically from the free-text condition string provided by the UI.
+     *
+     * @param token     The authentication token of the current user.
+     * @param companyId The unique identifier of the target company.
+     * @param policyDTO The DiscountPolicyDTO containing the new discount rules and composition type.
+     * @throws Exception If validation fails, the company is not found, or the database save operation fails.
+     */
+    public void setCompanyDiscountPolicy(String token, Long companyId, ticketsystem.DTO.DiscountPolicyDTO policyDTO) throws Exception {
+        try {
+            tokenService.validateToken(token);
+            Long memberId = tokenService.extractUserId(token);
+            userAccessService.validateCanPerformNonViewAction(memberId);
+            
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new Exception("Error: Company not found."));
+
+            if (!membershipDomain.validatePermission(memberId, companyId, Permission.SET_DISCOUNT_POLICY)) {
+                throw new IllegalArgumentException("User does not have permission to manage company discount policy");
+            }
+
+            if (policyDTO.getDiscounts() != null) {
+                for (ticketsystem.DTO.DiscountDTO discountDTO : policyDTO.getDiscounts()) {
+                    
+                    if ("VISIBLE".equals(discountDTO.getType()) || "SIMPLE".equals(discountDTO.getType())) {
+                        company.addVisibleDiscountToCompany(
+                                discountDTO.getName(),
+                                discountDTO.getPercentage()
+                        );
+                    } 
+                    else if ("COUPON".equals(discountDTO.getType())) {
+                        company.addCouponDiscountToCompany(
+                                discountDTO.getName(),
+                                discountDTO.getCouponCode(),
+                                discountDTO.getPercentage(),
+                                discountDTO.getEndTime()
+                        );
+                    }
+                    else if ("CONDITIONAL".equals(discountDTO.getType())) {
+                        
+                        ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition actualCondition = 
+                                ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.MIN_TICKET; 
+                        
+                        int threshold = 1; 
+                        String conditionStr = discountDTO.getConditionText();
+                        
+                        if (conditionStr != null && !conditionStr.isBlank()) {
+                            try {
+                                if (conditionStr.contains("<") || conditionStr.toLowerCase().contains("max") || conditionStr.contains("מקסימום")) {
+                                    actualCondition = ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.MAX_TICKET;
+                                } else if (conditionStr.contains("date") || conditionStr.contains("תאריך")) {
+                                    actualCondition = ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.DATE;
+                                }
+
+                                String numberOnly = conditionStr.replaceAll("[^0-9]", "");
+                                if (!numberOnly.isEmpty()) {
+                                    threshold = Integer.parseInt(numberOnly);
+                                }
+                            } catch (Exception e) {
+                                threshold = 1; 
+                            }
+                        }
+
+                        company.addConditionalDiscountToCompany(
+                                discountDTO.getName(),
+                                java.time.LocalDateTime.now(), 
+                                discountDTO.getEndTime(),
+                                discountDTO.getPercentage(),
+                                actualCondition,
+                                threshold
+                        );
+                    }
+                }
+            }
+
+            companyRepository.save(company);
+            logger.logEvent("Discount policy updated successfully for company: " + companyId, ISystemLogger.LogLevel.INFO);
+
+        } catch (Exception e) {
+            logger.logEvent("Failed to set discount policy for company id: " + companyId, ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
     }
 
 
