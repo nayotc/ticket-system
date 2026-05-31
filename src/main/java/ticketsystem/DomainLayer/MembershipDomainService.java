@@ -691,4 +691,21 @@ public class MembershipDomainService {
         transferAppointees(ownerToCancel, appointer, companyId);
         userRepository.updateMember(appointer);
     }
+    public Long getFirstManagedCompanyId(Long memberId) {
+        if (memberId == null) {
+            return null;
+        }
+
+        Member member = userRepository.getMemberById(memberId);
+        if (member == null) {
+            return null;
+        }
+
+        return member.getAllRoles()
+                .stream()
+                .filter(CompanyRole::isActive)
+                .map(CompanyRole::getCompanyId)
+                .findFirst()
+                .orElse(null);
+    }
 }
