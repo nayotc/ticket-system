@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,6 +25,7 @@ import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.SuspentionUserDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
@@ -512,4 +514,414 @@ public class SystemAdminServiceTest {
                         .anyMatch(message -> message.contains(text));
             }
         }
+        // -------------------- UC 6.7: Suspend Member by System Admin -------------------
+
+    @Test
+    void GivenActiveSystemAdminAndExistingMember_WhenSuspendMemberTemporarily_ThenMemberIsSuspendedAndSaved() {
+        long adminId = 1L;
+        long memberId = 100L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member member = new Member(memberId, "baduser", "Bad User", "0501112222");
+        userRepo.addRegisteredMember(memberId, member, "password123");
+
+        LocalDateTime start = LocalDateTime.now().minusMinutes(1);
+        LocalDateTime end = LocalDateTime.now().plusDays(30);
+        String reason = "Violation of terms";
+
+        boolean result = systemAdminService.suspendMemberByAdmin(
+                adminId,
+                memberId,
+                start,
+                end,
+                reason
+        );
+
+        Member savedMember = userRepo.getMemberById(memberId);
+
+        assertTrue(result);
+        assertNotNull(savedMember);
+        assertTrue(savedMember.isSuspended());
+        assertNotNull(savedMember.getSuspension());
+        assertEquals(adminId, savedMember.getSuspension().getSuspendedByAdminId());
+        assertEquals(reason, savedMember.getSuspension().getReason());
+        assertEquals(start, savedMember.getSuspension().getStartDate());
+        assertEquals(end, savedMember.getSuspension().getEndDate());
+        assertFalse(savedMember.getSuspension().isPermanent());
+    }
+
+    @Test
+    void GivenActiveSystemAdminAndExistingMember_WhenSuspendMemberPermanently_ThenMemberHasPermanentSuspension() {
+        long adminId = 1L;
+        long memberId = 101L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member member = new Member(memberId, "permanentuser", "Permanent User", "0502223333");
+        userRepo.addRegisteredMember(memberId, member, "password123");
+
+        LocalDateTime start = LocalDateTime.now().minusMinutes(1);
+        String reason = "Permanent suspension";
+
+        boolean result = systemAdminService.suspendMemberByAdmin(
+                adminId,
+                memberId,
+                start,
+                null,
+                reason
+        );
+
+        Member savedMember = userRepo.getMemberById(memberId);
+
+        assertTrue(result);
+        assertNotNull(savedMember);
+        assertTrue(savedMember.isSuspended());
+        assertNotNull(savedMember.getSuspension());
+        assertTrue(savedMember.getSuspension().isPermanent());
+        assertEquals(reason, savedMember.getSuspension().getReason());
+    }
+
+    @Test
+    void GivenInvalidAdmin_WhenSuspendMember_ThenThrowsUnauthorizedAndMemberIsNotSuspended() {
+        long invalidAdminId = 999L;
+        long memberId = 102L;
+
+        Member member = new Member(memberId, "regularuser", "Regular User", "0503334444");
+        userRepo.addRegisteredMember(memberId, member, "password123");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> systemAdminService.suspendMemberByAdmin(
+                        invalidAdminId,
+                        memberId,
+                        LocalDateTime.now(),
+                        LocalDateTime.now().plusDays(7),
+                        "Unauthorized attempt"
+                )
+        );
+
+        Member savedMember = userRepo.getMemberById(memberId);
+
+        assertTrue(exception.getMessage().contains("Unauthorized access"));
+        assertNotNull(savedMember);
+        assertFalse(savedMember.isSuspended());
+    }
+
+    @Test
+    void GivenActiveSystemAdminAndMissingMember_WhenSuspendMember_ThenThrowsMemberNotFound() {
+        long adminId = 1L;
+        long missingMemberId = 999L;
+
+        realAdminRepo.addAdmin(admin);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> systemAdminService.suspendMemberByAdmin(
+                        adminId,
+                        missingMemberId,
+                        LocalDateTime.now(),
+                        LocalDateTime.now().plusDays(7),
+                        "Missing member"
+                )
+        );
+
+        assertTrue(exception.getMessage().contains("was not found"));
+    }
+
+    @Test
+    void GivenActiveSystemAdminAndInvalidSuspensionDates_WhenSuspendMember_ThenThrowsAndMemberIsNotSuspended() {
+        long adminId = 1L;
+        long memberId = 103L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member member = new Member(memberId, "dateuser", "Date User", "0504445555");
+        userRepo.addRegisteredMember(memberId, member, "password123");
+
+        LocalDateTime start = LocalDateTime.now().plusDays(10);
+        LocalDateTime end = LocalDateTime.now().plusDays(1);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> systemAdminService.suspendMemberByAdmin(
+                        adminId,
+                        memberId,
+                        start,
+                        end,
+                        "Invalid dates"
+                )
+        );
+
+        Member savedMember = userRepo.getMemberById(memberId);
+
+        assertTrue(exception.getMessage().contains("End date cannot be before start date"));
+        assertNotNull(savedMember);
+        assertFalse(savedMember.isSuspended());
+    }
+
+    @Test
+    void GivenAlreadySuspendedMember_WhenSuspendMemberAgain_ThenThrowsAndOriginalSuspensionRemains() {
+        long adminId = 1L;
+        long memberId = 104L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member member = new Member(memberId, "alreadySuspended", "Already Suspended", "0505556666");
+        userRepo.addRegisteredMember(memberId, member, "password123");
+
+        systemAdminService.suspendMemberByAdmin(
+                adminId,
+                memberId,
+                LocalDateTime.now().minusMinutes(1),
+                LocalDateTime.now().plusDays(5),
+                "First reason"
+        );
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> systemAdminService.suspendMemberByAdmin(
+                        adminId,
+                        memberId,
+                        LocalDateTime.now(),
+                        LocalDateTime.now().plusDays(10),
+                        "Second reason"
+                )
+        );
+
+        Member savedMember = userRepo.getMemberById(memberId);
+
+        assertTrue(exception.getMessage().contains("already suspended"));
+        assertTrue(savedMember.isSuspended());
+        assertEquals("First reason", savedMember.getSuspension().getReason());
+    }
+
+    @Test
+    void GivenActiveSystemAdminAndSuspendedMember_WhenRevokeSuspension_ThenMemberIsNoLongerSuspended() {
+        long adminId = 1L;
+        long memberId = 200L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member member = new Member(memberId, "suspendeduser", "Suspended User", "0506667777");
+        userRepo.addRegisteredMember(memberId, member, "password123");
+
+        systemAdminService.suspendMemberByAdmin(
+                adminId,
+                memberId,
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(7),
+                "Temporary suspension"
+        );
+
+        boolean result = systemAdminService.revokeMemberByAdmin(adminId, memberId);
+
+        Member savedMember = userRepo.getMemberById(memberId);
+
+        assertTrue(result);
+        assertNotNull(savedMember);
+        assertFalse(savedMember.isSuspended());
+        assertNotNull(savedMember.getSuspension());
+        assertTrue(savedMember.getSuspension().isRevoked());
+    }
+
+    @Test
+    void GivenInvalidAdmin_WhenRevokeSuspension_ThenThrowsUnauthorizedAndSuspensionRemainsActive() {
+        long adminId = 1L;
+        long invalidAdminId = 999L;
+        long memberId = 201L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member member = new Member(memberId, "blockeduser", "Blocked User", "0507778888");
+        userRepo.addRegisteredMember(memberId, member, "password123");
+
+        systemAdminService.suspendMemberByAdmin(
+                adminId,
+                memberId,
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(7),
+                "Temporary suspension"
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> systemAdminService.revokeMemberByAdmin(invalidAdminId, memberId)
+        );
+
+        Member savedMember = userRepo.getMemberById(memberId);
+
+        assertTrue(exception.getMessage().contains("Unauthorized access"));
+        assertTrue(savedMember.isSuspended());
+    }
+
+    @Test
+    void GivenActiveSystemAdminAndMissingMember_WhenRevokeSuspension_ThenThrowsMemberNotFound() {
+        long adminId = 1L;
+        long missingMemberId = 999L;
+
+        realAdminRepo.addAdmin(admin);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> systemAdminService.revokeMemberByAdmin(adminId, missingMemberId)
+        );
+
+        assertTrue(exception.getMessage().contains("was not found"));
+    }
+
+    @Test
+    void GivenActiveSystemAdminAndMemberIsNotSuspended_WhenRevokeSuspension_ThenThrowsMemberIsNotSuspended() {
+        long adminId = 1L;
+        long memberId = 202L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member member = new Member(memberId, "regularmember", "Regular Member", "0508889999");
+        userRepo.addRegisteredMember(memberId, member, "password123");
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> systemAdminService.revokeMemberByAdmin(adminId, memberId)
+        );
+
+        Member savedMember = userRepo.getMemberById(memberId);
+
+        assertTrue(exception.getMessage().contains("Member is not suspended"));
+        assertFalse(savedMember.isSuspended());
+    }
+
+    @Test
+    void GivenActiveSystemAdminAndSuspendedMembers_WhenViewSuspendedMembers_ThenOnlyActiveSuspensionsAreReturned() {
+        long adminId = 1L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member normalMember = new Member(300L, "normal", "Normal User", "0500000001");
+        userRepo.addRegisteredMember(300L, normalMember, "password123");
+
+        Member temporarySuspendedMember = new Member(301L, "temporary", "Temporary Suspended", "0500000002");
+        userRepo.addRegisteredMember(301L, temporarySuspendedMember, "password123");
+
+        Member permanentSuspendedMember = new Member(302L, "permanent", "Permanent Suspended", "0500000003");
+        userRepo.addRegisteredMember(302L, permanentSuspendedMember, "password123");
+
+        Member revokedSuspensionMember = new Member(303L, "revoked", "Revoked User", "0500000004");
+        userRepo.addRegisteredMember(303L, revokedSuspensionMember, "password123");
+
+        LocalDateTime start = LocalDateTime.now().minusDays(1);
+
+        systemAdminService.suspendMemberByAdmin(
+                adminId,
+                301L,
+                start,
+                start.plusDays(10),
+                "Temporary reason"
+        );
+
+        systemAdminService.suspendMemberByAdmin(
+                adminId,
+                302L,
+                start,
+                null,
+                "Permanent reason"
+        );
+
+        systemAdminService.suspendMemberByAdmin(
+                adminId,
+                303L,
+                start,
+                start.plusDays(10),
+                "Revoked reason"
+        );
+        systemAdminService.revokeMemberByAdmin(adminId, 303L);
+
+        List<SuspentionUserDTO> result = systemAdminService.viewSuspendedMembersByAdmin(adminId);
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+
+        boolean containsTemporaryMember = result.stream()
+                .anyMatch(dto ->
+                        dto.getMemberId() == 301L
+                                && dto.getReason().equals("Temporary reason")
+                                && dto.getDuration() != null
+                                && dto.getDuration() == 10L
+                );
+
+        boolean containsPermanentMember = result.stream()
+                .anyMatch(dto ->
+                        dto.getMemberId() == 302L
+                                && dto.getReason().equals("Permanent reason")
+                                && dto.getDuration() == null
+                );
+
+        boolean containsNormalMember = result.stream()
+                .anyMatch(dto -> dto.getMemberId() == 300L);
+
+        boolean containsRevokedMember = result.stream()
+                .anyMatch(dto -> dto.getMemberId() == 303L);
+
+        assertTrue(containsTemporaryMember);
+        assertTrue(containsPermanentMember);
+        assertFalse(containsNormalMember);
+        assertFalse(containsRevokedMember);
+    }
+
+    @Test
+    void GivenActiveSystemAdminAndNoSuspendedMembers_WhenViewSuspendedMembers_ThenThrowsNoSuspendedMembersFound() {
+        long adminId = 1L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member normalMember = new Member(304L, "happy", "Happy User", "0500000005");
+        userRepo.addRegisteredMember(304L, normalMember, "password123");
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> systemAdminService.viewSuspendedMembersByAdmin(adminId)
+        );
+
+        assertTrue(exception.getMessage().contains("No suspended members found"));
+    }
+
+    @Test
+    void GivenInvalidAdmin_WhenViewSuspendedMembers_ThenThrowsUnauthorizedAccess() {
+        long invalidAdminId = 999L;
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> systemAdminService.viewSuspendedMembersByAdmin(invalidAdminId)
+        );
+
+        assertTrue(exception.getMessage().contains("Unauthorized access"));
+    }
+
+    @Test
+    void GivenActiveSystemAdminAndExpiredSuspension_WhenViewSuspendedMembers_ThenExpiredSuspensionIsNotReturned() {
+        long adminId = 1L;
+        long memberId = 305L;
+
+        realAdminRepo.addAdmin(admin);
+
+        Member member = new Member(memberId, "expired", "Expired Suspension", "0500000006");
+        userRepo.addRegisteredMember(memberId, member, "password123");
+
+        systemAdminService.suspendMemberByAdmin(
+                adminId,
+                memberId,
+                LocalDateTime.now().minusDays(10),
+                LocalDateTime.now().minusDays(1),
+                "Expired suspension"
+        );
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> systemAdminService.viewSuspendedMembersByAdmin(adminId)
+        );
+
+        assertTrue(exception.getMessage().contains("No suspended members found"));
+    }
 }
+
+    
