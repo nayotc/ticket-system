@@ -1293,14 +1293,39 @@ public class EventServiceAcceptanceTest {
     private EventMapDTO createValidMapDTO() {
         ElementDTO stage = new ElementDTO(
                 1L, "Main Stage", new PairDTO<>(0, 0), new PairDTO<>(2, 10), "Stage");
+
         ElementDTO entrance = new ElementDTO(
                 2L, "Main Entrance", new PairDTO<>(9, 0), new PairDTO<>(1, 3), "Entrance");
-        SeatingAreaDTO seatingArea = new SeatingAreaDTO(
-                3L, "Seating Area A", new PairDTO<>(3, 2), new PairDTO<>(4, 6), "SeatingArea", false, 4, 6, List.of());
-        StandingAreaDTO standingArea = new StandingAreaDTO(
-                4L, "Standing Area B", new PairDTO<>(3, 10), new PairDTO<>(4, 5), "StandingArea", false, 100L, 0L, 0L);
 
-        return new EventMapDTO(new PairDTO<>(10, 20), List.of(stage, entrance, seatingArea, standingArea), false);
+        SeatingAreaDTO seatingArea = new SeatingAreaDTO(
+                3L,
+                "Seating Area A",
+                new PairDTO<>(3, 2),
+                new PairDTO<>(4, 6),
+                "SeatingArea",
+                false,
+                4,
+                6,
+                List.of()
+        );
+
+        StandingAreaDTO standingArea = new StandingAreaDTO(
+                4L,
+                "Standing Area B",
+                new PairDTO<>(7, 2),
+                new PairDTO<>(3, 5),
+                "StandingArea",
+                false,
+                100L,
+                0L,
+                0L
+        );
+
+        return new EventMapDTO(
+                new PairDTO<>(10, 20),
+                List.of(stage, entrance, seatingArea, standingArea),
+                false
+        );
     }
 
     private EventMapDTO createInconsistentMapDTO() {
