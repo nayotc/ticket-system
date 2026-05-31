@@ -1,24 +1,23 @@
 package ticketsystem.ApplicationLayer;
-import java.util.Set;
-
-import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
-import ticketsystem.DomainLayer.MembershipDomainService;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
-import ticketsystem.DomainLayer.IRepository.IUserRepository;
-import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.user.CompanyRole;
-import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.DomainLayer.user.Permission;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
+import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DTO.RoleTreeDTO;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
-import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Manager;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Owner;
+import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 
 @Service
@@ -205,10 +204,11 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
 
             // Notify the target member about the pending assignment
             if (notificationsService != null && targetMemberId != null) {
-                notificationsService.notifyMember(
+                notificationsService.notifyMemberAssignment(
                         targetMemberId,
                         "You received a request to become an owner of the production company \""
-                                + getCompanyName(companyId) + "\"."
+                                + getCompanyName(companyId) + "\".",
+                        companyId
                 );
             }
 
@@ -279,10 +279,11 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
                     "Completed - removeOwnerAssignment. targetMemberId=" + targetMemberId + " removed as owner.", 
                     LogLevel.INFO);
             if (notificationsService != null && targetMemberId != null) {
-                notificationsService.notifyMember(
+                notificationsService.notifyMemberAssignment(
                         targetMemberId,
                         "Your owner role in the production company \""
-                                + company.getName() + "\" was removed."
+                                + company.getName() + "\" was removed.",
+                        companyId
                 );
             }
             return true;
