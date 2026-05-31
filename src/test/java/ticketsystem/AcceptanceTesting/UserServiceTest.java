@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +55,7 @@ public class UserServiceTest {
         String sessionToken = userService.visitSystem();
 
         // Act: sign up with a unique username
-        boolean answer = userService.signUp(sessionToken, "newUser", "password123", "Test User", "0500000000");
+        boolean answer = userService.signUp(sessionToken, "newUser", "password123", "Test User", "0500000000",LocalDate.of(2001, 1, 1));
 
         // Assert: check that the new member is added to the repository
         assertTrue(answer, "Sign up should succeed with a unique username");
@@ -78,7 +81,7 @@ public class UserServiceTest {
                 "formattedPhoneUser",
                 "password123",
                 "Formatted Phone User",
-                "050-1234567");
+                "050-1234567",LocalDate.of(2001, 1, 1));
 
         // Assert
         assertTrue(answer, "Sign up should succeed with a formatted phone number");
@@ -100,7 +103,7 @@ public class UserServiceTest {
                     "blankFullNameUser",
                     "password123",
                     "   ",
-                    "0500000000");
+                    "0500000000",LocalDate.of(2001, 1, 1));
         }, "Sign up should throw when full name is blank");
 
         assertFalse(userRepository.isUsernameTaken("blankFullNameUser"),
@@ -119,7 +122,7 @@ public class UserServiceTest {
                     "shortFullNameUser",
                     "password123",
                     "A",
-                    "0500000000");
+                    "0500000000",LocalDate.of(2001, 1, 1));
         }, "Sign up should throw when full name is too short");
 
         assertFalse(userRepository.isUsernameTaken("shortFullNameUser"),
@@ -138,7 +141,7 @@ public class UserServiceTest {
                     "invalidPhoneCharactersUser",
                     "password123",
                     "Invalid Phone User",
-                    "05012abc67");
+                    "05012abc67",LocalDate.of(2001, 1, 1));
         }, "Sign up should throw when phone contains non-digit characters");
 
         assertFalse(userRepository.isUsernameTaken("invalidPhoneCharactersUser"),
@@ -157,7 +160,7 @@ public class UserServiceTest {
                     "shortPhoneUser",
                     "password123",
                     "Short Phone User",
-                    "05012345");
+                    "05012345",LocalDate.of(2001, 1, 1));
         }, "Sign up should throw when phone is too short");
 
         assertFalse(userRepository.isUsernameTaken("shortPhoneUser"),
@@ -176,7 +179,7 @@ public class UserServiceTest {
                     "longPhoneUser",
                     "password123",
                     "Long Phone User",
-                    "05012345678");
+                    "05012345678",LocalDate.of(2001, 1, 1));
         }, "Sign up should throw when phone is too long");
 
         assertFalse(userRepository.isUsernameTaken("longPhoneUser"),
@@ -195,7 +198,7 @@ public class UserServiceTest {
                     "blankPhoneUser",
                     "password123",
                     "Blank Phone User",
-                    "   ");
+                    "   ",LocalDate.of(2001, 1, 1));
         }, "Sign up should throw when phone is blank");
 
         assertFalse(userRepository.isUsernameTaken("blankPhoneUser"),
@@ -206,12 +209,12 @@ public class UserServiceTest {
     void TestSignUpWithTakenUsername_Acceptance() {
         // Arrange: simulate a guest visiting the system and signing up
         String sessionToken1 = userService.visitSystem();
-        userService.signUp(sessionToken1, "existingUser", "password123", "Existing User", "0500000000");
+        userService.signUp(sessionToken1, "existingUser", "password123", "Existing User", "0500000000",LocalDate.of(2001, 1, 1));
 
         // Act & Assert: attempt to sign up with the same username
         String sessionToken2 = userService.visitSystem();
         assertThrows(IllegalArgumentException.class, () -> {
-            userService.signUp(sessionToken2, "existingUser", "password456", "Another User", "0500000001");
+            userService.signUp(sessionToken2, "existingUser", "password456", "Another User", "0500000001",LocalDate.of(2001, 1, 1));
         }, "Sign up should throw when the username is already taken");
 
         assertTrue(userRepository.isUsernameTaken("existingUser"), "Username should be taken");
@@ -228,7 +231,7 @@ public class UserServiceTest {
         // Act & Assert: attempt to sign up with an invalid session token and expect an
         // exception
         assertThrows(IllegalArgumentException.class, () -> {
-            userService.signUp(invalidToken, "user", "password", "Test User", "0500000000");
+            userService.signUp(invalidToken, "user", "password", "Test User", "0500000000",LocalDate.of(2001, 1, 1));
         }, "Sign up should throw an exception for an invalid session token");
 
     }
@@ -237,7 +240,7 @@ public class UserServiceTest {
     void TestLoginWithRightUsernameAndPassword() {
         // Arange: visit and signup a new Member
         String sessionToken1 = userService.visitSystem();
-        userService.signUp(sessionToken1, "newUser", "password123", "Test User", "0500000000");
+        userService.signUp(sessionToken1, "newUser", "password123", "Test User", "0500000000",LocalDate.of(2001, 1, 1));
         // Act: login with the correct username and password
         String loginToken = userService.login(sessionToken1, "newUser", "password123");
         // Assert: check that the login token is valid and the user is logged in
@@ -259,7 +262,7 @@ public class UserServiceTest {
                 "newUser",
                 "password123",
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         // Act & Assert: login with the wrong username
         assertThrows(IllegalArgumentException.class, () -> {
             userService.login(sessionToken1, "wrongUser", "password123");
@@ -277,7 +280,7 @@ public class UserServiceTest {
                 "newUser",
                 "password123",
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
 
         // Act & Assert: login with the wrong password
         assertThrows(IllegalArgumentException.class, () -> {
@@ -297,7 +300,7 @@ public class UserServiceTest {
                 "user",
                 "password",
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
 
         String invalidToken = "fake-token";
 
@@ -317,7 +320,7 @@ public class UserServiceTest {
                 "newUser1",
                 "password1",
                 "Test User One",
-                "0500000001");
+                "0500000001",LocalDate.of(2001, 1, 1));
 
         String sessionToken2 = userService.visitSystem();
         userService.signUp(
@@ -325,7 +328,7 @@ public class UserServiceTest {
                 "newUser2",
                 "password2",
                 "Test User Two",
-                "0500000002");
+                "0500000002",LocalDate.of(2001, 1, 1));
         // Act & Assert: login with the wrong password
         assertThrows(IllegalArgumentException.class, () -> {
             userService.login(sessionToken1, "newUser1", "password2");
@@ -344,7 +347,7 @@ public class UserServiceTest {
                 "userToUpdate",
                 "oldPassword",
                 "User To Update",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "userToUpdate", "oldPassword");
 
         // Act: update username then password with correct current password (same steps
@@ -365,7 +368,7 @@ public class UserServiceTest {
                 "userToUpdate",
                 "oldPassword",
                 "User To Update",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "userToUpdate", "oldPassword");
 
         // Act: password change while still registered as userToUpdate
@@ -385,7 +388,7 @@ public class UserServiceTest {
                 "user1",
                 "password1",
                 "User One",
-                "0500000001");
+                "0500000001",LocalDate.of(2001, 1, 1));
         String loginToken1 = userService.login(sessionToken1, "user1", "password1");
 
         String sessionToken2 = userService.visitSystem();
@@ -394,7 +397,7 @@ public class UserServiceTest {
                 "user2",
                 "password2",
                 "User Two",
-                "0500000002");
+                "0500000002",LocalDate.of(2001, 1, 1));
         String loginToken2 = userService.login(sessionToken2, "user2", "password2");
 
         // Act & Assert: attempt to update user1's username using user2's token
@@ -417,7 +420,7 @@ public class UserServiceTest {
                 "userToUpdate",
                 "oldPassword",
                 "User To Update",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "userToUpdate", "oldPassword");
 
         // Act & Assert: attempt to update username with incorrect current username
@@ -440,7 +443,7 @@ public class UserServiceTest {
                 "userToUpdate",
                 "oldPassword",
                 "User To Update",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "userToUpdate", "oldPassword");
 
         // Act & Assert: attempt to update username with incorrect current password
@@ -463,7 +466,7 @@ public class UserServiceTest {
                 "userToUpdate",
                 "oldPassword",
                 "User To Update",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "userToUpdate", "oldPassword");
 
         // Act: attempt to update member details with a token that does not belong to
@@ -485,7 +488,7 @@ public class UserServiceTest {
                 "user1",
                 "password1",
                 "User One",
-                "0500000001");
+                "0500000001",LocalDate.of(2001, 1, 1));
         String loginToken1 = userService.login(sessionToken1, "user1", "password1");
 
         String sessionToken2 = userService.visitSystem();
@@ -494,7 +497,7 @@ public class UserServiceTest {
                 "user2",
                 "password2",
                 "User Two",
-                "0500000002");
+                "0500000002",LocalDate.of(2001, 1, 1));
 
         // Act & Assert: attempt to update user1's username to user2's username
         assertThrows(IllegalArgumentException.class, () -> {
@@ -511,7 +514,7 @@ public class UserServiceTest {
                 "newUser",
                 "password123",
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "newUser", "password123");
 
         // Act & Assert: attempt to exit with an invalid token and expect an exception
@@ -529,7 +532,7 @@ public class UserServiceTest {
                 "newUser",
                 "password123",
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "newUser", "password123");
         userService.exit(loginToken);
 
@@ -548,7 +551,7 @@ public class UserServiceTest {
                 "newUser",
                 "password123",
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "newUser", "password123");
 
         // Act: attempt to sign up with an invalid token
@@ -581,7 +584,7 @@ public class UserServiceTest {
                 "newUser",
                 "password123",
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "newUser", "password123");
 
         // Act: logout with a valid token
@@ -604,7 +607,7 @@ public class UserServiceTest {
                 "newUser",
                 "password123",
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "newUser", "password123");
 
         // Act & Assert: attempt to logout with an invalid token and expect an exception
@@ -622,7 +625,7 @@ public class UserServiceTest {
                 "newUser",
                 "password123",
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         String loginToken = userService.login(sessionToken, "newUser", "password123");
         userService.logOut(loginToken);
 
@@ -651,7 +654,7 @@ public class UserServiceTest {
         String sessionToken = userService.visitSystem();
 
         assertThrows(IllegalArgumentException.class,
-                () -> userService.signUp(sessionToken, "   ", "password123", "Test User", "0500000000"));
+                () -> userService.signUp(sessionToken, "   ", "password123", "Test User", "0500000000",LocalDate.of(2001, 1, 1)));
     }
 
     @Test
@@ -659,17 +662,17 @@ public class UserServiceTest {
         String sessionToken = userService.visitSystem();
 
         assertThrows(IllegalArgumentException.class,
-                () -> userService.signUp(sessionToken, "user", "   ", "Test User", "0500000000"));
+                () -> userService.signUp(sessionToken, "user", "   ", "Test User", "0500000000",LocalDate.of(2001, 1, 1)));
     }
 
     @Test
     void TestSignUpWithMemberToken_ThenThrowsException() {
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "user", "password123", "Test User", "0500000000");
+        userService.signUp(guestToken, "user", "password123", "Test User", "0500000000",LocalDate.of(2001, 1, 1));
         String memberToken = userService.login(guestToken, "user", "password123");
 
         assertThrows(IllegalStateException.class,
-                () -> userService.signUp(memberToken, "anotherUser", "password123", "Another User", "0500000001"));
+                () -> userService.signUp(memberToken, "anotherUser", "password123", "Another User", "0500000001",LocalDate.of(2001, 1, 1)));
     }
 
     @Test
@@ -689,7 +692,7 @@ public class UserServiceTest {
     @Test
     void TestLoginWithMemberToken_ThenThrowsException() {
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "user", "password123", "Test User", "0500000000");
+        userService.signUp(guestToken, "user", "password123", "Test User", "0500000000",LocalDate.of(2001, 1, 1));
         String memberToken = userService.login(guestToken, "user", "password123");
 
         assertThrows(IllegalStateException.class, () -> userService.login(memberToken, "user", "password123"));
@@ -698,7 +701,7 @@ public class UserServiceTest {
     @Test
     void TestLoginWithListener_ThenListenerIsCalled() {
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "listenerUser", "password123", "Listener User", "0500000000");
+        userService.signUp(guestToken, "listenerUser", "password123", "Listener User", "0500000000",LocalDate.of(2001, 1, 1));
 
         final boolean[] wasCalled = {false};
 
@@ -717,7 +720,7 @@ public class UserServiceTest {
     @Test
     void TestLoginWithRemovedListener_ThenListenerIsNotCalled() {
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "removedListenerUser", "password123", "Removed Listener User", "0500000000");
+        userService.signUp(guestToken, "removedListenerUser", "password123", "Removed Listener User", "0500000000",LocalDate.of(2001, 1, 1));
 
         final boolean[] wasCalled = {false};
 
@@ -736,7 +739,7 @@ public class UserServiceTest {
     @Test
     void TestLoginWhenListenerThrows_ThenLoginFailsAndMemberTokenIsRolledBack() {
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "failingListenerUser", "password123", "Failing Listener User", "0500000000");
+        userService.signUp(guestToken, "failingListenerUser", "password123", "Failing Listener User", "0500000000",LocalDate.of(2001, 1, 1));
 
         userService.addUserLoginListener((oldGuestToken, newMemberToken) -> {
             throw new RuntimeException("listener failed");
@@ -764,7 +767,7 @@ public class UserServiceTest {
     @Test
     void TestUpdateMemberUsernameToSameUsername_ThenSucceeds() {
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, "sameUser", "password123", "Same User", "0500000000");
+        userService.signUp(guestToken, "sameUser", "password123", "Same User", "0500000000",LocalDate.of(2001, 1, 1));
         String memberToken = userService.login(guestToken, "sameUser", "password123");
 
         boolean result = userService.updateMemberUsername(

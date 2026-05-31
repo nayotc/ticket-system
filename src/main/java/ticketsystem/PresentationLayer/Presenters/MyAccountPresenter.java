@@ -140,26 +140,31 @@ public boolean updatePhone(String token,String password, String username,  Strin
     //         throw new PresentationException("שמירת פרטי החשבון נכשלה.");
     //     }
     // }
-    public void updatePersonalDetails(String token, AccountProfileEditData data) {
+   public void updatePersonalDetails(String token, AccountProfileEditData data) {
 
     if (data == null) {
         throw new PresentationException("פרטי המשתמש חסרים.");
     }
 
+    if (data.currentPassword() == null || data.currentPassword().isBlank()) {
+        throw new PresentationException("יש להזין סיסמה נוכחית כדי לשמור שינויים.");
+    }
+
     try {
         MemberDTO currentMember = loadProfile(token);
 
-        String currentUsername = currentMember.getEmail(); 
+        String currentUsername = currentMember.getEmail(); // או getUsername אצלך
         String currentFullName = currentMember.getFullName();
         String currentPhone = currentMember.getPhone();
-        
 
         if (data.fullName() != null
                 && !data.fullName().isBlank()
                 && !data.fullName().equals(currentFullName)) {
 
             updateFullName(
-                    token,data.currentPassword(),data.email(),
+                    token,
+                    data.currentPassword(),
+                    currentUsername,
                     data.fullName()
             );
         }
@@ -169,7 +174,9 @@ public boolean updatePhone(String token,String password, String username,  Strin
                 && !data.phone().equals(currentPhone)) {
 
             updatePhone(
-                    token,data.currentPassword(),data.email(),
+                    token,
+                    data.currentPassword(),
+                    currentUsername,
                     data.phone()
             );
         }
@@ -180,7 +187,8 @@ public boolean updatePhone(String token,String password, String username,  Strin
 
             updateUsername(
                     token,
-                    data.currentPassword(),currentUsername,
+                    data.currentPassword(),
+                    currentUsername,
                     data.email()
             );
 
@@ -192,7 +200,7 @@ public boolean updatePhone(String token,String password, String username,  Strin
 
             updatePassword(
                     token,
-                    
+                    data.currentPassword(),
                     currentUsername,
                     data.newPassword()
             );
@@ -205,7 +213,6 @@ public boolean updatePhone(String token,String password, String username,  Strin
         throw new PresentationException("שמירת פרטי החשבון נכשלה.");
     }
 }
-
         public void openPurchaseDetails(String purchaseId){
 
         }

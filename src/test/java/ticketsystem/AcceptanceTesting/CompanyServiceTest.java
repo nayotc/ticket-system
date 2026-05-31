@@ -1,6 +1,7 @@
 package ticketsystem.AcceptanceTesting;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -96,7 +97,7 @@ public class CompanyServiceTest {
     private String createLoggedInMember(String username, String password) {
         String guestToken = userService.visitSystem();
 
-        boolean signedUp = userService.signUp(guestToken, username, password, "Test User", "0500000000");
+        boolean signedUp = userService.signUp(guestToken, username, password, "Test User", "0500000000",LocalDate.of(2001, 1, 1));
         assertTrue(signedUp, "Member signup should succeed during test setup.");
 
         String memberToken = userService.login(guestToken, username, password);

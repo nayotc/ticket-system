@@ -3,6 +3,7 @@ package ticketsystem.PresentationLayer.Views;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -269,31 +270,77 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
             showError("הסיסמה החדשה ואימות הסיסמה אינם זהים.");
             return;
         }
+        openPasswordConfirmationDialog();
+
+        // AccountProfileEditData data = new AccountProfileEditData(
+        //         fullNameField.getValue(),
+        //         emailField.getValue(),
+        //         phoneField.getValue(),
+        //        // usernameField.getValue(),
+        //         currentPasswordField.getValue(),
+        //         newPasswordField.getValue()
+        // );
+
+        // try {
+        //     presenter.updatePersonalDetails(UiSession.getMemberToken(), data);
+
+        //     currentPasswordField.clear();
+        //     newPasswordField.clear();
+        //     confirmPasswordField.clear();
+
+        //     profileName.setText(data.fullName().isBlank() ? data.email() : data.fullName());
+        //     avatarInitials.setText(createInitials(profileName.getText()));
+
+        //     showSuccess("הפרטים עודכנו בהצלחה.");
+        // } catch (RuntimeException ex) {
+        //     showError(ex.getMessage() == null ? "שמירת הפרטים נכשלה." : ex.getMessage());
+        // }
+    }
+    private void openPasswordConfirmationDialog() {
+    Dialog dialog = new Dialog();
+    dialog.setHeaderTitle("אימות פעולה");
+
+    PasswordField passwordField = new PasswordField("סיסמה נוכחית");
+    passwordField.setWidthFull();
+    passwordField.setRevealButtonVisible(false);
+
+    Button confirmButton = new Button("אישור", event -> {
+        if (passwordField.getValue() == null || passwordField.getValue().isBlank()) {
+            showError("יש להזין סיסמה נוכחית");
+            return;
+        }
 
         AccountProfileEditData data = new AccountProfileEditData(
                 fullNameField.getValue(),
                 emailField.getValue(),
                 phoneField.getValue(),
-               // usernameField.getValue(),
-                currentPasswordField.getValue(),
+                passwordField.getValue(),
                 newPasswordField.getValue()
         );
 
         try {
             presenter.updatePersonalDetails(UiSession.getMemberToken(), data);
 
-            currentPasswordField.clear();
             newPasswordField.clear();
             confirmPasswordField.clear();
 
-            profileName.setText(data.fullName().isBlank() ? data.email() : data.fullName());
-            avatarInitials.setText(createInitials(profileName.getText()));
-
             showSuccess("הפרטים עודכנו בהצלחה.");
+            dialog.close();
+            loadDataFromPresenter();
+
         } catch (RuntimeException ex) {
             showError(ex.getMessage() == null ? "שמירת הפרטים נכשלה." : ex.getMessage());
         }
-    }
+    });
+
+    confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+    Button cancelButton = new Button("ביטול", event -> dialog.close());
+
+    dialog.add(passwordField);
+    dialog.getFooter().add(cancelButton, confirmButton);
+    dialog.open();
+}
 
     private void loadDataFromPresenter() {
         if (presenter == null || UiSession.getMemberToken() == null) {

@@ -1,6 +1,7 @@
 package ticketsystem.AcceptanceTesting;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -441,7 +442,7 @@ public class WaitingQueueServiceTest {
                         100L,
                         "member",
                         "Member User",
-                        "0500000000"));
+                        "0500000000",LocalDate.of(2001, 1, 1)));
 
         // Act
         String result = waitingQueueService.tryReserve(10L, memberToken);

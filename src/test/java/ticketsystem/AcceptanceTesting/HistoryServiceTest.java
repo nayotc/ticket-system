@@ -1,6 +1,7 @@
 package ticketsystem.AcceptanceTesting;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -90,7 +91,7 @@ public class HistoryServiceTest {
                 username,
                 password,
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         return userService.login(guestToken, username, password);
     }
 

@@ -1,6 +1,7 @@
 package ticketsystem.AcceptanceTesting;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -152,7 +153,7 @@ public class EventServiceAcceptanceTest {
         eventService.addEventUpdatesListener(historyService);
 
         // FIX: Setup a real Member with an ACTIVE Owner role in the DB
-        Member ownerMember = new Member(ownerId, "EventOwnerUser", "Event Owner User", "0500000001");
+        Member ownerMember = new Member(ownerId, "EventOwnerUser", "Event Owner User", "0500000001",LocalDate.of(2001, 1, 1));
         ownerMember.addOwnerRole(companyId, 999L);
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password");
@@ -300,7 +301,7 @@ public class EventServiceAcceptanceTest {
         Long plainUserId = 2L;
 
         // Setup a real user WITHOUT any roles
-        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002");
+        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002",LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(plainUserId, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, plainUserId);
 
@@ -454,7 +455,7 @@ public class EventServiceAcceptanceTest {
         String sessionWithoutPermission = "session-without-update-permission";
 
         // Setup a real user WITHOUT any roles
-        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000003");
+        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000003",LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(2L, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, 2L);
 
@@ -674,7 +675,7 @@ public class EventServiceAcceptanceTest {
         eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
 
         String sessionWithoutPermission = "session-without-map-permission";
-        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000004");
+        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000004",LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(2L, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, 2L);
 
@@ -886,7 +887,7 @@ public class EventServiceAcceptanceTest {
                 2L,
                 "userWithoutPermission",
                 "User Without Permission",
-                "0500000000"
+                "0500000000",LocalDate.of(2001, 1, 1)
         );
 
         userRepository.addRegisteredMember(
@@ -1050,7 +1051,7 @@ public class EventServiceAcceptanceTest {
 
         String sessionWithoutPermission = "session-without-discount-permission";
 
-        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000005");
+        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000005",LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(2L, plainUser, "password");
 
         tokenService.addValidSession(sessionWithoutPermission, 2L);
@@ -1622,7 +1623,7 @@ public class EventServiceAcceptanceTest {
         String sessionWithoutPermission = "session-without-policy-permission";
         Long plainUserId = 2L;
 
-        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002");
+        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002",LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(plainUserId, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, plainUserId);
 

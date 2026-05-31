@@ -1,5 +1,6 @@
 package ticketsystem.AcceptanceTesting;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -177,7 +178,7 @@ public class SystemAdminServiceTest {
         realAdminRepo.addAdmin(admin);
         long memberId = 1L;
 
-        Member member = new Member(memberId, "TestUser", "Test User", "0500000001");
+        Member member = new Member(memberId, "TestUser", "Test User", "0500000001",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "hashedPassword123");
 
         // Act
@@ -200,14 +201,14 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(new SystemAdmin(String.valueOf(adminId), "admin", true));
 
-        Member founder = new Member(founderId, "founder", "Founder User", "0500000002");
+        Member founder = new Member(founderId, "founder", "Founder User", "0500000002",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(founderId, founder, "password123");
         String founderSessionId = tokenService.addActiveSession(founder);
 
         CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
         long companyId = createdCompany.getId();
 
-        Member owner = new Member(ownerId, "owner", "Owner User", "0500000003");
+        Member owner = new Member(ownerId, "owner", "Owner User", "0500000003",LocalDate.of(2001, 1, 1));
         owner.addOwnerRole(companyId, founderId);
         owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepo.addRegisteredMember(ownerId, owner, "password123");
@@ -215,7 +216,7 @@ public class SystemAdminServiceTest {
         Set<Permission> managerPermissions = new HashSet<>();
         managerPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
-        Member manager = new Member(managerId, "manager", "Manager User", "0500000004");
+        Member manager = new Member(managerId, "manager", "Manager User", "0500000004",LocalDate.of(2001, 1, 1));
         manager.addManagerRole(companyId, founderId, managerPermissions);
         manager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepo.addRegisteredMember(managerId, manager, "password123");
@@ -250,7 +251,7 @@ public class SystemAdminServiceTest {
         // Arrange
         long nonAdminId = 10L;
         long founderId = 20L;
-        Member founder = new Member(founderId, "founder", "Founder User", "0500000005");
+        Member founder = new Member(founderId, "founder", "Founder User", "0500000005",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(founderId, founder, "password123");
         String founderSessionId = tokenService.addActiveSession(founder);
 
@@ -516,7 +517,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "baduser", "Bad User", "0501112222");
+        Member member = new Member(memberId, "baduser", "Bad User", "0501112222",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         LocalDateTime start = LocalDateTime.now().minusMinutes(1);
@@ -551,7 +552,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "permanentuser", "Permanent User", "0502223333");
+        Member member = new Member(memberId, "permanentuser", "Permanent User", "0502223333",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         LocalDateTime start = LocalDateTime.now().minusMinutes(1);
@@ -580,7 +581,7 @@ public class SystemAdminServiceTest {
         long invalidAdminId = 999L;
         long memberId = 102L;
 
-        Member member = new Member(memberId, "regularuser", "Regular User", "0503334444");
+        Member member = new Member(memberId, "regularuser", "Regular User", "0503334444",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         IllegalArgumentException exception = assertThrows(
@@ -629,7 +630,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "dateuser", "Date User", "0504445555");
+        Member member = new Member(memberId, "dateuser", "Date User", "0504445555",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         LocalDateTime start = LocalDateTime.now().plusDays(10);
@@ -660,7 +661,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "alreadySuspended", "Already Suspended", "0505556666");
+        Member member = new Member(memberId, "alreadySuspended", "Already Suspended", "0505556666",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         systemAdminService.suspendMemberByAdmin(
@@ -696,7 +697,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "suspendeduser", "Suspended User", "0506667777");
+        Member member = new Member(memberId, "suspendeduser", "Suspended User", "0506667777",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         systemAdminService.suspendMemberByAdmin(
@@ -726,7 +727,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "blockeduser", "Blocked User", "0507778888");
+        Member member = new Member(memberId, "blockeduser", "Blocked User", "0507778888",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         systemAdminService.suspendMemberByAdmin(
@@ -770,7 +771,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "regularmember", "Regular Member", "0508889999");
+        Member member = new Member(memberId, "regularmember", "Regular Member", "0508889999",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         IllegalStateException exception = assertThrows(
@@ -790,16 +791,16 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member normalMember = new Member(300L, "normal", "Normal User", "0500000001");
+        Member normalMember = new Member(300L, "normal", "Normal User", "0500000001",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(300L, normalMember, "password123");
 
-        Member temporarySuspendedMember = new Member(301L, "temporary", "Temporary Suspended", "0500000002");
+        Member temporarySuspendedMember = new Member(301L, "temporary", "Temporary Suspended", "0500000002",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(301L, temporarySuspendedMember, "password123");
 
-        Member permanentSuspendedMember = new Member(302L, "permanent", "Permanent Suspended", "0500000003");
+        Member permanentSuspendedMember = new Member(302L, "permanent", "Permanent Suspended", "0500000003",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(302L, permanentSuspendedMember, "password123");
 
-        Member revokedSuspensionMember = new Member(303L, "revoked", "Revoked User", "0500000004");
+        Member revokedSuspensionMember = new Member(303L, "revoked", "Revoked User", "0500000004",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(303L, revokedSuspensionMember, "password123");
 
         LocalDateTime start = LocalDateTime.now().minusDays(1);
@@ -867,7 +868,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member normalMember = new Member(304L, "happy", "Happy User", "0500000005");
+        Member normalMember = new Member(304L, "happy", "Happy User", "0500000005",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(304L, normalMember, "password123");
 
         IllegalStateException exception = assertThrows(
@@ -897,7 +898,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "expired", "Expired Suspension", "0500000006");
+        Member member = new Member(memberId, "expired", "Expired Suspension", "0500000006",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         systemAdminService.suspendMemberByAdmin(
