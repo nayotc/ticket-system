@@ -38,7 +38,7 @@ public class ReservationPresenter {
         this.eventService = eventService;
     }
 
-    public EventTicketSelectionDto loadTicketSelectionEvent(String token, Long eventId) {
+    public EventDTO loadEvent(String token, Long eventId) {
         try {
             if (token == null || token.isBlank()) {
                 throw presentationError("No active session found. Please refresh and try again.");
@@ -54,7 +54,36 @@ public class ReservationPresenter {
                 throw presentationError("Event map is not available.");
             }
 
-            return toTicketSelectionDto(event);
+            return event;
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Event data could not be loaded. Please try again.");
+        }
+    }
+
+    public EventMapDTO loadEventMap (String token, Long eventId) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            EventMapDTO MapDTO= eventService.getEventMap(token, eventId);
+
+            if (MapDTO == null) {
+                throw presentationError("Event map is not available.");
+            }
+
+            return MapDTO;
 
         } catch (PresentationException e) {
             throw e;
@@ -247,8 +276,8 @@ public class ReservationPresenter {
                 event.date(),
                 formatLocation(event.location()),
                 new EventMapDto(
-                        safeInt(map.size(), true, 1),
-                        safeInt(map.size(), false, 1),
+                        safeInt(map.size(), true, 1),  // rows = height
+                        safeInt(map.size(), false, 1), // columns = width
                         toMapElements(map, event.ticketPrice())
                 )
         );
