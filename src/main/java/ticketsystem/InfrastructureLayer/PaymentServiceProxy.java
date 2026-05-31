@@ -1,10 +1,12 @@
 package ticketsystem.InfrastructureLayer;
 
+import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 
 import ticketsystem.ApplicationLayer.IPaymentService;
 import ticketsystem.DTO.PaymentDetails;
 
+@Component
 public class PaymentServiceProxy implements IPaymentService {
 
     public static boolean isConnectionSuccessful = true; // for testing

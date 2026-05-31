@@ -1,5 +1,7 @@
 package ticketsystem.ApplicationLayer;
 
+import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,6 +30,7 @@ import java.time.Period;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Permission;
 
+@Service
 public class ReservationService {
 
     private final IOrderRepository orderRepository;
@@ -167,6 +170,59 @@ public class ReservationService {
 
         } catch (Exception e) {
             logger.logEvent("removeTicketFromActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+    }
+
+
+    public boolean removeSeatTicketFromActiveOrder(String token, Long eventId, Long areaId, seatPositionDTO position) {
+        expireOldOrders();
+
+        try {
+            tokenService.validateToken(token);
+            userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
+
+            if (eventId == null || areaId == null || position == null) {
+                throw new IllegalArgumentException("Seat removal details are incomplete");
+            }
+
+            ActiveOrder order = findActiveOrder(token, eventId);
+
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+                throw new IllegalStateException("No active order found for this event");
+            }
+
+            Event event = eventRepository.getEventById(eventId);
+
+            if (event == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+
+            Long ticketId = order.getTickets().stream()
+                    .filter(ticket -> areaId.equals(ticket.getAreaId()))
+                    .filter(ticket -> ticket.getRow() == position.getRow())
+                    .filter(ticket -> ticket.getChair() == position.getChair())
+                    .map(ticket -> ticket.getTicketId())
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Ticket not found in active order"));
+
+            reservationDomeinService.removeTicketFromActiveOrder(order, event, ticketId);
+
+            saveAll(order, event);
+
+            logger.logEvent(
+                    "Seat ticket removed from active order: orderId=" + order.getOrderId()
+                            + ", eventId=" + eventId
+                            + ", areaId=" + areaId
+                            + ", row=" + position.getRow()
+                            + ", chair=" + position.getChair(),
+                    LogLevel.INFO
+            );
+
+            return true;
+
+        } catch (Exception e) {
+            logger.logEvent("removeSeatTicketFromActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
     }
@@ -405,6 +461,11 @@ public class ReservationService {
                     eventId);
 
             orderRepository.addOrder(order);
+            logger.logEvent(
+                    "Active order created: orderId=" + order.getOrderId()
+                            + ", eventId=" + eventId,
+                    LogLevel.INFO
+            );
         }
 
         return order;

@@ -1,5 +1,7 @@
 package ticketsystem.InfrastructureLayer;
 
+import org.springframework.stereotype.Repository;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +12,7 @@ import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.exception.OptimisticLockException;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
+@Repository
 public class OrderRepository implements IOrderRepository {
 
     private final AtomicLong counter;
