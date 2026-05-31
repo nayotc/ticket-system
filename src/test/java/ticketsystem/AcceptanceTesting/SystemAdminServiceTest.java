@@ -1,11 +1,5 @@
 package ticketsystem.AcceptanceTesting;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,6 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,8 +25,8 @@ import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.SuspentionUserDTO;
-import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.history.PurchasedTicket;
@@ -35,6 +34,8 @@ import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
@@ -45,8 +46,6 @@ import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.DomainLayer.user.Permission;
-import ticketsystem.DomainLayer.user.RoleStatus;
 
 public class SystemAdminServiceTest {
 
@@ -76,11 +75,11 @@ public class SystemAdminServiceTest {
         userRepo = new UserRepository();
         companyRepo = new CompanyRepository();
         TokenRepository tokenRepository = new TokenRepository();
-        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         membershipDomain = new MembershipDomainService(userRepo);
         fakeNotifier = new FakeNotifier();
-        userAccessService=new UserAccessService(userRepo);
-        companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger,userAccessService,fakeNotifier);
+        userAccessService = new UserAccessService(userRepo);
+        companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger, userAccessService, fakeNotifier);
         orderRepo = new OrderRepository();
         historyRepo = new HistoryRepository();
         systemAdminService = new SystemAdminService(
@@ -91,7 +90,7 @@ public class SystemAdminServiceTest {
                 orderRepo,
                 tokenService,
                 companyRepo, logger, historyRepo,
-                membershipDomain,fakeNotifier
+                membershipDomain, fakeNotifier
         );
     }
 
@@ -191,7 +190,7 @@ public class SystemAdminServiceTest {
         assertTrue(deletedUser == null, "Member should be removed from UserRepository.");
     }
 
-        @Test
+    @Test
     void GivenActiveSystemAdminAndActiveCompany_WhenCloseProductionCompanyByAdmin_ThenCompanyIsClosedAndRolesAreCancelled() throws Exception {
         // Arrange
         long adminId = 1L;
@@ -275,39 +274,37 @@ public class SystemAdminServiceTest {
     void AcceptanceTest_ViewPurchaseHistoryByBuyer_Successful() {
         // --- 1. Preparation (Admin is created, logged in, and is system admin) ---
         long adminId = 1L;
-        realAdminRepo.addAdmin(admin); 
+        realAdminRepo.addAdmin(admin);
 
         // --- 2. Create Purchase History ---
-
         long buyer1_Id = 801L;
         long buyer2_Id = 802L;
-  
-      
+
         Purchase purchase1 = new Purchase(
-            10L, 
-            Arrays.asList(new PurchasedTicket(401, 1, 1, 200.0, "BARCODE_A")), 
-            "Jazz Festival", 
-            "Shuni", 
-            buyer1_Id, 
-            50L, 4L, 60L
+                10L,
+                Arrays.asList(new PurchasedTicket(401, 1, 1, 200.0, "BARCODE_A")),
+                "Jazz Festival",
+                "Shuni",
+                buyer1_Id,
+                50L, 4L, 60L
         );
-        
+
         Purchase purchase2 = new Purchase(
-            11L, 
-            Arrays.asList(new PurchasedTicket(402, 1, 2, 200.0, "BARCODE_B")), 
-            "Jazz Festival", 
-            "Shuni", 
-            buyer1_Id, 
-            50L, 4L, 60L
+                11L,
+                Arrays.asList(new PurchasedTicket(402, 1, 2, 200.0, "BARCODE_B")),
+                "Jazz Festival",
+                "Shuni",
+                buyer1_Id,
+                50L, 4L, 60L
         );
-        
+
         Purchase purchase3 = new Purchase(
-            12L, 
-            Arrays.asList(new PurchasedTicket(403, 5, 5, 150.0, "BARCODE_C")), 
-            "Rock Concert", 
-            "Barby", 
-            buyer2_Id, 
-            50L, 4L, 61L
+                12L,
+                Arrays.asList(new PurchasedTicket(403, 5, 5, 150.0, "BARCODE_C")),
+                "Rock Concert",
+                "Barby",
+                buyer2_Id,
+                50L, 4L, 61L
         );
 
         historyRepo.addPurchase(purchase1);
@@ -315,21 +312,19 @@ public class SystemAdminServiceTest {
         historyRepo.addPurchase(purchase3);
 
         // --- 3. Action (Admin requests to view purchase history by buyer) ---
-       
         Map<Long, List<OrderDTO>> historyResult = systemAdminService.getPurchaseHistoryByBuyer(adminId);
 
         // --- 4. Assertions (System displays the purchase history grouped by buyer) ---
         assertNotNull(historyResult, "History result should not be null");
         assertFalse(historyResult.isEmpty(), "History result should not be empty");
-        
-        
+
         assertEquals(2, historyResult.size(), "Result should contain exactly 2 distinct buyers");
-        
+
         // buyer 1
         assertTrue(historyResult.containsKey(buyer1_Id), "Result should contain buyer 1");
         List<OrderDTO> buyer1Purchases = historyResult.get(buyer1_Id);
         assertEquals(2, buyer1Purchases.size(), "Buyer 1 should have exactly 2 purchases");
-        
+
         //buyer 2
         assertTrue(historyResult.containsKey(buyer2_Id), "Result should contain buyer 2");
         List<OrderDTO> buyer2Purchases = historyResult.get(buyer2_Id);
@@ -341,34 +336,33 @@ public class SystemAdminServiceTest {
     void AcceptanceTest_ViewPurchaseHistoryByBuyer_Failure_NoHistory() {
         // --- 1. Preparation (Admin is created, logged in, and is system admin) ---
         long adminId = 1L;
-        realAdminRepo.addAdmin(admin); 
+        realAdminRepo.addAdmin(admin);
 
         // --- 2. NO PURCHASE HISTORY EXISTS ---
         // empty historyRepo, no purchases added
-
         // --- 3 & 4. Action & Assertions (System displays message / throws exception) ---
         Exception exception = assertThrows(IllegalStateException.class, () -> {
             systemAdminService.getPurchaseHistoryByBuyer(adminId);
         });
 
-        assertTrue(exception.getMessage().contains("No purchases have been made yet."), 
-            "Exception message should indicate that no history is available");
+        assertTrue(exception.getMessage().contains("No purchases have been made yet."),
+                "Exception message should indicate that no history is available");
     }
-    
+
     // Use Case 6.4: View Purchase History by Buyer - Failure Scenarios
     @Test
     void AcceptanceTest_ViewPurchaseHistoryByBuyer_Failure_UnauthorizedAccess() {
         // --- 1. Preparation (Simulating an unauthorized request) ---
         // נשתמש ב-ID של אדמין שלא קיים במערכת (או שלא הוספנו ל-repo)
-        long unauthorizedAdminId = 999L; 
+        long unauthorizedAdminId = 999L;
 
         // --- 2 & 3 & 4. Action & Assertions ---
         Exception exception = assertThrows(SecurityException.class, () -> {
             systemAdminService.getPurchaseHistoryByBuyer(unauthorizedAdminId);
         });
 
-        assertTrue(exception.getMessage().contains("Unauthorized access"), 
-            "Exception message should indicate unauthorized access");
+        assertTrue(exception.getMessage().contains("Unauthorized access"),
+                "Exception message should indicate unauthorized access");
     }
 
     // Use Case 6.4: View Global Purchase History (By Company and Event)
@@ -382,35 +376,34 @@ public class SystemAdminServiceTest {
         long companyId = 40L;
         String event1_Name = "Tomorrowland Israel";
         String event2_Name = "Winter Festival";
-  
+
         //create purchases for the same company but different events, to check the grouping by both company and event name
         Purchase purchase1 = new Purchase(
-            4L, 
-            Arrays.asList(new PurchasedTicket(301, 10, 5, 400.0, "VIP_BARCODE")), 
-            event1_Name, 
-            "Expo TLV", 
-            666L, 
-            companyId, 4L,
-            52L
-
+                4L,
+                Arrays.asList(new PurchasedTicket(301, 10, 5, 400.0, "VIP_BARCODE")),
+                event1_Name,
+                "Expo TLV",
+                666L,
+                companyId, 4L,
+                52L
         );
         Purchase purchase2 = new Purchase(
-            5L, 
-            Arrays.asList(new PurchasedTicket(302, 10, 6, 400.0, "VIP_BARCODE")), 
-            event1_Name, 
-            "Expo TLV", 
-            777L, 
-            companyId, 4L,
-             52L
+                5L,
+                Arrays.asList(new PurchasedTicket(302, 10, 6, 400.0, "VIP_BARCODE")),
+                event1_Name,
+                "Expo TLV",
+                777L,
+                companyId, 4L,
+                52L
         );
         //one purchase for a different event but same company, to check the grouping by event name as well
         Purchase purchase3 = new Purchase(
-            6L, 
-            Arrays.asList(new PurchasedTicket(303, 1, 1, 200.0, "REGULAR_BARCODE")), 
-            event2_Name, 
-            "Expo TLV", 
-            888L, 
-            companyId , 4L, 53L
+                6L,
+                Arrays.asList(new PurchasedTicket(303, 1, 1, 200.0, "REGULAR_BARCODE")),
+                event2_Name,
+                "Expo TLV",
+                888L,
+                companyId, 4L, 53L
         );
 
         historyRepo.addPurchase(purchase1);
@@ -418,20 +411,20 @@ public class SystemAdminServiceTest {
         historyRepo.addPurchase(purchase3);
 
         // --- 3. Action ---
-        Map<Long, Map<String, List<OrderDTO>>> historyResult = 
-            systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
+        Map<Long, Map<String, List<OrderDTO>>> historyResult
+                = systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
 
         // --- 4. Assertions ---
         assertNotNull(historyResult, "History result should not be null");
         assertFalse(historyResult.isEmpty(), "History result should not be empty");
-        
+
         assertTrue(historyResult.containsKey(companyId), "Result should group by company ID (40)");
-        
+
         Map<String, List<OrderDTO>> eventsForCompany = historyResult.get(companyId);
         assertNotNull(eventsForCompany, "The inner map for the company should not be null");
         assertTrue(eventsForCompany.containsKey(event1_Name), "Result should contain " + event1_Name);
         assertEquals(2, eventsForCompany.get(event1_Name).size(), "There should be exactly 2 purchases for Tomorrowland");
-    
+
         assertTrue(eventsForCompany.containsKey(event2_Name), "Result should contain " + event2_Name);
         assertEquals(1, eventsForCompany.get(event2_Name).size(), "There should be exactly 1 purchase for Winter Festival");
     }
@@ -441,20 +434,19 @@ public class SystemAdminServiceTest {
     void AcceptanceTest_ViewHistoryByCompanyAndEvent_Failure_NoHistory() {
         // --- 1. Preparation ---
         long adminId = 1L;
-        realAdminRepo.addAdmin(admin); 
+        realAdminRepo.addAdmin(admin);
 
         // --- 2. NO PURCHASE HISTORY EXISTS ---
         // empty historyRepo, no purchases added
-
         // --- 3 & 4. Action & Assertions ---
         Exception exception = assertThrows(IllegalStateException.class, () -> {
             systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
         });
 
-        assertTrue(exception.getMessage().contains("No purchase history"), 
-            "Exception message should indicate that no history is available");
+        assertTrue(exception.getMessage().contains("No purchase history"),
+                "Exception message should indicate that no history is available");
     }
-    
+
     // Use Case 6.4: View Global Purchase History (By Company and Event) - Failure Scenarios
     @Test
     void AcceptanceTest_ViewHistoryByCompanyAndEvent_Failure_UnauthorizedAccess() {
@@ -466,55 +458,56 @@ public class SystemAdminServiceTest {
             systemAdminService.getPurchaseHistoryByCompanyAndEvent(unauthorizedAdminId);
         });
 
-        assertTrue(exception.getMessage().contains("Unauthorized access"), 
-            "Exception message should indicate unauthorized access for invalid admin");
+        assertTrue(exception.getMessage().contains("Unauthorized access"),
+                "Exception message should indicate unauthorized access for invalid admin");
     }
-        private static class FakeNotifier implements INotifier {
 
-            private final List<String> messages = new ArrayList<>();
+    private static class FakeNotifier implements INotifier {
 
-            @Override
-            public void notifyMember(Long memberId, String message) {
-                messages.add(message);
+        private final List<String> messages = new ArrayList<>();
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void notifyGuest(String guestToken, String message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void notifyMembers(Collection<Long> memberIds, String message) {
+            if (memberIds == null) {
+                return;
             }
 
-            @Override
-            public void notifyGuest(String guestToken, String message) {
-                messages.add(message);
-            }
-
-            @Override
-            public void notifyMembers(Collection<Long> memberIds, String message) {
-                if (memberIds == null) {
-                    return;
+            for (Long memberId : memberIds) {
+                if (memberId != null) {
+                    notifyMember(memberId, message);
                 }
-
-                for (Long memberId : memberIds) {
-                    if (memberId != null) {
-                        notifyMember(memberId, message);
-                    }
-                }
-            }
-
-            @Override
-            public void notifyGuests(Collection<String> guestTokens, String message) {
-                if (guestTokens == null) {
-                    return;
-                }
-
-                for (String guestToken : guestTokens) {
-                    if (guestToken != null && !guestToken.isBlank()) {
-                        notifyGuest(guestToken, message);
-                    }
-                }
-            }
-
-            boolean containsMessage(String text) {
-                return messages.stream()
-                        .anyMatch(message -> message.contains(text));
             }
         }
-        // -------------------- UC 6.7: Suspend Member by System Admin -------------------
+
+        @Override
+        public void notifyGuests(Collection<String> guestTokens, String message) {
+            if (guestTokens == null) {
+                return;
+            }
+
+            for (String guestToken : guestTokens) {
+                if (guestToken != null && !guestToken.isBlank()) {
+                    notifyGuest(guestToken, message);
+                }
+            }
+        }
+
+        boolean containsMessage(String text) {
+            return messages.stream()
+                    .anyMatch(message -> message.contains(text));
+        }
+    }
+    // -------------------- UC 6.7: Suspend Member by System Admin -------------------
 
     @Test
     void GivenActiveSystemAdminAndExistingMember_WhenSuspendMemberTemporarily_ThenMemberIsSuspendedAndSaved() {
@@ -842,18 +835,18 @@ public class SystemAdminServiceTest {
         assertEquals(2, result.size());
 
         boolean containsTemporaryMember = result.stream()
-                .anyMatch(dto ->
-                        dto.getMemberId() == 301L
-                                && dto.getReason().equals("Temporary reason")
-                                && dto.getDuration() != null
-                                && dto.getDuration() == 10L
+                .anyMatch(dto
+                        -> dto.getMemberId() == 301L
+                && dto.getReason().equals("Temporary reason")
+                && dto.getDuration() != null
+                && dto.getDuration() == 10L
                 );
 
         boolean containsPermanentMember = result.stream()
-                .anyMatch(dto ->
-                        dto.getMemberId() == 302L
-                                && dto.getReason().equals("Permanent reason")
-                                && dto.getDuration() == null
+                .anyMatch(dto
+                        -> dto.getMemberId() == 302L
+                && dto.getReason().equals("Permanent reason")
+                && dto.getDuration() == null
                 );
 
         boolean containsNormalMember = result.stream()
@@ -923,5 +916,3 @@ public class SystemAdminServiceTest {
         assertTrue(exception.getMessage().contains("No suspended members found"));
     }
 }
-
-    

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
-import org.springframework.stereotype.Service;
+import ticketsystem.DomainLayer.notifications.Notification.Type;
 
 @Service
 public class VaadinNotifier implements INotifier {
@@ -24,7 +24,7 @@ public class VaadinNotifier implements INotifier {
             return;
         }
 
-        Notification notification = new Notification(memberId.toString(), message);
+        Notification notification = new Notification(memberId.toString(), message, Type.INFO);
         Notification savedNotification = notificationsRepository.save(notification);
 
         Broadcaster.broadcast(memberId.toString(), savedNotification);
@@ -36,7 +36,7 @@ public class VaadinNotifier implements INotifier {
             return;
         }
 
-        Notification notification = new Notification(sessionId, message);
+        Notification notification = new Notification(sessionId, message, Type.INFO);
 
         Broadcaster.broadcast(sessionId, notification);
     }
@@ -66,5 +66,15 @@ public class VaadinNotifier implements INotifier {
             }
         }
 
+    }
+    @Override
+    public void notifyMemberAssignment(Long memberId, String message, Long companyId) {
+        if (memberId == null || message == null || message.isBlank() || companyId == null) {
+            return;
+        }
+
+        Notification notification = new Notification(memberId.toString(), message, companyId, Type.ACTION);
+        Notification savedNotification = notificationsRepository.save(notification);
+        Broadcaster.broadcast(memberId.toString(), savedNotification);
     }
 }

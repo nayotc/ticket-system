@@ -1,26 +1,5 @@
 package ticketsystem.ConcurrencyTesting;
 
-import ticketsystem.ApplicationLayer.INotifier;
-import ticketsystem.ApplicationLayer.ISystemLogger;
-import ticketsystem.ApplicationLayer.ITokenService;
-import ticketsystem.ApplicationLayer.MembershipService;
-import ticketsystem.ApplicationLayer.TokenService;
-import ticketsystem.ApplicationLayer.UserAccessService;
-import ticketsystem.DomainLayer.MembershipDomainService;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
-import ticketsystem.DomainLayer.IRepository.IUserRepository;
-import ticketsystem.DomainLayer.IRepository.ITokenRepository;
-import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.discount.DiscountCompositionType;
-import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.policy.PurchasePolicy;
-import ticketsystem.DomainLayer.user.*;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.InfrastructureLayer.TokenRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -31,7 +10,35 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.MembershipService;
+import ticketsystem.ApplicationLayer.TokenService;
+import ticketsystem.ApplicationLayer.UserAccessService;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
+import ticketsystem.DomainLayer.user.Manager;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Owner;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class MembershipConcurrencyTest {
 
@@ -50,13 +57,13 @@ public class MembershipConcurrencyTest {
     @BeforeEach
     void setUp() {
         ITokenRepository tokenRepo = new TokenRepository();
-        ITokenService tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo);
+        ISystemLogger logger = new LogbackSystemLogger();
+        ITokenService tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo, logger);
         this.userRepository = new UserRepository();
         ICompanyRepository companyRepository = new CompanyRepository();
         MembershipDomainService domainService = new MembershipDomainService(userRepository);
-        ISystemLogger logger = new LogbackSystemLogger();
         notifier = new FakeNotifier();
-        userAccessService= new UserAccessService(userRepository);
+        userAccessService = new UserAccessService(userRepository);
         // Initialize Application Service
         this.membershipService = new MembershipService(
                 tokenService,
@@ -64,11 +71,14 @@ public class MembershipConcurrencyTest {
                 companyRepository,
                 domainService,
                 notifier,
-                logger,userAccessService
-        );        
+                logger, userAccessService
+        );
         // Setup Company
         Company company = new Company("BGU Productions", 100L, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
-        try { company.setId(companyId); } catch (Exception e) {}
+        try {
+            company.setId(companyId);
+        } catch (Exception e) {
+        }
         companyRepository.save(company);
 
         // Setup Founder (Appointer 1) - Has version 0
@@ -90,21 +100,22 @@ public class MembershipConcurrencyTest {
     }
 
     /**
-     * Test 1: Two actors concurrently attempt to assign an OWNER role to the same user.
+     * Test 1: Two actors concurrently attempt to assign an OWNER role to the
+     * same user.
      */
     @Test
     public void GivenConcurrentRequests_WhenAssigningSameOwner_ThenOnlyOneSucceeds() throws InterruptedException {
         int numberOfThreads = 2;
         ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
-        CountDownLatch latch = new CountDownLatch(1); 
-        CountDownLatch doneLatch = new CountDownLatch(numberOfThreads); 
+        CountDownLatch latch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(numberOfThreads);
 
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger exceptionCount = new AtomicInteger(0);
 
         Runnable task1 = () -> {
             try {
-                latch.await(); 
+                latch.await();
                 membershipService.requestOwnerAssignment(founderToken, companyId, targetMemberId);
                 successCount.incrementAndGet();
             } catch (Exception e) {
@@ -116,7 +127,7 @@ public class MembershipConcurrencyTest {
 
         Runnable task2 = () -> {
             try {
-                latch.await(); 
+                latch.await();
                 membershipService.requestOwnerAssignment(ownerToken, companyId, targetMemberId);
                 successCount.incrementAndGet();
             } catch (Exception e) {
@@ -130,21 +141,22 @@ public class MembershipConcurrencyTest {
         executor.submit(task2);
 
         // Fire the starting gun!
-        latch.countDown(); 
+        latch.countDown();
         doneLatch.await();
         executor.shutdown();
 
         // Asserts
         assertEquals(1, successCount.get(), "Exactly one assignment should succeed.");
         assertEquals(1, exceptionCount.get(), "Exactly one assignment should throw an exception due to concurrent access.");
-        
+
         Member updatedTarget = userRepository.getMemberById(targetMemberId);
         assertNotNull(updatedTarget.getRoleInCompany(companyId));
         assertTrue(updatedTarget.getRoleInCompany(companyId) instanceof Owner);
     }
 
     /**
-     * Test 2: Two actors concurrently attempt to assign a MANAGER role to the same user.
+     * Test 2: Two actors concurrently attempt to assign a MANAGER role to the
+     * same user.
      */
     @Test
     public void GivenConcurrentRequests_WhenAssigningSameManager_ThenOnlyOneSucceeds() throws InterruptedException {
@@ -155,7 +167,7 @@ public class MembershipConcurrencyTest {
 
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger exceptionCount = new AtomicInteger(0);
-        
+
         Set<Permission> perms = new HashSet<>();
         perms.add(Permission.MANAGE_INQUIRIES);
 
@@ -186,19 +198,20 @@ public class MembershipConcurrencyTest {
         executor.submit(task1);
         executor.submit(task2);
 
-        latch.countDown(); 
+        latch.countDown();
         doneLatch.await();
         executor.shutdown();
 
         assertEquals(1, successCount.get(), "Exactly one manager appointment should succeed.");
         assertEquals(1, exceptionCount.get(), "Exactly one manager appointment should fail.");
-        
+
         Member updatedTarget = userRepository.getMemberById(targetMemberId);
         assertTrue(updatedTarget.getRoleInCompany(companyId) instanceof Manager);
     }
 
     /**
-     * Test 3: One actor assigns an Owner role, the other assigns a Manager role concurrently.
+     * Test 3: One actor assigns an Owner role, the other assigns a Manager role
+     * concurrently.
      */
     @Test
     public void GivenConcurrentRequests_WhenOneAssignsOwnerAndOtherAssignsManager_ThenOnlyOneSucceeds() throws InterruptedException {
@@ -209,7 +222,7 @@ public class MembershipConcurrencyTest {
 
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger exceptionCount = new AtomicInteger(0);
-        
+
         Set<Permission> perms = new HashSet<>();
         perms.add(Permission.MANAGE_INQUIRIES);
 
@@ -242,19 +255,20 @@ public class MembershipConcurrencyTest {
         executor.submit(task1);
         executor.submit(task2);
 
-        latch.countDown(); 
+        latch.countDown();
         doneLatch.await();
         executor.shutdown();
 
         assertEquals(1, successCount.get(), "Only one role assignment should succeed due to DB locking.");
         assertEquals(1, exceptionCount.get(), "The concurrent operation must be rejected.");
-        
+
         Member updatedTarget = userRepository.getMemberById(targetMemberId);
         assertNotNull(updatedTarget.getRoleInCompany(companyId), "Target must have received exactly one role.");
     }
 
     /**
-     * Test 4: Two actors concurrently assign a MANAGER role but with DIFFERENT permissions.
+     * Test 4: Two actors concurrently assign a MANAGER role but with DIFFERENT
+     * permissions.
      */
     @Test
     public void GivenConcurrentRequests_WhenAssigningManagerWithDifferentPermissions_ThenOnlyOneSucceeds() throws InterruptedException {
@@ -265,7 +279,7 @@ public class MembershipConcurrencyTest {
 
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger exceptionCount = new AtomicInteger(0);
-        
+
         // Task 1 Permissions
         Set<Permission> perms1 = new HashSet<>();
         perms1.add(Permission.MANAGE_INQUIRIES);
@@ -301,61 +315,62 @@ public class MembershipConcurrencyTest {
         executor.submit(task1);
         executor.submit(task2);
 
-        latch.countDown(); 
+        latch.countDown();
         doneLatch.await();
         executor.shutdown();
 
         assertEquals(1, successCount.get(), "Exactly one permission set should be assigned.");
         assertEquals(1, exceptionCount.get(), "Concurrent assignment should fail.");
-        
+
         Member updatedTarget = userRepository.getMemberById(targetMemberId);
         Manager managerRole = (Manager) updatedTarget.getRoleInCompany(companyId);
         assertEquals(1, managerRole.getPermissions().size(), "Manager should end up with exactly 1 permission from the winning thread.");
     }
-private static class FakeNotifier implements INotifier {
 
-            private final List<String> messages = new ArrayList<>();
+    private static class FakeNotifier implements INotifier {
 
-            @Override
-            public void notifyMember(Long memberId, String message) {
-                messages.add(message);
+        private final List<String> messages = new ArrayList<>();
+
+        @Override
+        public void notifyMember(Long memberId, String message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void notifyGuest(String guestToken, String message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void notifyMembers(Collection<Long> memberIds, String message) {
+            if (memberIds == null) {
+                return;
             }
 
-            @Override
-            public void notifyGuest(String guestToken, String message) {
-                messages.add(message);
-            }
-
-            @Override
-            public void notifyMembers(Collection<Long> memberIds, String message) {
-                if (memberIds == null) {
-                    return;
+            for (Long memberId : memberIds) {
+                if (memberId != null) {
+                    notifyMember(memberId, message);
                 }
-
-                for (Long memberId : memberIds) {
-                    if (memberId != null) {
-                        notifyMember(memberId, message);
-                    }
-                }
-            }
-
-            @Override
-            public void notifyGuests(Collection<String> guestTokens, String message) {
-                if (guestTokens == null) {
-                    return;
-                }
-
-                for (String guestToken : guestTokens) {
-                    if (guestToken != null && !guestToken.isBlank()) {
-                        notifyGuest(guestToken, message);
-                    }
-                }
-            }
-
-            boolean containsMessage(String text) {
-                return messages.stream()
-                        .anyMatch(message -> message.contains(text));
             }
         }
+
+        @Override
+        public void notifyGuests(Collection<String> guestTokens, String message) {
+            if (guestTokens == null) {
+                return;
+            }
+
+            for (String guestToken : guestTokens) {
+                if (guestToken != null && !guestToken.isBlank()) {
+                    notifyGuest(guestToken, message);
+                }
+            }
+        }
+
+        boolean containsMessage(String text) {
+            return messages.stream()
+                    .anyMatch(message -> message.contains(text));
+        }
+    }
 
 }
