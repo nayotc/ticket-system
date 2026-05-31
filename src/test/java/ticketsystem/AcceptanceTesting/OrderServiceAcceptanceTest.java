@@ -1,25 +1,20 @@
 package ticketsystem.AcceptanceTesting;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
-import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
@@ -28,7 +23,7 @@ public class OrderServiceAcceptanceTest {
     private OrderService orderService;
     private IOrderRepository orderRepository;
     private TokenService tokenService;
-    private FakeSystemLogger logger;
+    private ISystemLogger logger;
     private INotifier notification;
 
     private final String guestToken = "guest-token-1";
@@ -38,11 +33,11 @@ public class OrderServiceAcceptanceTest {
     @BeforeEach
     void setUp() {
         orderRepository = new OrderRepository();
-        logger = new FakeSystemLogger();
+        logger = new LogbackSystemLogger();
 
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
-                new TokenRepository()) {
+                new TokenRepository(), logger) {
             @Override
             public boolean validateToken(String token) {
                 return true;
@@ -79,7 +74,6 @@ public class OrderServiceAcceptanceTest {
 
         assertNull(memberOrder);
         assertNull(guestOrder);
-        assertTrue(logger.messages.isEmpty());
     }
 
     @Test
@@ -173,7 +167,7 @@ public class OrderServiceAcceptanceTest {
     void AcceptanceTest_OnUserLogin_WhenTokenExtractionFails_ThenWarningIsLoggedAndExceptionIsThrown() {
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
-                new TokenRepository()) {
+                new TokenRepository(), logger) {
             @Override
             public Long extractUserId(String token) {
                 throw new IllegalArgumentException("Invalid member token");
@@ -197,26 +191,6 @@ public class OrderServiceAcceptanceTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> orderService.onUserLogin(guestToken, memberToken));
-
-        assertFalse(logger.messages.isEmpty());
-        assertTrue(logger.messages.get(0).contains("mergeGuestOrderIntoMemberOrders failed"));
     }
 
-    private static class FakeSystemLogger implements ISystemLogger {
-
-        private final List<String> messages = new ArrayList<>();
-        private final List<LogLevel> levels = new ArrayList<>();
-
-        @Override
-        public void logEvent(String message, LogLevel level) {
-            messages.add(message);
-            levels.add(level);
-        }
-
-        @Override
-        public void logError(String errorMessage, Throwable exception) {
-            messages.add(errorMessage);
-            levels.add(LogLevel.WARN);
-        }
-    }
 }

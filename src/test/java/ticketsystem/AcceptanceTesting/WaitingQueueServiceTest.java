@@ -46,7 +46,7 @@ public class WaitingQueueServiceTest {
         realQueueRepo = new WaitingQueueRepository();
         fakeNotifications = new FakeNotificationsService();
         tokenRepository = new TokenRepository();
-        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         logger = new LogbackSystemLogger();
         waitingQueueService = new WaitingQueueService(EventRepo, realQueueRepo, fakeNotifications, tokenService,
                 logger);
@@ -141,7 +141,7 @@ public class WaitingQueueServiceTest {
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Capacity should drop to 1.");
         assertEquals(0,
                 fakeNotifications.notificationCount(validToken1)
-                        + fakeNotifications.notificationCount(validToken2),
+                + fakeNotifications.notificationCount(validToken2),
                 "No notifications should be sent since the queue is empty.");
     }
 
