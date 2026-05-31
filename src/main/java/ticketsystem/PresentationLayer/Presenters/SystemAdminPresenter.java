@@ -7,9 +7,10 @@ import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
-import ticketsystem.PresentationLayer.Views.SystemAdminDashboard;
+import ticketsystem.DTO.SuspentionUserDTO;
 import ticketsystem.PresentationLayer.Views.SystemAdminDashboard.AdminUserRow;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 /**
  * Presenter implementation for the System Admin Dashboard.
  * Bridges the UI with the SystemAdminService, UserService, and CompanyService.
+ * Exposes all administrative operations including user/company management, history, and system logs.
  */
 @Component
 public class SystemAdminPresenter {
@@ -24,64 +26,53 @@ public class SystemAdminPresenter {
     private final SystemAdminService systemAdminService;
     private final UserService userService;
     private final CompanyService companyService;
+    private final ITokenService tokenService;
 
     // Injecting all necessary services to aggregate data for the admin dashboard
-    public SystemAdminPresenter(SystemAdminService systemAdminService, UserService userService, CompanyService companyService, ITokenService tokenService) {
+    public SystemAdminPresenter(SystemAdminService systemAdminService, 
+                                UserService userService, 
+                                CompanyService companyService, 
+                                ITokenService tokenService) {
         this.systemAdminService = systemAdminService;
         this.userService = userService;
         this.companyService = companyService;
+        this.tokenService = tokenService;
     }
 
+    /**
+     * Helper method to securely extract the admin's user ID from the session token.
+     */
+    private long validateAndGetAdminId(String sessionToken) throws PresentationException {
+        if (sessionToken == null || sessionToken.isBlank()) {
+            throw new PresentationException("Session token is missing. Please log in.");
+        }
+        try {
+            return tokenService.extractUserId(sessionToken);
+        } catch (Exception e) {
+            throw new PresentationException("Invalid or expired session token.");
+        }
+    }
+
+    // USERS & COMPANIES MANAGEMENT
+
     public List<AdminUserRow> loadActiveUsers(String sessionToken) throws Exception {
-        // Validate admin access first
         validateAndGetAdminId(sessionToken);
 
-        // Fetch all users from UserService and map them to the View's record structure
-        // NOTE: Adjust 'getAllUsers' to match your UserService method (e.g., getAllMembers)
+        // Fetch all users and map them correctly using Member's domain fields
         return userService.getAllUsers().stream()
                 .map(user -> new AdminUserRow(
                         user.getId(),
-                        user.getEmail(),
-                        user.getFirstName() + " " + user.getLastName(),
-                        "פעיל", // Default status assuming they are active
-                        "לא זמין" // Replace with actual last seen data if available in your DTO
+                        user.getUserName(), // Using UserName (serves as email)
+                        user.getFullName(), // Using FullName
+                        user.isSuspended() ? "מושעה" : "פעיל", // Dynamically set status based on suspension
+                        "לא זמין" // Placeholder for last activity
                 ))
                 .collect(Collectors.toList());
     }
 
     public List<CompanyDTO> loadActiveCompanies(String sessionToken) throws Exception {
-        // Validate admin access
         validateAndGetAdminId(sessionToken);
-
-        // NOTE: Adjust 'getAllCompanies' to match your CompanyService method
         return companyService.getAllCompanies();
-    }
-
-    public Map<Long, Map<String, List<OrderDTO>>> loadPurchaseHistoryByCompanyAndEvent(String sessionToken) throws Exception {
-        long adminId = validateAndGetAdminId(sessionToken);
-        
-        try {
-            return systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
-        } catch (IllegalStateException e) {
-            // The service throws an IllegalStateException if the history is empty.
-            // Instead of crashing the UI, we catch it and return an empty map so the grid simply shows 0 rows.
-            return Map.of();
-        } catch (Exception e) {
-            throw new PresentationException(e.getMessage());
-        }
-    }
-
-    public Map<Long, List<OrderDTO>> loadPurchaseHistoryByBuyer(String sessionToken) throws Exception {
-        long adminId = validateAndGetAdminId(sessionToken);
-        
-        try {
-            return systemAdminService.getPurchaseHistoryByBuyer(adminId);
-        } catch (IllegalStateException e) {
-            // Gracefully handle empty history
-            return Map.of();
-        } catch (Exception e) {
-            throw new PresentationException(e.getMessage());
-        }
     }
 
     public void deleteUser(String sessionToken, long memberId) throws Exception {
@@ -91,13 +82,11 @@ public class SystemAdminPresenter {
         String result = systemAdminService.deleteMemberByAdmin(adminId, memberId);
         
         if (result != null && result.startsWith("ERROR")) {
-            // Strip the "ERROR: " prefix and throw it so the View can show it in a red notification
             throw new PresentationException(result.replace("ERROR: ", "").trim());
         }
     }
 
     public void removeUserFromAllCompanies(String sessionToken, long memberId) throws Exception {
-        // Validate token to ensure caller is an admin
         validateAndGetAdminId(sessionToken);
         
         try {
@@ -112,6 +101,86 @@ public class SystemAdminPresenter {
         
         try {
             systemAdminService.closeProductionCompanyByAdmin(adminId, companyId);
+        } catch (Exception e) {
+            throw new PresentationException(e.getMessage());
+        }
+    }
+
+    // PURCHASE HISTORY
+
+    public Map<Long, Map<String, List<OrderDTO>>> loadPurchaseHistoryByCompanyAndEvent(String sessionToken) throws Exception {
+        long adminId = validateAndGetAdminId(sessionToken);
+        
+        try {
+            return systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
+        } catch (IllegalStateException e) {
+            // The service throws an IllegalStateException if the history is empty.
+            // Catch it and return an empty map so the UI grid simply shows 0 rows without crashing.
+            return Map.of();
+        } catch (Exception e) {
+            throw new PresentationException(e.getMessage());
+        }
+    }
+
+    public Map<Long, List<OrderDTO>> loadPurchaseHistoryByBuyer(String sessionToken) throws Exception {
+        long adminId = validateAndGetAdminId(sessionToken);
+        
+        try {
+            return systemAdminService.getPurchaseHistoryByBuyer(adminId);
+        } catch (IllegalStateException e) {
+            return Map.of();
+        } catch (Exception e) {
+            throw new PresentationException(e.getMessage());
+        }
+    }
+
+    // SUSPENSIONS
+
+    public void suspendMember(String sessionToken, long memberId, LocalDateTime startDate, LocalDateTime endDate, String reason) throws Exception {
+        long adminId = validateAndGetAdminId(sessionToken);
+        try {
+            systemAdminService.suspendMemberByAdmin(adminId, memberId, startDate, endDate, reason);
+        } catch (Exception e) {
+            throw new PresentationException(e.getMessage());
+        }
+    }
+
+    public void revokeSuspension(String sessionToken, long memberId) throws Exception {
+        long adminId = validateAndGetAdminId(sessionToken);
+        try {
+            systemAdminService.revokeMemberByAdmin(adminId, memberId);
+        } catch (Exception e) {
+            throw new PresentationException(e.getMessage());
+        }
+    }
+
+    public List<SuspentionUserDTO> viewSuspendedMembers(String sessionToken) throws Exception {
+        long adminId = validateAndGetAdminId(sessionToken);
+        try {
+            return systemAdminService.viewSuspendedMembersByAdmin(adminId);
+        } catch (IllegalStateException e) {
+            // Return an empty list gracefully if there are no suspended members
+            return List.of();
+        } catch (Exception e) {
+            throw new PresentationException(e.getMessage());
+        }
+    }
+
+    // SYSTEM LOGS
+
+    public List<String> viewEventLogs(String sessionToken) throws Exception {
+        long adminId = validateAndGetAdminId(sessionToken);
+        try {
+            return systemAdminService.viewEventLogs(adminId);
+        } catch (Exception e) {
+            throw new PresentationException(e.getMessage());
+        }
+    }
+
+    public List<String> viewErrorLogs(String sessionToken) throws Exception {
+        long adminId = validateAndGetAdminId(sessionToken);
+        try {
+            return systemAdminService.viewErrorLogs(adminId);
         } catch (Exception e) {
             throw new PresentationException(e.getMessage());
         }

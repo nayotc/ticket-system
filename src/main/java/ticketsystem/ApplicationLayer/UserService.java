@@ -438,4 +438,17 @@ public class UserService {
         return token.substring(0, 6) + "..." + token.substring(token.length() - 6);
     }
 
+    /**
+     * Retrieves all registered members in the system.
+     * Used primarily by the System Admin Dashboard.
+     */
+    public List<Member> getAllUsers() {
+        try {
+            return userRepository.getAllMembers();
+        } catch (Exception e) {
+            logger.logError("Failed to retrieve all users", e);
+            throw new RuntimeException("Failed to retrieve all users", e);
+        }
+    }
+
 }

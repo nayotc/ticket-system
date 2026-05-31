@@ -2,10 +2,8 @@ package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -369,6 +367,7 @@ public class CompanyService {
             throw e;
         }
     }
+
     // add coupon discount
     public void addCouponDiscountToCompany(String token, Long companyId,
             String name, String couponCode,
@@ -392,7 +391,9 @@ public class CompanyService {
 
             throw e;
         }
-    }// add conditional discount
+    }
+    
+    // add conditional discount
     public void addConditionalDiscountToCompany(String token, Long companyId,
             String name, LocalDateTime startTime,
             LocalDateTime endTime, BigDecimal percentage,
@@ -509,5 +510,19 @@ public class CompanyService {
             return company;
     }
 
+    /**
+     * Retrieves all production companies in the system and maps them to DTOs.
+     * Used primarily by the System Admin Dashboard.
+     */
+    public List<CompanyDTO> getAllCompanies() {
+        try {
+            return companyRepository.findAll().stream()
+                    .map(CompanyDTO::new)
+                    .collect(java.util.stream.Collectors.toList());
+        } catch (Exception e) {
+            logError("Failed to retrieve all companies", e);
+            throw new RuntimeException("Failed to retrieve all companies", e);
+        }
+    }
 
 }
