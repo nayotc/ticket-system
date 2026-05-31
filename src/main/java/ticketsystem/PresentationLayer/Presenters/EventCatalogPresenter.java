@@ -209,7 +209,7 @@ public class EventCatalogPresenter {
                 formatDate(event.date()),
                 prettyEnum(event.location()),
                 formatPrice(event.ticketPrice()),
-                resolveImageUrl(event.category()),
+                resolveImageUrl(event.category(), event.id()),
                 false,
                 companyName,
                 event.companyId(),
@@ -275,16 +275,48 @@ public class EventCatalogPresenter {
         return "₪" + price;
     }
 
-    private String resolveImageUrl(String category) {
+    private String resolveImageUrl(String category, Long eventId) {
+        String[] images = imagesForCategory(category);
+
+        if (eventId == null) {
+            return images[0];
+        }
+
+        int index = Math.floorMod(eventId.hashCode(), images.length);
+        return images[index];
+    }
+
+    private String[] imagesForCategory(String category) {
         if (category == null) {
-            return Photos.EVENT_LIGHTS;
+            return new String[] {
+                    Photos.EVENT_LIGHTS,
+                    Photos.EVENT_STANDUP,
+                    Photos.EVENT_ELECTRONIC
+            };
         }
 
         return switch (category) {
-            case "THEATER" -> Photos.EVENT_STANDUP;
-            case "SPORTS" -> Photos.EVENT_ELECTRONIC;
-            case "CONCERT" -> Photos.EVENT_LIGHTS;
-            default -> Photos.EVENT_LIGHTS;
+            case "THEATER" -> new String[] {
+                    Photos.EVENT_STANDUP,
+                    Photos.EVENT_LIGHTS
+            };
+            case "SPORTS" -> new String[] {
+                    Photos.EVENT_ELECTRONIC,
+                    Photos.EVENT_LIGHTS
+            };
+            case "CONCERT" -> new String[] {
+                    Photos.EVENT_LIGHTS,
+                    Photos.EVENT_ELECTRONIC
+            };
+            case "EXHIBITION" -> new String[] {
+                    Photos.EVENT_LIGHTS,
+                    Photos.EVENT_STANDUP
+            };
+            default -> new String[] {
+                    Photos.EVENT_LIGHTS,
+                    Photos.EVENT_STANDUP,
+                    Photos.EVENT_ELECTRONIC
+            };
         };
     }
 
