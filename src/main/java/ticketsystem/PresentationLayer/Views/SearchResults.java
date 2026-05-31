@@ -9,7 +9,6 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
-import ticketsystem.DomainLayer.event.SaleStatus;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,21 +16,31 @@ import java.util.Map;
 import ticketsystem.PresentationLayer.Components.EventCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.SearchPanel;
-import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
+import com.vaadin.flow.component.notification.Notification;
+import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
+import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
+import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.EventCardViewModel;
+import ticketsystem.PresentationLayer.Session.UiSession;
 
 @PageTitle("TixNow | Search Results")
 @Route(value = UiRoutes.SEARCH_RESULTS, layout = MainLayout.class)
 public class SearchResults extends PageContainer implements BeforeEnterObserver {
 
-    private static final String DEFAULT_SEARCH_TERM = "פסטיבל מוזיקה אלקטרונית";
+    private static final String DEFAULT_SEARCH_TERM = "";
 
+    private final EventCatalogPresenter eventCatalogPresenter;
+    private final EventCardPresenter eventCardPresenter;
     private final SearchPanel searchPanel = new SearchPanel();
-    private String currentSearchTerm = DEFAULT_SEARCH_TERM;
+    private String currentSearchTerm = "";
+    private Map<String, List<String>> currentParameters = Map.of();
 
-    public SearchResults() {
+    public SearchResults(EventCatalogPresenter eventCatalogPresenter, EventCardPresenter eventCardPresenter) {
         super();
+
+        this.eventCatalogPresenter = eventCatalogPresenter;
+        this.eventCardPresenter = eventCardPresenter;
 
         addClassName("search-results-view");
         setSpacing(false);
@@ -47,6 +56,7 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                 .getQueryParameters()
                 .getParameters();
 
+        currentParameters = parameters;
         currentSearchTerm = firstParam(parameters, "q", DEFAULT_SEARCH_TERM);
 
         applyQueryParametersToPanel(parameters);
@@ -150,50 +160,10 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                 .set("gap", "24px")
                 .set("align-items", "stretch");
 
-        grid.add(
-                new EventCard(
-                        "מופע עשור",
-                        "פסטיבל אורות הלילה",
-                        "24 אוקטובר, 21:00",
-                        "פארק הירקון, תל אביב",
-                        "₪249",
-                        Photos.EVENT_LIGHTS,
-                        true,
-                        "Amazing Events",
-                        2L,
-                        30L,
-                        SaleStatus.PRE_SALE,
-                        true
-                ),
-                new EventCard(
-                        "סטנדאפ",
-                        "מרתון צחוק תל אביבי",
-                        "15 נובמבר, 22:30",
-                        "מועדון זאפה, הרצליה",
-                        "₪119",
-                        Photos.EVENT_STANDUP,
-                        false,
-                        "Laugh Factory",
-                        3L,
-                        20L,
-                        SaleStatus.ENDED,
-                        false
-                ),
-                new EventCard(
-                        "מסיבה",
-                        "ליין שישי אלקטרוני",
-                        "20 אוקטובר, 23:55",
-                        "האומן 17, תל אביב",
-                        "₪90",
-                        Photos.EVENT_ELECTRONIC,
-                        false,
-                        "TixNow Productions",
-                        1L,
-                        15L,
-                        SaleStatus.NOT_STARTED,
-                        true
-                )
-        );
+        eventCatalogPresenter.getGlobalSearchResultEvents(UiSession.getCurrentToken(), currentParameters)
+                .stream()
+                .map(this::createEventCard)
+                .forEach(grid::add);
 
         inner.add(grid);
         section.add(inner);
@@ -201,52 +171,96 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
         return section;
     }
 
+    /**
+     * Creates a visual event card for the SearchResults page and connects its user actions
+     * to the EventCardPresenter.
+     *
+     * SearchResults is responsible only for creating the UI component and wiring
+     * the action handler. Navigation, lottery registration, and pre-sale code
+     * validation are delegated to EventCardPresenter.
+     *
+     * @param event data prepared by EventCatalogPresenter for displaying one event card
+     * @return configured EventCard component
+     */
+    private EventCard createEventCard(EventCardViewModel event) {
+        EventCard card = new EventCard(
+                event.category(),
+                event.title(),
+                event.date(),
+                event.location(),
+                event.priceText(),
+                event.imageUrl(),
+                event.urgent(),
+                event.companyName(),
+                event.companyId(),
+                event.eventId(),
+                event.saleStatus(),
+                event.hasLottery()
+        );
+
+        card.setActionHandler(createEventCardActionHandler());
+
+        return card;
+    }
+
+    /**
+     * Creates the action handler used by EventCard buttons.
+     *
+     * The handler keeps EventCard reusable and UI-focused: the card only reports
+     * user actions, while EventCardPresenter handles the actual presentation logic
+     * such as building navigation routes, registering to lotteries, and validating
+     * pre-sale lottery codes.
+     *
+     * @return action handler for purchase, lottery registration, and pre-sale flows
+     */
+    private EventCard.EventCardActionHandler createEventCardActionHandler() {
+        return new EventCard.EventCardActionHandler() {
+            @Override
+            public void onPurchaseRequested(Long eventId) {
+                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
+            }
+
+            @Override
+            public void onLotteryRegistrationRequested(Long eventId) {
+                eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
+
+                Notification.show(
+                        "נרשמת להגרלה בהצלחה.",
+                        3000,
+                        Notification.Position.TOP_CENTER
+                );
+            }
+
+            @Override
+            public boolean isPreSaleCodeValid(Long eventId, String lotteryCode) {
+                return eventCardPresenter.isPreSaleCodeValid(
+                        UiSession.getMemberToken(),
+                        eventId,
+                        lotteryCode
+                );
+            }
+
+            @Override
+            public void onPreSaleApproved(Long eventId, String lotteryCode) {
+                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
+            }
+        };
+    }
+
     private void navigateToSearchResults() {
-        Map<String, String> params = new LinkedHashMap<>();
-
-        String term = searchPanel.getFreeText().getValue();
-        if (term != null && !term.isBlank()) {
-            params.put("q", term.trim());
-        }
-
-        if (searchPanel.getFromDate().getValue() != null) {
-            params.put("fromDate", searchPanel.getFromDate().getValue().toString());
-        }
-
-        if (searchPanel.getToDate().getValue() != null) {
-            params.put("toDate", searchPanel.getToDate().getValue().toString());
-        }
-
-        String selectedLocation = searchPanel.getLocation().getValue();
-        if (selectedLocation != null && !"כל האזורים".equals(selectedLocation)) {
-            params.put("location", selectedLocation);
-        }
-
-        String selectedCategory = searchPanel.getCategory().getValue();
-        if (selectedCategory != null && !"כל הקטגוריות".equals(selectedCategory)) {
-            params.put("category", selectedCategory);
-        }
-
-        String artist = searchPanel.getArtist().getValue();
-        if (artist != null && !artist.isBlank()) {
-            params.put("artist", artist.trim());
-        }
-
-        if (searchPanel.getMinPriceValue() > 0) {
-            params.put("minPrice", String.valueOf(searchPanel.getMinPriceValue()));
-        }
-
-        if (searchPanel.getMaxPriceValue() < searchPanel.getMaxPriceLimit()) {
-            params.put("maxPrice", String.valueOf(searchPanel.getMaxPriceValue()));
-        }
-
-        if (searchPanel.getEventRateValue() > 0) {
-            params.put("eventRate", String.valueOf(searchPanel.getEventRateValue()));
-        }
-
-        if (searchPanel.getCompanyRateValue() > 0) {
-            params.put("companyRate", String.valueOf(searchPanel.getCompanyRateValue()));
-        }
+        Map<String, String> params = eventCatalogPresenter.buildSearchQueryParameters(
+                searchPanel.getFreeText().getValue(),
+                searchPanel.getFromDate().getValue(),
+                searchPanel.getToDate().getValue(),
+                searchPanel.getLocation().getValue(),
+                searchPanel.getCategory().getValue(),
+                searchPanel.getArtist().getValue(),
+                searchPanel.getMinPriceValue(),
+                searchPanel.getMaxPriceValue(),
+                searchPanel.getMaxPriceLimit(),
+                searchPanel.getEventRateValue(),
+                searchPanel.getCompanyRateValue()
+        );
 
         if (params.isEmpty()) {
             UI.getCurrent().navigate(UiRoutes.SEARCH_RESULTS);
