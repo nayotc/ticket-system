@@ -21,7 +21,7 @@ import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
-import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.HomeEventCard;
+import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.EventCardViewModel;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
@@ -191,7 +191,7 @@ public class Home extends PageContainer {
      * @param event data prepared by EventCatalogPresenter for displaying one event card
      * @return configured EventCard component
      */
-    private EventCard createEventCard(HomeEventCard event) {
+    private EventCard createEventCard(EventCardViewModel event) {
         EventCard card = new EventCard(
                 event.category(),
                 event.title(),

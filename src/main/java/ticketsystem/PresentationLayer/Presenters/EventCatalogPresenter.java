@@ -134,16 +134,16 @@ public class EventCatalogPresenter {
      * Loads featured events for the Home page.
      *
      * Featured events are loaded from the application layer and converted into
-     * HomeEventCard records so the view can render EventCard components without
+     * EventCardViewModel records so the view can render EventCard components without
      * knowing how to resolve company names, prices, dates, sale status, or lottery state.
      *
      * @param sessionToken active guest/member session token
      * @return featured event card data for the Home page
      */
-    public List<HomeEventCard> getFeaturedHomeEvents(String sessionToken) {
+    public List<EventCardViewModel> getFeaturedHomeEvents(String sessionToken) {
         return eventCatalogService.getFeaturedEvents(sessionToken, 3)
                 .stream()
-                .map(event -> toHomeEventCard(sessionToken, event))
+                .map(event -> toEventCardViewModel(sessionToken, event))
                 .toList();
     }
 
@@ -162,7 +162,7 @@ public class EventCatalogPresenter {
      * @param parameters query parameters from the current route
      * @return event card data matching the global search criteria
      */
-    public List<HomeEventCard> getGlobalSearchResultEvents(
+    public List<EventCardViewModel> getGlobalSearchResultEvents(
             String sessionToken,
             Map<String, List<String>> parameters
     ) {
@@ -170,7 +170,7 @@ public class EventCatalogPresenter {
 
         return eventCatalogService.globalSearch(sessionToken, criteria)
                 .stream()
-                .map(event -> toHomeEventCard(sessionToken, event))
+                .map(event -> toEventCardViewModel(sessionToken, event))
                 .toList();
     }
 
@@ -181,7 +181,7 @@ public class EventCatalogPresenter {
      * format dates/prices, resolve company names, parse sale statuses, or check
      * whether an event has a lottery.
      */
-    public record HomeEventCard(
+    public record EventCardViewModel(
             String category,
             String title,
             String date,
@@ -200,10 +200,10 @@ public class EventCatalogPresenter {
     /**
      * Converts an application-layer event search DTO into UI card data.
      */
-    private HomeEventCard toHomeEventCard(String sessionToken, EventSearchResultDTO event) {
+    private EventCardViewModel toEventCardViewModel(String sessionToken, EventSearchResultDTO event) {
         String companyName = resolveCompanyName(sessionToken, event.companyId());
 
-        return new HomeEventCard(
+        return new EventCardViewModel(
                 prettyEnum(event.category()),
                 event.name(),
                 formatDate(event.date()),
