@@ -26,8 +26,8 @@ public record CompanyManagementState(
     public record ManagedCompanyItem(long id, String name, long founderId, String founderEmailOrName, boolean active) {}
 
     // Sub-model representing an event within the company
-
     public record EventManagementItem(long eventId, String title, String status) {}
+    
     // Sub-model for company statistics
     public record CompanyStats(int activeEvents, int pendingAssignments) {}
 
