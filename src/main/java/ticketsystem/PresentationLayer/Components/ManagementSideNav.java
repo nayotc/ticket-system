@@ -16,18 +16,19 @@ import com.vaadin.flow.component.textfield.TextField;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.DomainLayer.user.Permission;
 
 public class ManagementSideNav extends Div {
 
     private String companyId = "1";
     private final Div links = new Div();
-    private final CreateProductionCompanyPresenter presenter;
+    private final ManagementSideNavPresenter presenter;
 
     public ManagementSideNav() {
         this(null);
     }
 
-    public ManagementSideNav(CreateProductionCompanyPresenter presenter) {
+    public ManagementSideNav(ManagementSideNavPresenter presenter) {
         this.presenter = presenter;
         addClassName("management-side-nav");
 
@@ -87,12 +88,38 @@ public class ManagementSideNav extends Div {
     private void rebuildLinks() {
         links.removeAll();
 
-        links.add(
-                navButton("ניהול חברה", UiRoutes.COMPANY_MANAGEMENT),
-                navButton("עורך מדיניות", UiRoutes.POLICIES_EDITOR),
-                navButton("דוח מכירות", UiRoutes.SALES_REPORT),
-                navButton("עץ תפקידים והרשאות", UiRoutes.ROLES_AND_PERMISSIONS_TREE)
-        );
+        links.add(navButton("ניהול חברה", UiRoutes.COMPANY_MANAGEMENT));
+
+        if (canViewPoliciesEditor()) {
+            links.add(navButton("עורך מדיניות", UiRoutes.POLICIES_EDITOR));
+        }
+
+        if (hasPermission(Permission.GENERATE_SALES_REPORT)) {
+            links.add(navButton("דוח מכירות", UiRoutes.SALES_REPORT));
+        }
+
+        links.add(navButton("עץ תפקידים והרשאות", UiRoutes.ROLES_AND_PERMISSIONS_TREE));
+    }
+
+    private boolean canViewPoliciesEditor() {
+        return hasPermission(Permission.SET_PURCHASING_POLICY)
+                || hasPermission(Permission.SET_DISCOUNT_POLICY);
+    }
+
+    private boolean hasPermission(Permission permission) {
+        if (presenter == null || !UiSession.isLoggedIn()) {
+            return false;
+        }
+
+        try {
+            return presenter.hasPermission(
+                    UiSession.getMemberToken(),
+                    Long.parseLong(companyId),
+                    permission
+            );
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private Button navButton(String text, String routeTemplate) {
@@ -216,7 +243,9 @@ public class ManagementSideNav extends Div {
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 
-    public interface CreateProductionCompanyPresenter {
+    public interface ManagementSideNavPresenter {
         CompanyDTO createProductionCompany(String sessionToken, String companyName) throws Exception;
+
+        boolean hasPermission(String sessionToken, long companyId, Permission permission);
     }
 }

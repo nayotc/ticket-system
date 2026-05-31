@@ -19,6 +19,9 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.user.Member;
+import java.util.Set;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
 
 @Component
 @Profile("dev")
@@ -32,6 +35,9 @@ public class DevDataInitializer implements CommandLineRunner {
     
     private static final long TEST_COMPANY_ID = 1L;
     private static final String COMPANY_NAME = "TixNow Productions"; 
+
+    private static final String REPORT_MANAGER_USERNAME = "report@test.com";
+    private static final String REPORT_MANAGER_PASSWORD = "123456";
     
     private final UserService userService;
     private final IUserRepository userRepository;
@@ -52,7 +58,8 @@ public class DevDataInitializer implements CommandLineRunner {
         createTestMember();               // 1. Create the regular buyer member
         createTestFounder();              // 2. Create the company founder member
         createTestCompany();              // 3. Create the production company owned by the founder
-        createTestSalesData();            // 4. Generate transactions where test user is the buyer
+        createReportOnlyManager();      // 4. Create a manager with only report generation permissions
+        createTestSalesData();            // 5. Generate transactions where test user is the buyer
     }
 
     private void createTestMember() {
@@ -142,6 +149,38 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println(" -> EXPECTED REPORT TOTALS: 3 Tickets Sold | Total Revenue: 480.00 NIS");
         System.out.println("=========================================================================");
         System.out.println();
+    }
+
+    private void createReportOnlyManager() {
+        if (userRepository.isUsernameTaken(REPORT_MANAGER_USERNAME)) {
+            System.out.println("Dev report manager already exists: " + REPORT_MANAGER_USERNAME);
+            return;
+        }
+
+        String guestToken = userService.visitSystem();
+        userService.signUp(
+                guestToken,
+                REPORT_MANAGER_USERNAME,
+                REPORT_MANAGER_PASSWORD,
+                "Report Manager",
+                "0500000002"
+        );
+
+        Member manager = userRepository.getMemberByUsername(REPORT_MANAGER_USERNAME);
+
+        manager.addManagerRole(
+                TEST_COMPANY_ID,
+                manager.getId(),
+                Set.of(Permission.GENERATE_SALES_REPORT)
+        );
+
+        manager.getRoleInCompany(TEST_COMPANY_ID).setStatus(RoleStatus.ACTIVE);
+
+        userRepository.updateMember(manager);
+
+        System.out.println("Dev report-only manager created:");
+        System.out.println("username: " + REPORT_MANAGER_USERNAME);
+        System.out.println("password: " + REPORT_MANAGER_PASSWORD);
     }
 
 }
