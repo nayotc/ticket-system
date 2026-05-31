@@ -38,6 +38,7 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
     private String currentSearchTerm = "";
     private Map<String, List<String>> currentParameters = Map.of();
     private final UiVisitCoordinator visitCoordinator;
+    private List<EventCardViewModel> currentResults = List.of();
 
     public SearchResults(EventCatalogPresenter eventCatalogPresenter, EventCardPresenter eventCardPresenter, UiVisitCoordinator visitCoordinator) {
         super();
@@ -63,6 +64,11 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
         currentSearchTerm = firstParam(parameters, "q", DEFAULT_SEARCH_TERM);
 
         visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
+
+        currentResults = eventCatalogPresenter.getGlobalSearchResultEvents(
+                UiSession.getCurrentToken(),
+                currentParameters
+        );
 
         applyQueryParametersToPanel(parameters);
         renderPage();
@@ -122,7 +128,16 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                 .set("margin", "0 auto")
                 .set("text-align", "center");
 
-        H2 title = new H2("תוצאות עבור \"" + currentSearchTerm + "\"");
+        String titleText;
+        if (currentParameters == null || currentParameters.isEmpty()) {
+            titleText = "כל האירועים";
+        } else if (currentSearchTerm == null || currentSearchTerm.isBlank()) {
+            titleText = "תוצאות חיפוש";
+        } else {
+            titleText = "תוצאות עבור \"" + currentSearchTerm + "\"";
+        }
+
+        H2 title = new H2(titleText);
         title.addClassName("search-results-title");
         title.getStyle()
                 .set("font-size", "24px")
@@ -130,7 +145,7 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                 .set("margin", "0 0 4px")
                 .set("font-weight", "700");
 
-        Paragraph description = new Paragraph("נמצאו 24 אירועים קרובים שמתאימים לחיפוש שלך");
+        Paragraph description = new Paragraph("נמצאו " + currentResults.size() + " אירועים שמתאימים לחיפוש שלך");
         description.addClassName("search-results-description");
         description.getStyle()
                 .set("margin", "0")
@@ -165,10 +180,19 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                 .set("gap", "24px")
                 .set("align-items", "stretch");
 
-        eventCatalogPresenter.getGlobalSearchResultEvents(UiSession.getCurrentToken(), currentParameters)
-                .stream()
-                .map(this::createEventCard)
-                .forEach(grid::add);
+        if (currentResults.isEmpty()) {
+            Paragraph emptyMessage = new Paragraph("לא נמצאו אירועים שמתאימים לחיפוש שלך.");
+            emptyMessage.addClassName("search-results-empty-message");
+            emptyMessage.getStyle()
+                    .set("margin", "32px 0")
+                    .set("font-size", "16px")
+                    .set("text-align", "center");
+
+            inner.add(emptyMessage);
+            section.add(inner);
+
+            return section;
+        }
 
         inner.add(grid);
         section.add(inner);
