@@ -51,7 +51,7 @@ public class WaitingQueueService {
                     }
                     if (event.isSoldOut()) {
                         logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId,
-                                LogbackSystemLogger.LogLevel.WARN);
+                                LogbackSystemLogger.LogLevel.INFO);
                         notifyTokenHolder(
                                 tokenString,
                                 "The event is sold out."
@@ -85,7 +85,7 @@ public class WaitingQueueService {
             }
         }
         logger.logEvent("Failed to process reservation after " + maxRetries + " attempts. Event ID: " + eventId,
-                 LogLevel.WARN);
+                LogLevel.WARN);
         return "ERROR: System is too busy, please try again.";
     }
 

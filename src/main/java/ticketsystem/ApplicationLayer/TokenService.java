@@ -48,7 +48,7 @@ public class TokenService implements ITokenService {
             while (!tokenRepository.addActiveSession(sessionToken, user)) {
                 sessionToken = generateNewGuestToken();
             }
-            logger.logEvent("New guest session created", LogLevel.INFO);
+            logger.logEvent("New guest session created with session token: " + maskToken(sessionToken), LogLevel.INFO);
             return sessionToken;
         }
         if (user instanceof Member member) {
@@ -56,7 +56,7 @@ public class TokenService implements ITokenService {
             while (!tokenRepository.addActiveSession(sessionToken, user)) {
                 sessionToken = generateNewMemberToken(member.getId());
             }
-            logger.logEvent("New member session created", LogLevel.INFO);
+            logger.logEvent("New member session created with session token: " + maskToken(sessionToken), LogLevel.INFO);
             return sessionToken;
         }
         logger.logEvent("Failed to create session: unknown user type", LogLevel.WARN);
@@ -126,6 +126,7 @@ public class TokenService implements ITokenService {
             logger.logEvent("Token validation failed: " + e.getMessage(), LogLevel.WARN);
             throw new IllegalArgumentException("Invalid or expired security token");
         }
+        logger.logEvent("Token validated successfully for token: " + maskToken(token), LogLevel.INFO);
         return true;
     }
 
@@ -191,4 +192,16 @@ public class TokenService implements ITokenService {
                 .getBody();
     }
 
+    @Override
+    public String maskToken(String token) {
+        if (token == null) {
+            return "null";
+        }
+
+        if (token.length() <= 12) {
+            return "***";
+        }
+
+        return token.substring(0, 6) + "..." + token.substring(token.length() - 6);
+    }
 }

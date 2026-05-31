@@ -39,7 +39,7 @@ public class UserService {
             logger.logEvent("VisitSystem: guest object created", LogLevel.DEBUG);
 
             String guestToken = tokenService.addActiveSession(guest);
-            logger.logEvent("VisitSystem succeeded: guest session created, guestToken=" + maskToken(guestToken), LogLevel.INFO);
+            logger.logEvent("VisitSystem succeeded: guest session created, guestToken=" + tokenService.maskToken(guestToken), LogLevel.INFO);
 
             return guestToken;
         } catch (Exception e) {
@@ -94,12 +94,12 @@ public class UserService {
 // and password, and receive a new session token.
     public String login(String sessionToken, String username, String password) {
         logger.logEvent(
-                "Login started: username=" + username + ", guestToken=" + maskToken(sessionToken),
+                "Login started: username=" + username + ", guestToken=" + tokenService.maskToken(sessionToken),
                 LogLevel.INFO);
 
         try {
             tokenService.validateToken(sessionToken);
-            logger.logEvent("Login validation passed: token=" + maskToken(sessionToken), LogLevel.DEBUG);
+            logger.logEvent("Login validation passed: token=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
             if (!tokenService.isGuestToken(sessionToken)) {
                 logger.logEvent("Login rejected: session is not a guest token", LogLevel.WARN);
@@ -136,20 +136,20 @@ public class UserService {
             logger.logEvent(
                     "Login member session created: username=" + username
                     + ", memberId=" + member.getId()
-                    + ", memberToken=" + maskToken(memberToken),
+                    + ", memberToken=" + tokenService.maskToken(memberToken),
                     LogLevel.INFO);
 
             try {
                 logger.logEvent(
-                        "Login post-processing started: notifying listeners, oldGuestToken=" + maskToken(sessionToken)
-                        + ", newMemberToken=" + maskToken(memberToken),
+                        "Login post-processing started: notifying listeners, oldGuestToken=" + tokenService.maskToken(sessionToken)
+                        + ", newMemberToken=" + tokenService.maskToken(memberToken),
                         LogLevel.DEBUG);
 
                 notifyListeners(sessionToken, memberToken);
                 logger.logEvent("Login listeners completed: username=" + username + ", memberId=" + member.getId(), LogLevel.DEBUG);
 
                 tokenService.removeActiveSession(sessionToken);
-                logger.logEvent("Login guest session removed: oldGuestToken=" + maskToken(sessionToken), LogLevel.DEBUG);
+                logger.logEvent("Login guest session removed: oldGuestToken=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
                 logger.logEvent("Login succeeded: username=" + username, LogLevel.INFO);
                 return memberToken;
@@ -173,11 +173,11 @@ public class UserService {
 
     // 4. Exit: Allows a user to exit the system entirely.
     public boolean exit(String sessionToken) {
-        logger.logEvent("Exit started: token=" + maskToken(sessionToken), LogLevel.INFO);
+        logger.logEvent("Exit started: token=" + tokenService.maskToken(sessionToken), LogLevel.INFO);
 
         try {
             tokenService.validateToken(sessionToken);
-            logger.logEvent("Exit validation passed: token=" + maskToken(sessionToken), LogLevel.DEBUG);
+            logger.logEvent("Exit validation passed: token=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
             Long memberId = null;
 
@@ -187,13 +187,13 @@ public class UserService {
             }
 
             tokenService.removeActiveSession(sessionToken);
-            logger.logEvent("Exit session removed: token=" + maskToken(sessionToken) + ", memberId=" + memberId, LogLevel.DEBUG);
+            logger.logEvent("Exit session removed: token=" + tokenService.maskToken(sessionToken) + ", memberId=" + memberId, LogLevel.DEBUG);
 
             logger.logEvent("Exit: session closed", LogLevel.INFO);
             return true;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            logger.logEvent("Exit failed: reason=" + e.getMessage() + ", token=" + maskToken(sessionToken), LogLevel.WARN);
+            logger.logEvent("Exit failed: reason=" + e.getMessage() + ", token=" + tokenService.maskToken(sessionToken), LogLevel.WARN);
             throw e;
 
         } catch (Exception e) {
@@ -204,11 +204,11 @@ public class UserService {
 
     // 5. Log Out: Allows a member to log out and receive a new guest session token.
     public String logOut(String sessionToken) {
-        logger.logEvent("Logout started: memberToken=" + maskToken(sessionToken), LogLevel.INFO);
+        logger.logEvent("Logout started: memberToken=" + tokenService.maskToken(sessionToken), LogLevel.INFO);
 
         try {
             tokenService.validateToken(sessionToken);
-            logger.logEvent("Logout validation passed: token=" + maskToken(sessionToken), LogLevel.DEBUG);
+            logger.logEvent("Logout validation passed: token=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
             if (tokenService.isGuestToken(sessionToken)) {
                 logger.logEvent(
@@ -221,16 +221,16 @@ public class UserService {
             logger.logEvent("Logout member identified: memberId=" + memberId, LogLevel.DEBUG);
 
             tokenService.removeActiveSession(sessionToken);
-            logger.logEvent("Logout member session removed: memberId=" + memberId + ", oldMemberToken=" + maskToken(sessionToken), LogLevel.DEBUG);
+            logger.logEvent("Logout member session removed: memberId=" + memberId + ", oldMemberToken=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
             String guestToken = visitSystem();
-            logger.logEvent("Logout guest session created: memberId=" + memberId + ", newGuestToken=" + maskToken(guestToken), LogLevel.DEBUG);
+            logger.logEvent("Logout guest session created: memberId=" + memberId + ", newGuestToken=" + tokenService.maskToken(guestToken), LogLevel.DEBUG);
 
             logger.logEvent("Logout succeeded: new guest session issued, memberId=" + memberId, LogLevel.INFO);
             return guestToken;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            logger.logEvent("Logout failed: reason=" + e.getMessage() + ", token=" + maskToken(sessionToken), LogLevel.WARN);
+            logger.logEvent("Logout failed: reason=" + e.getMessage() + ", token=" + tokenService.maskToken(sessionToken), LogLevel.WARN);
             throw e;
 
         } catch (Exception e) {
@@ -367,8 +367,8 @@ public class UserService {
     private void notifyListeners(String guestToken, String memberToken) {
         logger.logEvent(
                 "Login listeners notification started: listeners=" + userLoginListeners.size()
-                + ", guestToken=" + maskToken(guestToken)
-                + ", memberToken=" + maskToken(memberToken),
+                + ", guestToken=" + tokenService.maskToken(guestToken)
+                + ", memberToken=" + tokenService.maskToken(memberToken),
                 LogLevel.DEBUG);
 
         for (UserLoginListener listener : userLoginListeners) {
@@ -430,18 +430,6 @@ public class UserService {
         }
         logger.logEvent("Validated and normalized full name successfully - validateAndNormalizeFullName", LogLevel.INFO);
         return normalizedFullName;
-    }
-
-    private String maskToken(String token) {
-        if (token == null) {
-            return "null";
-        }
-
-        if (token.length() <= 12) {
-            return "***";
-        }
-
-        return token.substring(0, 6) + "..." + token.substring(token.length() - 6);
     }
 
 }
