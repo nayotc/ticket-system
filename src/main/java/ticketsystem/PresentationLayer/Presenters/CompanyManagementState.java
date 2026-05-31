@@ -10,6 +10,7 @@ import ticketsystem.DomainLayer.user.Permission;
 public record CompanyManagementState(
         List<ManagedCompanyItem> companies,
         ManagedCompanyItem selectedCompany,
+        boolean founder,
         boolean owner,
         boolean canManageTeam,
         List<TeamMemberItem> teamMembers,

@@ -703,7 +703,10 @@ public class MembershipDomainService {
         List<CompanyRole> roles = member.getAllRoles();
         Set<Long> companyIds = new HashSet<>();
         for (CompanyRole role : roles) {
-            companyIds.add(role.getCompanyId());
+            // התיקון: מוסיפים את מזהה החברה לרשימה *רק* אם התפקיד הוא פעיל (ACTIVE)
+            if (role.getStatus() == RoleStatus.ACTIVE) {
+                companyIds.add(role.getCompanyId());
+            }
         }
         return companyIds;
     }
