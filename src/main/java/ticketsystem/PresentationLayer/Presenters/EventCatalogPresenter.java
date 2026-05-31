@@ -1,39 +1,48 @@
 package ticketsystem.PresentationLayer.Presenters;
 
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDate;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import ticketsystem.DomainLayer.event.SaleStatus;
-import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.EventCatalogService;
 import ticketsystem.ApplicationLayer.LotteryService;
+import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.Event.EventSearchResultDTO;
+import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventLocation;
+import ticketsystem.DomainLayer.event.SaleStatus;
+import ticketsystem.PresentationLayer.Constants.Photos;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-
-import ticketsystem.DTO.CompanyDTO;
-import ticketsystem.DTO.Event.EventSearchResultDTO;
-
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Presenter for event catalog UI actions.
  *
- * Keeps search-related view logic out of the Home view by preparing
- * query parameters that can be used for navigation to the search results page.
+ * This presenter keeps catalog/search view logic out of the Vaadin views.
+ * It is responsible for:
+ * - Building URL query parameters from search panel values.
+ * - Loading featured events for the Home page.
+ * - Loading global search results for the SearchResults page.
+ * - Mapping application-layer event DTOs into card data used by the UI.
  */
 @Component
 public class EventCatalogPresenter {
+
     private final EventCatalogService eventCatalogService;
     private final CompanyService companyService;
     private final LotteryService lotteryService;
 
-    public EventCatalogPresenter( EventCatalogService eventCatalogService, CompanyService companyService, LotteryService lotteryService) {
+    public EventCatalogPresenter(
+            EventCatalogService eventCatalogService,
+            CompanyService companyService,
+            LotteryService lotteryService
+    ) {
         this.eventCatalogService = eventCatalogService;
         this.companyService = companyService;
         this.lotteryService = lotteryService;
@@ -45,11 +54,14 @@ public class EventCatalogPresenter {
      * Empty values and default filter values are ignored so the generated URL
      * contains only filters that were actually selected by the user.
      *
+     * UI labels are converted into stable domain enum values before being added
+     * to the URL. For example: "ירושלים" becomes "JERUSALEM".
+     *
      * @param freeText free-text search input
      * @param fromDate selected start date filter
      * @param toDate selected end date filter
-     * @param location selected location filter
-     * @param category selected category filter
+     * @param location selected location label from the UI
+     * @param category selected category label from the UI
      * @param artist selected artist filter
      * @param minPrice selected minimum price
      * @param maxPrice selected maximum price
@@ -118,6 +130,16 @@ public class EventCatalogPresenter {
         return params;
     }
 
+    /**
+     * Loads featured events for the Home page.
+     *
+     * Featured events are loaded from the application layer and converted into
+     * HomeEventCard records so the view can render EventCard components without
+     * knowing how to resolve company names, prices, dates, sale status, or lottery state.
+     *
+     * @param sessionToken active guest/member session token
+     * @return featured event card data for the Home page
+     */
     public List<HomeEventCard> getFeaturedHomeEvents(String sessionToken) {
         return eventCatalogService.getFeaturedEvents(sessionToken, 3)
                 .stream()
@@ -125,6 +147,40 @@ public class EventCatalogPresenter {
                 .toList();
     }
 
+    /**
+     * Loads global event search results from URL query parameters.
+     *
+     * The SearchResults view passes the raw query parameters from the route.
+     * This presenter converts them into a domain SearchCriteria object,
+     * delegates the global search to EventCatalogService, and maps the returned
+     * events into card data used by the UI.
+     *
+     * This method is intentionally scoped to global search. Company-specific
+     * search should use a separate presenter method so the two flows stay explicit.
+     *
+     * @param sessionToken active guest/member session token
+     * @param parameters query parameters from the current route
+     * @return event card data matching the global search criteria
+     */
+    public List<HomeEventCard> getGlobalSearchResultEvents(
+            String sessionToken,
+            Map<String, List<String>> parameters
+    ) {
+        SearchCriteria criteria = buildSearchCriteria(parameters);
+
+        return eventCatalogService.globalSearch(sessionToken, criteria)
+                .stream()
+                .map(event -> toHomeEventCard(sessionToken, event))
+                .toList();
+    }
+
+    /**
+     * View model used by EventCard-based screens.
+     *
+     * The presenter prepares this record so views do not need to know how to
+     * format dates/prices, resolve company names, parse sale statuses, or check
+     * whether an event has a lottery.
+     */
     public record HomeEventCard(
             String category,
             String title,
@@ -141,6 +197,9 @@ public class EventCatalogPresenter {
     ) {
     }
 
+    /**
+     * Converts an application-layer event search DTO into UI card data.
+     */
     private HomeEventCard toHomeEventCard(String sessionToken, EventSearchResultDTO event) {
         String companyName = resolveCompanyName(sessionToken, event.companyId());
 
@@ -157,6 +216,33 @@ public class EventCatalogPresenter {
                 event.id(),
                 parseSaleStatus(event.saleStatus()),
                 lotteryService.hasLotteryForEvent(sessionToken, event.id())
+        );
+    }
+
+    /**
+     * Converts route query parameters into domain search criteria.
+     *
+     * URL parameters are received as strings because they come from the browser.
+     * This method converts them into the types expected by the domain layer:
+     * enum values, date ranges, prices, and rating filters.
+     *
+     * Missing parameters are treated as null, meaning the matching filter should
+     * not restrict the search.
+     */
+    private SearchCriteria buildSearchCriteria(Map<String, List<String>> parameters) {
+        Map<String, List<String>> safeParameters = parameters == null ? Map.of() : parameters;
+
+        return new SearchCriteria(
+                firstParam(safeParameters, "q"),
+                parseCategory(firstParam(safeParameters, "category")),
+                parseLocation(firstParam(safeParameters, "location")),
+                firstParam(safeParameters, "artist"),
+                parseStartDate(firstParam(safeParameters, "fromDate")),
+                parseEndDate(firstParam(safeParameters, "toDate")),
+                parseBigDecimal(firstParam(safeParameters, "minPrice")),
+                parseBigDecimal(firstParam(safeParameters, "maxPrice")),
+                parseDouble(firstParam(safeParameters, "companyRate")),
+                parseDouble(firstParam(safeParameters, "eventRate"))
         );
     }
 
@@ -214,6 +300,82 @@ public class EventCatalogPresenter {
         }
     }
 
+    /**
+     * Reads the first value of a query parameter.
+     *
+     * Vaadin stores query parameters as a list of values per key. For this screen
+     * each filter is expected to have a single value, so only the first value is used.
+     */
+    private String firstParam(Map<String, List<String>> parameters, String name) {
+        if (parameters == null || name == null) {
+            return null;
+        }
+
+        List<String> values = parameters.get(name);
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+
+        String value = values.get(0);
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private EventCategory parseCategory(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return EventCategory.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private EventLocation parseLocation(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return EventLocation.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private LocalDateTime parseStartDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return LocalDate.parse(value).atStartOfDay();
+    }
+
+    private LocalDateTime parseEndDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return LocalDate.parse(value).atTime(23, 59, 59);
+    }
+
+    private BigDecimal parseBigDecimal(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return new BigDecimal(value.trim());
+    }
+
+    private Double parseDouble(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return Double.parseDouble(value.trim());
+    }
+
     private String prettyEnum(String value) {
         if (value == null || value.isBlank()) {
             return "";
@@ -261,5 +423,4 @@ public class EventCatalogPresenter {
             default -> location;
         };
     }
-
 }
