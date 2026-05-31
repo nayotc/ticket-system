@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.stereotype.Service;
 import ticketsystem.DTO.Event.*;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
@@ -22,6 +21,13 @@ import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import java.util.Objects;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
+import ticketsystem.DomainLayer.history.Purchase;
 
 @Service
 public class EventService {
@@ -34,6 +40,7 @@ public class EventService {
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
     private final UserAccessService userAccessService;
 
+    @Autowired
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
             MembershipDomainService membershipDomain, ISystemLogger logger,
             UserAccessService userAccessService) {
@@ -825,6 +832,31 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
                     "Failed - rollbackCreatedEvent. " + context + ". Error: " + e.getMessage(),
                     e
             );
+            throw e;
+        }
+    }
+
+    /**
+     * Retrieves all events associated with a specific company.
+     * Used for company management dashboards.
+     */
+    public List<EventDTO> getEventsByCompany(String token, Long companyId) throws Exception {
+        try {
+            // 1. Authenticate user
+            tokenService.validateToken(token);
+            Long memberId = tokenService.extractUserId(token);
+            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            // 2. Fetch events from the database
+            List<Event> events = eventRepository.getEventsByCompanyId(companyId);
+
+            // 3. Map to DTO and return (Using EventDTO::from instead of EventDTO::new)
+            return events.stream()
+                    .map(EventDTO::from)
+                    .collect(java.util.stream.Collectors.toList());
+
+        } catch (Exception e) {
+            logger.logError("Failed to fetch events for companyId=" + companyId, e);
             throw e;
         }
     }

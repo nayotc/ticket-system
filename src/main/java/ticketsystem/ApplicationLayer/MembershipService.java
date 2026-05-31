@@ -1,7 +1,16 @@
 package ticketsystem.ApplicationLayer;
+
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
+import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.MemberDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
@@ -11,9 +20,6 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
-
-import org.springframework.stereotype.Service;
 
 import ticketsystem.DTO.RoleTreeDTO;
 import ticketsystem.DomainLayer.user.Founder;
@@ -32,7 +38,7 @@ public class MembershipService {
     private final ISystemLogger logger;
     private final UserAccessService userAccessService; 
 
-
+    @Autowired
     public MembershipService(ITokenService tokenService, IUserRepository userRepository, ICompanyRepository companyRepository, MembershipDomainService membershipDomain, INotifier notificationsService, ISystemLogger logger,UserAccessService userAccessService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
@@ -86,84 +92,91 @@ public class MembershipService {
         }
     }
 
-/**
- * Use Case 4.7: Request to assign a manager to a company
- */
-public boolean requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) throws Exception {
+    /**
+     * Use Case 4.7: Request to assign a manager to a company
+     */
+    public boolean requestManagerAssignment(String sessionToken, Long companyId, String targetName, Set<Permission> permissions) throws Exception {
 
-    String context = "companyId=" + companyId + ", targetMemberId=" + targetMemberId +
-            ", permissionsCount=" + (permissions != null ? permissions.size() : 0);
+        String context = "companyId=" + companyId + ", targetName=" + targetName +
+                ", permissionsCount=" + (permissions != null ? permissions.size() : 0);
 
-    logger.logEvent("started - requestManagerAssignment. " + context, LogLevel.INFO);
+        logger.logEvent("started - requestManagerAssignment. " + context, LogLevel.INFO);
 
-    try {
-        // Authenticate session
-        if (!tokenService.validateToken(sessionToken)) {
-            throw new IllegalArgumentException("Session authentication failed.");
+        try {
+            // Authenticate session
+            if (!tokenService.validateToken(sessionToken)) {
+                throw new IllegalArgumentException("Session authentication failed.");
+            }
+
+            // Extract user ID from token and retrieve member information
+            Long appointerId = tokenService.extractUserId(sessionToken);
+            Member appointer = userRepository.getMemberById(appointerId);
+            if (appointer == null) {
+                throw new IllegalArgumentException("Appointer not found.");
+            }
+            userAccessService.validateCanPerformNonViewAction(appointerId);
+            
+            // Find the target member by name securely using the repository
+            Member targetMember = userRepository.getAllMembers().stream()
+                    .filter(m -> m.getUserName() != null && m.getUserName().equalsIgnoreCase(targetName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Target member with name '" + targetName + "' not found."));
+            
+            if (targetMember == null) {
+                throw new IllegalArgumentException("Target Member not found.");
+            }
+
+            Long targetMemberId = targetMember.getId();
+
+            logger.logEvent(
+                    "Loaded data - requestManagerAssignment. appointerId=" + appointerId,
+                    LogLevel.DEBUG
+            );
+
+            // Call the domain service to handle the business logic of creating the manager role
+            membershipDomain.managerAssignmentRequest(appointer, targetMember, companyId, permissions);
+
+            // Update the repository with the changes to the target member
+            userRepository.updateMember(targetMember);
+
+            // Notify the target member about the pending assignment
+            notificationsService.notifyMember(
+                    targetMemberId,
+                    "You received a request to become a manager of the production company \""
+                            + getCompanyName(companyId) + "\"."
+            );
+
+            logger.logEvent(
+                    "Completed - requestManagerAssignment. pending role created for targetMemberId=" + targetMemberId,
+                    LogLevel.INFO
+            );
+
+            return true;
+
+        } catch (IllegalArgumentException e) {
+            // Expected validation / use-case errors
+            logger.logEvent("Invalid requestManagerAssignment criteria: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+
+        } catch (Exception e) {
+            // Unexpected system errors
+            logger.logError(
+                    "Unexpected system error in requestManagerAssignment. " + context + ". reason=" + e.getMessage(),
+                    e
+            );
+            throw new RuntimeException(
+                    "An error occurred while requesting manager assignment: " + e.getMessage(),
+                    e
+            );
         }
-
-        // Extract user ID from token and retrieve member information
-        Long appointerId = tokenService.extractUserId(sessionToken);
-        Member appointer = userRepository.getMemberById(appointerId);
-        if (appointer == null) {
-            throw new IllegalArgumentException("Appointer not found.");
-        }
-        userAccessService.validateCanPerformNonViewAction(appointerId);
-        // Retrieve target member information
-        Member targetMember = userRepository.getMemberById(targetMemberId);
-        if (targetMember == null) {
-            throw new IllegalArgumentException("Target Member not found.");
-        }
-
-        logger.logEvent(
-                "Loaded data - requestManagerAssignment. appointerId=" + appointerId,
-                LogLevel.DEBUG
-        );
-
-        // Call the domain service to handle the business logic of creating the manager role
-        membershipDomain.managerAssignmentRequest(appointer, targetMember, companyId, permissions);
-
-        // Update the repository with the changes to the target member
-        userRepository.updateMember(targetMember);
-
-        // Notify the target member about the pending assignment
-        notificationsService.notifyMember(
-                targetMemberId,
-                "You received a request to become a manager of the production company \""
-                        + getCompanyName(companyId) + "\"."
-        );
-
-        logger.logEvent(
-                "Completed - requestManagerAssignment. pending role created for targetMemberId=" + targetMemberId,
-                LogLevel.INFO
-        );
-
-        return true;
-
-    } catch (IllegalArgumentException e) {
-        // Expected validation / use-case errors
-        logger.logEvent("Invalid requestManagerAssignment criteria: " + e.getMessage(), LogLevel.WARN);
-        throw e;
-
-    } catch (Exception e) {
-        // Unexpected system errors
-        logger.logError(
-                "Unexpected system error in requestManagerAssignment. " + context + ". reason=" + e.getMessage(),
-                e
-        );
-        throw new RuntimeException(
-                "An error occurred while requesting manager assignment: " + e.getMessage(),
-                e
-        );
     }
-}
 
     /**
      * Use Case 4.8: Request to assign an owner to a company
      */
-    public boolean requestOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception {
+    public boolean requestOwnerAssignment(String sessionToken, Long companyId, String targetName) throws Exception {
 
-        String context = "companyId=" + companyId + ", targetMemberId=" + targetMemberId;
+        String context = "companyId=" + companyId + ", targetName=" + targetName;
         logger.logEvent("started - requestOwnerAssignment. " + context, LogLevel.INFO);
 
         try {
@@ -180,11 +193,17 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             }
             userAccessService.validateCanPerformNonViewAction(appointerId);
 
-            // Retrieve target member information
-            Member targetMember = userRepository.getMemberById(targetMemberId);
+            // Find the target member by name securely using the repository
+            Member targetMember = userRepository.getAllMembers().stream()
+                    .filter(m -> m.getUserName() != null && m.getUserName().equalsIgnoreCase(targetName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Target member with name '" + targetName + "' not found."));
+            
             if (targetMember == null) {
                 throw new IllegalArgumentException("Target Member not found.");
             }
+
+            Long targetMemberId = targetMember.getId();
 
             logger.logEvent(
                     "Loaded data - requestOwnerAssignment. appointerId=" + appointerId,
@@ -220,23 +239,24 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
             // Return the actual result from the domain layer
             return true;
 
-            } catch (IllegalArgumentException e) {
-                // Expected validation / use-case errors
-                logger.logEvent("Invalid requestOwnerAssignment criteria: " + e.getMessage(), LogLevel.WARN);
-                throw e;
+        } catch (IllegalArgumentException e) {
+            // Expected validation / use-case errors
+            logger.logEvent("Invalid requestOwnerAssignment criteria: " + e.getMessage(), LogLevel.WARN);
+            throw e;
 
-            } catch (Exception e) {
-                // Unexpected system errors
-                logger.logError(
-                        "Unexpected system error in requestOwnerAssignment. " + context + ". reason=" + e.getMessage(),
-                        e
-                );
-                throw new RuntimeException(
-                        "An error occurred while requesting owner assignment: " + e.getMessage(),
-                        e
-                );
-                }
-            }
+        } catch (Exception e) {
+            // Unexpected system errors
+            logger.logError(
+                    "Unexpected system error in requestOwnerAssignment. " + context + ". reason=" + e.getMessage(),
+                    e
+            );
+            throw new RuntimeException(
+                    "An error occurred while requesting owner assignment: " + e.getMessage(),
+                    e
+            );
+        }
+    }
+
     /**
      * Use-case 4.9: Remove owner assignment
      */
@@ -378,9 +398,9 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
     /**
      * Use Case 4.11: Update manager permissions
      */
-    public boolean updateManagerPermissions(String sessionToken, Long companyId, Long managerId, Set<Permission> permissions) throws Exception {
+    public boolean updateManagerPermissions(String sessionToken, Long companyId, String managerName, Set<Permission> permissions) throws Exception {
         
-        String context = "companyId=" + companyId + ", managerId=" + managerId + 
+        String context = "companyId=" + companyId + ", managerName=" + managerName + 
                          ", permissionsCount=" + (permissions != null ? permissions.size() : 0);
         logger.logEvent("started - updateManagerPermissions. " + context, LogLevel.INFO);
 
@@ -397,9 +417,14 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
                 throw new IllegalArgumentException("Appointer not found.");
             }
              userAccessService.validateCanPerformNonViewAction(appointerId);
-            // Retrieve target member information
-            Member targetManager = userRepository.getMemberById(managerId);
-            if (targetManager == null) {
+            
+             // Find the manager by name securely using the repository
+            Member managerMember = userRepository.getAllMembers().stream()
+                    .filter(m -> m.getUserName() != null && m.getUserName().equalsIgnoreCase(managerName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Manager with name '" + managerName + "' not found."));
+            
+            if (managerMember == null) {
                 throw new IllegalArgumentException("Target Manager not found.");
             }
 
@@ -408,10 +433,12 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
                     LogLevel.DEBUG);
 
             // Call the domain service to handle the business logic of updating manager's permissions
-            membershipDomain.setPermissionsToManager(appointer, targetManager, companyId, permissions);
+            membershipDomain.setPermissionsToManager(appointer, managerMember, companyId, permissions);
 
             // Update the repository with the changes to the target member
-            userRepository.updateMember(targetManager);
+            userRepository.updateMember(managerMember);
+
+            Long managerId = managerMember.getId();
             
             if (notificationsService != null && managerId != null) {
                 notificationsService.notifyMember(
@@ -481,8 +508,9 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
                     targetMemberId,
                     "Your manager role in the production company \""
                             + getCompanyName(companyId) + "\" was removed."
-            );
-        }
+                );
+            }
+
             logger.logEvent("Completed - removeManagerAssignment. targetMemberId=" + targetMemberId + " removed as manager.", LogLevel.INFO);
             
             return true;
@@ -500,163 +528,163 @@ public boolean requestManagerAssignment(String sessionToken, Long companyId, Lon
                 "An error occurred while removing manager assignment: " + e.getMessage(), e);
         }
 
-}
+    }
+
     /**
-/**
- * Approve a pending assignment (Manager or Owner)
- */
-public boolean approveAssignment(String sessionToken, Long companyId) throws Exception {
+     * Approve a pending assignment (Manager or Owner)
+     */
+    public boolean approveAssignment(String sessionToken, Long companyId) throws Exception {
 
-    String context = "companyId=" + companyId;
-    logger.logEvent("started - approveAssignment. " + context, LogLevel.INFO);
+        String context = "companyId=" + companyId;
+        logger.logEvent("started - approveAssignment. " + context, LogLevel.INFO);
 
-    try {
-        // Authenticate session
-        if (!tokenService.validateToken(sessionToken)) {
-            throw new IllegalArgumentException("Session authentication failed.");
-        }
+        try {
+            // Authenticate session
+            if (!tokenService.validateToken(sessionToken)) {
+                throw new IllegalArgumentException("Session authentication failed.");
+            }
 
-        // Extract user ID from token and retrieve member information
-        Long appointeeId = tokenService.extractUserId(sessionToken);
-        Member appointee = userRepository.getMemberById(appointeeId);
-        if (appointee == null) {
-            throw new IllegalArgumentException("Appointee not found.");
-        }
-        userAccessService.validateCanPerformNonViewAction(appointeeId);
-        Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
-        if (appointerId == null) {
-            throw new IllegalArgumentException("The appointer ID could not be determined.");
-        }
+            // Extract user ID from token and retrieve member information
+            Long appointeeId = tokenService.extractUserId(sessionToken);
+            Member appointee = userRepository.getMemberById(appointeeId);
+            if (appointee == null) {
+                throw new IllegalArgumentException("Appointee not found.");
+            }
+            userAccessService.validateCanPerformNonViewAction(appointeeId);
+            Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
+            if (appointerId == null) {
+                throw new IllegalArgumentException("The appointer ID could not be determined.");
+            }
 
-        Member appointer = userRepository.getMemberById(appointerId);
-        if (appointer == null) {
-            throw new IllegalArgumentException("Appointer not found.");
-        }
+            Member appointer = userRepository.getMemberById(appointerId);
+            if (appointer == null) {
+                throw new IllegalArgumentException("Appointer not found.");
+            }
 
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new IllegalArgumentException("Company not found."));
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new IllegalArgumentException("Company not found."));
 
-        logger.logEvent(
-                "Loaded data - approveAssignment. appointeeId=" + appointeeId + ", appointerId=" + appointerId,
-                LogLevel.DEBUG
-        );
+            logger.logEvent(
+                    "Loaded data - approveAssignment. appointeeId=" + appointeeId + ", appointerId=" + appointerId,
+                    LogLevel.DEBUG
+            );
 
-        membershipDomain.approveAssignment(appointer, appointee, company);
+            membershipDomain.approveAssignment(appointer, appointee, company);
 
-        // Update the repository with the changes to both the appointee, appointer and company
-        userRepository.updateMember(appointee);
-        userRepository.updateMember(appointer);
-        companyRepository.save(company);
+            // Update the repository with the changes to both the appointee, appointer and company
+            userRepository.updateMember(appointee);
+            userRepository.updateMember(appointer);
+            companyRepository.save(company);
 
-        // Notify the appointer that the assignment was approved
-        if (notificationsService != null && appointerId != null) {
-            notificationsService.notifyMember(
-                    appointerId,
-                    appointee.getUserName() + " approved the assignment request for the production company \""
-                            + company.getName() + "\"."
+            // Notify the appointer that the assignment was approved
+            if (notificationsService != null && appointerId != null) {
+                notificationsService.notifyMember(
+                        appointerId,
+                        appointee.getUserName() + " approved the assignment request for the production company \""
+                                + company.getName() + "\"."
+                );
+            }
+
+            logger.logEvent(
+                    "Completed - approveAssignment. Assignment approved for appointeeId=" + appointeeId,
+                    LogLevel.INFO
+            );
+
+            return true;
+
+        } catch (IllegalArgumentException e) {
+            // Expected validation / use-case errors
+            logger.logEvent("Invalid approveAssignment criteria: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+
+        } catch (Exception e) {
+            // Unexpected system errors
+            logger.logError(
+                    "Unexpected system error in approveAssignment. " + context + ". reason=" + e.getMessage(),
+                    e
+            );
+            throw new RuntimeException(
+                    "An error occurred while approving assignment: " + e.getMessage(),
+                    e
             );
         }
-
-        logger.logEvent(
-                "Completed - approveAssignment. Assignment approved for appointeeId=" + appointeeId,
-                LogLevel.INFO
-        );
-
-        return true;
-
-    } catch (IllegalArgumentException e) {
-        // Expected validation / use-case errors
-        logger.logEvent("Invalid approveAssignment criteria: " + e.getMessage(), LogLevel.WARN);
-        throw e;
-
-    } catch (Exception e) {
-        // Unexpected system errors
-        logger.logError(
-                "Unexpected system error in approveAssignment. " + context + ". reason=" + e.getMessage(),
-                e
-        );
-        throw new RuntimeException(
-                "An error occurred while approving assignment: " + e.getMessage(),
-                e
-        );
     }
-}
 
-/**
- * Reject a pending assignment (Manager or Owner)
- */
-public boolean rejectAssignment(String sessionToken, Long companyId) throws Exception {
+    /**
+     * Reject a pending assignment (Manager or Owner)
+     */
+    public boolean rejectAssignment(String sessionToken, Long companyId) throws Exception {
 
-    String context = "companyId=" + companyId;
-    logger.logEvent("started - rejectAssignment. " + context, LogLevel.INFO);
+        String context = "companyId=" + companyId;
+        logger.logEvent("started - rejectAssignment. " + context, LogLevel.INFO);
 
-    try {
-        // Authenticate session
-        if (!tokenService.validateToken(sessionToken)) {
-            throw new IllegalArgumentException("Session authentication failed.");
-        }
+        try {
+            // Authenticate session
+            if (!tokenService.validateToken(sessionToken)) {
+                throw new IllegalArgumentException("Session authentication failed.");
+            }
 
-        // Extract user ID from token and retrieve member information
-        Long memberId = tokenService.extractUserId(sessionToken);
-        Member appointee = userRepository.getMemberById(memberId);
-        if (appointee == null) {
-            throw new IllegalArgumentException("Appointee not found.");
-        }
-        userAccessService.validateCanPerformNonViewAction(memberId);
-        Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
-        if (appointerId == null) {
-            throw new IllegalArgumentException("The appointer ID could not be determined.");
-        }
+            // Extract user ID from token and retrieve member information
+            Long memberId = tokenService.extractUserId(sessionToken);
+            Member appointee = userRepository.getMemberById(memberId);
+            if (appointee == null) {
+                throw new IllegalArgumentException("Appointee not found.");
+            }
+            userAccessService.validateCanPerformNonViewAction(memberId);
+            Long appointerId = membershipDomain.getAppointerId(appointee, companyId);
+            if (appointerId == null) {
+                throw new IllegalArgumentException("The appointer ID could not be determined.");
+            }
 
-        Member appointer = userRepository.getMemberById(appointerId);
-        if (appointer == null) {
-            throw new IllegalArgumentException("Appointer not found.");
-        }
+            Member appointer = userRepository.getMemberById(appointerId);
+            if (appointer == null) {
+                throw new IllegalArgumentException("Appointer not found.");
+            }
 
-        logger.logEvent(
-                "Loaded data - rejectAssignment. appointeeId=" + memberId + ", appointerId=" + appointerId,
-                LogLevel.DEBUG
-        );
+            logger.logEvent(
+                    "Loaded data - rejectAssignment. appointeeId=" + memberId + ", appointerId=" + appointerId,
+                    LogLevel.DEBUG
+            );
 
-        membershipDomain.rejectAssignment(appointer, appointee, companyId);
+            membershipDomain.rejectAssignment(appointer, appointee, companyId);
 
-        // Update the repository with the changes to the appointee and appointer
-        userRepository.updateMember(appointee);
-        userRepository.updateMember(appointer);
+            // Update the repository with the changes to the appointee and appointer
+            userRepository.updateMember(appointee);
+            userRepository.updateMember(appointer);
 
-        // Notify the appointer that the assignment was rejected
-        if (notificationsService != null && appointerId != null) {
-            notificationsService.notifyMember(
-                    appointerId,
-                    appointee.getUserName() + " rejected the assignment request for the production company \""
-                            + getCompanyName(companyId) + "\"."
+            // Notify the appointer that the assignment was rejected
+            if (notificationsService != null && appointerId != null) {
+                notificationsService.notifyMember(
+                        appointerId,
+                        appointee.getUserName() + " rejected the assignment request for the production company \""
+                                + getCompanyName(companyId) + "\"."
+                );
+            }
+
+            logger.logEvent(
+                    "Completed - rejectAssignment. Assignment rejected for appointeeId=" + memberId,
+                    LogLevel.INFO
+            );
+
+            return true;
+
+        } catch (IllegalArgumentException e) {
+            // Expected validation / use-case errors
+            logger.logEvent("Invalid rejectAssignment criteria: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+
+        } catch (Exception e) {
+            // Unexpected system errors
+            logger.logError(
+                    "Unexpected system error in rejectAssignment. " + context + ". reason=" + e.getMessage(),
+                    e
+            );
+            throw new RuntimeException(
+                    "An error occurred while rejecting assignment: " + e.getMessage(),
+                    e
             );
         }
-
-        logger.logEvent(
-                "Completed - rejectAssignment. Assignment rejected for appointeeId=" + memberId,
-                LogLevel.INFO
-        );
-
-        return true;
-
-    } catch (IllegalArgumentException e) {
-        // Expected validation / use-case errors
-        logger.logEvent("Invalid rejectAssignment criteria: " + e.getMessage(), LogLevel.WARN);
-        throw e;
-
-    } catch (Exception e) {
-        // Unexpected system errors
-        logger.logError(
-                "Unexpected system error in rejectAssignment. " + context + ". reason=" + e.getMessage(),
-                e
-        );
-        throw new RuntimeException(
-                "An error occurred while rejecting assignment: " + e.getMessage(),
-                e
-        );
     }
-}
 
     /**
      * Use Case 4.15: View roles and permissions tree
@@ -707,7 +735,6 @@ public boolean rejectAssignment(String sessionToken, Long companyId) throws Exce
                 "An error occurred while viewing roles and permissions tree: " + e.getMessage(), e);
         }
     }
-
         /**
      * Use Case 4.15: View roles and permissions tree as structured DTO.
      */
@@ -887,5 +914,118 @@ public boolean rejectAssignment(String sessionToken, Long companyId) throws Exce
         }
 
         return List.of();
+    }
+
+    public List<CompanyDTO> getCompaniesByMember(String sessionToken) throws Exception {
+        try {
+            // 1. אימות הטוקן
+            if (!tokenService.validateToken(sessionToken)) {
+                throw new IllegalArgumentException("Session authentication failed.");
+            }
+
+            Long memberId = tokenService.extractUserId(sessionToken);
+
+            if (memberId == null) {
+                throw new IllegalArgumentException("Member ID not found in token.");
+            }
+
+            // 2. וידוא הרשאות משתמש כלליות (למשל שהוא לא מושהה)
+            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            // 3. שליפת מזהי החברות מהדומיין
+            Set<Long> companyIds = membershipDomain.getCompanyIdsByMember(memberId);
+            
+            // 4. שליפת החברות והמרתן ל-DTO!
+            return companyIds.stream()
+                    .map(companyRepository::findById) // מחזיר Optional<Company>
+                    .filter(Optional::isPresent)      // מוודא שהחברה אכן קיימת במסד
+                    .map(Optional::get)               // מחלץ את ה-Company מתוך ה-Optional
+                    .map(company -> new CompanyDTO(company)) // המרה חסרה: הפיכת Company ל-CompanyDTO
+                    .collect(Collectors.toList());
+
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Invalid getCompaniesByMember criteria: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        } catch (Exception e) {
+            logger.logError("Unexpected system error in getCompaniesByMember. reason=" + e.getMessage(), e);
+            throw new RuntimeException(
+                "An error occurred while retrieving companies for member: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Retrieves all active member IDs in a company's management hierarchy.
+     * * Validates the requester's permissions and traverses the management tree top-down, 
+     * starting from the company's founder. 
+     *
+     * @param sessionToken active session token of the requesting member
+     * @param companyId target company ID
+     * @return unique list of active staff member DTOs
+     * @throws RuntimeException on authorization failure, missing company, or system error
+     */
+    public List<MemberDTO> getCompanyTeamMembers(String sessionToken, Long companyId) throws Exception {
+        try {
+
+            if (!tokenService.validateToken(sessionToken)) {
+                throw new IllegalArgumentException("Session authentication failed.");
+            }
+
+            Long memberId = tokenService.extractUserId(sessionToken);
+
+            if (memberId == null) {
+                throw new IllegalArgumentException("Member ID not found in token.");
+            }
+
+            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new IllegalArgumentException("Error: Company not found."));
+
+            long founderId = company.getFounderId();
+
+            // 1. שליפת רשימת מספרי המזהים (IDs) משכבת הדומיין
+            Set<Long> teamMemberIds = membershipDomain.getManagementSubTreeMemberIds(founderId, companyId);
+
+            // 2. המרת המזהים לאובייקטי Member ולאחר מכן ל-MemberDTO
+            return teamMemberIds.stream()
+                    .map(userRepository::getMemberById)    // שליפת המשתמש המלא מהמסד
+                    .filter(java.util.Objects::nonNull)    // הגנה מ-Null במקרה שמשתמש נמחק
+                    .map(MemberDTO::fromDomain)            // המרה חלקה ל-DTO (הפונקציה שיצרנו)
+                    .collect(Collectors.toList());         // איסוף חזרה לרשימה
+
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Invalid getCompanyTeamMembers criteria: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        } catch (Exception e) {
+            logger.logError("Unexpected system error in getCompanyTeamMembers. companyId=" + companyId + ". reason=" + e.getMessage(), e);
+            throw new RuntimeException(
+                "An error occurred while retrieving company team members: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Retrieves the count of all pending role assignments for a specific company.
+     * This is useful for dashboard metrics and manager notifications.
+     *
+     * @param companyId target company ID
+     * @return the number of pending assignments
+     */
+    public int getPendingAssignmentsCount(Long companyId) {
+        try {
+            int count = 0;
+
+            for (Member member : userRepository.getAllMembers()) {
+                CompanyRole role = member.getRoleInCompany(companyId);
+                
+                if (role != null && role.getStatus() == ticketsystem.DomainLayer.user.RoleStatus.PENDING) {
+                    count++;
+                }
+            }
+            
+            return count;
+        } catch (Exception e) {
+            logger.logError("Failed to get pending assignments count for companyId=" + companyId, e);
+            return 0; 
+        }
     }
 }

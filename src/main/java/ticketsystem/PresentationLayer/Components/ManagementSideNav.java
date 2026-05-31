@@ -15,19 +15,20 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
 public class ManagementSideNav extends Div {
 
     private String companyId = "1";
     private final Div links = new Div();
-    private final CreateProductionCompanyPresenter presenter;
+    private final CompanyPresenter presenter;
 
     public ManagementSideNav() {
         this(null);
     }
 
-    public ManagementSideNav(CreateProductionCompanyPresenter presenter) {
+    public ManagementSideNav(CompanyPresenter presenter) {
         this.presenter = presenter;
         addClassName("management-side-nav");
 
@@ -216,7 +217,7 @@ public class ManagementSideNav extends Div {
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 
-    public interface CreateProductionCompanyPresenter {
-        CompanyDTO createProductionCompany(String sessionToken, String companyName) throws Exception;
-    }
+    // public interface CreateProductionCompanyPresenter {
+    //     CompanyDTO createProductionCompany(String sessionToken, String companyName) throws Exception;
+    // }
 }

@@ -509,5 +509,62 @@ public class CompanyService {
             return company;
     }
 
+    public String getPurchasePolicySummary(Long companyId) {
+        try {
+            Company company = companyRepository.findById(companyId).orElse(null);
+            
+            if (company == null || company.getPurchasePolicy() == null) {
+                return "לא הוגדרה מדיניות רכישה";
+            }
+            
+            PurchasePolicy policy = company.getPurchasePolicy();
+            
+            if (policy.getRootRule() != null && policy.getRootRule().getClass().getSimpleName().equals("AlwaysAllowRule")) {
+                return "ללא הגבלות רכישה מיוחדות";
+            }
+            
+            return "מוגדרת חוקיות רכישה מותאמת אישית";
+            
+        } catch (Exception e) {
+            logError("Failed to get purchase policy summary for companyId=" + companyId, e);
+            return "שגיאה בשליפת מדיניות הרכישה";
+        }
+    }
+
+    public String getDiscountPolicySummary(Long companyId) {
+        try {
+            Company company = companyRepository.findById(companyId).orElse(null);
+            
+            if (company == null || company.getDiscountPolicy() == null) {
+                return "אין הנחות פעילות";
+            }
+            
+            DiscountPolicy policy = company.getDiscountPolicy();
+            
+            if (policy.getDiscounts() == null || policy.getDiscounts().isEmpty()) {
+                return "אין הנחות פעילות";
+            }
+            
+            int discountsCount = policy.getDiscounts().size();
+            
+            String compositionMethod = "";
+            if (policy.getDiscountCompositionType() != null) {
+                switch (policy.getDiscountCompositionType().name()) {
+                    case "SUM":
+                        compositionMethod = " (כפל מבצעים)";
+                        break;
+                    case "MAX":
+                        compositionMethod = " (הנחה מקסימלית)";
+                        break;
+                }
+            }
+            
+            return discountsCount + " הנחות מוגדרות במערכת" + compositionMethod;
+            
+        } catch (Exception e) {
+            logError("Failed to get discount policy summary for companyId=" + companyId, e);
+            return "שגיאה בשליפת מדיניות ההנחות";
+        }
+    }
 
 }

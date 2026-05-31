@@ -691,4 +691,20 @@ public class MembershipDomainService {
         transferAppointees(ownerToCancel, appointer, companyId);
         userRepository.updateMember(appointer);
     }
+
+    public Set<Long> getCompanyIdsByMember(Long memberId) throws Exception {
+        Member member = userRepository.getMemberById(memberId);
+        if (member == null) {
+            throw new Exception("Member not found.");
+        }
+        List<CompanyRole> roles = member.getAllRoles();
+        Set<Long> companyIds = new HashSet<>();
+        for (CompanyRole role : roles) {
+            // התיקון: מוסיפים את מזהה החברה לרשימה *רק* אם התפקיד הוא פעיל (ACTIVE)
+            if (role.getStatus() == RoleStatus.ACTIVE) {
+                companyIds.add(role.getCompanyId());
+            }
+        }
+        return companyIds;
+    }
 }

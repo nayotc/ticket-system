@@ -19,6 +19,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DomainLayer.user.Permission;
@@ -32,6 +33,16 @@ import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
+import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
+import ticketsystem.PresentationLayer.Presenters.MembershipPresenter;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.CompanyStats;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.EventManagementItem;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.ManagedCompanyItem;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.PolicySummary;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.RoleType;
+import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.TeamMemberItem;
+
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -39,22 +50,33 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+@PageTitle("TixNow | Company Management")
 @Route(value = UiRoutes.COMPANY_MANAGEMENT, layout = ManagementLayout.class)
 public class CompanyManagement extends Div implements BeforeEnterObserver {
 
-    private final CompanyManagementPresenter presenter;
+    private final MembershipPresenter membershipPresenter;
+    private final CompanyPresenter companyPresenter;
     private CompanyManagementState state;
 
-    private final TextField managerMemberId = new TextField("מזהה מנוי למינוי מנהל");
-    private final TextField ownerMemberId = new TextField("מזהה מנוי למינוי בעלים");
+    private final TextField managerNameInput = new TextField("שם משתמש למינוי או עדכון מנהל");
+    private final TextField ownerNameInput = new TextField("שם משתמש למינוי בעלים");
+
+    // private final TextField managerMemberId = new TextField("מזהה מנוי למינוי מנהל");
+    // private final TextField ownerMemberId = new TextField("מזהה מנוי למינוי בעלים");
+
     private final CheckboxGroup<Permission> managerPermissions = new CheckboxGroup<>("הרשאות מנהל");
 
     public CompanyManagement() {
-        this(null);
+        this(null, null);
     }
 
-    public CompanyManagement(CompanyManagementPresenter presenter) {
-        this.presenter = presenter;
+    @Autowired
+    public CompanyManagement(MembershipPresenter membershipPresenter, CompanyPresenter companyPresenter) {
+        this.membershipPresenter = membershipPresenter;
+        this.companyPresenter = companyPresenter;
+        
         addClassName("company-management-page");
         getElement().setAttribute("dir", "rtl");
         configureFields();
@@ -71,11 +93,11 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
     }
 
     private void configureFields() {
-        managerMemberId.setPlaceholder("לדוגמה: 42");
-        managerMemberId.setWidthFull();
+        managerNameInput.setPlaceholder("לדוגמה: user@test.com");
+        managerNameInput.setWidthFull();
 
-        ownerMemberId.setPlaceholder("לדוגמה: 42");
-        ownerMemberId.setWidthFull();
+        ownerNameInput.setPlaceholder("לדוגמה: owner@test.com");
+        ownerNameInput.setWidthFull();
 
         managerPermissions.setItems(Permission.values());
         managerPermissions.setItemLabelGenerator(this::permissionLabel);
@@ -84,10 +106,10 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
 
     private void loadState(Long requestedCompanyId) {
         try {
-            if (presenter == null) {
+            if (membershipPresenter == null) {
                 state = demoState(requestedCompanyId);
             } else {
-                state = presenter.loadCompanyManagement(UiSession.getMemberToken(), requestedCompanyId);
+                state = membershipPresenter.loadCompanyManagement(UiSession.getMemberToken(), requestedCompanyId);
             }
             render();
         } catch (Exception e) {
@@ -164,7 +186,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         MetricCard status = new MetricCard(
                 "סטטוס חברה",
                 state.selectedCompany().active() ? "פעילה" : "מושהית",
-                "מייסד: " + state.selectedCompany().founderName()
+                "מייסד: " + state.selectedCompany().founderEmailOrName()
         );
         status.add(new StatusBadge(state.selectedCompany().active() ? "פתוחה למכירה" : "לא פעילה", statusType));
 
@@ -248,7 +270,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         Span title = new Span(eventItem.title());
         title.addClassName("event-management-title");
 
-        Span meta = new Span("ID " + eventItem.eventId());
+        Span meta = new Span("סטטוס: " + eventItem.status());
         meta.addClassName("event-management-meta");
 
         details.add(title, meta);
@@ -309,7 +331,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         HorizontalLayout actions = new HorizontalLayout(assign, update);
         actions.addClassName("company-form-actions");
 
-        form.add(title, managerMemberId, managerPermissions, actions);
+        form.add(title, managerNameInput, managerPermissions, actions);
         return form;
     }
 
@@ -335,13 +357,14 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         Div details = new Div();
         details.addClassName("team-member-details");
 
-        Span name = new Span(member.displayName());
+        Span name = new Span(member.userName());
         name.addClassName("team-member-name");
 
-        Span meta = new Span("ID " + member.memberId() + " · " + member.roleLabel());
+        Span meta = new Span("תפקיד: " + member.roleLabel());
         meta.addClassName("team-member-meta");
 
-        Span permissions = new Span(member.permissionLabels().isBlank() ? "ללא הרשאות פרטניות" : member.permissionLabels());
+        String permsText = member.permissionLabels(this::permissionLabel);
+        Span permissions = new Span(permsText.isBlank() ? "ללא הרשאות פרטניות" : permsText);
         permissions.addClassName("team-member-permissions");
 
         details.add(name, meta, permissions);
@@ -394,7 +417,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         assign.setWidthFull();
         assign.addClickListener(event -> requestOwnerAssignment());
 
-        section.add(title, description, ownerMemberId, assign);
+        section.add(title, description, ownerNameInput, assign);
         return section;
     }
 
@@ -402,32 +425,39 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         Div actions = new Div();
         actions.addClassName("owner-actions");
 
-        Button close = new Button("השהה חברה", VaadinIcon.BAN.create());
-        close.addClassName("company-secondary-button");
-        close.setWidthFull();
-        close.setEnabled(state.selectedCompany().active());
-        close.addClickListener(event -> confirmOwnerAction(
-                "השהיית חברה",
-                "החברה תהפוך ללא פעילה ולא תופיע בתוצאות החיפוש הכללי.",
-                () -> runPresenterAction(
-                        () -> presenter.closeProductionCompany(UiSession.getMemberToken(), state.selectedCompany().id()),
-                        "החברה הושהתה בהצלחה"
-                )
-        ));
+        // 1. כפתורי השהייה ופתיחה מחדש - מוגבלים למייסד בלבד
+        if (state.founder()) {
+            Button close = new Button("השהה חברה", VaadinIcon.BAN.create());
+            close.addClassName("company-secondary-button");
+            close.setWidthFull();
+            close.setEnabled(state.selectedCompany().active());
+            close.addClickListener(event -> confirmOwnerAction(
+                    "השהיית חברה",
+                    "החברה תהפוך ללא פעילה ולא תופיע בתוצאות החיפוש הכללי.",
+                    () -> runPresenterAction(
+                            () -> companyPresenter.closeProductionCompany(UiSession.getMemberToken(), state.selectedCompany().id()),
+                            "החברה הושהתה בהצלחה"
+                    )
+            ));
 
-        Button reopen = new Button("פתח מחדש חברה", VaadinIcon.PLAY.create());
-        reopen.addClassName("company-secondary-button");
-        reopen.setWidthFull();
-        reopen.setEnabled(!state.selectedCompany().active());
-        reopen.addClickListener(event -> confirmOwnerAction(
-                "פתיחת חברה מחדש",
-                "החברה תחזור להיות פעילה ותוכל להופיע בתוצאות החיפוש.",
-                () -> runPresenterAction(
-                        () -> presenter.reopenProductionCompany(UiSession.getMemberToken(), state.selectedCompany().id()),
-                        "החברה נפתחה מחדש"
-                )
-        ));
+            Button reopen = new Button("פתח מחדש חברה", VaadinIcon.PLAY.create());
+            reopen.addClassName("company-secondary-button");
+            reopen.setWidthFull();
+            reopen.setEnabled(!state.selectedCompany().active());
+            reopen.addClickListener(event -> confirmOwnerAction(
+                    "פתיחת חברה מחדש",
+                    "החברה תחזור להיות פעילה ותוכל להופיע בתוצאות החיפוש.",
+                    () -> runPresenterAction(
+                            () -> companyPresenter.reopenProductionCompany(UiSession.getMemberToken(), state.selectedCompany().id()),
+                            "החברה נפתחה מחדש"
+                    )
+            ));
 
+            // הוספת כפתורי המייסד לאזור הפעולות
+            actions.add(close, reopen);
+        }
+
+        // 2. כפתור ויתור בעלות - זמין לכל מי שיש לו בעלות (Founder או Owner)
         Button resign = new Button("ויתור בעלות", VaadinIcon.WARNING.create());
         resign.addClassName("company-danger-button");
         resign.setWidthFull();
@@ -435,12 +465,14 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 "ויתור על בעלות",
                 "הפעולה תסיר ממך את תפקיד הבעלים בהתאם ללוגיקת המינויים במערכת.",
                 () -> runPresenterAction(
-                        () -> presenter.giveUpOwnership(UiSession.getMemberToken(), state.selectedCompany().id()),
+                        () -> membershipPresenter.giveUpOwnership(UiSession.getMemberToken(), state.selectedCompany().id()),
                         "ויתור הבעלות בוצע בהצלחה"
                 )
         ));
 
-        actions.add(close, reopen, resign);
+        // הוספת כפתור ויתור הבעלות לאזור הפעולות
+        actions.add(resign);
+        
         return actions;
     }
 
@@ -502,57 +534,56 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 "ביטול אירוע",
                 "האירוע " + eventItem.title() + " יבוטל לאחר אישור הפעולה.",
                 () -> runPresenterAction(
-                        () -> presenter.cancelEvent(UiSession.getMemberToken(), state.selectedCompany().id(), eventItem.eventId()),
+                        () -> membershipPresenter.cancelEvent(UiSession.getMemberToken(), state.selectedCompany().id(), eventItem.eventId()),
                         "בקשת ביטול האירוע נשלחה"
                 )
         );
     }
 
-    private void requestManagerAssignment() {
-        Long targetMemberId = readMemberId(managerMemberId, "מזהה מנוי למינוי מנהל");
-        if (targetMemberId == null) {
-            return;
+    private String readEmailInput(TextField field, String label) {
+        String value = field.getValue();
+        if (value == null || value.isBlank()) {
+            showWarning(label + " לא יכול להיות ריק");
+            return null;
         }
+        return value.trim();
+    }
 
+    private void requestManagerAssignment() {
+        String name = readEmailInput(managerNameInput, "שם משתמש");
+        if (name == null) return;
         Set<Permission> permissions = managerPermissions.getSelectedItems();
         if (permissions == null || permissions.isEmpty()) {
             showWarning("בחר לפחות הרשאה אחת למנהל");
             return;
         }
-
         runPresenterAction(
-                () -> presenter.requestManagerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), targetMemberId, permissions),
+                () -> membershipPresenter.requestManagerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), name, permissions),
                 "בקשת מינוי המנהל נשלחה לאישור"
         );
     }
 
     private void updateManagerPermissions() {
-        Long managerId = readMemberId(managerMemberId, "מזהה מנהל לעדכון הרשאות");
-        if (managerId == null) {
-            return;
-        }
-
+        String name = readEmailInput(managerNameInput, "שם משתמש");
+        if (name == null) return;
         Set<Permission> permissions = managerPermissions.getSelectedItems();
         runPresenterAction(
-                () -> presenter.updateManagerPermissions(UiSession.getMemberToken(), state.selectedCompany().id(), managerId, permissions),
+                () -> membershipPresenter.updateManagerPermissions(UiSession.getMemberToken(), state.selectedCompany().id(), name, permissions),
                 "הרשאות המנהל עודכנו"
         );
     }
 
     private void requestOwnerAssignment() {
-        Long targetMemberId = readMemberId(ownerMemberId, "מזהה מנוי למינוי בעלים");
-        if (targetMemberId == null) {
-            return;
-        }
-
+        String name = readEmailInput(ownerNameInput, "שם משתמש");
+        if (name == null) return;
         runPresenterAction(
-                () -> presenter.requestOwnerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), targetMemberId),
+                () -> membershipPresenter.requestOwnerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), name),
                 "בקשת מינוי הבעלים נשלחה לאישור"
         );
     }
 
     private void fillManagerForm(TeamMemberItem member) {
-        managerMemberId.setValue(String.valueOf(member.memberId()));
+        managerNameInput.setValue(member.userName());
         managerPermissions.setValue(member.permissions());
     }
 
@@ -560,13 +591,13 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         String actionText = member.roleType() == RoleType.OWNER ? "הסרת בעלים" : "הסרת מנהל";
         confirmOwnerAction(
                 actionText,
-                "המשתמש " + member.displayName() + " יוסר מתפקידו בחברה.",
+                "המשתמש " + member.userName() + " יוסר מתפקידו בחברה.",
                 () -> runPresenterAction(
                         () -> {
                             if (member.roleType() == RoleType.OWNER) {
-                                presenter.removeOwnerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), member.memberId());
+                                membershipPresenter.removeOwnerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), member.memberId());
                             } else {
-                                presenter.removeManagerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), member.memberId());
+                                membershipPresenter.removeManagerAssignment(UiSession.getMemberToken(), state.selectedCompany().id(), member.memberId());
                             }
                         },
                         "התפקיד הוסר בהצלחה"
@@ -585,13 +616,18 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
 
     private void runPresenterAction(ThrowingRunnable action, String successMessage) {
         try {
-            if (presenter == null) {
+            if (membershipPresenter == null || companyPresenter == null) {
                 showWarning("הפעולה מוכנה לחיבור Presenter. כרגע מוצג מידע דמו בלבד.");
                 return;
             }
-
             action.run();
             showSuccess(successMessage);
+            
+            // ניקוי הטפסים כדי להשלים את חוויית הריפרש בממשק
+            managerNameInput.clear();
+            managerPermissions.deselectAll();
+            ownerNameInput.clear();
+            
             loadState(state.selectedCompany().id());
         } catch (Exception e) {
             showError(e.getMessage());
@@ -611,27 +647,24 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
     }
 
     private String permissionLabel(Permission permission) {
-        if (permission == null) {
-            return "";
-        }
-
+        if (permission == null) return "";
         String name = permission.name().toLowerCase();
-        if (name.contains("event") || name.contains("inventory")) {
-            return "ניהול מלאי ואירועים";
-        }
-        if (name.contains("map") || name.contains("hall")) {
-            return "הגדרת אולם ומפת אירוע";
-        }
-        if (name.contains("policy") || name.contains("discount") || name.contains("purchase")) {
-            return "עריכת מדיניות רכישה והנחות";
-        }
-        if (name.contains("message") || name.contains("support") || name.contains("inquiry")) {
-            return "טיפול בפניות";
-        }
-        if (name.contains("history") || name.contains("sales") || name.contains("report")) {
-            return "צפייה בהיסטוריה ודוח מכירות";
-        }
-        return permission.name().replace('_', ' ');
+        
+        if (name.contains("inventory") || name.contains("event")) return "ניהול מלאי ואירועים";
+        if (name.contains("map") || name.contains("hall")) return "הגדרת אולם ומפת אירוע";
+        
+        // הפרדנו את ההרשאות כדי למנוע כפילויות במסך
+        if (name.contains("discount")) return "עריכת מדיניות הנחות";
+        if (name.contains("purchas")) return "עריכת מדיניות רכישה";
+        if (name.contains("policy")) return "ניהול מדיניות כללית"; 
+        
+        // תיקון הבאג: חיפוש של החלק המשותף למילה כדי לתפוס גם inquiries וגם inquiry
+        if (name.contains("inquir") || name.contains("message") || name.contains("support")) return "טיפול בפניות";
+        
+        if (name.contains("history") || name.contains("sales") || name.contains("report")) return "צפייה בהיסטוריה ודוחות";
+        
+        // במקרה שנוספה הרשאה חדשה שלא הכרנו, נציג אותה בצורה נקייה יותר
+        return "הרשאת " + name.replace('_', ' ');
     }
 
     private Long safeParseLong(String value) {
@@ -695,14 +728,15 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         team.add(new TeamMemberItem(412L, "מאיה ישראלי", "Manager", RoleType.MANAGER, secondPermissions, true));
 
         List<EventManagementItem> events = List.of(
-                new EventManagementItem(501L, "Live Night 2026"),
-                new EventManagementItem(502L, "Summer Festival"),
-                new EventManagementItem(503L, "Standup Weekend")
+                new EventManagementItem(501L, "Live Night 2026", "פעיל"),
+                new EventManagementItem(502L, "Summer Festival", "פעיל"),
+                new EventManagementItem(503L, "Standup Weekend", "מושהה")
         );
 
         return new CompanyManagementState(
                 companies,
                 selected,
+                true,
                 true,
                 true,
                 team,
@@ -730,86 +764,4 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         void run() throws Exception;
     }
 
-    public interface CompanyManagementPresenter {
-        CompanyManagementState loadCompanyManagement(String sessionToken, Long requestedCompanyId) throws Exception;
-
-        void requestManagerAssignment(String sessionToken, Long companyId, Long targetMemberId, Set<Permission> permissions) throws Exception;
-
-        void requestOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception;
-
-        void updateManagerPermissions(String sessionToken, Long companyId, Long managerId, Set<Permission> permissions) throws Exception;
-
-        void removeManagerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception;
-
-        void removeOwnerAssignment(String sessionToken, Long companyId, Long targetMemberId) throws Exception;
-
-        void closeProductionCompany(String sessionToken, Long companyId) throws Exception;
-
-        void reopenProductionCompany(String sessionToken, Long companyId) throws Exception;
-
-        void giveUpOwnership(String sessionToken, Long companyId) throws Exception;
-
-        void cancelEvent(String sessionToken, Long companyId, Long eventId) throws Exception;
-    }
-
-    public record CompanyManagementState(
-            List<ManagedCompanyItem> companies,
-            ManagedCompanyItem selectedCompany,
-            boolean owner,
-            boolean canManageTeam,
-            List<TeamMemberItem> teamMembers,
-            List<EventManagementItem> events,
-            CompanyStats stats,
-            PolicySummary policySummary
-    ) {
-        public static ManagedCompanyItem companyFromDto(CompanyDTO companyDTO) {
-            return ManagedCompanyItem.from(companyDTO);
-        }
-    }
-
-    public record ManagedCompanyItem(long id, String name, long founderId, String founderName, boolean active) {
-        public static ManagedCompanyItem from(CompanyDTO dto) {
-            return new ManagedCompanyItem(
-                    dto.getId(),
-                    dto.getName(),
-                    dto.getFounderId(),
-                    "Member #" + dto.getFounderId(),
-                    dto.isActive()
-            );
-        }
-    }
-
-    public record EventManagementItem(long eventId, String title) {
-    }
-
-    public record CompanyStats(int activeEvents, int pendingAssignments) {
-    }
-
-    public record PolicySummary(String purchasePolicySummary, String discountPolicySummary) {
-    }
-
-    public enum RoleType {
-        FOUNDER,
-        OWNER,
-        MANAGER
-    }
-
-    public record TeamMemberItem(
-            Long memberId,
-            String displayName,
-            String roleLabel,
-            RoleType roleType,
-            Set<Permission> permissions,
-            boolean removable
-    ) {
-        public String permissionLabels() {
-            if (permissions == null || permissions.isEmpty()) {
-                return "";
-            }
-
-            return permissions.stream()
-                    .map(permission -> permission.name().replace('_', ' '))
-                    .collect(Collectors.joining(", "));
-        }
-    }
 }
