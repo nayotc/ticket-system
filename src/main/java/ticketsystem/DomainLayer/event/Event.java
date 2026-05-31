@@ -483,4 +483,22 @@ public class Event {
         return discountPolicy.getDiscounts();
     }
 
+    public String toString() {
+        return "Event{" +
+                "id=" + id.toString() +
+                ", name='" + name + '\'' +
+                ", companyId=" + companyId.toString() +
+                ", openedBy=" + openedBy.toString() +
+                ", Date=" + Date.toString() +
+                ", location=" + location.toString() +
+                ", trafficThreshold=" + trafficThreshold.toString() +
+                ", status=" + status.toString() +
+                ", category=" + category.toString() +
+                ", artistName='" + artistName + '\'' +
+                ", TicketPrice=" + TicketPrice.toString() +
+                ", rate=" + rate.toString() +
+                ", activeReservationsCount=" + activeReservationsCount.toString() +
+                '}';
     }
+}
+

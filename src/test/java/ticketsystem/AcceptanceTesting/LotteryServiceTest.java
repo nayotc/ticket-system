@@ -11,13 +11,14 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.ApplicationLayer.INotifier;
-import ticketsystem.ApplicationLayer.LotteryService;
-import ticketsystem.ApplicationLayer.TokenService;
-import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.ApplicationLayer.*;
+import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
+import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.lottery.LotteryStatus;
+import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
@@ -35,7 +36,28 @@ public class LotteryServiceTest {
     private FakeNotifier fakeNotifier;
     private UserAccessService userAccessService;
     private MembershipDomainService membershipDomain;
-    private LogbackSystemLogger logger;
+    private ISystemLogger logger;
+    private TokenRepository tokenRepository;
+    private UserService userService;
+
+
+    /**
+     * Helper method to simulate a full user registration and login flow.
+     * This ensures the token generated is completely valid and bypasses security checks.
+     */
+    private String getValidMemberToken(String username, String password) {
+        String guestToken = userService.visitSystem();
+        userService.signUp(
+                guestToken,
+                username,
+                password,
+                "Test User",
+                "0500000000"
+        );
+        return userService.login(guestToken, username, password);
+    }
+
+
     
     private LotteryService lotteryService;
 
@@ -84,6 +106,36 @@ public class LotteryServiceTest {
         assertNotNull(savedLottery, "Lottery should be saved in the repository");
         assertEquals(5, savedLottery.getWinnersNumber(), "Winners number should match");
         assertEquals(eventId, savedLottery.getEventId(), "Event ID should match");
+    }
+
+@Test
+    public void AcceptanceTest_RegisterForPurchaseLottery_Selected() {
+        // --- 1. Setup ---      
+        long user1Id = 55L;
+        Member user1 = new Member(user1Id, "winner", "Winner User", "0501231231");
+        userRepo.addRegisteredMember(user1Id, user1, "Pass123!");
+        String user1Token = tokenService.addActiveSession(user1);
+        int winnersAmount = 1;
+        long eventId = 100L;
+        long lotteryId = lotteryService.addLottery(managerToken, eventId, companyId, winnersAmount); 
+
+        // --- 2. Action (requests to register) ---
+        boolean isRegistered = lotteryService.registerMemberToLottery(user1Token, lotteryId);
+        assertTrue(isRegistered, "Registration process should complete successfully");
+
+        // --- 3. Verify Registration ---
+        Lottery lotteryBeforeDraw = lotteryRepo.findById(lotteryId);
+        assertTrue(lotteryBeforeDraw.getRegisteredMemberIds().contains(user1Id), 
+            "User1 should be in the participants list before the draw");
+
+        // --- 4. Conduct Draw ---
+        lotteryService.closeLotteryRegistration(managerToken, lotteryId, companyId); 
+        lotteryService.conductLotteryDraw(managerToken, lotteryId, companyId);
+
+        // --- 5. Verify Selection (user1 is selected) ---
+        Lottery lotteryAfterDraw = lotteryRepo.findById(lotteryId);
+        assertTrue(lotteryAfterDraw.getWinners().contains(user1Id), 
+            "User1 should be selected as a winner because they are the only participant");
     }
 
     @Test

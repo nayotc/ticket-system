@@ -6,12 +6,13 @@ import java.util.UUID;
 import java.util.Collections;
 
 import ticketsystem.DomainLayer.MembershipDomainService;
+import org.springframework.stereotype.Service;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.lottery.LotteryStatus;
 import ticketsystem.DomainLayer.user.Permission;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
+@Service
 public class LotteryService {
     
     private final ILotteryRepository lotteryRepository;
@@ -31,10 +32,8 @@ public class LotteryService {
         this.notificationsService = notificationsService;
         this.userAccessService=userAccessService;
         this.membershipDomainService=membershipDomainService;
-        this.logger = logger;
+        this.logger=logger;
     }
-
-    // Method to create a new lottery
     public long addLottery(String token, long eventId, long companyId, int winnersNumber) {
         try {
             //need to validate that this event id id exists in the system and premission of the member to create lottery for this event
@@ -56,6 +55,7 @@ public class LotteryService {
             }
             long lotteryId = lotteryRepository.generateNextLotteryId();
             lotteryRepository.addLottery(new Lottery(lotteryId, eventId, winnersNumber));
+            logger.logEvent("Completed - Add Lottery. eventId=" + eventId + ", winnerNumber=" + winnersNumber , ISystemLogger.LogLevel.INFO);
             return lotteryId;
             
         } catch (IllegalArgumentException e) {

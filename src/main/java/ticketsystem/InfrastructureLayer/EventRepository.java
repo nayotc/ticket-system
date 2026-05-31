@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.springframework.stereotype.Repository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.exception.OptimisticLockException;
 
+@Repository
 public class EventRepository implements IEventRepository {
 
     private AtomicLong currentId = new AtomicLong(1L);

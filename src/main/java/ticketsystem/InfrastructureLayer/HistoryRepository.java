@@ -7,9 +7,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.springframework.stereotype.Repository;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class HistoryRepository implements IHistoryRepository {
     private AtomicLong counter;
     private static HistoryRepository instance;

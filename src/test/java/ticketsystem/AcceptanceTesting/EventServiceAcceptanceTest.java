@@ -44,17 +44,14 @@ import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.CompanyRole;
-import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
@@ -76,6 +73,7 @@ public class EventServiceAcceptanceTest {
     private final Long ownerId = 1L;
     private final Long companyId = 100L;
     private UserAccessService userAccessService; 
+    private HistoryService historyService;
 
 
     @BeforeEach
@@ -133,14 +131,24 @@ public class EventServiceAcceptanceTest {
 
         historyRepository = new HistoryRepository();
 
-        eventService = new EventService(
-                eventRepository,
-                tokenService,
-                membershipDomain,
-                logger,
-                fakeNotifications,
-                historyRepository,userAccessService
-        );
+    historyService = new HistoryService(
+            historyRepository,
+            tokenService,
+            membershipDomain,
+            logger,
+            userAccessService,
+            fakeNotifications
+    );
+
+    eventService = new EventService(
+            eventRepository,
+            tokenService,
+            membershipDomain,
+            logger,
+            userAccessService
+    );
+
+    eventService.addEventUpdatesListener(historyService);
 
         // FIX: Setup a real Member with an ACTIVE Owner role in the DB
         Member ownerMember = new Member(ownerId, "EventOwnerUser", "Event Owner User", "0500000001");

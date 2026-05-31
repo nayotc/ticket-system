@@ -9,8 +9,19 @@ import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
-import ticketsystem.ApplicationLayer.INotifier;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 
+import org.springframework.stereotype.Service;
+
+import ticketsystem.DTO.RoleTreeDTO;
+import ticketsystem.DomainLayer.user.Founder;
+import ticketsystem.DomainLayer.user.Owner;
+import ticketsystem.DomainLayer.user.Manager;
+import ticketsystem.DomainLayer.user.RoleStatus;
+
+@Service
 public class MembershipService {
 
     private final ITokenService tokenService;
@@ -697,13 +708,184 @@ public boolean rejectAssignment(String sessionToken, Long companyId) throws Exce
         }
     }
 
+        /**
+     * Use Case 4.15: View roles and permissions tree as structured DTO.
+     */
+    public RoleTreeDTO viewRolesAndPermissionsTreeDto(String sessionToken, long companyId) throws Exception {
+        String context = "companyId=" + companyId;
+        logger.logEvent("started - viewRolesAndPermissionsTreeDto. " + context, LogLevel.INFO);
 
-    private String getCompanyName(Long companyId) {
         try {
-            Company company = companyRepository.findById(companyId).orElse(null);
-            return company != null ? company.getName() : "the company";
+            if (!tokenService.validateToken(sessionToken)) {
+                throw new IllegalArgumentException("Session authentication failed.");
+            }
+
+            Long memberId = tokenService.extractUserId(sessionToken);
+            if (memberId == null) {
+                throw new IllegalArgumentException("Member ID not found in token.");
+            }
+
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new IllegalArgumentException("Error: Company not found."));
+
+            membershipDomain.validateOwnerOrFounder(memberId, companyId);
+
+            RoleTreeDTO root = buildRoleTreeDto(
+                    company.getFounderId(),
+                    companyId,
+                    null,
+                    new HashSet<>()
+            );
+
+            logger.logEvent(
+                    "Completed - viewRolesAndPermissionsTreeDto. Tree generated for requesterId=" + memberId,
+                    LogLevel.INFO
+            );
+
+            return root;
+
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Invalid viewRolesAndPermissionsTreeDto criteria: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+
         } catch (Exception e) {
-            return "the company";
+            logger.logError(
+                    "Unexpected system error in viewRolesAndPermissionsTreeDto. "
+                            + context + ". reason=" + e.getMessage(),
+                    e
+            );
+            throw new RuntimeException(
+                    "An error occurred while viewing roles and permissions tree: " + e.getMessage(),
+                    e
+            );
         }
+    }
+        private String getCompanyName(Long companyId) {
+            try {
+                Company company = companyRepository.findById(companyId).orElse(null);
+                return company != null ? company.getName() : "the company";
+            } catch (Exception e) {
+                return "the company";
+            }
+        }
+        private RoleTreeDTO buildRoleTreeDto(
+            Long currentMemberId,
+            Long companyId,
+            Long appointedByMemberId,
+            HashSet<Long> visited
+    ) {
+        if (currentMemberId == null || visited.contains(currentMemberId)) {
+            return null;
+        }
+
+        visited.add(currentMemberId);
+
+        Member member = userRepository.getMemberById(currentMemberId);
+        if (member == null) {
+            return null;
+        }
+
+        CompanyRole role = member.getRoleInCompany(companyId);
+        if (role == null || role.getStatus() != RoleStatus.ACTIVE) {
+            return null;
+        }
+
+        List<RoleTreeDTO> children = new ArrayList<>();
+
+        for (Long appointeeId : getAppointeeIds(role)) {
+            RoleTreeDTO child = buildRoleTreeDto(
+                    appointeeId,
+                    companyId,
+                    currentMemberId,
+                    visited
+            );
+
+            if (child != null) {
+                children.add(child);
+            }
+        }
+
+        return new RoleTreeDTO(
+                currentMemberId,
+                getDisplayName(member),
+                getRoleType(role),
+                appointedByMemberId,
+                getAppointerName(appointedByMemberId),
+                getPermissionKeys(role),
+                children
+        );
+    }
+
+    private String getDisplayName(Member member) {
+        if (member == null) {
+            return "משתמש לא ידוע";
+        }
+
+        if (member.getFullName() != null && !member.getFullName().isBlank()) {
+            return member.getFullName();
+        }
+
+        if (member.getUserName() != null && !member.getUserName().isBlank()) {
+            return member.getUserName();
+        }
+
+        return "משתמש " + member.getId();
+    }
+
+    private String getAppointerName(Long appointerId) {
+        if (appointerId == null) {
+            return null;
+        }
+
+        Member appointer = userRepository.getMemberById(appointerId);
+        return getDisplayName(appointer);
+    }
+
+    private String getRoleType(CompanyRole role) {
+        if (role instanceof Founder) {
+            return "FOUNDER";
+        }
+
+        if (role instanceof Owner) {
+            return "OWNER";
+        }
+
+        if (role instanceof Manager) {
+            return "MANAGER";
+        }
+
+        return "UNKNOWN";
+    }
+
+    private List<String> getPermissionKeys(CompanyRole role) {
+        if (role instanceof Founder || role instanceof Owner) {
+            return Permission.getAllPermissions()
+                    .stream()
+                    .map(Permission::getKey)
+                    .sorted()
+                    .toList();
+        }
+
+        if (role instanceof Manager manager) {
+            return manager.getPermissions()
+                    .stream()
+                    .map(Permission::getKey)
+                    .sorted()
+                    .toList();
+        }
+
+        return List.of();
+    }
+
+    private List<Long> getAppointeeIds(CompanyRole role) {
+        if (role instanceof Founder founder) {
+            return founder.getAppointeesMemberIds();
+        }
+
+        if (role instanceof Owner owner) {
+            return owner.getAppointeesMemberIds();
+        }
+
+        return List.of();
     }
 }
