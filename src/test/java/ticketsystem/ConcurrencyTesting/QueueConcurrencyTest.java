@@ -35,7 +35,7 @@ import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 public class QueueConcurrencyTest {
 
     private final String TEST_SECRET = "manual_test_secret_key_for_jwt_must_be_at_least_32_bytes_long";
-    private LogbackSystemLogger logger;
+    private LogbackSystemLogger logger = new LogbackSystemLogger();
 
     @Test
     public void testHighConcurrencyLoadOnQueue() throws InterruptedException {
