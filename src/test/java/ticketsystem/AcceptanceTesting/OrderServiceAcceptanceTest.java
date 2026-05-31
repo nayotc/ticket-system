@@ -26,8 +26,8 @@ public class OrderServiceAcceptanceTest {
     private ISystemLogger logger;
     private INotifier notification;
 
-    private final String guestToken = "guest-token-1";
-    private final String memberToken = "member-token-1";
+    private String guestToken;
+    private String memberToken;
     private final Long userId = 1L;
 
     @BeforeEach
@@ -35,29 +35,19 @@ public class OrderServiceAcceptanceTest {
         orderRepository = new OrderRepository();
         logger = new LogbackSystemLogger();
 
+        // use real token repository + token service
+        TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
-                new TokenRepository(), logger) {
-            @Override
-            public boolean validateToken(String token) {
-                return true;
-            }
+                tokenRepository,
+                logger);
 
-            @Override
-            public Long extractUserId(String token) {
-                return userId;
-            }
+        // create real user sessions
+        ticketsystem.DomainLayer.user.Guest guest = new ticketsystem.DomainLayer.user.Guest();
+        ticketsystem.DomainLayer.user.Member member = new ticketsystem.DomainLayer.user.Member(userId, "user", "full", "phone");
 
-            @Override
-            public boolean isGuestToken(String token) {
-                return token.startsWith("guest");
-            }
-
-            @Override
-            public boolean isMemberToken(String token) {
-                return token.startsWith("member");
-            }
-        };
+        guestToken = tokenService.addActiveSession(guest);
+        memberToken = tokenService.addActiveSession(member);
 
         orderService = new OrderService(
                 orderRepository,
