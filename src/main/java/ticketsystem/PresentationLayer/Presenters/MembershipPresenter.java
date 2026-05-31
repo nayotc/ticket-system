@@ -54,7 +54,7 @@ public class MembershipPresenter {
             
             if (userCompanies.isEmpty()) {
                 return new CompanyManagementState(
-                        List.of(), null, false, false, List.of(), List.of(), 
+                        List.of(), null, false, false, false, List.of(), List.of(), 
                         new CompanyStats(0, 0), null
                 );
             }
@@ -89,6 +89,7 @@ public class MembershipPresenter {
             List<MemberDTO> teamMembersDto = membershipService.getCompanyTeamMembers(sessionToken, companyId);
             List<TeamMemberItem> uiTeamMembers = new ArrayList<>();
 
+            boolean isCurrentUserFounder = false;
             boolean isCurrentUserOwner = false;
             boolean canCurrentUserManageTeam = false;
 
@@ -116,28 +117,39 @@ public class MembershipPresenter {
                 } else if ("MANAGER".equals(role.getRoleType())) {
                     uiRoleType = RoleType.MANAGER;
                     roleLabel = "Manager";
-                    // המרת ההרשאות בצורה בטוחה שמתמודדת עם פורמטים מותאמים אישית של Enums
+                    
+                    // --- התיקון: מיפוי חכם של הרשאות בעזרת המפתח ---
                     if (role.getPermissions() != null) {
                         uiPermissions = role.getPermissions().stream()
                                 .map(permStr -> {
+                                    // 1. חיפוש מדויק לפי המפתח הייחודי של הדומיין (לדוגמה: "reports:sales:generate")
+                                    java.util.Optional<Permission> opt = Permission.fromKey(permStr);
+                                    if (opt.isPresent()) {
+                                        return opt.get();
+                                    }
+                                    
+                                    // 2. גיבוי: במקרה והגיע שם ה-Enum עצמו (לדוגמה: "GENERATE_SALES_REPORT")
                                     for (Permission p : Permission.values()) {
-                                        // השוואה גם לשם הקבוע (name) וגם לערך המודפס (toString)
                                         if (p.name().equals(permStr) || p.toString().equals(permStr)) {
                                             return p;
                                         }
                                     }
-                                    return null; // במקרה שההרשאה לא זוהתה
+                                    return null; // במקרה שההרשאה לא זוהתה כלל
                                 })
-                                .filter(p -> p != null) // סינון ערכים ריקים כדי למנוע קריסות
+                                .filter(p -> p != null) // סינון כדי למנוע קריסות UI
                                 .collect(Collectors.toSet());
                     }
                 } else {
                     continue;
                 }
 
-                // בדיקת סטטוס המשתמש המחובר כעת לצורך קביעת דגלי הגישה (owner, canManageTeam)
+                // בדיקת סטטוס המשתמש המחובר כעת לצורך קביעת דגלי הגישה (founder, owner, canManageTeam)
                 if (member.getMemberId().equals(currentUserId)) {
-                    if (uiRoleType == RoleType.FOUNDER || uiRoleType == RoleType.OWNER) {
+                    if (uiRoleType == RoleType.FOUNDER) {
+                        isCurrentUserFounder = true; // זיהוי ספציפי של מייסד
+                        isCurrentUserOwner = true;
+                        canCurrentUserManageTeam = true;
+                    } else if (uiRoleType == RoleType.OWNER) {
                         isCurrentUserOwner = true;
                         canCurrentUserManageTeam = true;
                     }
@@ -187,6 +199,7 @@ public class MembershipPresenter {
             return new CompanyManagementState(
                     managedCompanies,
                     selectedCompanyItem,
+                    isCurrentUserFounder,
                     isCurrentUserOwner,
                     canCurrentUserManageTeam,
                     uiTeamMembers,
@@ -296,32 +309,6 @@ public class MembershipPresenter {
             throw new PresentationException("Failed to give up ownership. Please try again later.");
         }
     }
-
-    // public void closeProductionCompany(String sessionToken, Long companyId) {
-    //     try {
-    //         // boolean success = companyService.closeCompany(sessionToken, companyId);
-    //         throw new PresentationException("השהיית חברה טרם מומשה.");
-    //     } catch (PresentationException e) {
-    //         throw e;
-    //     } catch (IllegalArgumentException | IllegalStateException e) {
-    //         throw new PresentationException(e.getMessage());
-    //     } catch (Exception e) {
-    //         throw new PresentationException("אירעה שגיאה בעת השהיית החברה.");
-    //     }
-    // }
-
-    // public void reopenProductionCompany(String sessionToken, Long companyId) {
-    //     try {
-    //          // boolean success = companyService.reopenCompany(sessionToken, companyId);
-    //          throw new PresentationException("פתיחת חברה מחדש טרם מומשה.");
-    //     } catch (PresentationException e) {
-    //         throw e;
-    //     } catch (IllegalArgumentException | IllegalStateException e) {
-    //         throw new PresentationException(e.getMessage());
-    //     } catch (Exception e) {
-    //         throw new PresentationException("אירעה שגיאה בעת פתיחת החברה.");
-    //     }
-    // }
 
     public void cancelEvent(String sessionToken, Long companyId, Long eventId) {
         try {
