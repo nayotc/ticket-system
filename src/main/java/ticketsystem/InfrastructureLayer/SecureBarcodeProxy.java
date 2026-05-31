@@ -1,7 +1,9 @@
 package ticketsystem.InfrastructureLayer;
 
+import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.ISecureBarcode;
 
+@Component
 public class SecureBarcodeProxy implements ISecureBarcode {
 
     public static boolean isConnectionSuccessful = true; // for testing purposes

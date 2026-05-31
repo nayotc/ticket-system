@@ -212,12 +212,11 @@ public class EventService {
         String context = "eventId=" + eventId + ", mapProvided=" + (mapDTO != null);
         logger.logEvent("Started - defineEventMap. " + context, LogLevel.INFO);
         try {
-            // precondition: user logged in
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
             logger.logEvent("Authenticated actor - defineEventMap. " + context, LogLevel.DEBUG);
-            // precondition: user has permission to define event map
+
             Event event = eventRepository.getEventById(eventId);
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
@@ -228,15 +227,31 @@ public class EventService {
             if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.CONFIGURE_HALL_AND_MAP)) {
                 throw new IllegalArgumentException("User does not have permission to define event map");
             }
-            logger.logEvent("Validated permission - defineEventMap. " + context, LogLevel.DEBUG);
 
-            // main scenario: create map
+            logger.logEvent(
+                    "Validated permission - defineEventMap. userId=" + userId
+                            + ", eventId=" + eventId
+                            + ", companyId=" + event.getCompanyId()
+                            + ", permission=" + Permission.CONFIGURE_HALL_AND_MAP,
+                    LogLevel.DEBUG
+            );
+
             if (mapDTO == null) {
                 throw new IllegalArgumentException("Map data cannot be null");
             }
 
+            logger.logEvent(
+                    "Map DTO received - defineEventMap. " + mapDTOLogContext(mapDTO),
+                    LogLevel.DEBUG
+            );
+
             validateMapHasAtLeastOneTicketArea(mapDTO);
             validateMapElementsInsideMapBounds(mapDTO);
+
+            logger.logEvent(
+                    "Map DTO validated - defineEventMap. " + mapDTOLogContext(mapDTO),
+                    LogLevel.DEBUG
+            );
 
             EventMap map = EventMapper.toDomain(mapDTO);
             event.setMap(map);
@@ -247,8 +262,14 @@ public class EventService {
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - defineEventMap. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
+
         } catch (Exception e) {
-            logger.logError("Failed - defineEventMap. " + context + ". Unexpected error: " + e.getMessage(), e);
+            logger.logError(
+                    "Failed - defineEventMap. " + context
+                            + ", mapSnapshot={" + mapDTOLogContext(mapDTO) + "}"
+                            + ". Unexpected error: " + e.getMessage(),
+                    e
+            );
             throw e;
         }
     }
@@ -481,8 +502,8 @@ public class EventService {
             throw new IllegalArgumentException("Map size cannot be null");
         }
 
-        int mapWidth = mapDTO.size().first();
-        int mapHeight = mapDTO.size().second();
+        int mapHeight = mapDTO.size().first();
+        int mapWidth = mapDTO.size().second();
 
         if (mapWidth <= 0 || mapHeight <= 0) {
             logger.logEvent("Validation failed - map size is not positive", LogLevel.DEBUG);
@@ -849,6 +870,130 @@ public class EventService {
             );
             throw e;
         }
+    }
+
+    private String mapDTOLogContext(EventMapDTO mapDTO) {
+        if (mapDTO == null) {
+            return "mapDTO=null";
+        }
+
+        PairDTO<Integer, Integer> size = mapDTO.size();
+        List<IMapElementDTO> elements = mapDTO.getElementDTOs();
+
+        int elementCount = elements == null ? 0 : elements.size();
+        int seatingAreas = 0;
+        int standingAreas = 0;
+        int regularElements = 0;
+        int totalSeats = 0;
+        long totalStandingCapacity = 0;
+
+        StringBuilder elementsText = new StringBuilder();
+
+        if (elements != null) {
+            for (int i = 0; i < elements.size(); i++) {
+                IMapElementDTO element = elements.get(i);
+
+                if (element instanceof SeatingAreaDTO seatingArea) {
+                    seatingAreas++;
+                    totalSeats += safeMultiply(seatingArea.rows(), seatingArea.columns());
+                } else if (element instanceof StandingAreaDTO standingArea) {
+                    standingAreas++;
+                    totalStandingCapacity += standingArea.capacity();
+                } else if (element instanceof ElementDTO) {
+                    regularElements++;
+                }
+
+                if (i > 0) {
+                    elementsText.append(" | ");
+                }
+
+                elementsText.append("#")
+                        .append(i + 1)
+                        .append(" ")
+                        .append(mapElementDTOLogContext(element));
+            }
+        }
+
+        return "mapSize=" + pairToText(size)
+                + ", width=" + pairFirst(size)
+                + ", height=" + pairSecond(size)
+                + ", elementCount=" + elementCount
+                + ", seatingAreas=" + seatingAreas
+                + ", standingAreas=" + standingAreas
+                + ", regularElements=" + regularElements
+                + ", totalSeats=" + totalSeats
+                + ", totalStandingCapacity=" + totalStandingCapacity
+                + ", elements=[" + elementsText + "]";
+    }
+
+    private String mapElementDTOLogContext(IMapElementDTO element) {
+        if (element == null) {
+            return "element=null";
+        }
+
+        if (element instanceof SeatingAreaDTO seatingArea) {
+            return "SeatingArea{"
+                    + "id=" + seatingArea.id()
+                    + ", name=" + seatingArea.name()
+                    + ", type=" + seatingArea.type()
+                    + ", location=" + pairToText(seatingArea.location())
+                    + ", size=" + pairToText(seatingArea.size())
+                    + ", rows=" + seatingArea.rows()
+                    + ", columns=" + seatingArea.columns()
+                    + ", seats=" + (seatingArea.seats() == null ? 0 : seatingArea.seats().size())
+                    + ", soldOut=" + seatingArea.soldOut()
+                    + "}";
+        }
+
+        if (element instanceof StandingAreaDTO standingArea) {
+            return "StandingArea{"
+                    + "id=" + standingArea.id()
+                    + ", name=" + standingArea.name()
+                    + ", type=" + standingArea.type()
+                    + ", location=" + pairToText(standingArea.location())
+                    + ", size=" + pairToText(standingArea.size())
+                    + ", capacity=" + standingArea.capacity()
+                    + ", reserved=" + standingArea.reserved()
+                    + ", sold=" + standingArea.sold()
+                    + ", soldOut=" + standingArea.soldOut()
+                    + "}";
+        }
+
+        if (element instanceof ElementDTO regularElement) {
+            return "Element{"
+                    + "id=" + regularElement.id()
+                    + ", name=" + regularElement.name()
+                    + ", type=" + regularElement.type()
+                    + ", location=" + pairToText(regularElement.location())
+                    + ", size=" + pairToText(regularElement.size())
+                    + "}";
+        }
+
+        return "UnsupportedElement{class=" + element.getClass().getSimpleName() + "}";
+    }
+
+    private String pairToText(PairDTO<Integer, Integer> pair) {
+        if (pair == null) {
+            return "null";
+        }
+
+        return "(" + pair.first() + "," + pair.second() + ")";
+    }
+
+    private Integer pairFirst(PairDTO<Integer, Integer> pair) {
+        return pair == null ? null : pair.first();
+    }
+
+    private Integer pairSecond(PairDTO<Integer, Integer> pair) {
+        return pair == null ? null : pair.second();
+    }
+
+    private int safeMultiply(Integer first, Integer second) {
+        if (first == null || second == null) {
+            return 0;
+        }
+
+        return first * second;
     }
 
 }

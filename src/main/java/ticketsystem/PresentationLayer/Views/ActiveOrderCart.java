@@ -309,9 +309,14 @@ public class ActiveOrderCart extends VerticalLayout {
     }
 
     private void continueToCheckout() {
+        if (activeOrder == null || activeOrder.getEventId() == null) {
+            showError("לא ניתן להמשיך לתשלום עבור הזמנה לא תקינה");
+            return;
+        }
+
         try {
             presenter.continueToCheckout(activeOrder.getOrderId());
-            UI.getCurrent().navigate(UiRoutes.CHECKOUT);
+            UI.getCurrent().navigate(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(activeOrder.getEventId())));
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
