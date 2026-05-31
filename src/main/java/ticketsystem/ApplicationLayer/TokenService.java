@@ -89,7 +89,6 @@ public class TokenService implements ITokenService {
         long guestId = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", "GUEST");
-        logger.logEvent("Generated new guest token with ID: " + guestId, LogLevel.INFO);
         return generateToken(claims, String.valueOf(guestId));
     }
 
@@ -97,7 +96,6 @@ public class TokenService implements ITokenService {
     public String generateNewMemberToken(Long userId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", "MEMBER");
-        logger.logEvent("Generated new member token with ID: " + userId, LogLevel.INFO);
         return generateToken(claims, String.valueOf(userId));
     }
 
