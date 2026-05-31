@@ -130,6 +130,22 @@ public class EventCatalogPresenter {
         return params;
     }
 
+    public Map<String, String> buildCompanySearchQueryParameters(String freeText, LocalDate fromDate, LocalDate toDate, String location, String category, String artist, double minPrice, double maxPrice, double maxPriceLimit, double eventRate) {
+        return buildSearchQueryParameters(
+                freeText,
+                fromDate,
+                toDate,
+                location,
+                category,
+                artist,
+                minPrice,
+                maxPrice,
+                maxPriceLimit,
+                eventRate,
+                0
+        );
+    }
+
     /**
      * Loads featured events for the Home page.
      *
@@ -300,6 +316,11 @@ public class EventCatalogPresenter {
                 null,
                 parseDouble(firstParam(safeParameters, "eventRate"))
         );
+    }
+
+    public String getCompanyDisplayName(String sessionToken, Long companyId) {
+        String companyName = resolveCompanyName(sessionToken, companyId);
+        return companyName == null || companyName.isBlank() ? "חברת הפקה" : companyName;
     }
 
     private String resolveCompanyName(String sessionToken, Long companyId) {
