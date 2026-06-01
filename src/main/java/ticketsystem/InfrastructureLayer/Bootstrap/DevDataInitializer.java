@@ -15,6 +15,9 @@ import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.ApplicationLayer.HistoryService;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.MembershipService;
+import ticketsystem.ApplicationLayer.PurchasePolicyMapper;
 // Repositories
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
@@ -27,6 +30,10 @@ import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DTO.PurchasePolicyDTO;
+import ticketsystem.DTO.PurchaseRuleDTO;
+import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
@@ -52,8 +59,10 @@ public class DevDataInitializer implements CommandLineRunner {
     private static final long TEST_COMPANY_ID = 1L;
     private static final String COMPANY_NAME = "TixNow Productions"; 
     
+    private final ITokenService tokenService;
     private final UserService userService;
     private final IUserRepository userRepository;
+    private final MembershipService membershipService;
     private final CompanyService companyService;
     private final ICompanyRepository companyRepository;
     private final HistoryService historyService;
@@ -61,9 +70,11 @@ public class DevDataInitializer implements CommandLineRunner {
     private final IEventRepository eventRepository;
 
 
-    public DevDataInitializer(UserService userService, IUserRepository userRepository, CompanyService companyService, ICompanyRepository companyRepository, HistoryService historyService, EventService eventService, IEventRepository eventRepository) {
+    public DevDataInitializer(ITokenService tokenService, UserService userService, IUserRepository userRepository, MembershipService membershipService, CompanyService companyService, ICompanyRepository companyRepository, HistoryService historyService, EventService eventService, IEventRepository eventRepository) {
+        this.tokenService = tokenService;
         this.userService = userService;
         this.userRepository = userRepository;
+        this.membershipService = membershipService;
         this.companyService = companyService;
         this.companyRepository = companyRepository;
         this.historyService = historyService;
@@ -71,7 +82,7 @@ public class DevDataInitializer implements CommandLineRunner {
         this.eventRepository = eventRepository;
     }
 
-    public void run(String... args) {
+    public void run(String... args) throws Exception {
         createTestMember();               // 1. Create the regular buyer member
         createTestFounder();              // 2. Create the company founder member
         createAdditionalTeamMembers();    // 3. Create extra members for management testing
@@ -116,10 +127,12 @@ public class DevDataInitializer implements CommandLineRunner {
         if (!userRepository.isUsernameTaken(MANAGER_USERNAME)) {
             String guestToken = userService.visitSystem();
             userService.signUp(guestToken, MANAGER_USERNAME, "123456", "Test Manager", "0500000002");
+            System.out.println("Additional team member created: " + MANAGER_USERNAME);
         }
         if (!userRepository.isUsernameTaken(OWNER_USERNAME)) {
             String guestToken = userService.visitSystem();
             userService.signUp(guestToken, OWNER_USERNAME, "123456", "Test Owner", "0500000003");
+            System.out.println("Additional team member created: " + OWNER_USERNAME);
         }
     }
 
@@ -135,10 +148,64 @@ public class DevDataInitializer implements CommandLineRunner {
         userRepository.updateMember(founder);
 
         Company company = new Company(COMPANY_NAME, founder.getId(), PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
-        company.setId(TEST_COMPANY_ID); 
+        try {
+            company.setId(TEST_COMPANY_ID); 
+        } catch (Exception e) {}
+        
+        // קריאה לפונקציית העזר החדשה שמלבישה את נתוני הדמה של המדיניות
+        setupMockPolicies(company);
+
+        // שמירת החברה (עם המדיניות שעודכנה) למסד הנתונים
         companyRepository.save(company); 
         
         System.out.println("Test company created: " + company.getName() + " [ID: " + company.getId() + "] owned by Founder ID: " + founder.getId());
+    }
+
+    /**
+     * פונקציית עזר להגדרת נתוני דמה של מדיניות רכישה והנחות עבור חברה ספציפית.
+     * ניתן לערוך, להוסיף או להסיר חוקים מכאן בחופשיות לצורכי בדיקות ממשק משתמש.
+     */
+    private void setupMockPolicies(Company company) {
+        System.out.println("Setting up mock discount and purchase policies...");
+        
+        // --- אתחול מדיניות הנחות דמו ---
+        try {
+            // הנחה רגילה (10%)
+            company.addVisibleDiscountToCompany("הנחת השקה", BigDecimal.valueOf(10));
+            // הנחת קופון (20%) לחודש הקרוב
+            company.addCouponDiscountToCompany("קופון קיץ", "SUMMER26", BigDecimal.valueOf(20), LocalDateTime.now().plusMonths(1));
+            // הנחה מותנית (15%) על רכישה של מינימום 4 כרטיסים
+            company.addConditionalDiscountToCompany("הנחת כמות", null, null, BigDecimal.valueOf(15), Condition.MIN_TICKET, 4);
+        } catch (Exception e) {
+            System.out.println("Failed to setup mock discount policy: " + e.getMessage());
+        }
+
+        // --- אתחול מדיניות רכישה דמו ---
+        try {
+            // חוק 1: גיל מינימלי 18
+            PurchaseRuleDTO ageRule = new PurchaseRuleDTO();
+            ageRule.setType(PurchaseRuleType.MIN_AGE);
+            ageRule.setValue(18);
+
+            // חוק 2: מקסימום 5 כרטיסים לרוכש
+            PurchaseRuleDTO limitRule = new PurchaseRuleDTO();
+            limitRule.setType(PurchaseRuleType.MAX_TICKETS);
+            limitRule.setValue(5);
+
+            // עץ רכישה: חוק 1 "וגם" (AND) חוק 2
+            PurchaseRuleDTO rootRule = new PurchaseRuleDTO();
+            rootRule.setType(PurchaseRuleType.AND);
+            rootRule.setChildren(List.of(ageRule, limitRule));
+            rootRule.setValue(0);
+
+            // המרה ושמירה בחברה באמצעות ה-Mapper
+            PurchasePolicyDTO policyDTO = new PurchasePolicyDTO(rootRule);
+            ticketsystem.ApplicationLayer.PurchasePolicyMapper mapper = new ticketsystem.ApplicationLayer.PurchasePolicyMapper();
+            company.setPurchasePolicy(mapper.toDomain(policyDTO));
+            
+        } catch (Exception e) {
+            System.out.println("Failed to setup mock purchase policy: " + e.getMessage());
+        }
     }
 
     /**

@@ -54,7 +54,7 @@ public class MembershipPresenter {
             
             if (userCompanies.isEmpty()) {
                 return new CompanyManagementState(
-                        List.of(), null, false, false, false, List.of(), List.of(), 
+                        List.of(), null, false, false, false, false, false, List.of(), List.of(), 
                         new CompanyStats(0, 0), null
                 );
             }
@@ -92,6 +92,8 @@ public class MembershipPresenter {
             boolean isCurrentUserFounder = false;
             boolean isCurrentUserOwner = false;
             boolean canCurrentUserManageTeam = false;
+            boolean canManageEvents = false;
+            boolean canManagePolicies = false;
 
             // 5. מיפוי פולימורפי של חברי הצוות מתוך ה-DTO
             for (MemberDTO member : teamMembersDto) {
@@ -146,12 +148,21 @@ public class MembershipPresenter {
                 // בדיקת סטטוס המשתמש המחובר כעת לצורך קביעת דגלי הגישה (founder, owner, canManageTeam)
                 if (member.getMemberId().equals(currentUserId)) {
                     if (uiRoleType == RoleType.FOUNDER) {
-                        isCurrentUserFounder = true; // זיהוי ספציפי של מייסד
+                        isCurrentUserFounder = true;
                         isCurrentUserOwner = true;
                         canCurrentUserManageTeam = true;
+                        canManageEvents = true;
+                        canManagePolicies = true;
                     } else if (uiRoleType == RoleType.OWNER) {
                         isCurrentUserOwner = true;
                         canCurrentUserManageTeam = true;
+                        canManageEvents = true;
+                        canManagePolicies = true;
+                    } else if (uiRoleType == RoleType.MANAGER) {
+                        // בדיקה נקודתית של הרשאות עבור מנהל
+                        canManageEvents = uiPermissions.contains(Permission.MANAGE_EVENT_INVENTORY);
+                        canManagePolicies = uiPermissions.contains(Permission.SET_PURCHASING_POLICY) || 
+                                                        uiPermissions.contains(Permission.SET_DISCOUNT_POLICY);
                     }
                 }
 
@@ -202,6 +213,8 @@ public class MembershipPresenter {
                     isCurrentUserFounder,
                     isCurrentUserOwner,
                     canCurrentUserManageTeam,
+                    canManageEvents,
+                    canManagePolicies,
                     uiTeamMembers,
                     uiEvents,
                     uiStats,

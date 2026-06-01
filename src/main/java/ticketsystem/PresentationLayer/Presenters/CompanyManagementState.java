@@ -13,6 +13,8 @@ public record CompanyManagementState(
         boolean founder,
         boolean owner,
         boolean canManageTeam,
+        boolean canManageEvents,
+        boolean canManagePolicies,
         List<TeamMemberItem> teamMembers,
         List<EventManagementItem> events,
         CompanyStats stats,

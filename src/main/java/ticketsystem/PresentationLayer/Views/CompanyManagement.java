@@ -233,10 +233,15 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 summaryRow("מדיניות הנחות", state.policySummary().discountPolicySummary())
         );
 
-        Button openEditor = createNavigateButton("מעבר לעורך מדיניות", routeFor(UiRoutes.POLICIES_EDITOR), VaadinIcon.ARROW_FORWARD);
-        openEditor.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        card.add(policyList);
 
-        card.add(policyList, openEditor);
+        // הכפתור ייווצר ויתווסף אך ורק אם למשתמש יש הרשאת ניהול מדיניות
+        if (state.canManagePolicies()) {
+            Button openEditor = createNavigateButton("מעבר לעורך מדיניות", routeFor(UiRoutes.POLICIES_EDITOR), VaadinIcon.ARROW_FORWARD);
+            openEditor.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            card.add(openEditor);
+        }
+        
         return card;
     }
 
@@ -278,15 +283,19 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         Div actions = new Div();
         actions.addClassName("event-management-actions");
 
-        Button edit = new Button("ערוך", VaadinIcon.EDIT.create());
-        edit.addClassName("company-secondary-button");
-        edit.addClickListener(event -> navigateToEventEditor(eventItem));
+        // הכפתורים ייווצרו ויתווספו אך ורק אם למשתמש יש הרשאת ניהול אירועים
+        if (state.canManageEvents()) {
+            Button edit = new Button("ערוך", VaadinIcon.EDIT.create());
+            edit.addClassName("company-secondary-button");
+            edit.addClickListener(event -> navigateToEventEditor(eventItem));
 
-        Button cancel = new Button("בטל", VaadinIcon.CLOSE_CIRCLE.create());
-        cancel.addClassName("company-danger-soft-button");
-        cancel.addClickListener(event -> confirmCancelEvent(eventItem));
+            Button cancel = new Button("בטל", VaadinIcon.CLOSE_CIRCLE.create());
+            cancel.addClassName("company-danger-soft-button");
+            cancel.addClickListener(event -> confirmCancelEvent(eventItem));
 
-        actions.add(edit, cancel);
+            actions.add(edit, cancel);
+        }
+        
         row.add(details, actions);
         return row;
     }
@@ -736,6 +745,8 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         return new CompanyManagementState(
                 companies,
                 selected,
+                true,
+                true,
                 true,
                 true,
                 true,
