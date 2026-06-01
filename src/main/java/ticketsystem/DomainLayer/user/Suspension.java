@@ -44,19 +44,15 @@ public class Suspension {
         this.reason = reason;
         this.revoked = false;
     }
-
-    //copy constructor
+    //Copy constructor
     public Suspension(Suspension other) {
-        if (other == null) {
-            throw new IllegalArgumentException("Suspension cannot be null");
-        }
-
         this.suspendedByAdminId = other.suspendedByAdminId;
         this.startDate = other.startDate;
         this.endDate = other.endDate;
         this.reason = other.reason;
         this.revoked = other.revoked;
     }
+
     public boolean isActive() {
 
         if (revoked) {
@@ -78,5 +74,21 @@ public class Suspension {
     public void revoke(){
         this.revoked = true;
     }
+    public Long getSuspendedByAdminId() {
+        return suspendedByAdminId;
+    }
+    public LocalDateTime getStartDate() {
+        return startDate;
+    }
+    public LocalDateTime getEndDate() {
+        return endDate;
+    }
+    public String getReason() {
+        return reason;
+    }
+    public boolean isPermanent() {
+        return endDate == null;
+    }
+    
 
 }

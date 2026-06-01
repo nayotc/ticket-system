@@ -1,4 +1,6 @@
 package ticketsystem.DomainLayer;
+
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +16,7 @@ import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Manager;
 import ticketsystem.DomainLayer.user.Member;
 import org.springframework.stereotype.Service;
+
 
 @Service
 public class MembershipDomainService {
@@ -690,5 +693,37 @@ public class MembershipDomainService {
 
         transferAppointees(ownerToCancel, appointer, companyId);
         userRepository.updateMember(appointer);
+    }
+    public Long getFirstManagedCompanyId(Long memberId) {
+        if (memberId == null) {
+            return null;
+        }
+
+        Member member = userRepository.getMemberById(memberId);
+        if (member == null) {
+            return null;
+        }
+
+        return member.getAllRoles()
+                .stream()
+                .filter(CompanyRole::isActive)
+                .map(CompanyRole::getCompanyId)
+                .findFirst()
+                .orElse(null);
+    }
+    public Set<Long> getCompanyIdsByMember(Long memberId) throws Exception {
+        Member member = userRepository.getMemberById(memberId);
+        if (member == null) {
+            throw new Exception("Member not found.");
+        }
+        List<CompanyRole> roles = member.getAllRoles();
+        Set<Long> companyIds = new HashSet<>();
+        for (CompanyRole role : roles) {
+            // התיקון: מוסיפים את מזהה החברה לרשימה *רק* אם התפקיד הוא פעיל (ACTIVE)
+            if (role.getStatus() == RoleStatus.ACTIVE) {
+                companyIds.add(role.getCompanyId());
+            }
+        }
+        return companyIds;
     }
 }

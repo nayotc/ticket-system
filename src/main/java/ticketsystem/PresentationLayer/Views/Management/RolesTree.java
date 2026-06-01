@@ -18,10 +18,13 @@ import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.PresentationLayer.Components.MetricCard;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
-
+import ticketsystem.PresentationLayer.Session.UiSession;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import ticketsystem.DTO.RoleTreeDTO;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
+import ticketsystem.PresentationLayer.Presenters.RolesTreePresenter;
 
 @Route(value = UiRoutes.ROLES_AND_PERMISSIONS_TREE, layout = ManagementLayout.class)
 public class RolesTree extends Div implements BeforeEnterObserver {
@@ -44,12 +47,15 @@ public class RolesTree extends Div implements BeforeEnterObserver {
 
     private RoleNode rootNode;
 
-    public RolesTree() {
+    private final RolesTreePresenter presenter;
+
+    public RolesTree(RolesTreePresenter presenter) {
+        this.presenter = presenter;
+
         getElement().setAttribute("dir", "rtl");
         addClassName("role-tree-view");
 
         configureFilters();
-        rootNode = createPreviewTree();
 
         add(
                 createHeader(),
@@ -58,17 +64,17 @@ public class RolesTree extends Div implements BeforeEnterObserver {
                 createTreePanel()
         );
 
-        renderTree();
-        updateMetrics();
+        showEmptyTree("טוען את עץ התפקידים...");
     }
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         event.getRouteParameters()
                 .get("companyId")
-                .ifPresent(this::setCompanyIdFromRoute);
+                .ifPresent(routeCompanyId -> setCompanyIdFromRoute(routeCompanyId));
 
         updateHeaderText();
+        loadRoleTree();
     }
 
     private void setCompanyIdFromRoute(String routeCompanyId) {
@@ -109,14 +115,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
 
     private Component createMetrics() {
         metricsGrid.addClassName("role-tree-metrics");
-
-        metricsGrid.add(
-                new MetricCard("סה״כ בעלי תפקידים", "6", "כולל מייסד, בעלים ומנהלים"),
-                new MetricCard("בעלים", "3", "כולל מייסד החברה"),
-                new MetricCard("מנהלים", "3", "לפי הרשאות פרטניות"),
-                new MetricCard("הרשאות פעילות", "6", "הרשאות ניהול זמינות")
-        );
-
+        updateMetrics();
         return metricsGrid;
     }
 
@@ -133,16 +132,16 @@ public class RolesTree extends Div implements BeforeEnterObserver {
 
         Button refreshButton = new Button("רענון");
         refreshButton.addClassName("role-tree-action-button");
+
         refreshButton.addClickListener(event -> {
-            renderTree();
+            loadRoleTree();
             Notification.show("עץ התפקידים רוענן", 2500, Notification.Position.TOP_CENTER);
         });
 
-        Button exportButton = new Button("ייצוא PDF");
+        Button exportButton = new Button("ייצוא PDF בקרוב");
         exportButton.addClassName("role-tree-action-button");
-        exportButton.addClickListener(event ->
-                Notification.show("ייצוא PDF יחובר בהמשך דרך ה־Presenter", 3000, Notification.Position.TOP_CENTER)
-        );
+        exportButton.setEnabled(false);
+        exportButton.getElement().setAttribute("title", "ייצוא PDF לא נתמך כרגע");
 
         actions.add(refreshButton, exportButton);
 
@@ -188,7 +187,22 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         permissionFilter.addClassName("role-tree-filter");
         permissionFilter.addValueChangeListener(event -> renderTree());
     }
+    private void loadRoleTree() {
+        try {
+            String memberToken = UiSession.getMemberToken();
 
+            showCompany(presenter.loadCompany(memberToken, companyId));
+
+            RoleTreeDTO root = presenter.loadRoleTree(memberToken, companyId);
+            showRoleTree(toRoleNode(root));
+
+        } catch (PresentationException e) {
+            rootNode = null;
+            showError(e.getMessage());
+            showEmptyTree(e.getMessage());
+            updateMetrics();
+        }
+    }
     private void renderTree() {
         treeCanvas.removeAll();
 
@@ -214,7 +228,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         branch.addClassName("role-tree-branch");
         branch.addClassName("role-tree-depth-" + depth);
 
-        branch.add(createNodeCard(node, depth));
+        branch.add(createNodeCard(node));
 
         if (!node.children().isEmpty()) {
             Div children = new Div();
@@ -230,7 +244,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         return branch;
     }
 
-    private Component createNodeCard(RoleNode node, int depth) {
+    private Component createNodeCard(RoleNode node){
         Div card = new Div();
         card.addClassName("role-tree-node-card");
         card.addClassName("role-tree-node-" + node.kind().name().toLowerCase(Locale.ROOT));
@@ -345,7 +359,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
             case "מייסד" -> node.kind() == RoleKind.FOUNDER;
             case "בעלים" -> node.kind() == RoleKind.OWNER;
             case "מנהל" -> node.kind() == RoleKind.MANAGER;
-            default -> true;
+            default -> false;
         };
     }
 
@@ -381,7 +395,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         );
     }
 
-    public void showCompany(CompanyDTO company) {
+    private void showCompany(CompanyDTO company) {
         if (company == null) {
             return;
         }
@@ -391,8 +405,86 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         companyStatus.setText(company.isActive() ? "פעילה" : "לא פעילה");
         updateHeaderText();
     }
+    private RoleNode toRoleNode(RoleTreeDTO dto) {
+        List<RoleTreeDTO> dtoChildren = dto.children() == null ? List.of() : dto.children();
 
-    public void showRoleTree(RoleNode rootNode) {
+        List<RoleNode> children = dtoChildren
+                .stream()
+                .map(this::toRoleNode)
+                .toList();
+
+        RoleKind kind = toRoleKind(dto.roleType());
+
+        List<String> permissions = dto.permissions() == null
+                ? List.of()
+                : dto.permissions().stream().map(this::toPermissionLabel).toList();
+
+        return new RoleNode(
+                dto.memberId(),
+                dto.memberName(),
+                toRoleTitle(kind),
+                kind,
+                toDescription(kind),
+                toAppointedByText(dto),
+                permissions,
+                children
+        );
+    }
+
+    private RoleKind toRoleKind(String roleType) {
+        if (roleType == null || roleType.isBlank()) {
+            throw new PresentationException("התקבל סוג תפקיד חסר מהמערכת.");
+        }
+
+        return switch (roleType) {
+            case "FOUNDER" -> RoleKind.FOUNDER;
+            case "OWNER" -> RoleKind.OWNER;
+            case "MANAGER" -> RoleKind.MANAGER;
+            default -> throw new PresentationException("התקבל סוג תפקיד לא נתמך מהמערכת: " + roleType);
+        };
+    }
+
+    private String toRoleTitle(RoleKind kind) {
+        return switch (kind) {
+            case FOUNDER -> "מייסד החברה";
+            case OWNER -> "בעל חברה";
+            case MANAGER -> "מנהל";
+        };
+    }
+
+    private String toDescription(RoleKind kind) {
+        return switch (kind) {
+            case FOUNDER -> "פתח את חברת ההפקה ולכן אינו ממונה על ידי משתמש אחר.";
+            case OWNER -> "בעל הרשאות ניהול מלאות בחברה.";
+            case MANAGER -> "מנהל בחברה עם הרשאות פרטניות.";
+        };
+    }
+
+    private String toAppointedByText(RoleTreeDTO dto) {
+        if (dto.appointedByMemberId() == null) {
+            return "ללא ממנה";
+        }
+
+        if (dto.appointedByName() == null || dto.appointedByName().isBlank()) {
+            return "מונה על ידי משתמש מספר " + dto.appointedByMemberId();
+        }
+
+        return "מונה על ידי " + dto.appointedByName();
+    }
+
+    private String toPermissionLabel(String permissionKey) {
+        return switch (permissionKey) {
+            case "inventory:event:manage" -> "ניהול אירועים";
+            case "hall:config:setup" -> "מפת אולם";
+            case "policy:purchasing:setup" -> "מדיניות רכישה";
+            case "policy:discount:setup" -> "מדיניות הנחות";
+            case "inquiry:response:manage" -> "פניות";
+            case "history:purchases:view" -> "היסטוריית רכישות";
+            case "reports:sales:generate" -> "דוח מכירות";
+            default -> permissionKey;
+        };
+    }
+    private void showRoleTree(RoleNode rootNode) {
         if (rootNode == null) {
             return;
         }
@@ -402,76 +494,8 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         updateMetrics();
     }
 
-    public void showError(String message) {
+    private void showError(String message) {
         Notification.show(message, 4000, Notification.Position.TOP_CENTER);
-    }
-
-    private RoleNode createPreviewTree() {
-        RoleNode backendManager = new RoleNode(
-                201L,
-                "תומר לוי",
-                "מנהל Backend",
-                RoleKind.MANAGER,
-                "אחראי על שירותי ליבה, הזמנות ומלאי.",
-                "מונה על ידי יעל רון",
-                List.of("ניהול אירועים", "דוח מכירות"),
-                List.of()
-        );
-
-        RoleNode policyManager = new RoleNode(
-                202L,
-                "שירה גל",
-                "מנהלת מדיניות",
-                RoleKind.MANAGER,
-                "אחראית על מדיניות רכישה והנחות.",
-                "מונתה על ידי יעל רון",
-                List.of("מדיניות רכישה", "מדיניות הנחות"),
-                List.of()
-        );
-
-        RoleNode operationsManager = new RoleNode(
-                203L,
-                "נועה ברק",
-                "מנהלת תפעול אירועים",
-                RoleKind.MANAGER,
-                "אחראית על מפות אולם, פניות ותפעול שוטף.",
-                "מונתה על ידי אדם שוורץ",
-                List.of("מפת אולם", "פניות", "ניהול אירועים"),
-                List.of()
-        );
-
-        RoleNode ownerTech = new RoleNode(
-                101L,
-                "יעל רון",
-                "בעלת חברה",
-                RoleKind.OWNER,
-                "בעלת הרשאות ניהול מלאות בחברה.",
-                "מונתה על ידי מייסד החברה",
-                List.of("ניהול אירועים", "מפת אולם", "מדיניות רכישה", "מדיניות הנחות", "פניות", "דוח מכירות"),
-                List.of(backendManager, policyManager)
-        );
-
-        RoleNode ownerProduct = new RoleNode(
-                102L,
-                "אדם שוורץ",
-                "בעל חברה",
-                RoleKind.OWNER,
-                "בעל הרשאות ניהול מלאות בחברה.",
-                "מונה על ידי מייסד החברה",
-                List.of("ניהול אירועים", "מפת אולם", "פניות", "דוח מכירות"),
-                List.of(operationsManager)
-        );
-
-        return new RoleNode(
-                1L,
-                "דוד כהן",
-                "מייסד החברה",
-                RoleKind.FOUNDER,
-                "פתח את חברת ההפקה ולכן אינו ממונה על ידי משתמש אחר.",
-                "ללא ממנה",
-                List.of("ניהול אירועים", "מפת אולם", "מדיניות רכישה", "מדיניות הנחות", "פניות", "דוח מכירות"),
-                List.of(ownerTech, ownerProduct)
-        );
     }
 
     private int countNodes(RoleNode node) {
@@ -558,5 +582,14 @@ public class RolesTree extends Div implements BeforeEnterObserver {
             List<String> permissions,
             List<RoleNode> children
     ) {
+    }
+    private void showEmptyTree(String message) {
+        treeCanvas.removeAll();
+
+        Div empty = new Div();
+        empty.addClassName("role-tree-empty");
+        empty.setText(message);
+
+        treeCanvas.add(empty);
     }
 }

@@ -29,9 +29,12 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
+import ticketsystem.DTO.Event.IMapElementDTO;
 import ticketsystem.DTO.Event.PairDTO;
+import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.*;
@@ -52,7 +55,7 @@ public class EventServiceTest {
     @Mock
     private EventUpdatesListener mockEventUpdatesListener;
 
-    @Mock 
+    @Mock
     private ISystemLogger logger;
 
     @Mock
@@ -67,7 +70,7 @@ public class EventServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
-    //notification
+        //notification
         eventService = new EventService(
                 mockEventRepository,
                 mockTokenService,
@@ -147,7 +150,35 @@ public class EventServiceTest {
     private EventMapDTO createMapDTO() {
         return new EventMapDTO(
                 new PairDTO<>(10, 10),
-                List.of(),
+                List.<IMapElementDTO>of(
+                        new StandingAreaDTO(
+                                1L,
+                                "Standing Area A",
+                                new PairDTO<>(1, 1),
+                                new PairDTO<>(3, 3),
+                                "StandingArea",
+                                false,
+                                100L,
+                                0L,
+                                0L
+                        )
+                ),
+                false
+        );
+    }
+
+    private EventMapDTO createMapWithoutTicketAreaDTO() {
+        return new EventMapDTO(
+                new PairDTO<>(10, 10),
+                List.<IMapElementDTO>of(
+                        new ElementDTO(
+                                1L,
+                                "Stage",
+                                new PairDTO<>(1, 1),
+                                new PairDTO<>(3, 2),
+                                "Stage"
+                        )
+                ),
                 false
         );
     }
@@ -649,10 +680,10 @@ public class EventServiceTest {
         assertTrue(result);
 
         verify(mockEventUpdatesListener).onEventUpdated(
-            eq(validEventId),
-            eq(updatedDate),
-            eq(EventLocation.NEW_YORK.name()),
-            anyString());
+                eq(validEventId),
+                eq(updatedDate),
+                eq(EventLocation.NEW_YORK.name()),
+                anyString());
         verify(mockEventRepository).updateEvent(existingEvent);
     }
 
@@ -1196,6 +1227,39 @@ public class EventServiceTest {
                 validCompanyId,
                 Permission.CONFIGURE_HALL_AND_MAP
         );
+
+        verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
+    }
+
+    @Test
+    void GivenMapWithoutSeatingOrStandingArea_WhenDefineEventMap_ThenThrowException() {
+        Event event = createEvent(Event.eventStatus.DRAFT);
+
+        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.defineEventMap(
+                        validSessionId,
+                        validEventId,
+                        createMapWithoutTicketAreaDTO()
+                )
+        );
+
+        assertEquals(
+                "Event map must contain at least one seating area or standing area",
+                exception.getMessage()
+        );
+
+        verify(mockTokenService).validateToken(validSessionId);
+        verify(mockEventRepository).getEventById(validEventId);
+        verify(mockTokenService).extractUserId(validSessionId);
+        verify(mockMembershipDomainService).validatePermission(
+                validUserId,
+                validCompanyId,
+                Permission.CONFIGURE_HALL_AND_MAP
+        );
+        verify(mockEventRepository, never()).updateEvent(any(Event.class));
 
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }

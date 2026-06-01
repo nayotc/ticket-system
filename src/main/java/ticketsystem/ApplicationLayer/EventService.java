@@ -6,6 +6,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+
+import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
+import ticketsystem.DTO.Event.ElementDTO;
+import ticketsystem.DTO.Event.EventDTO;
+import ticketsystem.DTO.Event.EventMapDTO;
+import ticketsystem.DTO.Event.IMapElementDTO;
+import ticketsystem.DTO.Event.PairDTO;
+import ticketsystem.DTO.Event.SeatingAreaDTO;
+import ticketsystem.DTO.Event.StandingAreaDTO;
+import ticketsystem.DTO.PurchasePolicyDTO;
+import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -13,20 +28,9 @@ import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
-import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
-import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.Permission;
-import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
-import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
-import ticketsystem.DTO.PurchasePolicyDTO;
-import ticketsystem.DTO.Event.EventDTO;
-import ticketsystem.DTO.Event.EventMapDTO;
-import ticketsystem.DomainLayer.MembershipDomainService;
-import java.util.Objects;
 
-import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
-import ticketsystem.DomainLayer.history.Purchase;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class EventService {
@@ -39,6 +43,7 @@ public class EventService {
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
     private final UserAccessService userAccessService;
 
+    @Autowired
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
             MembershipDomainService membershipDomain, ISystemLogger logger,
             UserAccessService userAccessService) {
@@ -46,12 +51,12 @@ public class EventService {
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
         this.logger = logger;
-        this.userAccessService=userAccessService;
+        this.userAccessService = userAccessService;
     }
 
     public Long insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
-                               EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
-                               Integer mapHigh, Integer mapWidth) {
+            EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
+            Integer mapHigh, Integer mapWidth) {
 
         String context = "SessionId=" + sessionId
                 + ", companyId=" + companyId
@@ -75,7 +80,7 @@ public class EventService {
             if (!membershipDomain.validatePermission(userId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
                 throw new IllegalArgumentException("User does not have permission to create an event");
             }
-            logger.logEvent("Checked permissions - insertEvent. userId=" + userId + ", companyId=" + companyId + "permission=" + Permission.MANAGE_EVENT_INVENTORY,  LogLevel.DEBUG);
+            logger.logEvent("Checked permissions - insertEvent. userId=" + userId + ", companyId=" + companyId + "permission=" + Permission.MANAGE_EVENT_INVENTORY, LogLevel.DEBUG);
 
             // main scenario: validate input
             validateEventDetails(eventName, date, location, trafficThreshold, category, artist, price);
@@ -91,13 +96,12 @@ public class EventService {
             Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,
                     artist, price, new Pair<>(mapHigh, mapWidth));
             eventRepository.addEvent(event);
-            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId + ", " + event.toString(),LogLevel.INFO);
+            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId + ", " + event.toString(), LogLevel.INFO);
             return eventId;
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - insertEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.logError("Failed - insertEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
@@ -158,34 +162,30 @@ public class EventService {
                     throw new IllegalStateException("Cannot change name of an active event");
                 }
                 name = eventDTO.name();
-            }
-            else {
+            } else {
                 name = existingEvent.getName();
             }
             if (eventDTO.date() != null) {
                 date = eventDTO.date();
                 message += "New Date: " + eventDTO.date().toString() + "/n";
                 notificateUsers = true;
-            }
-            else {
+            } else {
                 date = existingEvent.getDate();
             }
             if (eventDTO.location() != null) {
                 location = EventMapper.toEventLocation(eventDTO.location());
                 message += "New Location: " + eventDTO.location().toString() + "/n";
                 notificateUsers = true;
-            }
-            else {
+            } else {
                 location = existingEvent.getLocation();
             }
-            
+
             if (eventDTO.ticketPrice() != null) {
-                if (existingEvent.getStatus () == eventStatus.ACTIVE) {
+                if (existingEvent.getStatus() == eventStatus.ACTIVE) {
                     throw new IllegalStateException("Cannot change ticket price of an active event");
                 }
                 ticketPrice = eventDTO.ticketPrice();
-            }
-            else {
+            } else {
                 ticketPrice = existingEvent.getTicketPrice();
             }
             Long trafficThreshold = eventDTO.trafficThreshold() != null ? eventDTO.trafficThreshold() : existingEvent.getTrafficThreshold();
@@ -205,8 +205,7 @@ public class EventService {
         } catch (IllegalArgumentException | IllegalStateException e) {
             logger.logEvent("Failed - updateEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.logError("Failed - updateEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
@@ -216,12 +215,11 @@ public class EventService {
         String context = "eventId=" + eventId + ", mapProvided=" + (mapDTO != null);
         logger.logEvent("Started - defineEventMap. " + context, LogLevel.INFO);
         try {
-            // precondition: user logged in
             if (!tokenService.validateToken(sessionId)) {
                 throw new IllegalArgumentException("Invalid session ID");
             }
             logger.logEvent("Authenticated actor - defineEventMap. " + context, LogLevel.DEBUG);
-            // precondition: user has permission to define event map
+
             Event event = eventRepository.getEventById(eventId);
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
@@ -232,12 +230,32 @@ public class EventService {
             if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.CONFIGURE_HALL_AND_MAP)) {
                 throw new IllegalArgumentException("User does not have permission to define event map");
             }
-            logger.logEvent("Validated permission - defineEventMap. " + context, LogLevel.DEBUG);
 
-            // main scenario: create map
+            logger.logEvent(
+                    "Validated permission - defineEventMap. userId=" + userId
+                            + ", eventId=" + eventId
+                            + ", companyId=" + event.getCompanyId()
+                            + ", permission=" + Permission.CONFIGURE_HALL_AND_MAP,
+                    LogLevel.DEBUG
+            );
+
             if (mapDTO == null) {
                 throw new IllegalArgumentException("Map data cannot be null");
             }
+
+            logger.logEvent(
+                    "Map DTO received - defineEventMap. " + mapDTOLogContext(mapDTO),
+                    LogLevel.DEBUG
+            );
+
+            validateMapHasAtLeastOneTicketArea(mapDTO);
+            validateMapElementsInsideMapBounds(mapDTO);
+
+            logger.logEvent(
+                    "Map DTO validated - defineEventMap. " + mapDTOLogContext(mapDTO),
+                    LogLevel.DEBUG
+            );
+
             EventMap map = EventMapper.toDomain(mapDTO);
             event.setMap(map);
             event.setStatus(eventStatus.ACTIVE);
@@ -247,15 +265,20 @@ public class EventService {
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - defineEventMap. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
-        }
-        catch (Exception e) {
-            logger.logError("Failed - defineEventMap. " + context + ". Unexpected error: " + e.getMessage(), e);
+
+        } catch (Exception e) {
+            logger.logError(
+                    "Failed - defineEventMap. " + context
+                            + ", mapSnapshot={" + mapDTOLogContext(mapDTO) + "}"
+                            + ". Unexpected error: " + e.getMessage(),
+                    e
+            );
             throw e;
         }
     }
 
     public Boolean deleteEvent(String sessionId, Long eventId) {
-         String context = "eventId=" + eventId;
+        String context = "eventId=" + eventId;
         logger.logEvent("Started - deleteEvent. " + context, LogLevel.INFO);
 
         try {
@@ -317,8 +340,7 @@ public class EventService {
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - getEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.logError("Failed - getEvent. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
@@ -347,8 +369,7 @@ public class EventService {
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - getEventMap. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.logError("Failed - getEventMap. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
         }
@@ -420,32 +441,177 @@ public class EventService {
             String artist,
             BigDecimal price) {
         if (eventName == null || eventName.isBlank()) {
+            logger.logEvent("Validation failed - event name is null or empty", LogLevel.DEBUG);
             throw new IllegalArgumentException("Event name cannot be null or empty");
         }
 
         if (date == null || date.isBefore(LocalDateTime.now())) {
+            logger.logEvent("Validation failed - event date is null or in the past", LogLevel.DEBUG);
             throw new IllegalArgumentException("Event date must be in the future");
         }
 
         if (location == null) {
+            logger.logEvent("Validation failed - event location is null", LogLevel.DEBUG);
             throw new IllegalArgumentException("Event location cannot be null");
         }
 
         if (trafficThreshold == null || trafficThreshold <= 0) {
+            logger.logEvent("Validation failed - traffic threshold is null or not positive", LogLevel.DEBUG);
             throw new IllegalArgumentException("Traffic threshold must be a positive number");
         }
 
         if (category == null) {
+            logger.logEvent("Validation failed - event category is null", LogLevel.DEBUG);
             throw new IllegalArgumentException("Event category cannot be null");
         }
 
         if (artist == null || artist.isBlank()) {
+            logger.logEvent("Validation failed - artist name is null or empty", LogLevel.DEBUG);
             throw new IllegalArgumentException("Artist name cannot be null or empty");
         }
 
         if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            logger.logEvent("Validation failed - price is null or negative", LogLevel.DEBUG);
             throw new IllegalArgumentException("Price must be a non-negative number");
         }
+        logger.logEvent("Validated event details successfully - validateEventDetails", LogLevel.DEBUG);
+    }
+
+    private void validateMapHasAtLeastOneTicketArea(EventMapDTO mapDTO) {
+        boolean hasTicketArea = mapDTO.getElementDTOs() != null
+                && mapDTO.getElementDTOs()
+                        .stream()
+                        .anyMatch(this::isTicketArea);
+        logger.logEvent("Validating map contains at least one ticket area - validateMapHasAtLeastOneTicketArea. hasTicketArea=" + hasTicketArea, LogLevel.DEBUG);
+
+        if (!hasTicketArea) {
+            logger.logEvent("Validation failed - event map does not contain any seating or standing area", LogLevel.DEBUG);
+            throw new IllegalArgumentException(
+                    "Event map must contain at least one seating area or standing area"
+            );
+        }
+    }
+
+    private boolean isTicketArea(IMapElementDTO element) {
+        return element instanceof SeatingAreaDTO
+                || element instanceof StandingAreaDTO;
+    }
+
+    private void validateMapElementsInsideMapBounds(EventMapDTO mapDTO) {
+        if (mapDTO.size() == null
+                || mapDTO.size().first() == null
+                || mapDTO.size().second() == null) {
+            logger.logEvent("Validation failed - map size is null", LogLevel.DEBUG);
+            throw new IllegalArgumentException("Map size cannot be null");
+        }
+
+        int mapHeight = mapDTO.size().first();
+        int mapWidth = mapDTO.size().second();
+
+        if (mapWidth <= 0 || mapHeight <= 0) {
+            logger.logEvent("Validation failed - map size is not positive", LogLevel.DEBUG);
+            throw new IllegalArgumentException("Map size must be positive");
+        }
+
+        if (mapDTO.getElementDTOs() == null) {
+            logger.logEvent("Validation failed - map elements list is null", LogLevel.DEBUG);
+            throw new IllegalArgumentException("Map elements cannot be null");
+        }
+
+        for (IMapElementDTO element : mapDTO.getElementDTOs()) {
+            validateSingleElementInsideMapBounds(element, mapWidth, mapHeight);
+        }
+    }
+
+    private void validateSingleElementInsideMapBounds(IMapElementDTO element, int mapWidth, int mapHeight) {
+        if (element == null) {
+            logger.logEvent("Validation failed - map element is null", LogLevel.DEBUG);
+            throw new IllegalArgumentException("Map elements cannot contain null");
+        }
+
+        PairDTO<Integer, Integer> location = getElementLocation(element);
+        PairDTO<Integer, Integer> size = getElementSize(element);
+
+        String elementName = getElementName(element);
+
+        if (location == null || size == null) {
+            logger.logEvent("Validation failed - element location or size is null: " + elementName, LogLevel.DEBUG);
+            throw new IllegalArgumentException("Element location and size cannot be null: " + elementName);
+        }
+
+        if (location.first() == null || location.second() == null
+                || size.first() == null || size.second() == null) {
+            logger.logEvent("Validation failed - element location or size values are null: " + elementName, LogLevel.DEBUG);
+            throw new IllegalArgumentException("Element location and size values cannot be null: " + elementName);
+        }
+
+        int x = location.first();
+        int y = location.second();
+        int width = size.first();
+        int height = size.second();
+
+        if (x < 0 || y < 0) {
+            logger.logEvent("Validation failed - element location cannot be negative: " + elementName, LogLevel.DEBUG);
+            throw new IllegalArgumentException("Element location cannot be negative: " + elementName);
+        }
+
+        if (width <= 0 || height <= 0) {
+            logger.logEvent("Validation failed - element size must be positive: " + elementName, LogLevel.DEBUG);
+            throw new IllegalArgumentException("Element size must be positive: " + elementName);
+        }
+
+        if (x + width > mapWidth || y + height > mapHeight) {
+            logger.logEvent("Validation failed - element is outside map bounds: " + elementName, LogLevel.DEBUG);
+            throw new IllegalArgumentException("Element is outside map bounds: " + elementName);
+        }
+    }
+
+    private PairDTO<Integer, Integer> getElementLocation(IMapElementDTO element) {
+        if (element instanceof SeatingAreaDTO seatingArea) {
+            return seatingArea.location();
+        }
+
+        if (element instanceof StandingAreaDTO standingArea) {
+            return standingArea.location();
+        }
+
+        if (element instanceof ElementDTO regularElement) {
+            return regularElement.location();
+        }
+        logger.logEvent("Validation failed - unsupported map element type: " + element.getClass().getSimpleName(), LogLevel.DEBUG);
+        throw new IllegalArgumentException("Unsupported map element type: " + element.getClass().getSimpleName());
+    }
+
+    private PairDTO<Integer, Integer> getElementSize(IMapElementDTO element) {
+        if (element instanceof SeatingAreaDTO seatingArea) {
+            return seatingArea.size();
+        }
+
+        if (element instanceof StandingAreaDTO standingArea) {
+            return standingArea.size();
+        }
+
+        if (element instanceof ElementDTO regularElement) {
+            return regularElement.size();
+        }
+        logger.logEvent("Validation failed - unsupported map element type: " + element.getClass().getSimpleName(), LogLevel.DEBUG);
+        throw new IllegalArgumentException("Unsupported map element type: " + element.getClass().getSimpleName());
+    }
+
+    private String getElementName(IMapElementDTO element) {
+        if (element instanceof SeatingAreaDTO seatingArea) {
+            return seatingArea.name();
+        }
+
+        if (element instanceof StandingAreaDTO standingArea) {
+            return standingArea.name();
+        }
+
+        if (element instanceof ElementDTO regularElement) {
+            return regularElement.name();
+        }
+
+        return element.getClass().getSimpleName();
     }
 
     private String eventDTOContext(EventDTO eventDTO) {
@@ -457,41 +623,41 @@ public class EventService {
                 + ", companyId=" + eventDTO.companyId()
                 + ", version=" + eventDTO.version();
     }
- 
 
-public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
-    try {
-        Event event = canEditPurchasePolicy(token, eventId);
+    public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
+        try {
+            Event event = canEditPurchasePolicy(token, eventId);
 
-        PurchasePolicy policy = mapper.toDomain(policyDTO);
+            PurchasePolicy policy = mapper.toDomain(policyDTO);
 
-        event.setPurchasePolicy(policy);
+            event.setPurchasePolicy(policy);
 
-        eventRepository.updateEvent(event);
+            eventRepository.updateEvent(event);
 
-    } catch (Exception e) {
-        logger.logEvent(
-                "Failed to set purchase policy for event, id: " + eventId,
-                ISystemLogger.LogLevel.WARN
-        );
-        throw e;
+        } catch (Exception e) {
+            logger.logEvent(
+                    "Failed to set purchase policy for event, id: " + eventId,
+                    ISystemLogger.LogLevel.WARN
+            );
+            throw e;
+        }
     }
-}
-    private Event canEditPurchasePolicy(String token,Long eventId) throws Exception{
+
+    private Event canEditPurchasePolicy(String token, Long eventId) throws Exception {
         tokenService.validateToken(token);
 
-            Long memberId = tokenService.extractUserId(token);
-            userAccessService.validateCanPerformNonViewAction(memberId);
-            Event event = eventRepository.getEventById(eventId);
-            if (event == null) {
-                throw new IllegalArgumentException("Event not found");
-            }
-
-        if (!membershipDomain.validatePermission(memberId,event.getCompanyId(),Permission.SET_PURCHASING_POLICY)){
-            throw new IllegalArgumentException(
-                "User does not have permission to manage event purchasing policy");
+        Long memberId = tokenService.extractUserId(token);
+        userAccessService.validateCanPerformNonViewAction(memberId);
+        Event event = eventRepository.getEventById(eventId);
+        if (event == null) {
+            throw new IllegalArgumentException("Event not found");
         }
-            return event;
+
+        if (!membershipDomain.validatePermission(memberId, event.getCompanyId(), Permission.SET_PURCHASING_POLICY)) {
+            throw new IllegalArgumentException(
+                    "User does not have permission to manage event purchasing policy");
+        }
+        return event;
     }
 
     // add visible discount to event
@@ -516,6 +682,7 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
             throw e;
         }
     }
+
     // add coupon discount to event
     public void addCouponDiscountToEvent(String token, Long eventId,
             String name, String couponCode,
@@ -539,6 +706,7 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
             throw e;
         }
     }
+
     // add conditional discount to event
     public void addConditionalDiscountToEvent(String token, Long eventId,
             String name, LocalDateTime startTime,
@@ -571,6 +739,7 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
             throw e;
         }
     }
+
     // remove discount from event
     public void removeDiscountFromEvent(String token, Long eventId,
             Long discountId) throws Exception {
@@ -584,7 +753,7 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
 
             logger.logEvent(
                     "Discount removed successfully from event id: "
-                            + eventId + ", discount id: " + discountId,
+                    + eventId + ", discount id: " + discountId,
                     ISystemLogger.LogLevel.INFO
             );
 
@@ -594,6 +763,7 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
             throw e;
         }
     }
+
     // set event discount composition type
     public void setEventDiscountCompositionType(String token, Long eventId,
             DiscountCompositionType compositionType) throws Exception {
@@ -607,7 +777,7 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
 
             logger.logEvent(
                     "Discount composition type updated successfully for event id: "
-                            + eventId,
+                    + eventId,
                     ISystemLogger.LogLevel.INFO
             );
 
@@ -617,6 +787,7 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
             throw e;
         }
     }
+
     private Event canEditEventDiscount(String token, Long eventId) throws Exception {
         tokenService.validateToken(token);
 
@@ -704,5 +875,153 @@ public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO
         }
     }
 
-}
+    /**
+     * Retrieves all events associated with a specific company.
+     * Used for company management dashboards.
+     */
+    public List<EventDTO> getEventsByCompany(String token, Long companyId) throws Exception {
+        try {
+            // 1. Authenticate user
+            tokenService.validateToken(token);
+            Long memberId = tokenService.extractUserId(token);
+            userAccessService.validateCanPerformNonViewAction(memberId);
 
+            // 2. Fetch events from the database
+            List<Event> events = eventRepository.getEventsByCompanyId(companyId);
+
+            // 3. Map to DTO and return (Using EventDTO::from instead of EventDTO::new)
+            return events.stream()
+                    .map(EventDTO::from)
+                    .collect(java.util.stream.Collectors.toList());
+
+        } catch (Exception e) {
+            logger.logError("Failed to fetch events for companyId=" + companyId, e);
+            throw e;
+        }
+    }
+
+    private String mapDTOLogContext(EventMapDTO mapDTO) {
+        if (mapDTO == null) {
+            return "mapDTO=null";
+        }
+
+        PairDTO<Integer, Integer> size = mapDTO.size();
+        List<IMapElementDTO> elements = mapDTO.getElementDTOs();
+
+        int elementCount = elements == null ? 0 : elements.size();
+        int seatingAreas = 0;
+        int standingAreas = 0;
+        int regularElements = 0;
+        int totalSeats = 0;
+        long totalStandingCapacity = 0;
+
+        StringBuilder elementsText = new StringBuilder();
+
+        if (elements != null) {
+            for (int i = 0; i < elements.size(); i++) {
+                IMapElementDTO element = elements.get(i);
+
+                if (element instanceof SeatingAreaDTO seatingArea) {
+                    seatingAreas++;
+                    totalSeats += safeMultiply(seatingArea.rows(), seatingArea.columns());
+                } else if (element instanceof StandingAreaDTO standingArea) {
+                    standingAreas++;
+                    totalStandingCapacity += standingArea.capacity();
+                } else if (element instanceof ElementDTO) {
+                    regularElements++;
+                }
+
+                if (i > 0) {
+                    elementsText.append(" | ");
+                }
+
+                elementsText.append("#")
+                        .append(i + 1)
+                        .append(" ")
+                        .append(mapElementDTOLogContext(element));
+            }
+        }
+
+        return "mapSize=" + pairToText(size)
+                + ", width=" + pairFirst(size)
+                + ", height=" + pairSecond(size)
+                + ", elementCount=" + elementCount
+                + ", seatingAreas=" + seatingAreas
+                + ", standingAreas=" + standingAreas
+                + ", regularElements=" + regularElements
+                + ", totalSeats=" + totalSeats
+                + ", totalStandingCapacity=" + totalStandingCapacity
+                + ", elements=[" + elementsText + "]";
+    }
+
+    private String mapElementDTOLogContext(IMapElementDTO element) {
+        if (element == null) {
+            return "element=null";
+        }
+
+        if (element instanceof SeatingAreaDTO seatingArea) {
+            return "SeatingArea{"
+                    + "id=" + seatingArea.id()
+                    + ", name=" + seatingArea.name()
+                    + ", type=" + seatingArea.type()
+                    + ", location=" + pairToText(seatingArea.location())
+                    + ", size=" + pairToText(seatingArea.size())
+                    + ", rows=" + seatingArea.rows()
+                    + ", columns=" + seatingArea.columns()
+                    + ", seats=" + (seatingArea.seats() == null ? 0 : seatingArea.seats().size())
+                    + ", soldOut=" + seatingArea.soldOut()
+                    + "}";
+        }
+
+        if (element instanceof StandingAreaDTO standingArea) {
+            return "StandingArea{"
+                    + "id=" + standingArea.id()
+                    + ", name=" + standingArea.name()
+                    + ", type=" + standingArea.type()
+                    + ", location=" + pairToText(standingArea.location())
+                    + ", size=" + pairToText(standingArea.size())
+                    + ", capacity=" + standingArea.capacity()
+                    + ", reserved=" + standingArea.reserved()
+                    + ", sold=" + standingArea.sold()
+                    + ", soldOut=" + standingArea.soldOut()
+                    + "}";
+        }
+
+        if (element instanceof ElementDTO regularElement) {
+            return "Element{"
+                    + "id=" + regularElement.id()
+                    + ", name=" + regularElement.name()
+                    + ", type=" + regularElement.type()
+                    + ", location=" + pairToText(regularElement.location())
+                    + ", size=" + pairToText(regularElement.size())
+                    + "}";
+        }
+
+        return "UnsupportedElement{class=" + element.getClass().getSimpleName() + "}";
+    }
+
+    private String pairToText(PairDTO<Integer, Integer> pair) {
+        if (pair == null) {
+            return "null";
+        }
+
+        return "(" + pair.first() + "," + pair.second() + ")";
+    }
+
+    private Integer pairFirst(PairDTO<Integer, Integer> pair) {
+        return pair == null ? null : pair.first();
+    }
+
+    private Integer pairSecond(PairDTO<Integer, Integer> pair) {
+        return pair == null ? null : pair.second();
+    }
+
+    private int safeMultiply(Integer first, Integer second) {
+        if (first == null || second == null) {
+            return 0;
+        }
+
+        return first * second;
+    }
+
+}

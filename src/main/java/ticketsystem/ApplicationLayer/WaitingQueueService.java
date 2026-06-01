@@ -3,6 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
@@ -35,7 +36,7 @@ public class WaitingQueueService {
     public String tryReserve(long eventId, String tokenString) {
         // Validate the token
         if (!(tokenService.validateToken(tokenString))) {
-            logger.logEvent("Invalid token provided for reservation attempt.", LogbackSystemLogger.LogLevel.INFO);
+            logger.logEvent("Invalid token provided for reservation attempt.", LogLevel.INFO);
             return "ERROR: Invalid token";
         }
         int maxRetries = 3;
@@ -45,16 +46,16 @@ public class WaitingQueueService {
                     Event event = eventRepository.getEventById(eventId);
                     if (event == null) {
                         logger.logEvent("Attempt to reserve for non-existent event. Event ID: " + eventId,
-                                LogbackSystemLogger.LogLevel.INFO);
+                                LogbackSystemLogger.LogLevel.WARN);
                         return "ERROR: Event not found";
                     }
                     if (event.isSoldOut()) {
                         logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId,
                                 LogbackSystemLogger.LogLevel.INFO);
-                    notifyTokenHolder(
-                    tokenString,
-                    "The event is sold out."
-                    );
+                        notifyTokenHolder(
+                                tokenString,
+                                "The event is sold out."
+                        );
                         return "ERROR: Sold Out";
                     }
 
@@ -63,17 +64,17 @@ public class WaitingQueueService {
                         eventRepository.updateEvent(event);
                         logger.logEvent(
                                 "User with session id" + tokenString + " APPROVED to enter checkout for Event "
-                                        + eventId,
-                                LogbackSystemLogger.LogLevel.INFO);
+                                + eventId,
+                                LogLevel.INFO);
                         return "APPROVED";
                     }
                     queueRepository.enqueueUser(eventId, tokenString);
                     int position = queueRepository.getQueueSize(eventId);
                     logger.logEvent("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position,
-                            LogbackSystemLogger.LogLevel.INFO);
+                            LogLevel.INFO);
                     notifyTokenHolder(
-                    tokenString,
-                    "You have entered the waiting queue. Your current position is: " + position + "."
+                            tokenString,
+                            "You have entered the waiting queue. Your current position is: " + position + "."
                     );
                     return "QUEUED";
                 }
@@ -83,21 +84,26 @@ public class WaitingQueueService {
                 continue;
             }
         }
+        logger.logEvent("Failed to process reservation after " + maxRetries + " attempts. Event ID: " + eventId,
+                LogLevel.WARN);
         return "ERROR: System is too busy, please try again.";
     }
 
     private void promoteOneFromWaitingQueue(long eventId) {
         Event tempEvent = eventRepository.getEventById(eventId);
         if (tempEvent == null) {
+            logger.logEvent("Failed to promote user from waiting queue. Event not found. Event ID: " + eventId, LogLevel.INFO);
             return;
         }
         long slack = tempEvent.getTrafficThreshold() - tempEvent.getActiveReservationsCount();
         if (slack <= 0) {
+            logger.logEvent("Failed to promote user from waiting queue. No available spots. Event ID: " + eventId, LogLevel.INFO);
             return;
         }
 
         List<String> approvedUsers = queueRepository.dequeueBatch(eventId, 1);
         if (approvedUsers.isEmpty()) {
+            logger.logEvent("Failed to promote user from waiting queue. No users in queue. Event ID: " + eventId, LogLevel.INFO);
             return;
         }
 
@@ -116,10 +122,11 @@ public class WaitingQueueService {
                 notifyTokenHolder(sessionId,
                         "It's your turn! You can now purchase tickets for Event " + eventId);
                 logger.logEvent("Processed waiting queue for Event " + eventId + ". Approved users: 1",
-                        LogbackSystemLogger.LogLevel.INFO);
+                        LogLevel.INFO);
                 return;
 
             } catch (Exception e) {
+
                 continue;
             }
         }
@@ -138,6 +145,7 @@ public class WaitingQueueService {
                     event.decrementActiveReservations();
                     eventRepository.updateEvent(event);
                     updateSuccessful = true;
+
                     break;
                 } catch (Exception e) {
                     continue;
@@ -146,26 +154,35 @@ public class WaitingQueueService {
             if (updateSuccessful) {
                 promoteOneFromWaitingQueue(eventId);
                 logger.logEvent("User with session id " + sessionId + " released their spot for Event " + eventId,
-                        LogbackSystemLogger.LogLevel.INFO);
+                        LogLevel.INFO);
             }
         }
     }
 
     public void leaveQueue(long eventId, String sessionId) {
         queueRepository.removeUserFromQueue(eventId, sessionId);
+        logger.logEvent("User left the waiting queue for Event " + eventId,
+                LogLevel.INFO);
+        notifyTokenHolder(
+                sessionId,
+                "You have left the waiting queue for Event " + eventId + "."
+        );
     }
 
     public void expireUserSession(long eventId, String sessionId) {
         releaseSpot(eventId, sessionId);
+        logger.logEvent("User session expired for Event " + eventId,
+                LogLevel.INFO);
         notifyTokenHolder(
-        sessionId,
-        "Your access time for ticket selection has expired. You were removed from the queue."
+                sessionId,
+                "Your access time for ticket selection has expired. You were removed from the queue."
         );
     }
 
     public void handleSoldOutEvent(long eventId) {
         List<String> remainingUsers = queueRepository.clearQueue(eventId);
-
+        logger.logEvent("Event " + eventId + " is sold out. Cleared waiting queue. Notifying " + remainingUsers.size() + " users.",
+                LogLevel.INFO);
         notifyTokenHolders(
                 remainingUsers,
                 "The event is sold out. The waiting queue has been closed."
@@ -175,6 +192,7 @@ public class WaitingQueueService {
     private void notifyTokenHolder(String token, String message) {
         if (notificationsService == null || token == null || token.isBlank()
                 || message == null || message.isBlank()) {
+            logger.logEvent("Failed to notify token holder. Invalid token or message.", LogLevel.INFO);
             return;
         }
 
@@ -182,16 +200,19 @@ public class WaitingQueueService {
             Long memberId = tokenService.extractUserId(token);
             if (memberId != null) {
                 notificationsService.notifyMember(memberId, message);
+                logger.logEvent("Notified member with ID " + memberId + ": " + message, LogLevel.INFO);
                 return;
             }
         }
 
         notificationsService.notifyGuest(token, message);
+        logger.logEvent("Notified guest with message: " + message, LogLevel.INFO);
     }
 
     private void notifyTokenHolders(List<String> tokens, String message) {
         if (notificationsService == null || tokens == null || tokens.isEmpty()
                 || message == null || message.isBlank()) {
+            logger.logEvent("Failed to notify token holders. Invalid tokens list or message.", LogLevel.INFO);
             return;
         }
 
@@ -216,6 +237,7 @@ public class WaitingQueueService {
 
         notificationsService.notifyMembers(memberIds, message);
         notificationsService.notifyGuests(guestTokens, message);
+        logger.logEvent("Notified " + memberIds.size() + " members and " + guestTokens.size() + " guests with message: " + message, LogLevel.INFO);
     }
 
 }

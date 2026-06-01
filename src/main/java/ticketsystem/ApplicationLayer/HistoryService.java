@@ -36,7 +36,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
     private MembershipDomainService membershipDomainService;
     private ISystemLogger logger;
     private final UserAccessService userAccessService;
-    private final INotifier notificationsService; 
+    private final INotifier notificationsService;
 
     @Autowired
     public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger, UserAccessService userAccessService, INotifier notificationsService) {
@@ -61,6 +61,10 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
             historyRepository.addPurchase(purchase);     //purchase is the object after you pay 
         } 
         catch (IllegalArgumentException e) {
+            logger.logEvent(
+                    "Failed to process completed order: " + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
             throw e;
         }
     }
@@ -91,6 +95,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
             return historyDtoList;
         }
         catch (IllegalArgumentException e) {
+            logger.logEvent("Failed to retrieve personal purchase history: " + e.getMessage(), ISystemLogger.LogLevel.WARN);
             throw e;
         }
     }

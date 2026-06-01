@@ -26,17 +26,19 @@ import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class UserServiceTest {
+
     private static UserService userService;
     private static UserRepository userRepository;
     private static TokenService tokenService;
     private static ITokenRepository tokenRepository;
     private static LogbackSystemLogger logger;
+
     @BeforeEach
     public void setup() {
         logger = new LogbackSystemLogger();
         userRepository = new UserRepository();
         tokenRepository = new TokenRepository();
-        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         userService = new UserService(userRepository, tokenService, logger);
     }
 
@@ -185,6 +187,7 @@ public class UserServiceTest {
         }
 
     }
+
     @Test
     public void testUpdateDetails_concurrent() throws InterruptedException {
         int numberOfThreads = 20;
@@ -215,13 +218,18 @@ public class UserServiceTest {
         for (int i = 0; i < numberOfThreads; i++) {
             final int userIndex = i;
             executor.submit(() -> {
-                try {
+            try {
                     startLatch.await();
                     userService.updateMemberUsername(memberTokens[userIndex], "password" + userIndex,
                             "user" + userIndex, collisionUsername);
                 } catch (IllegalArgumentException e) {
                     // Expected for users who lose the race after another thread already took the username.
                     if (!"Username is already taken.".equals(e.getMessage())) {
+                        exceptions.add(e);
+                    }
+                } catch (IllegalStateException e) {
+                    // Expected for users who lose the race due to system concurrency protection / locking.
+                    if (!"Username update failed. Please try again.".equals(e.getMessage())) {
                         exceptions.add(e);
                     }
                 } catch (Throwable t) {

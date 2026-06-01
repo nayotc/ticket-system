@@ -3,9 +3,12 @@ package ticketsystem.PresentationLayer.Presenters;
 import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.PresentationLayer.Components.ManagementSideNav;
+import ticketsystem.DomainLayer.user.Permission;
+
 
 @Component
-public class CompanyPresenter {
+public class CompanyPresenter implements ManagementSideNav.ManagementSideNavPresenter {
 
     private final CompanyService companyService;
 
@@ -70,6 +73,31 @@ public class CompanyPresenter {
 
         } catch (Exception e) {
             throw new PresentationException("Could not load company details. Please try again.");
+        }
+    }
+
+    public Long getFirstManagedCompanyId(String sessionToken) {
+        try {
+            return companyService.getFirstManagedCompanyId(sessionToken);
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new PresentationException(e.getMessage());
+
+        } catch (Exception e) {
+            throw new PresentationException("Could not load managed production company.");
+        }
+    }
+
+    @Override
+    public boolean hasPermission(String sessionToken, long companyId, Permission permission) {
+        try {
+            return companyService.hasPermission(sessionToken, companyId, permission);
+
+        } catch (Exception e) {
+            return false;
         }
     }
 }
