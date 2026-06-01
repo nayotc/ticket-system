@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.time.ZoneId;
 
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
@@ -165,6 +166,13 @@ public class ActiveOrder {
         return LocalDateTime.now().isAfter(expiresAt);
     }
 
+    public long getExpiresAtEpochMillis() {
+        return expiresAt
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
+    }
+
     public boolean isAboutToExpire() {
         LocalDateTime now = LocalDateTime.now();
 
@@ -209,7 +217,7 @@ public class ActiveOrder {
         for (Ticket ticket : tickets) {
             ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(), ticket.getRow(), ticket.getChair(), ticket.getPrice()));
         }
-        return new ActiveOrderDTO(orderId, userId, eventId, ticketDTOs);
+            return new ActiveOrderDTO(orderId, userId, eventId, ticketDTOs, getExpiresAtEpochMillis());
         }
 
         //for testing purposes only

@@ -17,6 +17,7 @@ import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.Components.EmptyState;
+import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.PublicLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
@@ -36,6 +37,7 @@ public class ActiveOrderCart extends VerticalLayout {
     private CartEventInfo eventInfo;
     private CartPricing pricing;
     private String currentCouponCode = "";
+    private final ReservationTimer reservationTimer = new ReservationTimer();
 
     public ActiveOrderCart() {
         this(new DemoActiveOrderCartPresenter());
@@ -58,9 +60,12 @@ public class ActiveOrderCart extends VerticalLayout {
             activeOrder = presenter.loadActiveOrder(resolveSessionToken());
 
             if (activeOrder == null || tickets().isEmpty()) {
+                ReservationTimer.clear();
                 renderEmptyCart();
                 return;
             }
+
+            reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
             eventInfo = presenter.loadEventInfo(activeOrder.getEventId());
             pricing = presenter.calculatePricing(activeOrder.getOrderId(), currentCouponCode);
@@ -81,7 +86,7 @@ public class ActiveOrderCart extends VerticalLayout {
         Div shell = new Div();
         shell.addClassName("cart-shell");
 
-        shell.add(createHeader(), createLayout());
+        shell.add(reservationTimer, createHeader(), createLayout());
 
         add(shell);
     }
@@ -324,6 +329,7 @@ public class ActiveOrderCart extends VerticalLayout {
 
     private void renderEmptyCart() {
         removeAll();
+        ReservationTimer.clear();
 
         Button searchEvents = new Button("חיפוש אירועים");
         searchEvents.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -428,7 +434,8 @@ public class ActiveOrderCart extends VerticalLayout {
                 new ArrayList<>(List.of(
                         new TicketDTO(1L, 9001L, 4, 12, new BigDecimal("350")),
                         new TicketDTO(2L, 9001L, 4, 13, new BigDecimal("350"))
-                ))
+                )),
+                System.currentTimeMillis() + 15 * 60 * 1000
         );
 
         @Override
@@ -494,7 +501,8 @@ public class ActiveOrderCart extends VerticalLayout {
                     order.getOrderId(),
                     order.getUserId(),
                     order.getEventId(),
-                    new ArrayList<>(remaining)
+                    new ArrayList<>(remaining),
+                    System.currentTimeMillis() + 15 * 60 * 1000
             );
         }
 

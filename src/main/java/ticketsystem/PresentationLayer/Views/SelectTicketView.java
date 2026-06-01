@@ -24,6 +24,7 @@ import ticketsystem.DTO.Event.SeatPositionDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.PresentationLayer.Components.Notifications;
+import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.BookingLayout;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
@@ -59,6 +60,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     private final Span totalPrice = new Span("₪0");
     private final Button continueButton = new Button("המשך לסיכום הזמנה");
     private final Span zoomValue = new Span("100%");
+    private final ReservationTimer reservationTimer = new ReservationTimer();
 
     private final ReservationPresenter reservationPresenter;
 
@@ -84,7 +86,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
         Div summarySection = createSummarySection();
 
-        shell.add(mapSection, summarySection);
+        shell.add(reservationTimer, mapSection, summarySection);
         add(shell);
     }
 
@@ -579,6 +581,8 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
             } else if (isSeatAvailable(seat)) {
                 reservationPresenter.selectSeatTicket(token, eventId, area.id(), row, number, null);
+                ReservationTimer.startIfNeeded();
+                reservationTimer.refreshFromSession();
                 selectedSeats.put(key, new SelectedSeat(area.id(), safeText(area.name(), "אזור ישיבה"), row, number, ticketPrice()));
             }
 
@@ -614,6 +618,8 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         try {
             if (delta > 0) {
                 reservationPresenter.selectStandingTicket(token, eventId, area.id(), delta, null);
+                ReservationTimer.startIfNeeded();
+                reservationTimer.refreshFromSession();
             } else if (delta < 0) {
                 reservationPresenter.removeStandingTicketsFromActiveOrder(token, eventId, area.id(), -delta);
             }
@@ -674,6 +680,11 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         emptySelection.setVisible(count == 0);
         selectedTicketsList.setVisible(count > 0);
         continueButton.setEnabled(count > 0);
+
+        if (count == 0) {
+            ReservationTimer.clear();
+            reservationTimer.refreshFromSession();
+        }
     }
 
     private Div createSelectedSeatRow(SelectedSeat selectedSeat) {
