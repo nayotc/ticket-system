@@ -21,6 +21,11 @@ import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatStatusDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatingAreaDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.StandingAreaDto;
+import ticketsystem.DTO.ActiveOrderDTO;
+import ticketsystem.DTO.TicketDTO;
+import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
+import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
+import ticketsystem.PresentationLayer.DTO.OrderPricing;
 
 
 import java.math.BigDecimal;
@@ -36,6 +41,55 @@ public class ReservationPresenter {
     public ReservationPresenter(ReservationService reservationService, EventService eventService) {
         this.reservationService = reservationService;
         this.eventService = eventService;
+    }
+
+    /**
+     * Loads the current active order for the active UI session.
+     *
+     * This method is used by presentation-layer views such as the active order cart.
+     * A missing active order is treated as an empty-cart state rather than an error,
+     * so the service may return null and the view can render its empty state.
+     *
+     * @param token active guest/member session token
+     * @return current active order DTO, or null if no active order exists
+     */
+    public ActiveOrderDTO loadActiveOrder(String token) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            return reservationService.viewCurrentActiveOrder(token);
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Active order could not be loaded. Please try again.");
+        }
+    }
+
+    /**
+     * Returns the number of tickets in the current active order.
+     *
+     * This method is intended for lightweight presentation components such as
+     * the public header cart badge. If there is no active order, the badge should
+     * display zero.
+     *
+     * @param token active guest/member session token
+     * @return number of tickets in the current active order, or zero if none exists
+     */
+    public int getActiveCartItemsCount(String token) {
+        ActiveOrderDTO activeOrder = loadActiveOrder(token);
+
+        if (activeOrder == null || activeOrder.getTickets() == null) {
+            return 0;
+        }
+
+        return activeOrder.getTickets().size();
     }
 
     public EventDTO loadEvent(String token, Long eventId) {
@@ -65,6 +119,124 @@ public class ReservationPresenter {
         } catch (Exception e) {
             throw presentationError("Event data could not be loaded. Please try again.");
         }
+    }
+
+    /**
+     * Loads basic event details for presentation flows that do not require an event map.
+     *
+     * This method is intended for views such as the active order cart, where the UI
+     * needs event information like name, date and location, but does not need the
+     * seating/standing map. Unlike loadEvent, this method does not fail when the
+     * event map is missing.
+     *
+     * @param token active guest/member session token
+     * @param eventId event identifier
+     * @return event DTO with basic event details
+     */
+    public EventDTO loadEventDetails(String token, Long eventId) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            EventDTO event = eventService.getEvent(token, eventId);
+
+            if (event == null) {
+                throw presentationError("Event not found");
+            }
+
+            return event;
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Event data could not be loaded. Please try again.");
+        }
+    }
+
+    /**
+     * Loads presentation-ready event information for the active order cart.
+     *
+     * The active order cart needs only basic event details, without requiring
+     * an event map. This method converts the application-layer EventDTO into
+     * text that can be displayed directly by the view.
+     *
+     * @param token active guest/member session token
+     * @param eventId event identifier from the active order
+     * @return presentation DTO with event name, date text and location text
+     */
+    public OrderEventInfo loadActiveOrderEventInfo(String token, Long eventId) {
+        EventDTO event = loadEventDetails(token, eventId);
+
+        return new OrderEventInfo(
+                event.name() == null || event.name().isBlank() ? "אירוע ללא שם" : event.name(),
+                event.date() == null ? "תאריך יעודכן בהמשך" : event.date().toString(),
+                event.location() == null || event.location().isBlank()
+                        ? "מיקום יעודכן בהמשך"
+                        : event.location().replace("_", " ")
+        );
+    }
+
+    /**
+     * Calculates the pricing summary displayed in order-related views.
+     *
+     * Currently this method presents the basic subtotal from the active order
+     * tickets and keeps the user informed that the final amount, including
+     * discounts and coupons, is calculated during checkout.
+     *
+     * @param activeOrder active order DTO currently displayed in the UI
+     * @param couponCode optional coupon code entered by the user
+     * @return presentation DTO with the displayed pricing summary
+     */
+    public OrderPricing calculatePricing(ActiveOrderDTO activeOrder, String couponCode) {
+        if (activeOrder == null || activeOrder.getTickets() == null) {
+            throw presentationError("No active order found");
+        }
+
+        BigDecimal subtotal = activeOrder.getTickets().stream()
+                .map(TicketDTO::getPrice)
+                .filter(price -> price != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<AppliedDiscount> discounts = new ArrayList<>();
+        List<String> messages = new ArrayList<>();
+
+        messages.add("המחיר הסופי מחושב לפי מדיניות הרכישה וההנחות לפני המעבר לתשלום.");
+
+        if (couponCode != null && !couponCode.isBlank()) {
+            messages.add("קוד הקופון ייבדק בעת המעבר לתשלום.");
+        }
+
+        return new OrderPricing(
+                subtotal,
+                BigDecimal.ZERO,
+                subtotal,
+                discounts,
+                messages
+        );
+    }
+
+    /**
+     * Applies a coupon code to the pricing preview displayed in the UI.
+     *
+     * At this stage the coupon is not validated as final business logic here.
+     * The final coupon validation and final amount calculation are handled by
+     * the checkout flow.
+     *
+     * @param activeOrder active order DTO currently displayed in the UI
+     * @param couponCode coupon code entered by the user
+     * @return presentation DTO with the updated pricing preview
+     */
+    public OrderPricing applyCoupon(ActiveOrderDTO activeOrder, String couponCode) {
+        return calculatePricing(activeOrder, couponCode);
     }
 
     public EventMapDTO loadEventMap (String token, Long eventId) {
@@ -136,6 +308,54 @@ public class ReservationPresenter {
 
         } catch (Exception e) {
             throw presentationError("Ticket selection failed. Please try again.");
+        }
+    }
+
+    /**
+     * Removes a selected ticket from the current active order.
+     *
+     * This method is used by active-order presentation flows where the UI already
+     * has the active order event id and the selected ticket id.
+     *
+     * @param token active guest/member session token
+     * @param eventId event whose active order contains the ticket
+     * @param ticketId selected ticket to remove from the active order
+     * @return true if the ticket was removed successfully
+     */
+    public boolean removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            if (ticketId == null || ticketId <= 0) {
+                throw presentationError("Ticket id is invalid.");
+            }
+
+            boolean removed = reservationService.removeTicketFromActiveOrder(
+                    token,
+                    eventId,
+                    ticketId
+            );
+
+            if (!removed) {
+                throw presentationError("Ticket removal failed. Please try again.");
+            }
+
+            return true;
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Ticket removal failed. Please try again.");
         }
     }
 
@@ -432,25 +652,60 @@ public class ReservationPresenter {
         return switch (message) {
             case "No active session found. Please refresh and try again." ->
                     "לא נמצאה פעילות משתמש. יש לרענן את העמוד ולנסות שוב.";
+
             case "Event id is invalid.", "Event not found" ->
                     "לא ניתן למצוא את האירוע המבוקש.";
+
             case "Event map is not available.",
                  "Event data could not be loaded. Please try again." ->
                     "לא ניתן לטעון את מפת האירוע. יש לנסות שוב.";
+
             case "Area id is invalid." ->
                     "לא ניתן לבחור כרטיסים באזור זה.";
+
             case "Seat position is invalid." ->
                     "לא ניתן לבחור את המושב המבוקש.";
+
             case "Ticket quantity must be greater than zero.",
-                 "Quantity must be greater than zero" ->
+                 "Quantity must be greater than zero",
+                 "Quantity must be positive" ->
                     "יש לבחור לפחות כרטיס אחד.";
+
             case "No active order found for this event",
                  "No active order found" ->
                     "לא ניתן להוסיף את הכרטיסים להזמנה כרגע. יש לנסות שוב.";
+
+            case "An active order already exists for this user to another event" ->
+                    "כבר קיימת לך הזמנה פעילה לאירוע אחר. כדי לבחור כרטיסים לאירוע הזה, יש להשלים את ההזמנה הנוכחית או להסיר ממנה את כל הכרטיסים.";
+
+            case "Seat removal details are incomplete" ->
+                    "לא ניתן להסיר את הכרטיס מההזמנה. פרטי ההסרה אינם תקינים.";
+
+            case "Not enough standing tickets in the order to remove" ->
+                    "לא נמצאו מספיק כרטיסי עמידה להסרה מההזמנה.";
+
+            case "User is not allowed to view this order" ->
+                    "אין לך הרשאה לצפות בהזמנה הזו.";
+
+            case "No active order or event found",
+                 "No active order with tickets" ->
+                    "לא נמצאה הזמנה פעילה עם כרטיסים.";
+
+            case "Ticket quantity exceeds limit" ->
+                    "כמות הכרטיסים חורגת מהמגבלה המותרת להזמנה.";
+
+            case "Order is not active" ->
+                    "ההזמנה כבר אינה פעילה.";
+
+            case "Ticket event ID does not match order event ID" ->
+                    "לא ניתן להוסיף להזמנה כרטיסים מאירוע אחר.";
+
             case "Ticket selection failed. Please try again." ->
                     "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
+
             case "Ticket removal failed. Please try again." ->
                     "הסרת הכרטיסים נכשלה. יש לנסות שוב.";
+
             default ->
                     "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
         };

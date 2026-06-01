@@ -284,6 +284,58 @@ public class ReservationService {
         }
     }
 
+    /**
+     * Returns the current active order for the given UI session token.
+     *
+     * This method is intended for presentation-layer flows such as the active order
+     * cart, where the UI needs to display the current user's active order without
+     * receiving an order id in the route.
+     *
+     * The lookup is based on the token type:
+     * - guest token: finds the active order by session token
+     * - member token: extracts the member id and finds the active order by user id
+     *
+     * If no active order exists, or if the found order is no longer ACTIVE, this
+     * method returns null so the UI can render an empty cart state.
+     *
+     * @param token active guest/member session token
+     * @return active order DTO for the current session, or null if none exists
+     */
+    public ActiveOrderDTO viewCurrentActiveOrder(String token) {
+        expireOldOrders();
+
+        try {
+            tokenService.validateToken(token);
+
+            ActiveOrder order;
+
+            if (tokenService.isGuestToken(token)) {
+                order = orderRepository.getActiveOrderBySessionToken(token);
+            } else {
+                Long userId = tokenService.extractUserId(token);
+                order = orderRepository.getActiveOrderByUserId(userId);
+            }
+
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+                return null;
+            }
+
+            ActiveOrderDTO activeOrderDTO = order.toDTO();
+
+            logger.logEvent(
+                    "Current active order viewed: orderId=" + order.getOrderId()
+                            + ", eventId=" + order.getEventId(),
+                    LogLevel.INFO
+            );
+
+            return activeOrderDTO;
+
+        } catch (Exception e) {
+            logger.logEvent("viewCurrentActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+    }
+
     // 2.8 checkout
    
         public boolean checkout(String token, Long eventId, PaymentDetails details,String coupon) {
