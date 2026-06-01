@@ -15,26 +15,33 @@ import com.vaadin.flow.router.RouterLayout;
 import ticketsystem.PresentationLayer.Components.ManagementHeader;
 import ticketsystem.PresentationLayer.Components.ManagementSideNav;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
-import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
 public class ManagementLayout extends Div implements RouterLayout, BeforeEnterObserver {
 
     private final Div content = new Div();
     private final ManagementSideNav sideNav;
     private final ManagementHeader managementHeader;
+    private final UiVisitCoordinator visitCoordinator;
 
-    public ManagementLayout() {
-        this(null, null);
-    }
-
+    @Autowired
     public ManagementLayout(
-            CompanyPresenter companyPresenter,
-            ManagementHeader.ManagementHeaderPresenter headerPresenter
+            ObjectProvider<ManagementSideNav.ManagementSideNavPresenter> sideNavPresenterProvider,
+            ObjectProvider<ManagementHeader.ManagementHeaderPresenter> headerPresenterProvider,
+            UiVisitCoordinator visitCoordinator
     ) {
-        this.sideNav = new ManagementSideNav(companyPresenter);
-        this.managementHeader = new ManagementHeader(headerPresenter);
+        ManagementSideNav.ManagementSideNavPresenter sideNavPresenter =
+                sideNavPresenterProvider.getIfAvailable();
 
+        ManagementHeader.ManagementHeaderPresenter headerPresenter =
+                headerPresenterProvider.getIfAvailable();
+
+        this.sideNav = new ManagementSideNav(sideNavPresenter);
+        this.visitCoordinator = visitCoordinator;
+        this.managementHeader = new ManagementHeader(headerPresenter, visitCoordinator);
         getElement().setAttribute("dir", "rtl");
         addClassName("management-layout");
 
@@ -73,8 +80,18 @@ public class ManagementLayout extends Div implements RouterLayout, BeforeEnterOb
         logout.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         logout.addClassName("management-mobile-logout-button");
         logout.addClickListener(event -> {
-            UiSession.logout();
+            try {
+                if (visitCoordinator != null) {
+                    visitCoordinator.logoutToGuest(UI.getCurrent());
+                } else {
+                    UiSession.logout();
+                }
+            } catch (Exception ignored) {
+                UiSession.logout();
+            }
+
             UI.getCurrent().navigate(UiRoutes.HOME);
+            UI.getCurrent().getPage().reload();
         });
 
         actions.add(account, logout);

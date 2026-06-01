@@ -41,6 +41,9 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
+import java.util.Set;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.Permission;
 
 @Component
@@ -58,6 +61,9 @@ public class DevDataInitializer implements CommandLineRunner {
     
     private static final long TEST_COMPANY_ID = 1L;
     private static final String COMPANY_NAME = "TixNow Productions"; 
+
+    private static final String REPORT_MANAGER_USERNAME = "report@test.com";
+    private static final String REPORT_MANAGER_PASSWORD = "123456";
     
     private final ITokenService tokenService;
     private final UserService userService;
@@ -87,6 +93,7 @@ public class DevDataInitializer implements CommandLineRunner {
         createTestFounder();              // 2. Create the company founder member
         createAdditionalTeamMembers();    // 3. Create extra members for management testing
         createTestCompany();              // 4. Create the main production company 
+        createReportOnlyManager();  
         assignTeamRoles();                // 5. Assign Owner, Manager, and Pending roles to members
         createTestEvents();               // 6. Create actual Events in the system (Matching the mock sales)
         createTestSalesData();            // 7. Generate transactions where test user is the buyer
@@ -341,6 +348,38 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println(" -> EXPECTED REPORT TOTALS: 3 Tickets Sold | Total Revenue: 480.00 NIS");
         System.out.println("=========================================================================");
         System.out.println();
+    }
+
+    private void createReportOnlyManager() {
+        if (userRepository.isUsernameTaken(REPORT_MANAGER_USERNAME)) {
+            System.out.println("Dev report manager already exists: " + REPORT_MANAGER_USERNAME);
+            return;
+        }
+
+        String guestToken = userService.visitSystem();
+        userService.signUp(
+                guestToken,
+                REPORT_MANAGER_USERNAME,
+                REPORT_MANAGER_PASSWORD,
+                "Report Manager",
+                "0500000002"
+        );
+
+        Member manager = userRepository.getMemberByUsername(REPORT_MANAGER_USERNAME);
+
+        manager.addManagerRole(
+                TEST_COMPANY_ID,
+                manager.getId(),
+                Set.of(Permission.GENERATE_SALES_REPORT)
+        );
+
+        manager.getRoleInCompany(TEST_COMPANY_ID).setStatus(RoleStatus.ACTIVE);
+
+        userRepository.updateMember(manager);
+
+        System.out.println("Dev report-only manager created:");
+        System.out.println("username: " + REPORT_MANAGER_USERNAME);
+        System.out.println("password: " + REPORT_MANAGER_PASSWORD);
     }
 
 }

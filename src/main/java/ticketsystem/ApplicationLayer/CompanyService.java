@@ -310,6 +310,12 @@ public class CompanyService {
             throw e;
         }
     }
+    //for header presenter
+    public Long getFirstManagedCompanyId(String sessionToken) throws Exception {
+        long memberId = getRegisteredMemberId(sessionToken);
+
+        return membershipDomain.getFirstManagedCompanyId(memberId);
+    }
     private void notifyCompanyStaff(Company company, String message) {
         if (notificationsService == null || company == null || message == null || message.isBlank()) {
             return;
@@ -507,6 +513,16 @@ public class CompanyService {
                 "User does not have permission to manage company purchasing policy");
         }
             return company;
+    }
+
+    public boolean hasPermission(String sessionToken, long companyId, Permission permission) throws Exception {
+        long memberId = getRegisteredMemberId(sessionToken);
+
+        if (permission == null) {
+            throw new IllegalArgumentException("Permission cannot be null");
+        }
+
+        return membershipDomain.validatePermission(memberId, companyId, permission);
     }
 
     public String getPurchasePolicySummary(Long companyId) {

@@ -10,18 +10,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ticketsystem.PresentationLayer.Components.FooterBar;
 import ticketsystem.PresentationLayer.Components.PublicHeader;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
+import ticketsystem.PresentationLayer.Components.PublicHeader.HeaderPresenter;
 
 public class PublicLayout extends VerticalLayout implements RouterLayout {
 
     private final Div headerContainer = new Div();
     private final Div content = new Div();
     private final FooterBar footer = new FooterBar();
+    private final HeaderPresenter headerPresenter;
 
     private final UiVisitCoordinator visitCoordinator;
 
     @Autowired
-    public PublicLayout(UiVisitCoordinator visitCoordinator) {
+    public PublicLayout(UiVisitCoordinator visitCoordinator, HeaderPresenter headerPresenter) {
         this.visitCoordinator = visitCoordinator;
+        this.headerPresenter = headerPresenter;
 
         getElement().setAttribute("dir", "rtl");
 
@@ -75,6 +78,10 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
 
     private void renderHeader() {
         headerContainer.removeAll();
-        headerContainer.add(new PublicHeader(shouldShowAuthAction(), visitCoordinator));
-    }
+        headerContainer.add(new PublicHeader(
+                shouldShowAuthAction(),
+                headerPresenter,
+                visitCoordinator
+        ));
+            }
 }
