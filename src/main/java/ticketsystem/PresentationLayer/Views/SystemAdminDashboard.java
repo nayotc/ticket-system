@@ -1,9 +1,31 @@
 package ticketsystem.PresentationLayer.Views;
 
+// Java Standard Library
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+// Spring Framework (הזרקת תלויות מול השרת)
+import org.springframework.beans.factory.annotation.Autowired;
+// Vaadin - Core & Server
+import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.Route;
+import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.server.streams.DownloadHandler;
+import com.vaadin.flow.server.streams.DownloadResponse;
+import com.vaadin.flow.component.UI;
+// Vaadin - UI Components
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
@@ -12,31 +34,24 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.value.ValueChangeMode;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+// Project - DTOs
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PurchaseDTO;
+// Project - Presentation Layer
 import ticketsystem.PresentationLayer.Components.AppCard;
 import ticketsystem.PresentationLayer.Components.MetricCard;
 import ticketsystem.PresentationLayer.Components.StatusBadge;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.AdminLayout;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.SystemAdminPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
-import ticketsystem.DTO.PurchaseDTO;
 
-import java.math.BigDecimal;
-import java.util.Comparator;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
-import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("TixNow | Admin Dashboard")
 @Route(value = UiRoutes.ADMIN_DASHBOARD, layout = AdminLayout.class)
@@ -57,6 +72,8 @@ public class SystemAdminDashboard extends Div {
     private final TextField userEmailSearch = new TextField();
     private final TextField companyHistorySearch = new TextField();
     private final TextField userHistorySearch = new TextField();
+
+    private Long currentLoggedInAdminId = null;
 
     public SystemAdminDashboard() {
         this(null);
@@ -79,9 +96,51 @@ public class SystemAdminDashboard extends Div {
     }
 
     private ViewHeader createHeader() {
+        // 1. שולפים את הטוקן עכשיו, כשעדיין יש לנו גישה מלאה ל-UI ול-Session!
+        final String token = UiSession.getMemberToken();
+
+        // כפתור הורדת לוג אירועים
+        DownloadHandler eventLogsHandler = DownloadHandler.fromInputStream(event -> {
+            // משתמשים בטוקן שנשמר מראש
+            InputStream stream = downloadEventLogsStream(token);
+            
+            return new DownloadResponse(
+                    stream,
+                    "events_log.txt",
+                    "text/plain;charset=UTF-8",
+                    -1
+            );
+        });
+
+        Button eventLogsBtn = new Button("הורד לוג אירועים", VaadinIcon.DOWNLOAD.create());
+        Anchor eventLogsAnchor = new Anchor(eventLogsHandler, "");
+        eventLogsAnchor.getElement().setAttribute("download", true);
+        eventLogsAnchor.add(eventLogsBtn);
+
+        // כפתור הורדת לוג שגיאות
+        DownloadHandler errorLogsHandler = DownloadHandler.fromInputStream(event -> {
+            // משתמשים בטוקן שנשמר מראש
+            InputStream stream = downloadErrorLogsStream(token);
+            
+            return new DownloadResponse(
+                    stream,
+                    "errors_log.txt",
+                    "text/plain;charset=UTF-8",
+                    -1
+            );
+        });
+
+        Button errorLogsBtn = new Button("הורד לוג שגיאות", VaadinIcon.DOWNLOAD.create());
+        errorLogsBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        Anchor errorLogsAnchor = new Anchor(errorLogsHandler, "");
+        errorLogsAnchor.getElement().setAttribute("download", true);
+        errorLogsAnchor.add(errorLogsBtn);
+
         return new ViewHeader(
                 "לוח בקרה ראשי",
-                "ניהול משתמשים, חברות פעילות והיסטוריית רכישות במערכת."
+                "ניהול משתמשים, חברות פעילות והיסטוריית רכישות במערכת.",
+                eventLogsAnchor,
+                errorLogsAnchor
         );
     }
 
@@ -91,7 +150,7 @@ public class SystemAdminDashboard extends Div {
         metrics.addClassName("system-admin-metrics-grid");
 
         metrics.add(
-                new MetricCard("משתמשים פעילים", String.valueOf(allUsers.size()), "מחוברים או זמינים במערכת"),
+                new MetricCard("סך הכל מנויים", String.valueOf(allUsers.size()), "פעילים ומושעים במערכת"),
                 new MetricCard("חברות פעילות", String.valueOf(allCompanies.size()), "חברות שאפשר לסגור"),
                 new MetricCard("רכישות לפי חברה", String.valueOf(companyHistoryRows.size()), "מקובץ לפי חברה ואירוע"),
                 new MetricCard("רכישות לפי משתמש", String.valueOf(userHistoryRows.size()), "מקובץ לפי מזהה משתמש")
@@ -122,8 +181,8 @@ public class SystemAdminDashboard extends Div {
 
         Div header = createPanelHeader(
                 VaadinIcon.USERS,
-                "משתמשים פעילים",
-                "חיפוש לפי מייל וביצוע פעולות מנהל מערכת."
+                "כל המנויים במערכת",
+                "רשימת כל המשתמשים. חיפוש לפי מייל וביצוע פעולות ניהול."
         );
 
         userEmailSearch.setPlaceholder("חיפוש לפי מייל...");
@@ -247,9 +306,9 @@ public class SystemAdminDashboard extends Div {
                 .setAutoWidth(true)
                 .setFlexGrow(0);
 
-        usersGrid.addColumn(AdminUserRow::lastSeen)
-                .setHeader("פעילות אחרונה")
-                .setAutoWidth(true);
+        // usersGrid.addColumn(AdminUserRow::lastSeen)
+        //         .setHeader("פעילות אחרונה")
+        //         .setAutoWidth(true);
 
         usersGrid.addComponentColumn(this::createUserActions)
                 .setHeader("פעולות")
@@ -272,7 +331,8 @@ public class SystemAdminDashboard extends Div {
                 .setHeader("שם חברה")
                 .setAutoWidth(true);
 
-        companiesGrid.addColumn(CompanyTableRow::founderId)
+        // במקום להציג רק את ה-founderId, אנחנו מעבירים אותו לפונקציה findUserEmail שמחזירה את המייל
+        companiesGrid.addColumn(company -> findUserEmail(company.founderId()))
                 .setHeader("מייסד")
                 .setAutoWidth(true);
 
@@ -376,7 +436,43 @@ public class SystemAdminDashboard extends Div {
     }
 
     private HorizontalLayout createUserActions(AdminUserRow user) {
-        Button removeFromCompanies = new Button("הסר מחברות", VaadinIcon.UNLINK.create());
+        HorizontalLayout actions = new HorizontalLayout();
+        actions.addClassName("system-admin-row-actions");
+
+        // חסימת פעולות על המנהל עצמו (הגנה מפני השעיה/מחיקה עצמית)
+        if (currentLoggedInAdminId != null && currentLoggedInAdminId.equals(user.id())) {
+            Span meLabel = new Span("משתמש נוכחי (את/ה)");
+            meLabel.getStyle().set("color", "var(--lumo-tertiary-text-color)");
+            meLabel.getStyle().set("font-size", "var(--lumo-font-size-s)");
+            meLabel.getStyle().set("font-weight", "500");
+            actions.add(meLabel);
+            return actions;
+        }
+
+        // כפתור דינמי (מתחלף בין השעיה להחזרה לפעילות)
+        Button suspendAction = new Button();
+        if ("מושעה".equals(user.status())) {
+            suspendAction.setText("החזר לפעילות");
+            suspendAction.setIcon(VaadinIcon.PLAY.create());
+            suspendAction.addClickListener(event -> confirm(
+                    "החזרת משתמש לפעילות",
+                    "האם לבטל את השעיית המשתמש ולהחזיר לו את הגישה למערכת?",
+                    () -> {
+                        try {
+                            revokeSuspension(user);
+                        } catch (Exception e) {
+                            showError(e.getMessage());
+                        }
+                    }
+            ));
+        } else {
+            suspendAction.setText("השעה משתמש");
+            suspendAction.setIcon(VaadinIcon.PAUSE.create());
+            suspendAction.addClassName("system-admin-danger-action");
+            suspendAction.addClickListener(event -> openSuspendDialog(user));
+        }
+
+        Button removeFromCompanies = new Button("הסר מכל החברות", VaadinIcon.UNLINK.create());
         removeFromCompanies.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         removeFromCompanies.addClassName("system-admin-secondary-action");
         removeFromCompanies.addClickListener(event -> confirm(
@@ -385,17 +481,17 @@ public class SystemAdminDashboard extends Div {
                 () -> removeUserFromAllCompanies(user)
         ));
 
+        // כפתור המחיקה
         Button delete = new Button("מחיקה", VaadinIcon.TRASH.create());
         delete.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         delete.addClassName("system-admin-danger-action");
         delete.addClickListener(event -> confirm(
-                "מחיקת משתמש",
-                "המשתמש יוסר מהמערכת וההזמנות הפעילות שלו ינוקו.",
+                "מחיקת משתמש לצמיתות",
+                "המשתמש יוסר מהמערכת לחלוטין וההזמנות הפעילות שלו ינוקו. האם להמשיך?",
                 () -> deleteUser(user)
         ));
 
-        HorizontalLayout actions = new HorizontalLayout(removeFromCompanies, delete);
-        actions.addClassName("system-admin-row-actions");
+        actions.add(suspendAction, removeFromCompanies, delete);
         return actions;
     }
 
@@ -447,17 +543,80 @@ public class SystemAdminDashboard extends Div {
         );
     }
 
-    private void deleteUser(AdminUserRow user) {
-        try {
-            if (presenter != null) {
-                presenter.deleteUser(UiSession.getMemberToken(), user.id());
+    private void openSuspendDialog(AdminUserRow user) {
+        Dialog dialog = new Dialog();
+        dialog.addClassName("admin-confirm-dialog");
+        dialog.setCloseOnEsc(true);
+        dialog.setCloseOnOutsideClick(true);
+
+        Div card = new Div();
+        card.addClassName("admin-confirm-card");
+
+        H3 titleElement = new H3("השעיית משתמש: " + user.displayName());
+        titleElement.addClassName("admin-confirm-title");
+
+        DateTimePicker endPicker = new DateTimePicker("סיום השעיה (אופציונלי)");
+        endPicker.setValue(LocalDateTime.now().plusDays(7)); // ברירת מחדל
+        endPicker.setWidthFull();
+
+        TextField reasonField = new TextField("סיבת השעיה");
+        reasonField.setRequiredIndicatorVisible(true); // כוכבית אדומה לשדה חובה
+        reasonField.setErrorMessage("חובה להזין סיבה להשעיה");
+        reasonField.setWidthFull();
+
+        Button cancel = new Button("ביטול", event -> dialog.close());
+        cancel.addClassName("system-admin-secondary-action");
+
+        Button approve = new Button("ביצוע השעיה", VaadinIcon.PAUSE.create());
+        approve.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        approve.addClassName("system-admin-confirm-button");
+        
+        approve.addClickListener(event -> {
+            // 1. הגנה 1: ולידציה ששדה הסיבה אינו ריק
+            if (reasonField.isEmpty()) {
+                reasonField.setInvalid(true);
+                return; // עוצר את התהליך ולא שולח את הבקשה לשרת
             }
 
-            allUsers.removeIf(row -> Objects.equals(row.id(), user.id()));
-            filterUsers(userEmailSearch.getValue());
-            showSuccess("המשתמש נמחק בהצלחה");
-        } catch (Exception exception) {
-            showError(exception.getMessage());
+            // 2. הגנה 2: Fallback לתאריך במקרה של Null
+            LocalDateTime endDate = endPicker.getValue();
+            if (endDate == null) {
+                endDate = LocalDateTime.now().plusDays(7); // מציב שבוע במקרה של חוסר
+            }
+
+            dialog.close();
+            suspendMember(user, endDate, reasonField.getValue());
+        });
+
+        HorizontalLayout actions = new HorizontalLayout(cancel, approve);
+        actions.addClassName("admin-confirm-actions");
+
+        card.add(titleElement, endPicker, reasonField, actions);
+        dialog.add(card);
+        dialog.open();
+    }
+
+    private void suspendMember(AdminUserRow user, LocalDateTime endDate, String reason) {
+        try {
+            if (presenter != null) {
+                presenter.suspendMember(UiSession.getMemberToken(), user.id(), LocalDateTime.now(), endDate, reason);
+            }
+            showSuccess("המשתמש הושעה בהצלחה");
+            loadInitialData(); // ריענון הטבלה כדי להראות את הסטטוס החדש
+        } catch (PresentationException e) {
+            showError(e.getMessage());
+        }
+    }
+
+    private void revokeSuspension(AdminUserRow user) {
+        try {
+            if (presenter != null) {
+                presenter.revokeSuspension(UiSession.getMemberToken(), user.id());
+            }
+            showSuccess("המשתמש הוחזר לפעילות בהצלחה");
+            loadInitialData();
+        } catch (PresentationException e) {
+            showError(e.getMessage());
         }
     }
 
@@ -466,10 +625,23 @@ public class SystemAdminDashboard extends Div {
             if (presenter != null) {
                 presenter.removeUserFromAllCompanies(UiSession.getMemberToken(), user.id());
             }
-
             showSuccess("המשתמש הוסר מכל החברות");
-        } catch (Exception exception) {
-            showError(exception.getMessage());
+            loadInitialData();
+        } catch (PresentationException e) {
+            showError(e.getMessage());
+        }
+    }
+
+    
+    private void deleteUser(AdminUserRow user) {
+        try {
+            if (presenter != null) {
+                presenter.deleteUser(UiSession.getMemberToken(), user.id());
+            }
+            showSuccess("המשתמש נמחק מהמערכת בהצלחה");
+            loadInitialData(); // ריענון הנתונים כדי להעלים את המשתמש מהטבלה
+        } catch (PresentationException e) {
+            showError(e.getMessage());
         }
     }
 
@@ -478,12 +650,37 @@ public class SystemAdminDashboard extends Div {
             if (presenter != null) {
                 presenter.closeCompany(UiSession.getMemberToken(), company.id());
             }
-
             allCompanies.removeIf(row -> Objects.equals(row.id(), company.id()));
             companiesGrid.setItems(allCompanies);
             showSuccess("החברה נסגרה בהצלחה");
-        } catch (Exception exception) {
-            showError(exception.getMessage());
+        } catch (PresentationException e) {
+            showError(e.getMessage());
+        }
+    }
+
+    private InputStream downloadEventLogsStream(String token) {
+        try {
+            if (presenter != null) {
+                List<String> logs = presenter.viewEventLogs(token);
+                String fileContent = String.join("\n", logs);
+                return new ByteArrayInputStream(fileContent.getBytes(StandardCharsets.UTF_8));
+            }
+            return new ByteArrayInputStream("Error: Presenter is not initialized.".getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            return new ByteArrayInputStream(("שגיאה בשליפת הלוגים: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private InputStream downloadErrorLogsStream(String token) {
+        try {
+            if (presenter != null) {
+                List<String> logs = presenter.viewErrorLogs(token);
+                String fileContent = String.join("\n", logs);
+                return new ByteArrayInputStream(fileContent.getBytes(StandardCharsets.UTF_8));
+            }
+            return new ByteArrayInputStream("Error: Presenter is not initialized.".getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            return new ByteArrayInputStream(("שגיאה בשליפת הלוגים: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
         }
     }
 
@@ -522,14 +719,20 @@ public class SystemAdminDashboard extends Div {
     }
 
     private void loadInitialData() {
-        // if (presenter == null) {
-        //     loadDemoData();
-        //     return;
-        // }
+        if (presenter == null) {
+            loadDemoData();
+            return;
+        }
 
         try {
             String token = UiSession.getMemberToken();
+            if (token == null || token.isBlank()) {
+                UI.getCurrent().navigate(UiRoutes.HOME);
+                return;
+            }
 
+            currentLoggedInAdminId = presenter.getCurrentAdminId(token);
+            
             allUsers.clear();
             allUsers.addAll(presenter.loadActiveUsers(token));
 
@@ -541,17 +744,31 @@ public class SystemAdminDashboard extends Div {
 
             userHistoryRows.clear();
             userHistoryRows.addAll(toUserHistoryRows(presenter.loadPurchaseHistoryByBuyer(token)));
+            
         } catch (Exception exception) {
-            showError(exception.getMessage());
-            loadDemoData();
+            // השרת זיהה שאין למשתמש הרשאות אדמין וזרק שגיאה.
+            // מרוקנים את כל הרשימות כדי שהמסך יהיה ריק לחלוטין
+            allUsers.clear();
+            allCompanies.clear();
+            companyHistoryRows.clear();
+            userHistoryRows.clear();
+
+            // מציגים הודעת שגיאה ברורה למשתמש שמסבירה גם את המעבר
+            showError("גישה נדחתה: אין לך הרשאות של מנהל מערכת. הנך מועבר/ת לעמוד הראשי.");
+
+            // עוקפים את מחזור החיים של Vaadin בעזרת השהייה של 2.5 שניות,
+            // כך שהמשתמש יספיק לקרוא את השגיאה ואז ייזרק החוצה בצורה חלקה.
+            if (UI.getCurrent() != null) {
+                UI.getCurrent().getPage().executeJs("setTimeout(() => { window.location.href = '/' }, 2500);");
+            }
         }
     }
 
     private void loadDemoData() {
         allUsers.clear();
-        allUsers.add(new AdminUserRow(101L, "noam@test.com", "נועם כהן", "פעיל", "עכשיו"));
-        allUsers.add(new AdminUserRow(102L, "maya@test.com", "מאיה לוי", "פעיל", "לפני 4 דקות"));
-        allUsers.add(new AdminUserRow(103L, "admin-watch@test.com", "חשבון בבדיקה", "פעיל", "לפני 12 דקות"));
+        allUsers.add(new AdminUserRow(101L, "noam@test.com", "נועם כהן", "פעיל"));
+        allUsers.add(new AdminUserRow(102L, "maya@test.com", "מאיה לוי", "פעיל"));
+        allUsers.add(new AdminUserRow(103L, "admin-watch@test.com", "חשבון בבדיקה", "פעיל"));
 
         allCompanies.clear();
         allCompanies.add(new CompanyTableRow(11L, "LiveNation Israel", 1L, "פעילה"));
@@ -815,8 +1032,7 @@ public class SystemAdminDashboard extends Div {
             Long id,
             String email,
             String displayName,
-            String status,
-            String lastSeen
+            String status
     ) {
     }
 
