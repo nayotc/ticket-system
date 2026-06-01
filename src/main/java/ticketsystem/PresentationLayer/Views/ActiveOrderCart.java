@@ -1,5 +1,6 @@
 package ticketsystem.PresentationLayer.Views;
 
+
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -13,6 +14,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.TicketDTO;
@@ -304,9 +306,18 @@ public class ActiveOrderCart extends VerticalLayout {
         try {
             presenter.removeTicketFromActiveOrder(resolveSessionToken(), activeOrder.getEventId(), ticket.getTicketId());
             loadCart();
+            refreshHeader();
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
+    }
+
+    private void refreshHeader() {
+        getParent()
+                .flatMap(Component::getParent)
+                .filter(PublicLayout.class::isInstance)
+                .map(PublicLayout.class::cast)
+                .ifPresent(PublicLayout::refreshHeader);
     }
 
     private void continueToCheckout() {

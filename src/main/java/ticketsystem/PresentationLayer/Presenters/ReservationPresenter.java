@@ -72,6 +72,26 @@ public class ReservationPresenter {
         }
     }
 
+    /**
+     * Returns the number of tickets in the current active order.
+     *
+     * This method is intended for lightweight presentation components such as
+     * the public header cart badge. If there is no active order, the badge should
+     * display zero.
+     *
+     * @param token active guest/member session token
+     * @return number of tickets in the current active order, or zero if none exists
+     */
+    public int getActiveCartItemsCount(String token) {
+        ActiveOrderDTO activeOrder = loadActiveOrder(token);
+
+        if (activeOrder == null || activeOrder.getTickets() == null) {
+            return 0;
+        }
+
+        return activeOrder.getTickets().size();
+    }
+
     public EventDTO loadEvent(String token, Long eventId) {
         try {
             if (token == null || token.isBlank()) {
@@ -632,25 +652,60 @@ public class ReservationPresenter {
         return switch (message) {
             case "No active session found. Please refresh and try again." ->
                     "לא נמצאה פעילות משתמש. יש לרענן את העמוד ולנסות שוב.";
+
             case "Event id is invalid.", "Event not found" ->
                     "לא ניתן למצוא את האירוע המבוקש.";
+
             case "Event map is not available.",
                  "Event data could not be loaded. Please try again." ->
                     "לא ניתן לטעון את מפת האירוע. יש לנסות שוב.";
+
             case "Area id is invalid." ->
                     "לא ניתן לבחור כרטיסים באזור זה.";
+
             case "Seat position is invalid." ->
                     "לא ניתן לבחור את המושב המבוקש.";
+
             case "Ticket quantity must be greater than zero.",
-                 "Quantity must be greater than zero" ->
+                 "Quantity must be greater than zero",
+                 "Quantity must be positive" ->
                     "יש לבחור לפחות כרטיס אחד.";
+
             case "No active order found for this event",
                  "No active order found" ->
                     "לא ניתן להוסיף את הכרטיסים להזמנה כרגע. יש לנסות שוב.";
+
+            case "An active order already exists for this user to another event" ->
+                    "כבר קיימת לך הזמנה פעילה לאירוע אחר. כדי לבחור כרטיסים לאירוע הזה, יש להשלים את ההזמנה הנוכחית או להסיר ממנה את כל הכרטיסים.";
+
+            case "Seat removal details are incomplete" ->
+                    "לא ניתן להסיר את הכרטיס מההזמנה. פרטי ההסרה אינם תקינים.";
+
+            case "Not enough standing tickets in the order to remove" ->
+                    "לא נמצאו מספיק כרטיסי עמידה להסרה מההזמנה.";
+
+            case "User is not allowed to view this order" ->
+                    "אין לך הרשאה לצפות בהזמנה הזו.";
+
+            case "No active order or event found",
+                 "No active order with tickets" ->
+                    "לא נמצאה הזמנה פעילה עם כרטיסים.";
+
+            case "Ticket quantity exceeds limit" ->
+                    "כמות הכרטיסים חורגת מהמגבלה המותרת להזמנה.";
+
+            case "Order is not active" ->
+                    "ההזמנה כבר אינה פעילה.";
+
+            case "Ticket event ID does not match order event ID" ->
+                    "לא ניתן להוסיף להזמנה כרטיסים מאירוע אחר.";
+
             case "Ticket selection failed. Please try again." ->
                     "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
+
             case "Ticket removal failed. Please try again." ->
                     "הסרת הכרטיסים נכשלה. יש לנסות שוב.";
+
             default ->
                     "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
         };
