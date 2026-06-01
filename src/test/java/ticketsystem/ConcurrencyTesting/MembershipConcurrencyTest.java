@@ -1,5 +1,6 @@
 package ticketsystem.ConcurrencyTesting;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -83,20 +84,20 @@ public class MembershipConcurrencyTest {
         companyRepository.save(company);
 
         // Setup Founder (Appointer 1) - Has version 0
-        Member founder = new Member(100L, "Founder", "Founder User", "0500000001");
+        Member founder = new Member(100L, "Founder", "Founder User", "0500000001",LocalDate.of(2001, 1, 1));
         founder.addFounderRole(companyId);
         userRepository.addRegisteredMember(100L, founder, "pass");
         founderToken = tokenService.addActiveSession(founder);
 
         // Setup active Owner (Appointer 2) - Has version 0
-        Member owner = new Member(101L, "Owner", "Owner User", "0500000002");
+        Member owner = new Member(101L, "Owner", "Owner User", "0500000002",LocalDate.of(2001, 1, 1));
         owner.addOwnerRole(companyId, 100L);
         owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(101L, owner, "pass");
         ownerToken = tokenService.addActiveSession(owner);
 
         // Setup Target Member - Starts with no roles, version 0
-        Member target = new Member(targetMemberId, targetMemberName, "Target User", "0500000003");
+        Member target = new Member(targetMemberId, "TargetUser", "Target User", "0500000003",LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(targetMemberId, target, "pass");
     }
 

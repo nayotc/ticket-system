@@ -1,6 +1,7 @@
 package ticketsystem.IntegrationTesting;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -54,7 +55,7 @@ public class UserOrderIntegrationTests {
                 "member",
                 "password",
                 "Test User",
-                "0500000000"
+                "0500000000",LocalDate.of(2001, 1, 1)
         );
         String memberToken = userService.login(guestToken, "member", "password");
         // doesn't have any orders
@@ -75,7 +76,7 @@ public class UserOrderIntegrationTests {
                 "member",
                 "password",
                 "Test User",
-                "0500000000"
+                "0500000000",LocalDate.of(2001, 1, 1)
         );
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");
@@ -104,7 +105,7 @@ public class UserOrderIntegrationTests {
                 "member",
                 "password",
                 "Test User",
-                "0500000000"
+                "0500000000",LocalDate.of(2001, 1, 1)
         );
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");
@@ -132,7 +133,7 @@ public class UserOrderIntegrationTests {
                 "member",
                 "password",
                 "Test User",
-                "0500000000"
+                "0500000000",LocalDate.of(2001, 1, 1)
         );
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");
@@ -169,7 +170,7 @@ public class UserOrderIntegrationTests {
                 "member",
                 "password",
                 "Test User",
-                "0500000000"
+                "0500000000",LocalDate.of(2001, 1, 1)
         );
         String memberToken = userService.login(guestToken, "member", "password");
         Member member = userRepository.getMemberByUsername("member");

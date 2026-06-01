@@ -1,5 +1,7 @@
 package ticketsystem.PresentationLayer.Presenters;
 
+import java.time.LocalDate;
+
 import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.UserService;
@@ -44,7 +46,7 @@ public class AuthPresenter {
         }
     }
 
-    public boolean signUp(String username, String password, String fullName, String phone) {
+    public boolean signUp(String username, String password, String fullName, String phone,LocalDate birthDate) {
         try {
             String guestToken = UiSession.getGuestToken();
 
@@ -52,7 +54,7 @@ public class AuthPresenter {
                 throw new PresentationException("Guest session is missing. Please refresh and try again.");
             }
 
-            userService.signUp(guestToken, username, password, fullName, phone);
+            userService.signUp(guestToken, username, password, fullName, phone,birthDate);
             return true;
 
         } catch (PresentationException e) {

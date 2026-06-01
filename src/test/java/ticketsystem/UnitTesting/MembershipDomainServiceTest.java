@@ -12,6 +12,7 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.*;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -36,8 +37,8 @@ public class MembershipDomainServiceTest {
         userRepository = new UserRepository();
         domainService = new MembershipDomainService(userRepository);
 
-        appointingMember = new Member(100L, "AppointerUser", "Appointer User", "0500000001");
-        targetMember = new Member(200L, "TargetMemberUser", "Target Member User", "0500000002"); // Kept blank for UC
+        appointingMember = new Member(100L, "AppointerUser", "Appointer User", "0500000001",LocalDate.of(2001, 1, 1));
+        targetMember = new Member(200L, "TargetMemberUser", "Target Member User", "0500000002",LocalDate.of(2001, 1, 1)); // Kept blank for UC
                                                                                                  // 4.7 & 4.8
 
         userRepository.addRegisteredMember(100L, appointingMember, "password123");
@@ -51,7 +52,7 @@ public class MembershipDomainServiceTest {
         }
 
         // Setup a pre-existing Owner specifically for UC 4.9 & 4.10 tests
-        existingOwner = new Member(existingOwnerId, "ExistingOwner", "Existing Owner", "0500000003");
+        existingOwner = new Member(existingOwnerId, "ExistingOwner", "Existing Owner", "0500000003",LocalDate.of(2001, 1, 1));
         existingOwner.addOwnerRole(companyId, 100L); // Appointed by appointingMember
         existingOwner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(existingOwnerId, existingOwner, "password123");
@@ -573,7 +574,7 @@ public class MembershipDomainServiceTest {
         appointingMember.addFounderRole(companyId);
         userRepository.updateMember(appointingMember);
 
-        Member fakeAppointing = new Member(999L, "FakeAppointer", "Fake Appointer", "0500000004");
+        Member fakeAppointing = new Member(999L, "FakeAppointer", "Fake Appointer", "0500000004",LocalDate.of(2001, 1, 1));
         fakeAppointing.addFounderRole(companyId);
         userRepository.addRegisteredMember(999L, fakeAppointing, "password123");
 
@@ -646,7 +647,7 @@ public class MembershipDomainServiceTest {
         targetMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.updateMember(targetMember);
 
-        Member sub = new Member(400L, "SubManager", "Sub Manager", "0500000005");
+        Member sub = new Member(400L, "SubManager", "Sub Manager", "0500000005",LocalDate.of(2001, 1, 1));
         sub.addManagerRole(companyId, 200L, new java.util.HashSet<>());
         userRepository.addRegisteredMember(400L, sub, "pass");
 

@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +47,7 @@ public class OrderServiceAcceptanceTest {
 
         // create real user sessions
         ticketsystem.DomainLayer.user.Guest guest = new ticketsystem.DomainLayer.user.Guest();
-        ticketsystem.DomainLayer.user.Member member = new ticketsystem.DomainLayer.user.Member(userId, "user", "full", "phone");
+        ticketsystem.DomainLayer.user.Member member = new ticketsystem.DomainLayer.user.Member(userId, "user", "full", "phone",LocalDate.of(2001, 1, 1));
 
         guestToken = tokenService.addActiveSession(guest);
         memberToken = tokenService.addActiveSession(member);

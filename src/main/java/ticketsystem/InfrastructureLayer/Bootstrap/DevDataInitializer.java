@@ -3,6 +3,7 @@ package ticketsystem.InfrastructureLayer.Bootstrap;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 // Spring Boot imports
@@ -106,7 +107,7 @@ public class DevDataInitializer implements CommandLineRunner {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000");
+        userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000", LocalDate.of(2001, 1, 1));
 
         System.out.println("Dev user created:");
         System.out.println("username: " + TEST_USERNAME);
@@ -120,7 +121,7 @@ public class DevDataInitializer implements CommandLineRunner {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, FOUNDER_USERNAME, FOUNDER_PASSWORD, "Test Founder", "0500000001");
+        userService.signUp(guestToken, FOUNDER_USERNAME, FOUNDER_PASSWORD, "Test Founder", "0500000001",LocalDate.of(2001, 1, 1));
 
         System.out.println("Dev founder created:");
         System.out.println("username: " + FOUNDER_USERNAME);
@@ -133,12 +134,12 @@ public class DevDataInitializer implements CommandLineRunner {
     private void createAdditionalTeamMembers() {
         if (!userRepository.isUsernameTaken(MANAGER_USERNAME)) {
             String guestToken = userService.visitSystem();
-            userService.signUp(guestToken, MANAGER_USERNAME, "123456", "Test Manager", "0500000002");
+            userService.signUp(guestToken, MANAGER_USERNAME, "123456", "Test Manager", "0500000002",LocalDate.of(2001, 1, 1));
             System.out.println("Additional team member created: " + MANAGER_USERNAME);
         }
         if (!userRepository.isUsernameTaken(OWNER_USERNAME)) {
             String guestToken = userService.visitSystem();
-            userService.signUp(guestToken, OWNER_USERNAME, "123456", "Test Owner", "0500000003");
+            userService.signUp(guestToken, OWNER_USERNAME, "123456", "Test Owner", "0500000003",LocalDate.of(2001, 1, 1));
             System.out.println("Additional team member created: " + OWNER_USERNAME);
         }
     }
@@ -326,12 +327,12 @@ public class DevDataInitializer implements CommandLineRunner {
         PurchaseDTO ticket1 = new PurchaseDTO(100L, 1, 12, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-123");
         PurchaseDTO ticket2 = new PurchaseDTO(101L, 1, 13, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-124");
         
-        OrderDTO order1 = new OrderDTO(8492L, List.of(ticket1, ticket2), "פסטיבל אורות הלילה", "תל אביב", buyerId, TEST_COMPANY_ID, founderId, 91L);
+        OrderDTO order1 = new OrderDTO(8492L, List.of(ticket1, ticket2), "פסטיבל אורות הלילה", "תל אביב", buyerId, TEST_COMPANY_ID, founderId, 91L,new BigDecimal(100));
         historyService.onOrderCompleted(order1);
 
         // Transaction 2: 1 Ticket bought by the regular test member, managed by the Founder
         PurchaseDTO ticket3 = new PurchaseDTO(102L, 2, 5, BigDecimal.valueOf(120), "ACTIVE", "BARCODE-125");
-        OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, TEST_COMPANY_ID, founderId, 92L);
+        OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, TEST_COMPANY_ID, founderId, 92L,new BigDecimal(100));
         historyService.onOrderCompleted(order2);
         
         System.out.println("Test sales data generated successfully. Buyer: " + TEST_USERNAME + ", Founder: " + FOUNDER_USERNAME);
@@ -362,7 +363,7 @@ public class DevDataInitializer implements CommandLineRunner {
                 REPORT_MANAGER_USERNAME,
                 REPORT_MANAGER_PASSWORD,
                 "Report Manager",
-                "0500000002"
+                "0500000002",LocalDate.of(2001, 1, 1)
         );
 
         Member manager = userRepository.getMemberByUsername(REPORT_MANAGER_USERNAME);
