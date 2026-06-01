@@ -1,5 +1,6 @@
 package ticketsystem.ConcurrencyTesting;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import static java.util.Collections.synchronizedList;
 import java.util.HashSet;
@@ -106,7 +107,7 @@ public class UserServiceTest {
                                 "user" + userId,
                                 "password" + userId,
                                 "Test User " + userId,
-                                "0500000000"
+                                "0500000000",LocalDate.of(2001, 1, 1)
                         );
                     } catch (IllegalArgumentException e) {
                         if (!"Username is already taken.".equals(e.getMessage())) {
@@ -153,7 +154,7 @@ public class UserServiceTest {
                 "username",
                 "password",
                 "Test User",
-                "0500000000"
+                "0500000000",LocalDate.of(2001, 1, 1)
         );
         // Act: simulate 100 login attempts for the same user concurrently
         for (int i = 0; i < numberOfThreads; i++) {
@@ -201,7 +202,7 @@ public class UserServiceTest {
                     "user" + i,
                     "password" + i,
                     "Test User " + i,
-                    "0500000000"
+                    "0500000000",LocalDate.of(2001, 1, 1)
             ));
             memberTokens[i] = userService.login(guestToken, "user" + i, "password" + i);
             assertNotNull(memberTokens[i], "Login should succeed for user" + i);
@@ -218,13 +219,18 @@ public class UserServiceTest {
         for (int i = 0; i < numberOfThreads; i++) {
             final int userIndex = i;
             executor.submit(() -> {
-                try {
+            try {
                     startLatch.await();
                     userService.updateMemberUsername(memberTokens[userIndex], "password" + userIndex,
                             "user" + userIndex, collisionUsername);
                 } catch (IllegalArgumentException e) {
                     // Expected for users who lose the race after another thread already took the username.
                     if (!"Username is already taken.".equals(e.getMessage())) {
+                        exceptions.add(e);
+                    }
+                } catch (IllegalStateException e) {
+                    // Expected for users who lose the race due to system concurrency protection / locking.
+                    if (!"Username update failed. Please try again.".equals(e.getMessage())) {
                         exceptions.add(e);
                     }
                 } catch (Throwable t) {

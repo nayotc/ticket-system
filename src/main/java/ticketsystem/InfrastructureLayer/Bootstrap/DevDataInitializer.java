@@ -1,27 +1,56 @@
 package ticketsystem.InfrastructureLayer.Bootstrap;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.EnumSet;
+import java.time.LocalDate;
 import java.util.List;
-
+import java.util.Set;
+// Spring Boot imports
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import org.springframework.core.annotation.Order;
 
+//Services
 import ticketsystem.ApplicationLayer.CompanyService;
-import ticketsystem.ApplicationLayer.HistoryService;
+import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.ApplicationLayer.UserService;
+import ticketsystem.ApplicationLayer.HistoryService;
+import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.MembershipService;
+import ticketsystem.ApplicationLayer.PurchasePolicyMapper;
+// Repositories
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+// DTOs
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
-import ticketsystem.DomainLayer.IRepository.IUserRepository;
+// Domain Entities
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DTO.PurchasePolicyDTO;
+import ticketsystem.DTO.PurchaseRuleDTO;
+import ticketsystem.DTO.PurchaseRuleType;
+import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventLocation;
+import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
+import java.util.Set;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
+import ticketsystem.DomainLayer.user.Permission;
 
 @Component
 @Profile("dev")
+@Order(1)
 public class DevDataInitializer implements CommandLineRunner {
 
     private static final String TEST_USERNAME = "test@test.com";
@@ -29,30 +58,48 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private static final String FOUNDER_USERNAME = "founder@test.com";
     private static final String FOUNDER_PASSWORD = "123456";
+
+    private static final String MANAGER_USERNAME = "manager@test.com";
+    private static final String OWNER_USERNAME = "owner@test.com";
     
     private static final long TEST_COMPANY_ID = 1L;
     private static final String COMPANY_NAME = "TixNow Productions"; 
+
+    private static final String REPORT_MANAGER_USERNAME = "report@test.com";
+    private static final String REPORT_MANAGER_PASSWORD = "123456";
     
+    private final ITokenService tokenService;
     private final UserService userService;
     private final IUserRepository userRepository;
+    private final MembershipService membershipService;
     private final CompanyService companyService;
     private final ICompanyRepository companyRepository;
     private final HistoryService historyService;
+    private final EventService eventService;
+    private final IEventRepository eventRepository;
 
 
-    public DevDataInitializer(UserService userService, IUserRepository userRepository, CompanyService companyService, ICompanyRepository companyRepository, HistoryService historyService) {
+    public DevDataInitializer(ITokenService tokenService, UserService userService, IUserRepository userRepository, MembershipService membershipService, CompanyService companyService, ICompanyRepository companyRepository, HistoryService historyService, EventService eventService, IEventRepository eventRepository) {
+        this.tokenService = tokenService;
         this.userService = userService;
         this.userRepository = userRepository;
+        this.membershipService = membershipService;
         this.companyService = companyService;
         this.companyRepository = companyRepository;
         this.historyService = historyService;
+        this.eventService = eventService;
+        this.eventRepository = eventRepository;
     }
 
-    public void run(String... args) {
+    public void run(String... args) throws Exception {
         createTestMember();               // 1. Create the regular buyer member
         createTestFounder();              // 2. Create the company founder member
-        createTestCompany();              // 3. Create the production company owned by the founder
-        createTestSalesData();            // 4. Generate transactions where test user is the buyer
+        createAdditionalTeamMembers();    // 3. Create extra members for management testing
+        createTestCompany();              // 4. Create the main production company 
+        createReportOnlyManager();  
+        assignTeamRoles();                // 5. Assign Owner, Manager, and Pending roles to members
+        createTestEvents();               // 6. Create actual Events in the system (Matching the mock sales)
+        createTestSalesData();            // 7. Generate transactions where test user is the buyer
     }
 
     private void createTestMember() {
@@ -62,7 +109,7 @@ public class DevDataInitializer implements CommandLineRunner {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000");
+        userService.signUp(guestToken, TEST_USERNAME, TEST_PASSWORD, "Test User", "0500000000", LocalDate.of(2001, 1, 1));
 
         System.out.println("Dev user created:");
         System.out.println("username: " + TEST_USERNAME);
@@ -76,7 +123,7 @@ public class DevDataInitializer implements CommandLineRunner {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, FOUNDER_USERNAME, FOUNDER_PASSWORD, "Test Founder", "0500000001");
+        userService.signUp(guestToken, FOUNDER_USERNAME, FOUNDER_PASSWORD, "Test Founder", "0500000001",LocalDate.of(2001, 1, 1));
 
         System.out.println("Dev founder created:");
         System.out.println("username: " + FOUNDER_USERNAME);
@@ -84,7 +131,24 @@ public class DevDataInitializer implements CommandLineRunner {
     }
 
     /**
-     * Creates the actual production company in the system owned by the founder.
+     * Creates additional members to populate the team management UI table.
+     */
+    private void createAdditionalTeamMembers() {
+        if (!userRepository.isUsernameTaken(MANAGER_USERNAME)) {
+            String guestToken = userService.visitSystem();
+            userService.signUp(guestToken, MANAGER_USERNAME, "123456", "Test Manager", "0500000002",LocalDate.of(2001, 1, 1));
+            System.out.println("Additional team member created: " + MANAGER_USERNAME);
+        }
+        if (!userRepository.isUsernameTaken(OWNER_USERNAME)) {
+            String guestToken = userService.visitSystem();
+            userService.signUp(guestToken, OWNER_USERNAME, "123456", "Test Owner", "0500000003",LocalDate.of(2001, 1, 1));
+            System.out.println("Additional team member created: " + OWNER_USERNAME);
+        }
+    }
+
+    /**
+     * New function: Configures the test user as the Founder of the company.
+     * This is critical so that HistoryService allows them to generate the sales report.
      */
     private void createTestCompany() {
         System.out.println("Creating test production company...");
@@ -94,10 +158,155 @@ public class DevDataInitializer implements CommandLineRunner {
         userRepository.updateMember(founder);
 
         Company company = new Company(COMPANY_NAME, founder.getId(), PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
-        company.setId(TEST_COMPANY_ID); 
+        try {
+            company.setId(TEST_COMPANY_ID); 
+        } catch (Exception e) {}
+        
+        // קריאה לפונקציית העזר החדשה שמלבישה את נתוני הדמה של המדיניות
+        setupMockPolicies(company);
+
+        // שמירת החברה (עם המדיניות שעודכנה) למסד הנתונים
         companyRepository.save(company); 
         
         System.out.println("Test company created: " + company.getName() + " [ID: " + company.getId() + "] owned by Founder ID: " + founder.getId());
+    }
+
+    /**
+     * פונקציית עזר להגדרת נתוני דמה של מדיניות רכישה והנחות עבור חברה ספציפית.
+     * ניתן לערוך, להוסיף או להסיר חוקים מכאן בחופשיות לצורכי בדיקות ממשק משתמש.
+     */
+    private void setupMockPolicies(Company company) {
+        System.out.println("Setting up mock discount and purchase policies...");
+        
+        // --- אתחול מדיניות הנחות דמו ---
+        try {
+            // הנחה רגילה (10%)
+            company.addVisibleDiscountToCompany("הנחת השקה", BigDecimal.valueOf(10));
+            // הנחת קופון (20%) לחודש הקרוב
+            company.addCouponDiscountToCompany("קופון קיץ", "SUMMER26", BigDecimal.valueOf(20), LocalDateTime.now().plusMonths(1));
+            // הנחה מותנית (15%) על רכישה של מינימום 4 כרטיסים
+            company.addConditionalDiscountToCompany("הנחת כמות", null, null, BigDecimal.valueOf(15), Condition.MIN_TICKET, 4);
+        } catch (Exception e) {
+            System.out.println("Failed to setup mock discount policy: " + e.getMessage());
+        }
+
+        // --- אתחול מדיניות רכישה דמו ---
+        try {
+            // חוק 1: גיל מינימלי 18
+            PurchaseRuleDTO ageRule = new PurchaseRuleDTO();
+            ageRule.setType(PurchaseRuleType.MIN_AGE);
+            ageRule.setValue(18);
+
+            // חוק 2: מקסימום 5 כרטיסים לרוכש
+            PurchaseRuleDTO limitRule = new PurchaseRuleDTO();
+            limitRule.setType(PurchaseRuleType.MAX_TICKETS);
+            limitRule.setValue(5);
+
+            // עץ רכישה: חוק 1 "וגם" (AND) חוק 2
+            PurchaseRuleDTO rootRule = new PurchaseRuleDTO();
+            rootRule.setType(PurchaseRuleType.AND);
+            rootRule.setChildren(List.of(ageRule, limitRule));
+            rootRule.setValue(0);
+
+            // המרה ושמירה בחברה באמצעות ה-Mapper
+            PurchasePolicyDTO policyDTO = new PurchasePolicyDTO(rootRule);
+            ticketsystem.ApplicationLayer.PurchasePolicyMapper mapper = new ticketsystem.ApplicationLayer.PurchasePolicyMapper();
+            company.setPurchasePolicy(mapper.toDomain(policyDTO));
+            
+        } catch (Exception e) {
+            System.out.println("Failed to setup mock purchase policy: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Assigns Manager and Owner roles to the additional members for the main company,
+     * including a PENDING role to test the pending assignments counter in the UI.
+     */
+    private void assignTeamRoles() {
+        System.out.println("Assigning team roles for UI testing...");
+        
+        Member founder = (Member) userRepository.getMemberByUsername(FOUNDER_USERNAME);
+        Member manager = (Member) userRepository.getMemberByUsername(MANAGER_USERNAME);
+        Member owner = (Member) userRepository.getMemberByUsername(OWNER_USERNAME);
+        Member pendingUser = (Member) userRepository.getMemberByUsername(TEST_USERNAME);
+
+        Founder founderRole = (Founder) founder.getRoleInCompany(TEST_COMPANY_ID);
+
+        // 1. Assign an active Owner role
+        owner.addOwnerRole(TEST_COMPANY_ID, founder.getId());
+        CompanyRole ownerRole = owner.getRoleInCompany(TEST_COMPANY_ID);
+        ownerRole.activate(); // Force activate for testing purposes
+        founderRole.addAppointee(owner.getId());
+        userRepository.updateMember(owner);
+
+        // 2. Assign an active Manager role with specific permissions
+        Set<Permission> managerPerms = EnumSet.of(Permission.MANAGE_EVENT_INVENTORY, Permission.MANAGE_INQUIRIES);
+        manager.addManagerRole(TEST_COMPANY_ID, founder.getId(), managerPerms);
+        CompanyRole managerRole = manager.getRoleInCompany(TEST_COMPANY_ID);
+        managerRole.activate(); // Force activate for testing purposes
+        founderRole.addAppointee(manager.getId());
+        userRepository.updateMember(manager);
+
+        // 3. Assign a Pending Manager role (Do NOT activate)
+        // This ensures state.stats().pendingAssignments() returns > 0 in the UI
+        Set<Permission> pendingPerms = EnumSet.of(Permission.VIEW_PURCHASE_HISTORY);
+        pendingUser.addManagerRole(TEST_COMPANY_ID, founder.getId(), pendingPerms);
+        userRepository.updateMember(pendingUser);
+
+        // Update the founder to persist the new appointees list
+        userRepository.updateMember(founder);
+        
+        System.out.println("Team roles assigned successfully.");
+    }
+
+    /**
+     * Creates real Event domain entities that match the mock sales data below.
+     * This ensures the UI can pull real event details from the repository.
+     */
+    private void createTestEvents() {
+        System.out.println("Creating test events for company ID " + TEST_COMPANY_ID + "...");
+
+        Member founder = (Member) userRepository.getMemberByUsername(FOUNDER_USERNAME);
+        
+        // 1. Event: Night Lights Festival (Matches Order #8492)
+        Event event1 = new Event(
+                91L, 
+                LocalDateTime.now().plusDays(30), 
+                "פסטיבל אורות הלילה", 
+                TEST_COMPANY_ID, 
+                founder.getId(), 
+                EventLocation.JERUSALEM,
+                1000L, 
+                EventCategory.CONCERT,
+                "אומנים שונים", 
+                BigDecimal.valueOf(180), 
+                new Pair<>(10, 20)
+        );
+        event1.setStatus(Event.eventStatus.ACTIVE);
+        // If you have an OPEN status in SaleStatus enum, you can uncomment and adjust the line below:
+        // event1.setSaleStatus(SaleStatus.OPEN);
+        eventRepository.addEvent(event1);
+
+        // 2. Event: Rock Concert (Matches Order #8491)
+        Event event2 = new Event(
+                92L, 
+                LocalDateTime.now().plusDays(45), 
+                "הופעת רוק במדבר", 
+                TEST_COMPANY_ID, 
+                founder.getId(), 
+                EventLocation.BEER_SHEVA,
+                500L, 
+                EventCategory.OTHER,
+                "להקת המדבר", 
+                BigDecimal.valueOf(120), 
+                new Pair<>(10, 10)
+        );
+        event2.setStatus(Event.eventStatus.ACTIVE);
+        // If you have an OPEN status in SaleStatus enum, you can uncomment and adjust the line below:
+        // event2.setSaleStatus(SaleStatus.OPEN);
+        eventRepository.addEvent(event2);
+        
+        System.out.println("Test events generated successfully.");
     }
 
     /**
@@ -120,12 +329,12 @@ public class DevDataInitializer implements CommandLineRunner {
         PurchaseDTO ticket1 = new PurchaseDTO(100L, 1, 12, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-123");
         PurchaseDTO ticket2 = new PurchaseDTO(101L, 1, 13, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-124");
         
-        OrderDTO order1 = new OrderDTO(8492L, List.of(ticket1, ticket2), "פסטיבל אורות הלילה", "תל אביב", buyerId, TEST_COMPANY_ID, founderId, 91L);
+        OrderDTO order1 = new OrderDTO(8492L, List.of(ticket1, ticket2), "פסטיבל אורות הלילה", "תל אביב", buyerId, TEST_COMPANY_ID, founderId, 91L,new BigDecimal(100));
         historyService.onOrderCompleted(order1);
 
         // Transaction 2: 1 Ticket bought by the regular test member, managed by the Founder
         PurchaseDTO ticket3 = new PurchaseDTO(102L, 2, 5, BigDecimal.valueOf(120), "ACTIVE", "BARCODE-125");
-        OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, TEST_COMPANY_ID, founderId, 92L);
+        OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, TEST_COMPANY_ID, founderId, 92L,new BigDecimal(100));
         historyService.onOrderCompleted(order2);
         
         System.out.println("Test sales data generated successfully. Buyer: " + TEST_USERNAME + ", Founder: " + FOUNDER_USERNAME);
@@ -142,6 +351,38 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println(" -> EXPECTED REPORT TOTALS: 3 Tickets Sold | Total Revenue: 480.00 NIS");
         System.out.println("=========================================================================");
         System.out.println();
+    }
+
+    private void createReportOnlyManager() {
+        if (userRepository.isUsernameTaken(REPORT_MANAGER_USERNAME)) {
+            System.out.println("Dev report manager already exists: " + REPORT_MANAGER_USERNAME);
+            return;
+        }
+
+        String guestToken = userService.visitSystem();
+        userService.signUp(
+                guestToken,
+                REPORT_MANAGER_USERNAME,
+                REPORT_MANAGER_PASSWORD,
+                "Report Manager",
+                "0500000002",LocalDate.of(2001, 1, 1)
+        );
+
+        Member manager = userRepository.getMemberByUsername(REPORT_MANAGER_USERNAME);
+
+        manager.addManagerRole(
+                TEST_COMPANY_ID,
+                manager.getId(),
+                Set.of(Permission.GENERATE_SALES_REPORT)
+        );
+
+        manager.getRoleInCompany(TEST_COMPANY_ID).setStatus(RoleStatus.ACTIVE);
+
+        userRepository.updateMember(manager);
+
+        System.out.println("Dev report-only manager created:");
+        System.out.println("username: " + REPORT_MANAGER_USERNAME);
+        System.out.println("password: " + REPORT_MANAGER_PASSWORD);
     }
 
 }

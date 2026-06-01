@@ -36,7 +36,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
     private MembershipDomainService membershipDomainService;
     private ISystemLogger logger;
     private final UserAccessService userAccessService;
-    private final INotifier notificationsService; 
+    private final INotifier notificationsService;
 
     @Autowired
     public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger, UserAccessService userAccessService, INotifier notificationsService) {

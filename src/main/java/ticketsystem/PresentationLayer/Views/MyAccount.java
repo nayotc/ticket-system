@@ -3,6 +3,7 @@ package ticketsystem.PresentationLayer.Views;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -15,10 +16,15 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+
+import ticketsystem.DTO.MemberDTO;
+import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.PresentationLayer.Components.AppCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.StatusBadge;
@@ -26,6 +32,7 @@ import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Presenters.MyAccountPresenter;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -42,13 +49,13 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
 
     private MyAccountPresenter presenter;
 
-    private final Span avatarInitials = new Span("מש");
+    private  Span avatarInitials = new Span("מש");
     private final H3 profileName = new H3("משתמש מערכת");
 
     private final TextField fullNameField = new TextField("שם מלא");
     private final EmailField emailField = new EmailField("כתובת אימייל");
     private final TextField phoneField = new TextField("מספר טלפון");
-    private final TextField usernameField = new TextField("שם משתמש");
+    //private final TextField usernameField = new TextField("שם משתמש");
     private final PasswordField currentPasswordField = new PasswordField("סיסמה נוכחית");
     private final PasswordField newPasswordField = new PasswordField("סיסמה חדשה");
     private final PasswordField confirmPasswordField = new PasswordField("אימות סיסמה חדשה");
@@ -56,9 +63,10 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
     private final Grid<MyPurchaseRow> historyGrid = new Grid<>(MyPurchaseRow.class, false);
     private final Div emptyHistoryState = new Div();
 
-    public MyAccount() {
+    public MyAccount(MyAccountPresenter presenter) {
+        this.presenter = presenter;
         addClassName("my-account-page");
-
+        
         configureFields();
         configureHistoryGrid();
 
@@ -69,9 +77,6 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
                 ),
                 createContent()
         );
-
-        showDemoProfile();
-        showDemoHistory();
     }
 
     @Override
@@ -82,6 +87,7 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
         //}
 
         loadDataFromPresenter();
+
     }
 
     public void setPresenter(MyAccountPresenter presenter) {
@@ -129,8 +135,8 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
                 fullNameField,
                 emailField,
                 phoneField,
-                usernameField,
-                currentPasswordField,
+                //usernameField,
+               // currentPasswordField,
                 newPasswordField,
                 confirmPasswordField,
                 saveButton
@@ -175,31 +181,32 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
         return card;
     }
 
-    private void configureFields() {
-        fullNameField.setPlaceholder("לדוגמה: ישראל ישראלי");
-        emailField.setPlaceholder("name@example.com");
-        phoneField.setPlaceholder("050-0000000");
-        usernameField.setPlaceholder("שם המשתמש במערכת");
+private void configureFields() {
+    fullNameField.setPlaceholder("לדוגמה: ישראל ישראלי");
+    emailField.setPlaceholder("name@example.com");
+    phoneField.setPlaceholder("050-0000000");
 
-        currentPasswordField.setPlaceholder("נדרש לשמירת שינויי חשבון");
-        newPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
-        confirmPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
+    newPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
+    confirmPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
 
-        fullNameField.addClassName("my-account-field");
-        emailField.addClassName("my-account-field");
-        phoneField.addClassName("my-account-field");
-        usernameField.addClassName("my-account-field");
-        currentPasswordField.addClassName("my-account-field");
-        newPasswordField.addClassName("my-account-field");
-        confirmPasswordField.addClassName("my-account-field");
+    newPasswordField.clear();
+    confirmPasswordField.clear();
 
-        emailField.getElement().setAttribute("dir", "ltr");
-        phoneField.getElement().setAttribute("dir", "ltr");
+    newPasswordField.getElement().setAttribute("autocomplete", "new-password");
+    confirmPasswordField.getElement().setAttribute("autocomplete", "new-password");
 
-        emailField.getElement().getStyle().set("text-align", "right");
-        phoneField.getElement().getStyle().set("text-align", "right");
-    }
+    fullNameField.addClassName("my-account-field");
+    emailField.addClassName("my-account-field");
+    phoneField.addClassName("my-account-field");
+    newPasswordField.addClassName("my-account-field");
+    confirmPasswordField.addClassName("my-account-field");
 
+    emailField.getElement().setAttribute("dir", "ltr");
+    phoneField.getElement().setAttribute("dir", "ltr");
+
+    emailField.getElement().getStyle().set("text-align", "right");
+    phoneField.getElement().getStyle().set("text-align", "right");
+}
     private void configureHistoryGrid() {
         historyGrid.addClassName("my-account-history-grid");
         historyGrid.setWidthFull();
@@ -207,11 +214,6 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
 
         historyGrid.addColumn(MyPurchaseRow::getPurchaseId)
                 .setHeader("מס' הזמנה")
-                .setAutoWidth(true)
-                .setFlexGrow(0);
-
-        historyGrid.addColumn(MyPurchaseRow::getPurchaseDate)
-                .setHeader("תאריך רכישה")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
 
@@ -235,10 +237,18 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
                 .setAutoWidth(true)
                 .setFlexGrow(0);
 
-        historyGrid.addComponentColumn(this::createPurchaseAction)
-                .setHeader("")
-                .setAutoWidth(true)
-                .setFlexGrow(0);
+        historyGrid.setItemDetailsRenderer(
+                new ComponentRenderer<>(this::createTicketsDetails)
+        );
+
+        historyGrid.addComponentColumn(order -> {
+            Button button = new Button("צפה", VaadinIcon.EYE.create());
+            button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+            button.addClickListener(e ->
+                    historyGrid.setDetailsVisible(order, !historyGrid.isDetailsVisible(order))
+            );
+            return button;
+        }).setHeader("");
     }
 
     private Button createPurchaseAction(MyPurchaseRow row) {
@@ -246,13 +256,9 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
         button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         button.addClassName("my-account-table-action");
 
-        button.addClickListener(event -> {
-            if (presenter == null) {
-                return;
-            }
-
-            presenter.openPurchaseDetails(row.getPurchaseId());
-        });
+        button.addClickListener(event ->
+                historyGrid.setDetailsVisible(row, !historyGrid.isDetailsVisible(row))
+        );
 
         return button;
     }
@@ -266,64 +272,103 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
             showError("הסיסמה החדשה ואימות הסיסמה אינם זהים.");
             return;
         }
+        openPasswordConfirmationDialog();
+
+    }
+
+private void openPasswordConfirmationDialog() {
+    Dialog dialog = new Dialog();
+    dialog.setHeaderTitle("אימות פעולה");
+
+    PasswordField passwordField = new PasswordField("סיסמה נוכחית");
+    passwordField.setWidthFull();
+    passwordField.setRevealButtonVisible(false);
+    passwordField.clear();
+    passwordField.getElement().setAttribute("autocomplete", "current-password");
+
+    Button confirmButton = new Button("אישור", event -> {
+        if (passwordField.getValue() == null || passwordField.getValue().isBlank()) {
+            showError("יש להזין סיסמה נוכחית");
+            return;
+        }
 
         AccountProfileEditData data = new AccountProfileEditData(
                 fullNameField.getValue(),
                 emailField.getValue(),
                 phoneField.getValue(),
-                usernameField.getValue(),
-                currentPasswordField.getValue(),
+                passwordField.getValue(),
                 newPasswordField.getValue()
         );
 
         try {
             presenter.updatePersonalDetails(UiSession.getMemberToken(), data);
 
-            currentPasswordField.clear();
             newPasswordField.clear();
             confirmPasswordField.clear();
-
-            profileName.setText(data.fullName().isBlank() ? data.username() : data.fullName());
-            avatarInitials.setText(createInitials(profileName.getText()));
+            passwordField.clear();
 
             showSuccess("הפרטים עודכנו בהצלחה.");
+            dialog.close();
+            loadDataFromPresenter();
+
         } catch (RuntimeException ex) {
             showError(ex.getMessage() == null ? "שמירת הפרטים נכשלה." : ex.getMessage());
         }
-    }
+    });
 
+    confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+    Button cancelButton = new Button("ביטול", event -> {
+        passwordField.clear();
+        dialog.close();
+    });
+
+    dialog.add(passwordField);
+    dialog.getFooter().add(cancelButton, confirmButton);
+    dialog.open();
+}
     private void loadDataFromPresenter() {
         if (presenter == null || UiSession.getMemberToken() == null) {
             return;
         }
 
         try {
-            AccountProfileViewData profile = presenter.loadProfile(UiSession.getMemberToken());
-            if (profile != null) {
-                setProfile(profile);
+            MyAccountDTO member = presenter.loadProfile(UiSession.getMemberToken());
+            if (member != null) {
+                setProfile(new AccountProfileViewData(
+                        member.getEmail(),
+                        member.getFullName(),
+                        member.getEmail(),
+                        member.getPhone(),member.getBirthDate()
+                ));
+               // avatarInitials = new Span(member.getFullName());
             }
 
             List<OrderDTO> orders = presenter.loadPurchaseHistory(UiSession.getMemberToken());
+           
             setPurchaseHistory(orders);
+
         } catch (RuntimeException ex) {
             showError(ex.getMessage() == null ? "טעינת האזור האישי נכשלה." : ex.getMessage());
         }
     }
 
-    public void setProfile(AccountProfileViewData profile) {
-        fullNameField.setValue(nullToEmpty(profile.fullName()));
-        emailField.setValue(nullToEmpty(profile.email()));
-        phoneField.setValue(nullToEmpty(profile.phone()));
-        usernameField.setValue(nullToEmpty(profile.username()));
 
-        String displayName = !nullToEmpty(profile.fullName()).isBlank()
-                ? profile.fullName()
-                : profile.username();
+public void setProfile(AccountProfileViewData profile) {
+    fullNameField.setValue(nullToEmpty(profile.fullName()));
+    emailField.setValue(nullToEmpty(profile.email()));
+    phoneField.setValue(nullToEmpty(profile.phone()));
 
-        profileName.setText(nullToEmpty(displayName));
-        avatarInitials.setText(createInitials(displayName));
-    }
+    newPasswordField.clear();
+    confirmPasswordField.clear();
 
+    String displayName = !nullToEmpty(profile.fullName()).isBlank()
+            ? profile.fullName()
+            : profile.username();
+
+    profileName.setText(nullToEmpty(displayName));
+    avatarInitials.setText(createInitials(displayName));
+}
     public void setPurchaseHistory(List<OrderDTO> orders) {
         List<MyPurchaseRow> rows = orders == null
                 ? List.of()
@@ -370,35 +415,19 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
                 asText(readRaw(order, "status", "orderStatus", "purchaseStatus")),
                 "הושלם"
         );
+        List<PurchaseDTO> ticketsList =order.getTickets() == null ? List.of() : order.getTickets();
 
         return new MyPurchaseRow(
                 "#" + purchaseId,
-                date,
                 eventName,
                 tickets,
                 total,
                 translateStatus(status),
                 statusType(status),
-                "צפה"
+                "צפה",ticketsList
         );
     }
 
-    private void showDemoProfile() {
-        setProfile(new AccountProfileViewData(
-                "israel",
-                "ישראל ישראלי",
-                "israel@example.co.il",
-                "050-1234567"
-        ));
-    }
-
-    private void showDemoHistory() {
-        setHistoryRows(List.of(
-                new MyPurchaseRow("#TX-98231", "12.10.2024", "פסטיבל חלל עמוק 2024", "2", "₪450", "מאושר", StatusBadge.Type.SUCCESS, "כרטיסים"),
-                new MyPurchaseRow("#TX-87442", "05.09.2024", "הופעת רוק אינדי מרכזית", "1", "₪120", "הושלם", StatusBadge.Type.NEUTRAL, "קבלה"),
-                new MyPurchaseRow("#TX-75502", "15.07.2024", "הצגת תיאטרון: הסופה", "2", "₪280", "בוטל", StatusBadge.Type.ERROR, "פירוט")
-        ));
-    }
 
     private String countTickets(OrderDTO order) {
         Object tickets = readRaw(order, "tickets", "purchasedTickets", "orderTickets");
@@ -565,21 +594,12 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 
-    public interface MyAccountPresenter {
-        AccountProfileViewData loadProfile(String token);
-
-        List<OrderDTO> loadPurchaseHistory(String token);
-
-        void updatePersonalDetails(String token, AccountProfileEditData data);
-
-        void openPurchaseDetails(String purchaseId);
-    }
-
     public record AccountProfileViewData(
             String username,
             String fullName,
             String email,
-            String phone
+            String phone,
+            LocalDate birthday
     ) {
     }
 
@@ -587,48 +607,71 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
             String fullName,
             String email,
             String phone,
-            String username,
+           // String username,
             String currentPassword,
             String newPassword
     ) {
     }
+    private Component createTicketsDetails(MyPurchaseRow row) {
+    Grid<PurchaseDTO> ticketsGrid = new Grid<>(PurchaseDTO.class, false);
+    ticketsGrid.setWidthFull();
+    ticketsGrid.setAllRowsVisible(true);
+
+    ticketsGrid.addColumn(PurchaseDTO::getTicketId)
+            .setHeader("מס' כרטיס");
+
+    ticketsGrid.addColumn(PurchaseDTO::getRow)
+            .setHeader("שורה");
+
+    ticketsGrid.addColumn(PurchaseDTO::getChair)
+            .setHeader("כיסא");
+
+    ticketsGrid.addColumn(ticket -> formatMoney(ticket.getPrice()))
+            .setHeader("מחיר");
+
+    ticketsGrid.addColumn(PurchaseDTO::getStatus)
+            .setHeader("סטטוס");
+
+    ticketsGrid.addColumn(PurchaseDTO::getSecureBarcode)
+            .setHeader("ברקוד");
+
+    ticketsGrid.setItems(row.getTickets());
+
+    return ticketsGrid;
+}
+
 
     public static final class MyPurchaseRow {
         private final String purchaseId;
-        private final String purchaseDate;
         private final String eventName;
         private final String ticketsCount;
         private final String totalAmount;
         private final String statusLabel;
         private final StatusBadge.Type statusType;
         private final String actionText;
+        private final List<PurchaseDTO> tickets;
 
         public MyPurchaseRow(
                 String purchaseId,
-                String purchaseDate,
                 String eventName,
                 String ticketsCount,
                 String totalAmount,
                 String statusLabel,
                 StatusBadge.Type statusType,
-                String actionText
+                String actionText,List<PurchaseDTO> tickets
         ) {
             this.purchaseId = purchaseId;
-            this.purchaseDate = purchaseDate;
             this.eventName = eventName;
             this.ticketsCount = ticketsCount;
             this.totalAmount = totalAmount;
             this.statusLabel = statusLabel;
             this.statusType = statusType;
             this.actionText = actionText;
+            this.tickets=tickets;
         }
 
         public String getPurchaseId() {
             return purchaseId;
-        }
-
-        public String getPurchaseDate() {
-            return purchaseDate;
         }
 
         public String getEventName() {
@@ -654,5 +697,8 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
         public String getActionText() {
             return actionText;
         }
+       public List<PurchaseDTO> getTickets(){
+        return tickets;
+       }
     }
 }

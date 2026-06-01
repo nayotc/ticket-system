@@ -1,6 +1,10 @@
 package ticketsystem.DTO;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class OrderDTO {
     
@@ -12,13 +16,14 @@ public class OrderDTO {
     private Long companyId;
     private Long managedByMemberId;
     private Long eventId;
+    private BigDecimal totalPrice;
 
     //for json 
     public OrderDTO() {
     }
 
     public OrderDTO(Long purchaseId, List<PurchaseDTO> tickets, String eventName, 
-                    String location, Long memberId, Long companyId, Long managedByMemberId, Long eventId) {
+                    String location, Long memberId, Long companyId, Long managedByMemberId, Long eventId,BigDecimal total) {
         this.purchaseId = purchaseId;
         this.tickets = tickets;
         this.eventName = eventName;
@@ -27,6 +32,7 @@ public class OrderDTO {
         this.companyId = companyId;
         this.managedByMemberId = managedByMemberId;
         this.eventId = eventId;
+        this.totalPrice=total;
     }
 
     public Long getPurchaseId() {
@@ -87,4 +93,8 @@ public class OrderDTO {
     public void setManagedByMemberId(Long managedByMemberId) {
         this.managedByMemberId = managedByMemberId;
     }
+    public BigDecimal getTotalPrice(){
+        return totalPrice;
+    }
+
 }

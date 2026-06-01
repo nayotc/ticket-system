@@ -610,7 +610,7 @@ public class ReservationServiceTest {
                 username,
                 password,
                 "Test User",
-                "0500000000"
+                "0500000000",LocalDate.of(2001, 1, 1)
         );
         assertTrue(signedUp);
 

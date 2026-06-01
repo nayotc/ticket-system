@@ -78,7 +78,7 @@ public class PublicHeader extends Header {
         button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         button.addClassName("nav-link");
         button.addClassName("nav-link-button");
-        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.EVENTS));
+        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.SEARCH_RESULTS));
         return button;
     }
 

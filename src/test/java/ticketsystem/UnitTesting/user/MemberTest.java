@@ -6,6 +6,7 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.CompanyRole;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -23,7 +24,7 @@ public class MemberTest {
     @BeforeEach
     void setUp() {
         // Arrange: Initialize a new Member
-        member = new Member(memberId, "john_doe", "John Doe", "0500000000");
+        member = new Member(memberId, "john_doe", "John Doe", "0500000000",LocalDate.of(2001, 1, 1));
     }
 
     @Test

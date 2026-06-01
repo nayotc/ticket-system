@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer.history;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,11 +14,12 @@ public class Purchase {
     private Long companyId;
     private Long managedByMemberId;
     private Long eventId;
+    private BigDecimal totalPrice;
 
     public Purchase() {
     }
     public Purchase(Long purchaseId, List<PurchasedTicket> tickets, String eventName, String location, Long memberId, Long companyId, 
-        Long managedByMemberId, Long eventId) {
+        Long managedByMemberId, Long eventId, BigDecimal totalPrice) {
         this.purchaseId = purchaseId;
         this.tickets = new ArrayList<>(tickets);
         this.eventName = eventName;
@@ -26,6 +28,7 @@ public class Purchase {
         this.companyId = companyId;
         this.managedByMemberId = managedByMemberId;
         this.eventId = eventId;
+        this.totalPrice=totalPrice;
     }
     public Long getPurchaseId() {
         return purchaseId;
@@ -54,8 +57,9 @@ public class Purchase {
     public List<PurchasedTicket> getTickets() {
         return new ArrayList<>(tickets);
     }
-    
-    
 
+    public BigDecimal getTotalPrice(){
+        return totalPrice;
+    }
     
 }
