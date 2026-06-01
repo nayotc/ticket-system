@@ -135,7 +135,7 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
                 emailField,
                 phoneField,
                 //usernameField,
-                currentPasswordField,
+               // currentPasswordField,
                 newPasswordField,
                 confirmPasswordField,
                 saveButton
@@ -180,31 +180,32 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
         return card;
     }
 
-    private void configureFields() {
-        fullNameField.setPlaceholder("לדוגמה: ישראל ישראלי");
-        emailField.setPlaceholder("name@example.com");
-        phoneField.setPlaceholder("050-0000000");
-       // usernameField.setPlaceholder("שם המשתמש במערכת");
+private void configureFields() {
+    fullNameField.setPlaceholder("לדוגמה: ישראל ישראלי");
+    emailField.setPlaceholder("name@example.com");
+    phoneField.setPlaceholder("050-0000000");
 
-        currentPasswordField.setPlaceholder("נדרש לשמירת שינויי חשבון");
-        newPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
-        confirmPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
+    newPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
+    confirmPasswordField.setPlaceholder("השאר ריק אם אין שינוי");
 
-        fullNameField.addClassName("my-account-field");
-        emailField.addClassName("my-account-field");
-        phoneField.addClassName("my-account-field");
-      //  usernameField.addClassName("my-account-field");
-        currentPasswordField.addClassName("my-account-field");
-        newPasswordField.addClassName("my-account-field");
-        confirmPasswordField.addClassName("my-account-field");
+    newPasswordField.clear();
+    confirmPasswordField.clear();
 
-        emailField.getElement().setAttribute("dir", "ltr");
-        phoneField.getElement().setAttribute("dir", "ltr");
+    newPasswordField.getElement().setAttribute("autocomplete", "new-password");
+    confirmPasswordField.getElement().setAttribute("autocomplete", "new-password");
 
-        emailField.getElement().getStyle().set("text-align", "right");
-        phoneField.getElement().getStyle().set("text-align", "right");
-    }
+    fullNameField.addClassName("my-account-field");
+    emailField.addClassName("my-account-field");
+    phoneField.addClassName("my-account-field");
+    newPasswordField.addClassName("my-account-field");
+    confirmPasswordField.addClassName("my-account-field");
 
+    emailField.getElement().setAttribute("dir", "ltr");
+    phoneField.getElement().setAttribute("dir", "ltr");
+
+    emailField.getElement().getStyle().set("text-align", "right");
+    phoneField.getElement().getStyle().set("text-align", "right");
+}
     private void configureHistoryGrid() {
         historyGrid.addClassName("my-account-history-grid");
         historyGrid.setWidthFull();
@@ -272,37 +273,17 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
         }
         openPasswordConfirmationDialog();
 
-        // AccountProfileEditData data = new AccountProfileEditData(
-        //         fullNameField.getValue(),
-        //         emailField.getValue(),
-        //         phoneField.getValue(),
-        //        // usernameField.getValue(),
-        //         currentPasswordField.getValue(),
-        //         newPasswordField.getValue()
-        // );
-
-        // try {
-        //     presenter.updatePersonalDetails(UiSession.getMemberToken(), data);
-
-        //     currentPasswordField.clear();
-        //     newPasswordField.clear();
-        //     confirmPasswordField.clear();
-
-        //     profileName.setText(data.fullName().isBlank() ? data.email() : data.fullName());
-        //     avatarInitials.setText(createInitials(profileName.getText()));
-
-        //     showSuccess("הפרטים עודכנו בהצלחה.");
-        // } catch (RuntimeException ex) {
-        //     showError(ex.getMessage() == null ? "שמירת הפרטים נכשלה." : ex.getMessage());
-        // }
     }
-    private void openPasswordConfirmationDialog() {
+
+private void openPasswordConfirmationDialog() {
     Dialog dialog = new Dialog();
     dialog.setHeaderTitle("אימות פעולה");
 
     PasswordField passwordField = new PasswordField("סיסמה נוכחית");
     passwordField.setWidthFull();
     passwordField.setRevealButtonVisible(false);
+    passwordField.clear();
+    passwordField.getElement().setAttribute("autocomplete", "current-password");
 
     Button confirmButton = new Button("אישור", event -> {
         if (passwordField.getValue() == null || passwordField.getValue().isBlank()) {
@@ -323,6 +304,7 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
 
             newPasswordField.clear();
             confirmPasswordField.clear();
+            passwordField.clear();
 
             showSuccess("הפרטים עודכנו בהצלחה.");
             dialog.close();
@@ -335,13 +317,15 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
 
     confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-    Button cancelButton = new Button("ביטול", event -> dialog.close());
+    Button cancelButton = new Button("ביטול", event -> {
+        passwordField.clear();
+        dialog.close();
+    });
 
     dialog.add(passwordField);
     dialog.getFooter().add(cancelButton, confirmButton);
     dialog.open();
 }
-
     private void loadDataFromPresenter() {
         if (presenter == null || UiSession.getMemberToken() == null) {
             return;
@@ -385,7 +369,7 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
         1L,
         1L,
         1L,
-        1L
+        1L,new BigDecimal(100)
 );
 orders.add(order);
             setPurchaseHistory(orders);
@@ -395,20 +379,22 @@ orders.add(order);
         }
     }
 
-    public void setProfile(AccountProfileViewData profile) {
-        fullNameField.setValue(nullToEmpty(profile.fullName()));
-        emailField.setValue(nullToEmpty(profile.email()));
-        phoneField.setValue(nullToEmpty(profile.phone()));
-      //  usernameField.setValue(nullToEmpty(profile.username()));
 
-        String displayName = !nullToEmpty(profile.fullName()).isBlank()
-                ? profile.fullName()
-                : profile.username();
+public void setProfile(AccountProfileViewData profile) {
+    fullNameField.setValue(nullToEmpty(profile.fullName()));
+    emailField.setValue(nullToEmpty(profile.email()));
+    phoneField.setValue(nullToEmpty(profile.phone()));
 
-        profileName.setText(nullToEmpty(displayName));
-        avatarInitials.setText(createInitials(displayName));
-    }
+    newPasswordField.clear();
+    confirmPasswordField.clear();
 
+    String displayName = !nullToEmpty(profile.fullName()).isBlank()
+            ? profile.fullName()
+            : profile.username();
+
+    profileName.setText(nullToEmpty(displayName));
+    avatarInitials.setText(createInitials(displayName));
+}
     public void setPurchaseHistory(List<OrderDTO> orders) {
         List<MyPurchaseRow> rows = orders == null
                 ? List.of()

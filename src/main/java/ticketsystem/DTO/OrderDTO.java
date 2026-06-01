@@ -16,13 +16,14 @@ public class OrderDTO {
     private Long companyId;
     private Long managedByMemberId;
     private Long eventId;
+    private BigDecimal total;
 
     //for json 
     public OrderDTO() {
     }
 
     public OrderDTO(Long purchaseId, List<PurchaseDTO> tickets, String eventName, 
-                    String location, Long memberId, Long companyId, Long managedByMemberId, Long eventId) {
+                    String location, Long memberId, Long companyId, Long managedByMemberId, Long eventId,BigDecimal total) {
         this.purchaseId = purchaseId;
         this.tickets = tickets;
         this.eventName = eventName;
@@ -31,6 +32,7 @@ public class OrderDTO {
         this.companyId = companyId;
         this.managedByMemberId = managedByMemberId;
         this.eventId = eventId;
+        this.total=total;
     }
 
     public Long getPurchaseId() {
@@ -91,17 +93,20 @@ public class OrderDTO {
     public void setManagedByMemberId(Long managedByMemberId) {
         this.managedByMemberId = managedByMemberId;
     }
-
-    @JsonIgnore
-    public BigDecimal getTotalPrice() {
-        if (tickets == null) {
-            return BigDecimal.ZERO;
-        }
-
-        return tickets.stream()
-                .filter(Objects::nonNull)
-                .map(PurchaseDTO::getPrice)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    public BigDecimal getTotalPrice(){
+        return total;
     }
+
+    // @JsonIgnore
+    // public BigDecimal getTotalPrice() {
+    //     if (tickets == null) {
+    //         return BigDecimal.ZERO;
+    //     }
+
+    //     return tickets.stream()
+    //             .filter(Objects::nonNull)
+    //             .map(PurchaseDTO::getPrice)
+    //             .filter(Objects::nonNull)
+    //             .reduce(BigDecimal.ZERO, BigDecimal::add);
+    // }
 }

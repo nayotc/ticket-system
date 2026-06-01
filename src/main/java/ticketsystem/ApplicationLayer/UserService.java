@@ -499,6 +499,7 @@ public class UserService {
             throw new IllegalArgumentException("Full name cannot be blank.");
         }
 
+
         Member member = authenticateMemberForUpdate(
                 sessionToken,
                 password,
@@ -513,6 +514,13 @@ public class UserService {
         }
 
         member.setFullName(newFullName);
+         boolean ok = userRepository.updateMember(member);
+            if (!ok) {
+                logger.logEvent(
+                        "Update password rejected: repository update failed, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Password update failed. Please try again.");
+            }
 
         logger.logEvent(
                 "Member full name updated: username=" + username,
@@ -555,6 +563,13 @@ public boolean updateMemberPhone(String sessionToken,
         }
 
         member.setPhone(normalizedPhone);
+        boolean ok = userRepository.updateMember(member);
+            if (!ok) {
+                logger.logEvent(
+                        "Update password rejected: repository update failed, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Password update failed. Please try again.");
+            }
 
         logger.logEvent(
                 "Member phone updated: username=" + username,

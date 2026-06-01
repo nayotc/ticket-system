@@ -190,7 +190,7 @@ public class ActiveOrder {
         this.version++;
     }
 
-    public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId, Long eventId) {
+    public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId, Long eventId,BigDecimal total) {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
@@ -198,9 +198,9 @@ public class ActiveOrder {
         }
 
         if(userId!=null)
-            return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId, managedByMemberId, eventId);
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId, managedByMemberId, eventId,total);
         else
-            return new OrderDTO(0L,ticketDTOs,eventName,location ,null ,companyId, managedByMemberId, eventId);
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,null ,companyId, managedByMemberId, eventId,total);
     }
 
      public ActiveOrderDTO toDTO() {

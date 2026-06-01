@@ -19,6 +19,7 @@ public class Member extends User {
 
 
     public Member(Long memberId, String userName, String fullName, String phone,LocalDate birthDate) {
+        validateBirthDate(birthDate);
         this.memberId = memberId;
         this.userName = userName;
         this.fullName = fullName;
@@ -129,6 +130,16 @@ public class Member extends User {
         CompanyRole role = myRoles.get(companyId);
         if (role != null && role instanceof Manager) {
             ((Manager) role).setPermissions(newPermissions);
+        }
+    }
+
+    private void validateBirthDate(LocalDate birthDate) {
+        if (birthDate == null) {
+            throw new IllegalArgumentException("Birth date cannot be null");
+        }
+
+        if (birthDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("Birth date cannot be in the future");
         }
     }
 
