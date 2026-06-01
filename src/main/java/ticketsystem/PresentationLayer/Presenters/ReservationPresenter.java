@@ -169,6 +169,54 @@ public class ReservationPresenter {
         }
     }
 
+    /**
+     * Removes a selected ticket from the current active order.
+     *
+     * This method is used by active-order presentation flows where the UI already
+     * has the active order event id and the selected ticket id.
+     *
+     * @param token active guest/member session token
+     * @param eventId event whose active order contains the ticket
+     * @param ticketId selected ticket to remove from the active order
+     * @return true if the ticket was removed successfully
+     */
+    public boolean removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            if (ticketId == null || ticketId <= 0) {
+                throw presentationError("Ticket id is invalid.");
+            }
+
+            boolean removed = reservationService.removeTicketFromActiveOrder(
+                    token,
+                    eventId,
+                    ticketId
+            );
+
+            if (!removed) {
+                throw presentationError("Ticket removal failed. Please try again.");
+            }
+
+            return true;
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Ticket removal failed. Please try again.");
+        }
+    }
+
     public boolean removeSeatTicketFromActiveOrder(String token, Long eventId, Long areaId, int row, int chair){
         try {
             if (token == null || token.isBlank()) {
