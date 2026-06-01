@@ -48,6 +48,7 @@ public class MembershipConcurrencyTest {
 
     private final Long companyId = 1L;
     private final Long targetMemberId = 200L;
+    private final String targetMemberName = "TargetUser";
 
     private String founderToken; // Appointer 1
     private String ownerToken;   // Appointer 2
@@ -95,7 +96,7 @@ public class MembershipConcurrencyTest {
         ownerToken = tokenService.addActiveSession(owner);
 
         // Setup Target Member - Starts with no roles, version 0
-        Member target = new Member(targetMemberId, "TargetUser", "Target User", "0500000003");
+        Member target = new Member(targetMemberId, targetMemberName, "Target User", "0500000003");
         userRepository.addRegisteredMember(targetMemberId, target, "pass");
     }
 
@@ -115,8 +116,8 @@ public class MembershipConcurrencyTest {
 
         Runnable task1 = () -> {
             try {
-                latch.await();
-                membershipService.requestOwnerAssignment(founderToken, companyId, targetMemberId);
+                latch.await(); 
+                membershipService.requestOwnerAssignment(founderToken, companyId, targetMemberName);
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 exceptionCount.incrementAndGet();
@@ -127,8 +128,8 @@ public class MembershipConcurrencyTest {
 
         Runnable task2 = () -> {
             try {
-                latch.await();
-                membershipService.requestOwnerAssignment(ownerToken, companyId, targetMemberId);
+                latch.await(); 
+                membershipService.requestOwnerAssignment(ownerToken, companyId, targetMemberName);
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 exceptionCount.incrementAndGet();
@@ -174,7 +175,7 @@ public class MembershipConcurrencyTest {
         Runnable task1 = () -> {
             try {
                 latch.await();
-                membershipService.requestManagerAssignment(founderToken, companyId, targetMemberId, perms);
+                membershipService.requestManagerAssignment(founderToken, companyId, targetMemberName, perms);
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 exceptionCount.incrementAndGet();
@@ -186,7 +187,7 @@ public class MembershipConcurrencyTest {
         Runnable task2 = () -> {
             try {
                 latch.await();
-                membershipService.requestManagerAssignment(ownerToken, companyId, targetMemberId, perms);
+                membershipService.requestManagerAssignment(ownerToken, companyId, targetMemberName, perms);
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 exceptionCount.incrementAndGet();
@@ -230,7 +231,7 @@ public class MembershipConcurrencyTest {
         Runnable task1 = () -> {
             try {
                 latch.await();
-                membershipService.requestOwnerAssignment(founderToken, companyId, targetMemberId);
+                membershipService.requestOwnerAssignment(founderToken, companyId, targetMemberName);
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 exceptionCount.incrementAndGet();
@@ -243,7 +244,7 @@ public class MembershipConcurrencyTest {
         Runnable task2 = () -> {
             try {
                 latch.await();
-                membershipService.requestManagerAssignment(ownerToken, companyId, targetMemberId, perms);
+                membershipService.requestManagerAssignment(ownerToken, companyId, targetMemberName, perms);
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 exceptionCount.incrementAndGet();
@@ -291,7 +292,7 @@ public class MembershipConcurrencyTest {
         Runnable task1 = () -> {
             try {
                 latch.await();
-                membershipService.requestManagerAssignment(founderToken, companyId, targetMemberId, perms1);
+                membershipService.requestManagerAssignment(founderToken, companyId, targetMemberName, perms1);
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 exceptionCount.incrementAndGet();
@@ -303,7 +304,7 @@ public class MembershipConcurrencyTest {
         Runnable task2 = () -> {
             try {
                 latch.await();
-                membershipService.requestManagerAssignment(ownerToken, companyId, targetMemberId, perms2);
+                membershipService.requestManagerAssignment(ownerToken, companyId, targetMemberName, perms2);
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 exceptionCount.incrementAndGet();

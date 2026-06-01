@@ -30,6 +30,8 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Permission;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 @Service
 public class EventService {
 
@@ -41,6 +43,7 @@ public class EventService {
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
     private final UserAccessService userAccessService;
 
+    @Autowired
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
             MembershipDomainService membershipDomain, ISystemLogger logger,
             UserAccessService userAccessService) {
@@ -868,6 +871,31 @@ public class EventService {
                     "Failed - rollbackCreatedEvent. " + context + ". Error: " + e.getMessage(),
                     e
             );
+            throw e;
+        }
+    }
+
+    /**
+     * Retrieves all events associated with a specific company.
+     * Used for company management dashboards.
+     */
+    public List<EventDTO> getEventsByCompany(String token, Long companyId) throws Exception {
+        try {
+            // 1. Authenticate user
+            tokenService.validateToken(token);
+            Long memberId = tokenService.extractUserId(token);
+            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            // 2. Fetch events from the database
+            List<Event> events = eventRepository.getEventsByCompanyId(companyId);
+
+            // 3. Map to DTO and return (Using EventDTO::from instead of EventDTO::new)
+            return events.stream()
+                    .map(EventDTO::from)
+                    .collect(java.util.stream.Collectors.toList());
+
+        } catch (Exception e) {
+            logger.logError("Failed to fetch events for companyId=" + companyId, e);
             throw e;
         }
     }
