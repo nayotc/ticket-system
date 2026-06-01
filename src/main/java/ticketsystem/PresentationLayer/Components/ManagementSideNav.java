@@ -20,7 +20,7 @@ import ticketsystem.DomainLayer.user.Permission;
 
 public class ManagementSideNav extends Div {
 
-    private String companyId = "1";
+    private Long companyId;
     private final Div links = new Div();
     private final ManagementSideNavPresenter presenter;
 
@@ -45,9 +45,15 @@ public class ManagementSideNav extends Div {
     }
 
     public void setCompanyId(String companyId) {
-        if (companyId != null && !companyId.isBlank()) {
-            this.companyId = companyId;
+        if (companyId == null || companyId.isBlank()) {
+            return;
+        }
+
+        try {
+            this.companyId = Long.parseLong(companyId);
             rebuildLinks();
+        } catch (NumberFormatException e) {
+            showError("מזהה החברה אינו תקין");
         }
     }
 
@@ -107,14 +113,14 @@ public class ManagementSideNav extends Div {
     }
 
     private boolean hasPermission(Permission permission) {
-        if (presenter == null || !UiSession.isLoggedIn()) {
+        if (presenter == null || !UiSession.isLoggedIn() || companyId == null) {
             return false;
         }
 
         try {
             return presenter.hasPermission(
                     UiSession.getMemberToken(),
-                    Long.parseLong(companyId),
+                    companyId,
                     permission
             );
         } catch (Exception e) {
@@ -130,7 +136,12 @@ public class ManagementSideNav extends Div {
     }
 
     private void navigate(String routeTemplate) {
-        String route = routeTemplate.replace(":companyId", companyId);
+        if (companyId == null) {
+            showError("לא ניתן לפתוח את העמוד כי מזהה החברה חסר");
+            return;
+        }
+
+        String route = routeTemplate.replace(":companyId", String.valueOf(companyId));
         UI.getCurrent().navigate(route);
     }
 
