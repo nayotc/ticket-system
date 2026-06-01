@@ -22,6 +22,10 @@ import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatStatusDto
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatingAreaDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.StandingAreaDto;
 import ticketsystem.DTO.ActiveOrderDTO;
+import ticketsystem.DTO.TicketDTO;
+import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
+import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
+import ticketsystem.PresentationLayer.DTO.OrderPricing;
 
 
 import java.math.BigDecimal;
@@ -95,6 +99,124 @@ public class ReservationPresenter {
         } catch (Exception e) {
             throw presentationError("Event data could not be loaded. Please try again.");
         }
+    }
+
+    /**
+     * Loads basic event details for presentation flows that do not require an event map.
+     *
+     * This method is intended for views such as the active order cart, where the UI
+     * needs event information like name, date and location, but does not need the
+     * seating/standing map. Unlike loadEvent, this method does not fail when the
+     * event map is missing.
+     *
+     * @param token active guest/member session token
+     * @param eventId event identifier
+     * @return event DTO with basic event details
+     */
+    public EventDTO loadEventDetails(String token, Long eventId) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            EventDTO event = eventService.getEvent(token, eventId);
+
+            if (event == null) {
+                throw presentationError("Event not found");
+            }
+
+            return event;
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Event data could not be loaded. Please try again.");
+        }
+    }
+
+    /**
+     * Loads presentation-ready event information for the active order cart.
+     *
+     * The active order cart needs only basic event details, without requiring
+     * an event map. This method converts the application-layer EventDTO into
+     * text that can be displayed directly by the view.
+     *
+     * @param token active guest/member session token
+     * @param eventId event identifier from the active order
+     * @return presentation DTO with event name, date text and location text
+     */
+    public OrderEventInfo loadActiveOrderEventInfo(String token, Long eventId) {
+        EventDTO event = loadEventDetails(token, eventId);
+
+        return new OrderEventInfo(
+                event.name() == null || event.name().isBlank() ? "אירוע ללא שם" : event.name(),
+                event.date() == null ? "תאריך יעודכן בהמשך" : event.date().toString(),
+                event.location() == null || event.location().isBlank()
+                        ? "מיקום יעודכן בהמשך"
+                        : event.location().replace("_", " ")
+        );
+    }
+
+    /**
+     * Calculates the pricing summary displayed in order-related views.
+     *
+     * Currently this method presents the basic subtotal from the active order
+     * tickets and keeps the user informed that the final amount, including
+     * discounts and coupons, is calculated during checkout.
+     *
+     * @param activeOrder active order DTO currently displayed in the UI
+     * @param couponCode optional coupon code entered by the user
+     * @return presentation DTO with the displayed pricing summary
+     */
+    public OrderPricing calculatePricing(ActiveOrderDTO activeOrder, String couponCode) {
+        if (activeOrder == null || activeOrder.getTickets() == null) {
+            throw presentationError("No active order found");
+        }
+
+        BigDecimal subtotal = activeOrder.getTickets().stream()
+                .map(TicketDTO::getPrice)
+                .filter(price -> price != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<AppliedDiscount> discounts = new ArrayList<>();
+        List<String> messages = new ArrayList<>();
+
+        messages.add("המחיר הסופי מחושב לפי מדיניות הרכישה וההנחות לפני המעבר לתשלום.");
+
+        if (couponCode != null && !couponCode.isBlank()) {
+            messages.add("קוד הקופון ייבדק בעת המעבר לתשלום.");
+        }
+
+        return new OrderPricing(
+                subtotal,
+                BigDecimal.ZERO,
+                subtotal,
+                discounts,
+                messages
+        );
+    }
+
+    /**
+     * Applies a coupon code to the pricing preview displayed in the UI.
+     *
+     * At this stage the coupon is not validated as final business logic here.
+     * The final coupon validation and final amount calculation are handled by
+     * the checkout flow.
+     *
+     * @param activeOrder active order DTO currently displayed in the UI
+     * @param couponCode coupon code entered by the user
+     * @return presentation DTO with the updated pricing preview
+     */
+    public OrderPricing applyCoupon(ActiveOrderDTO activeOrder, String couponCode) {
+        return calculatePricing(activeOrder, couponCode);
     }
 
     public EventMapDTO loadEventMap (String token, Long eventId) {
