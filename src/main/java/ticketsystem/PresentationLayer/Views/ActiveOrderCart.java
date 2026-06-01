@@ -332,7 +332,7 @@ public class ActiveOrderCart extends VerticalLayout {
 
         Button searchEvents = new Button("חיפוש אירועים");
         searchEvents.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        searchEvents.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.EVENT_SEARCH));
+        searchEvents.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.SEARCH_RESULTS));
 
         EmptyState emptyState = new EmptyState(
                 "🛒",
