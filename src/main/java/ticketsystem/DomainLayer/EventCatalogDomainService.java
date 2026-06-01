@@ -1,6 +1,7 @@
 package ticketsystem.DomainLayer;
 
-import org.springframework.stereotype.Component;
+
+import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -11,7 +12,7 @@ import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 
-@Component
+@Service
 public class EventCatalogDomainService {
 
     ICompanyRepository companyRepository;

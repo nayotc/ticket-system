@@ -10,6 +10,7 @@ import java.util.Set;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import org.springframework.core.annotation.Order;
 
 //Services
 import ticketsystem.ApplicationLayer.CompanyService;
@@ -49,6 +50,7 @@ import ticketsystem.DomainLayer.user.Permission;
 
 @Component
 @Profile("dev")
+@Order(1)
 public class DevDataInitializer implements CommandLineRunner {
 
     private static final String TEST_USERNAME = "test@test.com";
