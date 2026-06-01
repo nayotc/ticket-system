@@ -710,7 +710,7 @@ public class MembershipDomainService {
                 .map(CompanyRole::getCompanyId)
                 .findFirst()
                 .orElse(null);
-
+    }
     public Set<Long> getCompanyIdsByMember(Long memberId) throws Exception {
         Member member = userRepository.getMemberById(memberId);
         if (member == null) {
