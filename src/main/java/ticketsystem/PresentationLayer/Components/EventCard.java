@@ -330,14 +330,14 @@ public class EventCard extends AppCard {
 
     private static String routeForLottery(Long eventId) {
         if (eventId == null) {
-            return UiRoutes.EVENTS;
+            return UiRoutes.SEARCH_RESULTS;
         }
         return UiRoutes.LOTTERY_REGISTRATION.replace(":eventId", String.valueOf(eventId));
     }
 
     private static String routeForTickets(Long eventId) {
         if (eventId == null) {
-            return UiRoutes.EVENTS;
+            return UiRoutes.SEARCH_RESULTS;
         }
         return UiRoutes.TICKET_SELECTION.replace(":eventId", String.valueOf(eventId));
     }
@@ -349,7 +349,7 @@ public class EventCard extends AppCard {
         }
 
         if (companyId == null) {
-            ui.navigate(UiRoutes.EVENTS);
+            ui.navigate(UiRoutes.SEARCH_RESULTS);
             return;
         }
 

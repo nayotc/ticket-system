@@ -273,7 +273,7 @@ public class CompanySearchResults extends PageContainer implements BeforeEnterOb
 
     private void navigateToCompanySearchResults() {
         if (companyId == null) {
-            UI.getCurrent().navigate(UiRoutes.EVENTS);
+            UI.getCurrent().navigate(UiRoutes.SEARCH_RESULTS);
             return;
         }
 
