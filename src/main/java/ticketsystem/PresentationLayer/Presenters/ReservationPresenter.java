@@ -21,6 +21,7 @@ import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatStatusDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.SeatingAreaDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.StandingAreaDto;
+import ticketsystem.DTO.ActiveOrderDTO;
 
 
 import java.math.BigDecimal;
@@ -36,6 +37,35 @@ public class ReservationPresenter {
     public ReservationPresenter(ReservationService reservationService, EventService eventService) {
         this.reservationService = reservationService;
         this.eventService = eventService;
+    }
+
+    /**
+     * Loads the current active order for the active UI session.
+     *
+     * This method is used by presentation-layer views such as the active order cart.
+     * A missing active order is treated as an empty-cart state rather than an error,
+     * so the service may return null and the view can render its empty state.
+     *
+     * @param token active guest/member session token
+     * @return current active order DTO, or null if no active order exists
+     */
+    public ActiveOrderDTO loadActiveOrder(String token) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            return reservationService.viewCurrentActiveOrder(token);
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Active order could not be loaded. Please try again.");
+        }
     }
 
     public EventDTO loadEvent(String token, Long eventId) {
