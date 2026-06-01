@@ -8808,3 +8808,170 @@ vaadin-tab.policy-editor-tab[selected] .policy-tab-icon {
 .discount-data-grid {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
+
+/* =========================
+   Edit event view
+   Add to styles.css
+   ========================= */
+
+.edit-event-page {
+    width: 100%;
+    gap: 28px;
+}
+
+.edit-event-tabs-shell {
+    width: 100%;
+}
+
+.edit-event-tabs-wrapper {
+    margin-bottom: 18px;
+}
+
+.edit-event-tabs {
+    width: 100%;
+}
+
+.edit-event-tab-content {
+    width: 100%;
+}
+
+.edit-event-general-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.edit-event-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 16px;
+    width: 100%;
+}
+
+.edit-event-status-summary,
+.edit-event-sale-status-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.edit-event-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(73, 68, 84, 0.35);
+}
+
+.edit-event-status-label {
+    color: var(--tn-text-muted);
+    font-weight: 700;
+}
+
+.edit-event-status-value {
+    color: var(--tn-text);
+    font-weight: 800;
+}
+
+.edit-event-status-note {
+    margin: 6px 0 0;
+    color: var(--tn-text-muted);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.edit-event-sale-status-panel {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(73, 68, 84, 0.45);
+}
+
+.edit-event-sale-status-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+@media (max-width: 900px) {
+    .edit-event-general-grid,
+    .edit-event-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================
+   Edit event tabs and sale buttons update
+   Add after the existing edit-event CSS in styles.css
+   ========================= */
+
+.edit-event-tabs-shell vaadin-tabs.edit-event-tabs::part(tabs) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+.edit-event-tabs-shell vaadin-tab.policy-editor-tab {
+    min-width: 0;
+    width: 100%;
+}
+
+.edit-event-tabs-shell .policy-tab-label {
+    min-height: 64px;
+    padding: 12px 14px;
+    gap: 10px;
+}
+
+.edit-event-tabs-shell .policy-tab-icon {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    border-radius: 14px;
+}
+
+.edit-event-tabs-shell .policy-tab-title {
+    font-size: 18px;
+    line-height: 1.2;
+}
+
+.edit-event-tabs-shell .policy-tab-subtitle {
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.edit-event-sale-status-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+}
+
+vaadin-button.edit-event-sale-status-main-button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+}
+
+@media (max-width: 900px) {
+    .edit-event-tabs-shell vaadin-tabs.edit-event-tabs::part(tabs) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.event-management-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    max-height: 350px;
+    overflow-y: auto;
+
+    padding-inline-start: 6px;
+    padding-inline-end: 2px;
+    padding-bottom: 4px;
+    box-sizing: border-box;
+}
+

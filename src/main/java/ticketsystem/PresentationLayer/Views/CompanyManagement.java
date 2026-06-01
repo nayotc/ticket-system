@@ -285,7 +285,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
 
         // הכפתורים ייווצרו ויתווספו אך ורק אם למשתמש יש הרשאת ניהול אירועים
         if (state.canManageEvents()) {
-            Button edit = new Button("ערוך", VaadinIcon.EDIT.create());
+            Button edit = new Button("ניהול", VaadinIcon.COG.create());
             edit.addClassName("company-secondary-button");
             edit.addClickListener(event -> navigateToEventEditor(eventItem));
 
