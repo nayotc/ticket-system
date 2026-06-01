@@ -4,8 +4,8 @@ import java.util.List;
 
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
+import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.policy.*;
-import ticketsystem.DomainLayer.policy.PurchaseRule;
 
 
 public class PurchasePolicyMapper {
@@ -63,5 +63,54 @@ public class PurchasePolicyMapper {
                 .stream()
                 .map(this::toRule)
                 .toList();
+    }
+
+    // Converts the Domain PurchasePolicy back to a DTO
+    public PurchasePolicyDTO toDTO(PurchasePolicy policy) {
+        if (policy == null || policy.getRootRule() == null) {
+            return new PurchasePolicyDTO(); 
+        }
+
+        return new PurchasePolicyDTO(ruleToDTO(policy.getRootRule()));
+    }
+
+    // Recursively converts a Domain PurchaseRule to a PurchaseRuleDTO
+    private PurchaseRuleDTO ruleToDTO(PurchaseRule rule) {
+        if (rule == null) {
+            return null;
+        }
+
+        PurchaseRuleDTO dto = new PurchaseRuleDTO();
+
+        // Check the specific instance type of the rule and map accordingly
+        if (rule instanceof AlwaysAllowRule) {
+            dto.setType(PurchaseRuleType.ALWAYS_ALLOW);
+            dto.setValue(0);
+            
+        } else if (rule instanceof MinAgeRule minAgeRule) {
+            dto.setType(PurchaseRuleType.MIN_AGE);
+            dto.setValue(minAgeRule.getMinAge()); 
+            
+        } else if (rule instanceof MinTicketsRule minTicketsRule) {
+            dto.setType(PurchaseRuleType.MIN_TICKETS);
+            dto.setValue(minTicketsRule.getMinTickets());
+            
+        } else if (rule instanceof MaxTicketsRule maxTicketsRule) {
+            dto.setType(PurchaseRuleType.MAX_TICKETS);
+            dto.setValue(maxTicketsRule.getMaxTickets());
+            
+        } else if (rule instanceof AndPurchaseRule andRule) {
+            dto.setType(PurchaseRuleType.AND);
+            dto.setChildren(andRule.getRules().stream().map(this::ruleToDTO).toList());
+            
+        } else if (rule instanceof OrPurchaseRule orRule) {
+            dto.setType(PurchaseRuleType.OR);
+            dto.setChildren(orRule.getRules().stream().map(this::ruleToDTO).toList());
+            
+        } else {
+            throw new IllegalArgumentException("Unsupported purchase rule type encountered during mapping");
+        }
+
+        return dto;
     }
 }

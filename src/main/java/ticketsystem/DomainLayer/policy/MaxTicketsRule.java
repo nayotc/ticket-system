@@ -16,5 +16,9 @@ public class MaxTicketsRule implements PurchaseRule {
         }
         return PolicyResult.allowed();
     }
+
+    public int getMaxTickets() {
+        return maxTickets;
+    }
     
 }

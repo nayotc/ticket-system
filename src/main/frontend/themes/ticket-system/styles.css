@@ -8325,3 +8325,486 @@ vaadin-button.hall-floating-zoom-button:hover {
         grid-template-columns: 1fr;
     }
 }
+
+/* =========================
+   Policies editor visual update
+   Purchase expression tree and per-section save
+   ========================= */
+
+.policy-editor-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+}
+
+.policy-card-purchase,
+.policy-card-discount,
+.policy-no-access-card {
+    grid-column: 1 / -1;
+}
+
+.policy-card.app-card {
+    overflow: visible;
+}
+
+.policy-section-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+    padding-top: 18px;
+    margin-top: 6px;
+    border-top: 1px solid rgba(73, 68, 84, 0.35);
+}
+
+.purchase-rule-builder {
+    padding: 18px;
+    overflow: visible;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(208, 188, 255, 0.08), transparent 34%),
+        rgba(6, 14, 32, 0.76);
+}
+
+.purchase-expression-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.purchase-expression-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 22px;
+    background: rgba(19, 27, 46, 0.72);
+    border: 1px solid rgba(149, 142, 160, 0.22);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.purchase-expression-depth-0 {
+    padding: 16px;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(68, 226, 205, 0.08), transparent 30%),
+        rgba(6, 14, 32, 0.84);
+    border-color: rgba(208, 188, 255, 0.34);
+}
+
+.purchase-expression-depth-1,
+.purchase-expression-depth-2,
+.purchase-expression-depth-3 {
+    margin-right: 0;
+    border-right: 3px solid rgba(208, 188, 255, 0.30);
+}
+
+.purchase-expression-depth-2,
+.purchase-expression-depth-3 {
+    background: rgba(23, 31, 51, 0.78);
+    border-right-color: rgba(68, 226, 205, 0.26);
+}
+
+.purchase-expression-group-header {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) 180px auto;
+    align-items: center;
+    gap: 16px;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(45, 52, 73, 0.36);
+    border: 1px solid rgba(149, 142, 160, 0.18);
+}
+
+.purchase-expression-group-title-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.purchase-expression-group-title-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.purchase-expression-group-badge,
+.policy-condition-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-width: 58px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: rgba(208, 188, 255, 0.14);
+    border: 1px solid rgba(208, 188, 255, 0.30);
+    color: var(--tn-primary-fixed);
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.policy-condition-badge {
+    min-width: 52px;
+    background: rgba(68, 226, 205, 0.12);
+    border-color: rgba(68, 226, 205, 0.30);
+    color: var(--tn-secondary-fixed);
+}
+
+.purchase-expression-group-title {
+    color: var(--tn-text);
+    font-size: 16px;
+    line-height: 1.25;
+    font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.purchase-expression-group-summary {
+    color: var(--tn-text-muted);
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 700;
+}
+
+.purchase-expression-operator-block {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.purchase-expression-operator-label {
+    color: var(--tn-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.purchase-expression-operator {
+    width: 100%;
+}
+
+.purchase-expression-operator::part(input-field) {
+    min-height: 40px;
+    border-radius: 12px;
+    background: rgba(6, 14, 32, 0.62);
+    border-color: rgba(208, 188, 255, 0.30);
+    box-shadow: none;
+}
+
+.purchase-expression-group-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.purchase-expression-action-button {
+    min-height: 38px;
+    min-width: 92px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.purchase-expression-delete-group-button {
+    flex: 0 0 auto;
+}
+
+.purchase-expression-children {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 2px 4px 0 4px;
+}
+
+.purchase-expression-connector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 18px;
+    color: var(--tn-text-muted);
+}
+
+.purchase-expression-connector::before,
+.purchase-expression-connector::after {
+    content: '';
+    height: 1px;
+    flex: 1;
+    background: rgba(149, 142, 160, 0.22);
+}
+
+.purchase-expression-connector-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 54px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(208, 188, 255, 0.10);
+    border: 1px solid rgba(208, 188, 255, 0.24);
+    color: var(--tn-primary-fixed);
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.purchase-expression-children > .purchase-rule-row {
+    margin-right: 0;
+}
+
+.purchase-rule-row {
+    margin-right: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(13, 22, 43, 0.82);
+    border-color: rgba(149, 142, 160, 0.20);
+}
+
+.purchase-rule-row::before,
+.policy-tree-line,
+.policy-drag-handle {
+    display: none;
+}
+
+.purchase-rule-row:hover {
+    background: rgba(23, 31, 51, 0.92);
+    border-color: rgba(208, 188, 255, 0.38);
+}
+
+.policy-row-actions {
+    flex-wrap: nowrap;
+}
+
+.policy-icon-button,
+.policy-icon-danger-button {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 12px;
+}
+
+@media (max-width: 1100px) {
+    .purchase-expression-group-header {
+        grid-template-columns: minmax(220px, 1fr) 170px;
+    }
+
+    .purchase-expression-group-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 700px) {
+    .policy-section-actions {
+        justify-content: stretch;
+    }
+
+    .policy-section-actions vaadin-button {
+        width: 100%;
+    }
+
+    .purchase-rule-builder {
+        padding: 14px;
+    }
+
+    .purchase-expression-group {
+        padding: 12px;
+        border-radius: 18px;
+    }
+
+    .purchase-expression-group-header {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .purchase-expression-group-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .purchase-expression-group-actions vaadin-button {
+        flex: 1;
+    }
+
+    .purchase-expression-depth-1,
+    .purchase-expression-depth-2,
+    .purchase-expression-depth-3 {
+        border-right: none;
+    }
+
+    .purchase-rule-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .policy-condition-badge {
+        justify-self: start;
+    }
+
+    .purchase-expression-connector {
+        margin: 0;
+    }
+}
+
+/* =========================
+   Policies editor tabs update
+   ========================= */
+
+.policy-editor-tabs-shell {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.policy-editor-tabs-wrapper {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    border-radius: 24px;
+    background: rgba(6, 14, 32, 0.72);
+    border: 1px solid rgba(149, 142, 160, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 18px 45px rgba(0, 0, 0, 0.20);
+}
+
+vaadin-tabs.policy-editor-tabs {
+    width: 100%;
+    --lumo-primary-color: var(--tn-secondary);
+    background: transparent;
+}
+
+vaadin-tabs.policy-editor-tabs::part(tabs) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+vaadin-tab.policy-editor-tab {
+    padding: 0;
+    border-radius: 18px;
+    color: var(--tn-text-muted);
+    background: transparent;
+}
+
+vaadin-tab.policy-editor-tab::before,
+vaadin-tab.policy-editor-tab::after {
+    display: none;
+}
+
+.policy-tab-label {
+    width: 100%;
+    min-height: 72px;
+    padding: 14px 16px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-radius: 18px;
+    background: rgba(23, 31, 51, 0.74);
+    border: 1px solid rgba(149, 142, 160, 0.20);
+    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+vaadin-tab.policy-editor-tab:hover .policy-tab-label {
+    background: rgba(34, 42, 61, 0.86);
+    border-color: rgba(208, 188, 255, 0.38);
+}
+
+vaadin-tab.policy-editor-tab[selected] .policy-tab-label {
+    background:
+        radial-gradient(circle at 100% 0%, rgba(68, 226, 205, 0.16), transparent 36%),
+        rgba(23, 31, 51, 0.96);
+    border-color: rgba(68, 226, 205, 0.52);
+    box-shadow: 0 0 22px rgba(68, 226, 205, 0.13);
+}
+
+.policy-tab-icon {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: rgba(208, 188, 255, 0.14);
+    border: 1px solid rgba(208, 188, 255, 0.26);
+    color: var(--tn-primary-fixed);
+    font-size: 22px;
+    font-weight: 900;
+}
+
+vaadin-tab.policy-editor-tab[selected] .policy-tab-icon {
+    background: rgba(68, 226, 205, 0.14);
+    border-color: rgba(68, 226, 205, 0.34);
+    color: var(--tn-secondary-fixed);
+}
+
+.policy-tab-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    text-align: right;
+}
+
+.policy-tab-title {
+    color: var(--tn-text);
+    font-size: 16px;
+    line-height: 1.2;
+    font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.policy-tab-subtitle {
+    color: var(--tn-text-muted);
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.policy-editor-tab-content {
+    width: 100%;
+    min-width: 0;
+}
+
+.policy-editor-tab-content > .policy-card {
+    width: 100%;
+}
+
+@media (max-width: 700px) {
+    vaadin-tabs.policy-editor-tabs::part(tabs) {
+        grid-template-columns: 1fr;
+    }
+
+    .policy-tab-label {
+        min-height: 64px;
+    }
+}
+
+/* =========================
+   Policies editor conditional discount update
+   ========================= */
+
+.discount-row-labels .policy-icon-danger-button {
+    color: var(--tn-error);
+}
+
+.discount-row-labels .policy-icon-danger-button:hover {
+    background: rgba(255, 180, 171, 0.14);
+    color: #ffdad6;
+}
+
+.discount-data-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
