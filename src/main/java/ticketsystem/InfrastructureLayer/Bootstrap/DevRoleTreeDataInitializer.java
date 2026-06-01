@@ -1,5 +1,6 @@
 package ticketsystem.InfrastructureLayer.Bootstrap;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -91,7 +92,7 @@ public class DevRoleTreeDataInitializer {
                 membershipService.requestOwnerAssignment(
                         founderToken,
                         TEST_COMPANY_ID,
-                        owner.getId()
+                        owner.getUserName()
                 );
 
                 String ownerToken = login(OWNER_USERNAME, OWNER_PASSWORD);
@@ -102,7 +103,7 @@ public class DevRoleTreeDataInitializer {
                 membershipService.requestManagerAssignment(
                         founderToken,
                         TEST_COMPANY_ID,
-                        eventManager.getId(),
+                        eventManager.getUserName(),
                         Set.of(
                                 Permission.MANAGE_EVENT_INVENTORY,
                                 Permission.CONFIGURE_HALL_AND_MAP,
@@ -120,7 +121,7 @@ public class DevRoleTreeDataInitializer {
                 membershipService.requestManagerAssignment(
                         ownerToken,
                         TEST_COMPANY_ID,
-                        salesManager.getId(),
+                        salesManager.getUserName(),
                         Set.of(
                                 Permission.VIEW_PURCHASE_HISTORY,
                                 Permission.GENERATE_SALES_REPORT
@@ -144,7 +145,7 @@ public class DevRoleTreeDataInitializer {
         }
 
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, username, password, fullName, phone);
+        userService.signUp(guestToken, username, password, fullName, phone,LocalDate.of(2001, 1, 1));
 
         System.out.println("Dev role-tree user created:");
         System.out.println("username: " + username);

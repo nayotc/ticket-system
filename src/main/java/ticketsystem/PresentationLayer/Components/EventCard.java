@@ -125,13 +125,14 @@ public class EventCard extends AppCard {
     }
 
     private Div createFooter(String priceText, SaleStatus saleStatus, boolean hasLottery) {
-        Span fromText = new Span("החל מ-");
-        fromText.addClassName("event-price-label");
+//        Span fromText = new Span("החל מ-");
+//        fromText.addClassName("event-price-label");
 
         Span price = new Span(priceText);
         price.addClassName("event-price");
 
-        Div priceBlock = new Div(fromText, price);
+//        Div priceBlock = new Div(fromText, price);
+        Div priceBlock =new Div(price);
         priceBlock.addClassName("event-price-block");
 
         Div actions = new Div();
@@ -329,14 +330,14 @@ public class EventCard extends AppCard {
 
     private static String routeForLottery(Long eventId) {
         if (eventId == null) {
-            return UiRoutes.EVENTS;
+            return UiRoutes.SEARCH_RESULTS;
         }
         return UiRoutes.LOTTERY_REGISTRATION.replace(":eventId", String.valueOf(eventId));
     }
 
     private static String routeForTickets(Long eventId) {
         if (eventId == null) {
-            return UiRoutes.EVENTS;
+            return UiRoutes.SEARCH_RESULTS;
         }
         return UiRoutes.TICKET_SELECTION.replace(":eventId", String.valueOf(eventId));
     }
@@ -348,7 +349,7 @@ public class EventCard extends AppCard {
         }
 
         if (companyId == null) {
-            ui.navigate(UiRoutes.EVENTS);
+            ui.navigate(UiRoutes.SEARCH_RESULTS);
             return;
         }
 

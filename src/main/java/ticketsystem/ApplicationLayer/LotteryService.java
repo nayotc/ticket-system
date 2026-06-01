@@ -198,7 +198,19 @@ public class LotteryService {
         return new ArrayList<>(winnersPool.subList(0, numberOfWinners));
     }
 
-    public boolean hasLotteryForEvent(long eventId) {
+    /**
+     * Checks whether a lottery exists for the given event.
+     *
+     * This is used by the UI when displaying event cards, so it only checks
+     * whether a lottery is attached to the event and does not expose lottery details.
+     *
+     * @param token active session token
+     * @param eventId event id to check
+     * @return true if a lottery exists for the event, false otherwise
+     */
+    public boolean hasLotteryForEvent(String token, long eventId) {
+        tokenService.validateToken(token);
+
         if (eventId <= 0) {
             return false;
         }
@@ -264,4 +276,5 @@ public class LotteryService {
             throw e;
         }
     }
+
 }

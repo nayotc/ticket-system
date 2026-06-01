@@ -1,5 +1,6 @@
 package ticketsystem.AcceptanceTesting;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -54,7 +55,7 @@ public class LotteryServiceTest {
                 username,
                 password,
                 "Test User",
-                "0500000000"
+                "0500000000",LocalDate.of(2001, 1, 1)
         );
         return userService.login(guestToken, username, password);
     }
@@ -86,7 +87,7 @@ public class LotteryServiceTest {
                 logger
         );
 
-        Member manager = new Member(managerId, "manager", "Lottery Manager", "0501234567");
+        Member manager = new Member(managerId, "manager", "Lottery Manager", "0501234567",LocalDate.of(2001, 1, 1));
         Set<Permission> managerPermissions = new HashSet<>();
         managerPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
@@ -112,7 +113,7 @@ public class LotteryServiceTest {
     public void AcceptanceTest_RegisterForPurchaseLottery_Selected() {
         // --- 1. Setup ---      
         long user1Id = 55L;
-        Member user1 = new Member(user1Id, "winner", "Winner User", "0501231231");
+        Member user1 = new Member(user1Id, "winner", "Winner User", "0501231231",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(user1Id, user1, "Pass123!");
         String user1Token = tokenService.addActiveSession(user1);
         int winnersAmount = 1;
@@ -149,7 +150,7 @@ public class LotteryServiceTest {
     @Test
     public void AcceptanceTest_AddLottery_Failure_NoPermission() {
         long normalUserId = 20L;
-        Member normalUser = new Member(normalUserId, "normal", "Normal User", "0509999999");
+        Member normalUser = new Member(normalUserId, "normal", "Normal User", "0509999999",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(normalUserId, normalUser, "pass");
         String normalToken = tokenService.addActiveSession(normalUser);
 
@@ -164,7 +165,7 @@ public class LotteryServiceTest {
         long lotteryId = lotteryService.addLottery(managerToken, eventId, companyId, 5);
 
         long participantId = 11L;
-        Member participant = new Member(participantId, "part1", "Participant 1", "0501112222");
+        Member participant = new Member(participantId, "part1", "Participant 1", "0501112222",LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(participantId, participant, "pass");
         String partToken = tokenService.addActiveSession(participant);
 
@@ -202,7 +203,7 @@ public class LotteryServiceTest {
 
         for (long i = 1; i <= 3; i++) {
             long pId = 200L + i;
-            Member p = new Member(pId, "user" + i, "User " + i, "050000000" + i);
+            Member p = new Member(pId, "user" + i, "User " + i, "050000000" + i,LocalDate.of(2001, 1, 1));
             userRepo.addRegisteredMember(pId, p, "pass");
             String pToken = tokenService.addActiveSession(p);
             lotteryService.registerMemberToLottery(pToken, lotteryId);

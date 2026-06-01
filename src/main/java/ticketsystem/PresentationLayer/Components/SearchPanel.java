@@ -64,7 +64,7 @@ public class SearchPanel extends AppCard {
         freeText.setPlaceholder("שם אירוע או אמן...");
         freeText.setPrefixComponent(VaadinIcon.SEARCH.create());
 
-        location.setItems("כל האזורים", "תל אביב והמרכז", "ירושלים", "צפון", "דרום");
+        location.setItems("כל האזורים", "ניו יורק", "לוס אנג׳לס", "שיקגו", "יוסטון", "מיאמי", "תל אביב", "ירושלים", "באר שבע", "חיפה", "אחר");
         location.setValue("כל האזורים");
 
         fromDate.setPlaceholder("תאריך התחלה");
@@ -75,11 +75,11 @@ public class SearchPanel extends AppCard {
 
         category.setItems(
                 "כל הקטגוריות",
-                "הופעות חיות",
-                "תיאטרון וסטנדאפ",
+                "הופעה",
                 "ספורט",
-                "פסטיבל",
-                "כנס"
+                "תיאטרון",
+                "תערוכה",
+                "אחר"
         );
         category.setValue("כל הקטגוריות");
     }

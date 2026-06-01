@@ -7,6 +7,11 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.router.QueryParameters;
+
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.PresentationLayer.Components.EventCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
@@ -15,14 +20,29 @@ import ticketsystem.PresentationLayer.Components.SearchPanel;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
+import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.EventCardViewModel;
+import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
+import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
+
+
+import java.util.Map;
 
 @PageTitle("TixNow")
 @Route(value = UiRoutes.HOME, layout = MainLayout.class)
 public class Home extends PageContainer {
 
-    public Home() {
+    private final EventCatalogPresenter eventCatalogPresenter;
+    private final UiVisitCoordinator uiVisitCoordinator;
+    private final EventCardPresenter eventCardPresenter;
+
+    public Home(EventCatalogPresenter eventCatalogPresenter, UiVisitCoordinator uiVisitCoordinator, EventCardPresenter eventCardPresenter) {
         super();
+        this.eventCatalogPresenter = eventCatalogPresenter;
+        this.eventCardPresenter = eventCardPresenter;
+        this.uiVisitCoordinator = uiVisitCoordinator;
+        this.uiVisitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
 
         add(
                 createHero(),
@@ -75,6 +95,7 @@ public class Home extends PageContainer {
 
     private Div createCenteredSearchPanel() {
         SearchPanel searchPanel = new SearchPanel();
+        searchPanel.getSearchButton().addClickListener(event -> navigateToSearchResults(searchPanel));
 
         searchPanel.getStyle()
                 .set("margin-left", "auto")
@@ -93,6 +114,32 @@ public class Home extends PageContainer {
                 .set("box-sizing", "border-box");
 
         return wrapper;
+    }
+
+    private void navigateToSearchResults(SearchPanel searchPanel) {
+        Map<String, String> params = eventCatalogPresenter.buildSearchQueryParameters(
+                searchPanel.getFreeText().getValue(),
+                searchPanel.getFromDate().getValue(),
+                searchPanel.getToDate().getValue(),
+                searchPanel.getLocation().getValue(),
+                searchPanel.getCategory().getValue(),
+                searchPanel.getArtist().getValue(),
+                searchPanel.getMinPriceValue(),
+                searchPanel.getMaxPriceValue(),
+                searchPanel.getMaxPriceLimit(),
+                searchPanel.getEventRateValue(),
+                searchPanel.getCompanyRateValue()
+        );
+
+        if (params.isEmpty()) {
+            UI.getCurrent().navigate(UiRoutes.SEARCH_RESULTS);
+            return;
+        }
+
+        UI.getCurrent().navigate(
+                UiRoutes.SEARCH_RESULTS,
+                QueryParameters.simple(params)
+        );
     }
 
     private Div createPopularEventsSection() {
@@ -117,61 +164,96 @@ public class Home extends PageContainer {
 
         Span viewAll = new Span("ראה הכל");
         viewAll.addClassName("section-link");
+        viewAll.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.SEARCH_RESULTS));
 
         titleRow.add(titleText, viewAll);
 
         Div grid = new Div();
         grid.addClassName("events-grid");
-
-        grid.add(
-                new EventCard(
-                        "מופע עשור",
-                        "פסטיבל אורות הלילה",
-                        "24 אוקטובר, 21:00",
-                        "פארק הירקון, תל אביב",
-                        "₪249",
-                        Photos.EVENT_LIGHTS,
-                        true,
-                        "Amazing Events",
-                        2L,
-                        30L,
-                        SaleStatus.ONGOING,
-                        false
-                ),
-                new EventCard(
-                        "סטנדאפ",
-                        "מרתון צחוק תל אביבי",
-                        "15 נובמבר, 22:30",
-                        "מועדון זאפה, הרצליה",
-                        "₪119",
-                        Photos.EVENT_STANDUP,
-                        false,
-                        "Laugh Factory",
-                        3L,
-                        20L,
-                        SaleStatus.SOLD_OUT,
-                        false
-                ),
-                new EventCard(
-                        "מסיבה",
-                        "ליין שישי אלקטרוני",
-                        "20 אוקטובר, 23:55",
-                        "האומן 17, תל אביב",
-                        "₪90",
-                        Photos.EVENT_ELECTRONIC,
-                        false,
-                        "TixNow Productions",
-                        1L,
-                        15L,
-                        SaleStatus.NOT_STARTED,
-                        true
-                )
-        );
+        eventCatalogPresenter.getFeaturedHomeEvents(UiSession.getCurrentToken()).stream()
+                .map(this::createEventCard)
+                .forEach(grid::add);
 
         sectionInner.add(titleRow, grid);
         section.add(sectionInner);
 
         return section;
+    }
+
+    /**
+     * Creates a visual event card for the Home page and connects its user actions
+     * to the EventCardPresenter.
+     *
+     * The Home view is responsible only for creating the UI component and wiring
+     * the action handler. Navigation, lottery registration, and pre-sale code
+     * validation are delegated to EventCardPresenter.
+     *
+     * @param event data prepared by EventCatalogPresenter for displaying one event card
+     * @return configured EventCard component
+     */
+    private EventCard createEventCard(EventCardViewModel event) {
+        EventCard card = new EventCard(
+                event.category(),
+                event.title(),
+                event.date(),
+                event.location(),
+                event.priceText(),
+                event.imageUrl(),
+                event.urgent(),
+                event.companyName(),
+                event.companyId(),
+                event.eventId(),
+                event.saleStatus(),
+                event.hasLottery()
+        );
+
+        card.setActionHandler(createEventCardActionHandler());
+
+        return card;
+    }
+
+    /**
+     * Creates the action handler used by EventCard buttons.
+     *
+     * The handler keeps EventCard reusable and UI-focused: the card only reports
+     * user actions, while EventCardPresenter handles the actual presentation logic
+     * such as building navigation routes, registering to lotteries, and validating
+     * pre-sale lottery codes.
+     *
+     * @return action handler for purchase, lottery registration, and pre-sale flows
+     */
+    private EventCard.EventCardActionHandler createEventCardActionHandler() {
+        return new EventCard.EventCardActionHandler() {
+            @Override
+            public void onPurchaseRequested(Long eventId) {
+                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
+            }
+
+            @Override
+            public void onLotteryRegistrationRequested(Long eventId) {
+                eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
+
+                Notification.show(
+                        "נרשמת להגרלה בהצלחה.",
+                        3000,
+                        Notification.Position.TOP_CENTER
+                );
+            }
+
+            @Override
+            public boolean isPreSaleCodeValid(Long eventId, String lotteryCode) {
+                return eventCardPresenter.isPreSaleCodeValid(
+                        UiSession.getMemberToken(),
+                        eventId,
+                        lotteryCode
+                );
+            }
+
+            @Override
+            public void onPreSaleApproved(Long eventId, String lotteryCode) {
+                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
+            }
+        };
     }
 
     private Div createVipCard() {

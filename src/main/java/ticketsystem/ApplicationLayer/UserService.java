@@ -1,12 +1,15 @@
 package ticketsystem.ApplicationLayer;
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
+import ticketsystem.DTO.MemberDTO;
+import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Guest;
@@ -50,11 +53,15 @@ public class UserService {
 
     // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
     // username and password.
-    public boolean signUp(String sessionToken, String username, String password, String fullName, String phone) {
+    public boolean signUp(String sessionToken, String username, String password, String fullName, String phone,LocalDate birthDate) {
         try {
             if (username == null || username.isBlank() || password == null || password.isBlank()) {
                 logger.logEvent("Sign-up rejected: blank username or password", LogLevel.WARN);
                 throw new IllegalArgumentException("Username and password are required.");
+            }
+            if (birthDate == null) {
+                logger.logEvent("Sign-up rejected: missing birth date", LogLevel.WARN);
+                throw new IllegalArgumentException("Birth date is required.");
             }
             String normalizedFullName = validateAndNormalizeFullName(fullName);
             String normalizedPhone = validateAndNormalizePhone(phone);
@@ -76,7 +83,7 @@ public class UserService {
             }
 
             String hashedPassword = passwordService.hashPassword(password);
-            userRepository.addRegisteredMember(newId, new Member(newId, username, normalizedFullName, normalizedPhone), hashedPassword);
+            userRepository.addRegisteredMember(newId, new Member(newId, username, normalizedFullName, normalizedPhone,birthDate), hashedPassword);
             logger.logEvent("Sign-up succeeded: new member registered, username=" + username, LogLevel.INFO);
             return true;
 
@@ -432,4 +439,151 @@ public class UserService {
         return normalizedFullName;
     }
 
+    private String maskToken(String token) {
+        if (token == null) {
+            return "null";
+        }
+
+        if (token.length() <= 12) {
+            return "***";
+        }
+
+        return token.substring(0, 6) + "..." + token.substring(token.length() - 6);
+    }
+
+
+    public String getUserNameById(long id) {
+        Member member = userRepository.getMemberById(id);
+        return member != null ? member.getUserName() : null;
+    }
+
+    //for UI
+    public MyAccountDTO getMyAccountDTO(String sessionToken) {
+    try {
+        tokenService.validateToken(sessionToken);
+
+        Long memberId = tokenService.extractUserId(sessionToken);
+        if (memberId == null) {
+            throw new IllegalArgumentException("User is not logged in.");
+        }
+
+        Member member = userRepository.getMemberById(memberId);
+        if(member==null){
+            throw new IllegalArgumentException("Member not found.");
+        }
+
+        return new MyAccountDTO(
+                member.getId(),
+                member.getUserName(),
+                member.getFullName(),
+                member.getPhone(),
+                member.getBirthDate()
+        );
+
+    } catch (IllegalArgumentException | IllegalStateException e) {
+        throw e;
+
+    } catch (Exception e) {
+        logger.logError("Failed to get member DTO", e);
+        throw e;
+    }
+}
+
+
+   public boolean updateMemberFullName(String sessionToken,
+                                    String password,
+                                    String username,
+                                    String newFullName) {
+    try {
+        if (newFullName == null || newFullName.isBlank()) {
+            logger.logEvent("Update full name rejected: full name is blank", LogLevel.WARN);
+            throw new IllegalArgumentException("Full name cannot be blank.");
+        }
+
+
+        Member member = authenticateMemberForUpdate(
+                sessionToken,
+                password,
+                username
+        );
+
+        if (member == null) {
+            logger.logEvent(
+                    "Update full name rejected: authentication failed, username=" + username,
+                    LogLevel.WARN);
+            throw new IllegalArgumentException("Invalid username or password.");
+        }
+
+        member.setFullName(newFullName);
+         boolean ok = userRepository.updateMember(member);
+            if (!ok) {
+                logger.logEvent(
+                        "Update password rejected: repository update failed, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Password update failed. Please try again.");
+            }
+
+        logger.logEvent(
+                "Member full name updated: username=" + username,
+                LogLevel.INFO);
+
+        return true;
+
+    } catch (IllegalArgumentException | IllegalStateException e) {
+        throw e;
+
+    } catch (Exception e) {
+        logger.logError("Update member full name failed", e);
+        throw e;
+    }
+}
+
+public boolean updateMemberPhone(String sessionToken,
+                                 String password,
+                                 String username,
+                                 String newPhone) {
+    try {
+        if (newPhone == null || newPhone.isBlank()) {
+            logger.logEvent("Update phone rejected: phone is blank", LogLevel.WARN);
+            throw new IllegalArgumentException("Phone cannot be blank.");
+        }
+
+        String normalizedPhone = validateAndNormalizePhone(newPhone);
+
+        Member member = authenticateMemberForUpdate(
+                sessionToken,
+                password,
+                username
+        );
+
+        if (member == null) {
+            logger.logEvent(
+                    "Update phone rejected: authentication failed, username=" + username,
+                    LogLevel.WARN);
+            throw new IllegalArgumentException("Invalid username or password.");
+        }
+
+        member.setPhone(normalizedPhone);
+        boolean ok = userRepository.updateMember(member);
+            if (!ok) {
+                logger.logEvent(
+                        "Update password rejected: repository update failed, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Password update failed. Please try again.");
+            }
+
+        logger.logEvent(
+                "Member phone updated: username=" + username,
+                LogLevel.INFO);
+
+        return true;
+
+    } catch (IllegalArgumentException | IllegalStateException e) {
+        throw e;
+
+    } catch (Exception e) {
+        logger.logError("Update member phone failed", e);
+        throw e;
+    }
+}
 }

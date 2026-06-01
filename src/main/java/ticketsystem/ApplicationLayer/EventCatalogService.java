@@ -1,7 +1,11 @@
 package ticketsystem.ApplicationLayer;
 
+import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
@@ -13,6 +17,7 @@ import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DomainLayer.event.Event;
 
+@Service
 public class EventCatalogService {
 
     private final EventCatalogDomainService domainService;
@@ -21,7 +26,7 @@ public class EventCatalogService {
     private final ITokenService tokenService;
     private final ISystemLogger logger;
     
-
+    @Autowired
     public EventCatalogService(EventCatalogDomainService domainService, IEventRepository eventRepository,ICompanyRepository companyRepository, ITokenService tokenService, ISystemLogger logger) {
         this.domainService = domainService;
         this.eventRepository = eventRepository;
@@ -95,6 +100,48 @@ public class EventCatalogService {
             logger.logError("Unexpected system error in SearchByCompany. companyId=" + companyId + ". reason=" + e.getMessage(),e);
             throw new RuntimeException(
                 "An error occurred while performing company search: " + e.getMessage(),e);
+        }
+    }
+
+    /**
+     * Used by the UI home page to display a small list of featured events.
+     */
+    public List<EventSearchResultDTO> getFeaturedEvents(String sessionId, int limit) {
+        String context = "limit=" + limit;
+
+        try {
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+
+            if (limit <= 0) {
+                throw new IllegalArgumentException("Limit must be greater than zero");
+            }
+
+            List<Event> events = eventRepository.getAllEvents();
+
+            return events.stream()
+                    .sorted((first, second) -> Double.compare(
+                            second.getRate() == null ? 0.0 : second.getRate(),
+                            first.getRate() == null ? 0.0 : first.getRate()
+                    ))
+                    .limit(limit)
+                    .map(EventSearchResultDTO::from)
+                    .toList();
+
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Invalid request for getFeaturedEvents: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+
+        } catch (Exception e) {
+            logger.logError(
+                    "Unexpected system error in getFeaturedEvents. " + context + ". reason=" + e.getMessage(),
+                    e
+            );
+            throw new RuntimeException(
+                    "An error occurred while loading featured events: " + e.getMessage(),
+                    e
+            );
         }
     }
 

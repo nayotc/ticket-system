@@ -1,6 +1,7 @@
 package ticketsystem.AcceptanceTesting;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -90,7 +91,7 @@ public class HistoryServiceTest {
                 username,
                 password,
                 "Test User",
-                "0500000000");
+                "0500000000",LocalDate.of(2001, 1, 1));
         return userService.login(guestToken, username, password);
     }
 
@@ -106,7 +107,7 @@ public class HistoryServiceTest {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
         OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId,
-                20L);
+                20L,new BigDecimal(100));
 
         historyService.onOrderCompleted(orderDto);
 
@@ -162,7 +163,7 @@ public class HistoryServiceTest {
 
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L);
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L,new BigDecimal(100));
 
         // --- Act ---
         historyService.onOrderCompleted(orderDto);
@@ -210,7 +211,7 @@ public class HistoryServiceTest {
                 userId,
                 companyId,
                 userId,
-                20L
+                20L,new BigDecimal(100)
         );
     }
 
@@ -285,7 +286,7 @@ public class HistoryServiceTest {
                 buyerMemberId,
                 companyId,
                 managedByMemberId,
-                20L);
+                20L,new BigDecimal(100));
     }
 
     private long createActiveManagerUnderFounder(long founderId, long companyId, String username) {
@@ -502,7 +503,7 @@ public class HistoryServiceTest {
                 buyerId,
                 company.getId(),
                 ownerId, // managedByMemberId - should come from the event creator in the real flow
-                20L);
+                20L,new BigDecimal(100));
 
         // --- When (Act) ---
         historyService.onOrderCompleted(completedOrder);

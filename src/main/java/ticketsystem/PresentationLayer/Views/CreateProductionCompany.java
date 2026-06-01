@@ -7,10 +7,7 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
-import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -22,7 +19,6 @@ import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
-import ticketsystem.PresentationLayer.Components.Notifications;
 
 @PageTitle("TixNow | My productions")
 @Route(value = UiRoutes.CREATE_PRODUCTION_COMPANY, layout = MainLayout.class)

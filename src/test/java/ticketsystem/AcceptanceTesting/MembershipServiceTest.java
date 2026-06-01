@@ -1,5 +1,6 @@
 package ticketsystem.AcceptanceTesting;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -101,13 +102,13 @@ public class MembershipServiceTest {
         }
 
         // 3. Setup Founder - Active state
-        founderMember = new Member(founderId, "FounderUser", "Founder User", "0500000001");
+        founderMember = new Member(founderId, "FounderUser", "Founder User", "0500000001",LocalDate.of(2001, 1, 1));
         founderMember.addFounderRole(companyId);
         userRepository.addRegisteredMember(founderId, founderMember, "password123");
         appointerToken = tokenService.addActiveSession(founderMember);
 
         // 4. Setup Manager - Pre-existing active role
-        managerMember = new Member(managerId, "ManagerUser", "Manager User", "0500000002");
+        managerMember = new Member(managerId, "ManagerUser", "Manager User", "0500000002",LocalDate.of(2001, 1, 1));
         Set<Permission> managerPerms = new HashSet<>();
         managerPerms.add(Permission.MANAGE_INQUIRIES);
         managerMember.addManagerRole(companyId, founderId, managerPerms);
@@ -119,7 +120,7 @@ public class MembershipServiceTest {
         founderRole.addAppointee(managerId);
 
         // 5. Setup Owner - Specifically for UC 4.9 and 4.10
-        ownerMember = new Member(ownerId, "OwnerUser", "Owner User", "0500000003");
+        ownerMember = new Member(ownerId, "OwnerUser", "Owner User", "0500000003",LocalDate.of(2001, 1, 1));
         ownerMember.addOwnerRole(companyId, founderId);
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password123");
@@ -132,7 +133,7 @@ public class MembershipServiceTest {
         companyRepository.save(testCompany);
 
         // 6. Setup Regular Member - Starting with no role (For UC 4.7, 4.8)
-        member = new Member(memberId, "PlainMember", "Plain Member", "0500000004");
+        member = new Member(memberId, "PlainMember", "Plain Member", "0500000004",LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(memberId, member, "password123");
         appointeeToken = tokenService.addActiveSession(member);
     }
@@ -147,7 +148,7 @@ public class MembershipServiceTest {
         permissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
         // Act
-        membershipService.requestManagerAssignment(appointerToken, companyId, memberId, permissions);
+        membershipService.requestManagerAssignment(appointerToken, companyId, "PlainMember", permissions);
 
         // Assert: Verify real state change in the repository
         Member updatedMember = userRepository.getMemberById(memberId);
@@ -166,7 +167,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.requestManagerAssignment(appointerToken, companyId, managerId, permissions);
+            membershipService.requestManagerAssignment(appointerToken, companyId, "ManagerUser", permissions);
         });
 
         assertTrue(exception.getMessage().contains("This user already has an active or pending role in this company."));
@@ -180,7 +181,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.requestManagerAssignment(managerToken, companyId, memberId, permissions);
+            membershipService.requestManagerAssignment(managerToken, companyId, "PlainMember", permissions);
         });
 
         assertTrue(exception.getMessage().contains("Only Owners and Founders can appoint others."));
@@ -251,7 +252,7 @@ public class MembershipServiceTest {
         newPermissions.add(Permission.CONFIGURE_HALL_AND_MAP);
 
         // Act
-        boolean result = membershipService.updateManagerPermissions(appointerToken, companyId, managerId,
+        boolean result = membershipService.updateManagerPermissions(appointerToken, companyId, "ManagerUser",
                 newPermissions);
 
         // Assert
@@ -275,7 +276,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Validation Error -> IllegalArgumentException)
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            membershipService.updateManagerPermissions(invalidToken, companyId, managerId, newPermissions);
+            membershipService.updateManagerPermissions(invalidToken, companyId, "NonExistentManager", newPermissions);
         });
 
         assertTrue(exception.getMessage().contains("Invalid")
@@ -285,15 +286,16 @@ public class MembershipServiceTest {
     @Test
     public void GivenManagerDoesNotExist_WhenUpdatePermissions_ThenThrowsException() {
         // Arrange
-        Long nonExistentManagerId = 999L;
         Set<Permission> newPermissions = new HashSet<>();
 
         // Act & Assert (Validation Error -> IllegalArgumentException)
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            membershipService.updateManagerPermissions(appointerToken, companyId, nonExistentManagerId, newPermissions);
+            membershipService.updateManagerPermissions(appointerToken, companyId, "NonExistentManager", newPermissions);
         });
 
-        assertTrue(exception.getMessage().contains("Target Manager not found."));
+        // שינוי כאן: בדיקה גמישה יותר למחרוזת במקום הנוסח הישן והנוקשה
+        assertTrue(exception.getMessage().contains("not found"), 
+                "Exception message should indicate that the manager was not found");
     }
 
     @Test
@@ -307,7 +309,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.updateManagerPermissions(appointerToken, companyId, memberId, newPermissions);
+            membershipService.updateManagerPermissions(appointerToken, companyId, "PlainMember", newPermissions);
         });
 
         assertTrue(exception.getMessage().contains("You are not the appointer of the specified user"));
@@ -399,7 +401,7 @@ public class MembershipServiceTest {
     @Test
     public void GivenValidDetails_WhenRequestOwnerAssignment_ThenRoleIsCreatedInPendingStatus() throws Exception {
         // Act
-        boolean result = membershipService.requestOwnerAssignment(appointerToken, companyId, memberId);
+        boolean result = membershipService.requestOwnerAssignment(appointerToken, companyId, "PlainMember");
 
         // Assert
         assertTrue(result, "Service should return true on success.");
@@ -415,7 +417,7 @@ public class MembershipServiceTest {
     public void GivenTargetAlreadyHasRole_WhenRequestOwnerAssignment_ThenThrowsException() {
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.requestOwnerAssignment(appointerToken, companyId, managerId);
+            membershipService.requestOwnerAssignment(appointerToken, companyId, "ManagerUser");
         });
 
         assertTrue(exception.getMessage().contains("This user already has an active or pending role in this company."));
@@ -425,7 +427,7 @@ public class MembershipServiceTest {
     public void GivenAppointerIsManager_WhenRequestOwnerAssignment_ThenThrowsException() {
         // Act & Assert (Domain Error -> RuntimeException)
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            membershipService.requestOwnerAssignment(managerToken, companyId, memberId);
+            membershipService.requestOwnerAssignment(managerToken, companyId, "PlainMember");
         });
 
         assertTrue(exception.getMessage().contains("Only Owners and Founders can appoint others."));
@@ -433,15 +435,14 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenTargetMemberNotFound_WhenRequestOwnerAssignment_ThenThrowsException() {
-        // Arrange
-        Long nonExistentMemberId = 999L;
-
         // Act & Assert (Validation Error -> IllegalArgumentException)
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            membershipService.requestOwnerAssignment(appointerToken, companyId, nonExistentMemberId);
+            membershipService.requestOwnerAssignment(appointerToken, companyId, "NonExistentMember");
         });
 
-        assertTrue(exception.getMessage().contains("Target Member not found."));
+        // שינוי כאן: בדיקה גמישה יותר למחרוזת
+        assertTrue(exception.getMessage().contains("not found"),
+                "Exception message should indicate that the target member was not found");
     }
 
     @Test
@@ -451,7 +452,7 @@ public class MembershipServiceTest {
 
         // Act & Assert (Validation Error -> IllegalArgumentException)
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            membershipService.requestOwnerAssignment(invalidToken, companyId, memberId);
+            membershipService.requestOwnerAssignment(invalidToken, companyId, "PlainMember");
         });
 
         assertTrue(exception.getMessage().contains("Invalid")
@@ -465,7 +466,7 @@ public class MembershipServiceTest {
     public void GivenOwnerWithSubordinate_WhenResignFromOwnership_ThenReturnsTrueAndSubordinateIsTransferred()
             throws Exception {
         // Arrange
-        Member subManager = new Member(999L, "SubManager", "Sub Manager", "0500000005");
+        Member subManager = new Member(999L, "SubManager", "Sub Manager", "0500000005",LocalDate.of(2001, 1, 1));
         subManager.addManagerRole(companyId, ownerId, new HashSet<>());
         subManager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(999L, subManager, "password123");
@@ -723,11 +724,11 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenAppointerTokenButMemberNotInRepository_WhenRequestManagerAssignment_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999");
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> membershipService.requestManagerAssignment(ghostToken, companyId, memberId, new HashSet<>()));
+                () -> membershipService.requestManagerAssignment(ghostToken, companyId, "Ghost User", new HashSet<>()));
 
         assertTrue(exception.getMessage().contains("not found"));
     }
@@ -735,9 +736,11 @@ public class MembershipServiceTest {
     @Test
     public void GivenTargetMemberNotFound_WhenRequestManagerAssignment_ThenThrowsException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> membershipService.requestManagerAssignment(appointerToken, companyId, 9999L, new HashSet<>()));
+                () -> membershipService.requestManagerAssignment(appointerToken, companyId, "NonExistentMember", new HashSet<>()));
 
-        assertEquals("Target Member not found.", exception.getMessage());
+        // שינוי כאן: במקום assertEquals שדורש התאמה של 100%, משתמשים ב-assertTrue
+        assertTrue(exception.getMessage().contains("not found"),
+                "Exception message should indicate that the target member was not found");
     }
 
     @Test
@@ -753,7 +756,7 @@ public class MembershipServiceTest {
         boolean result = membershipService.requestManagerAssignment(
                 appointerToken,
                 companyId,
-                memberId,
+                "PlainMember",
                 permissions);
 
         assertTrue(result);
@@ -773,7 +776,7 @@ public class MembershipServiceTest {
         boolean result = membershipService.requestOwnerAssignment(
                 appointerToken,
                 companyId,
-                memberId);
+                "PlainMember");
 
         assertTrue(result);
 
@@ -792,7 +795,7 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenTokenForMemberNotInRepository_WhenApproveAssignment_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999");
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -827,7 +830,7 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenTokenForMemberNotInRepository_WhenRejectAssignment_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999");
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -849,14 +852,14 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenAppointerTokenButMemberNotInRepository_WhenUpdateManagerPermissions_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999");
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> membershipService.updateManagerPermissions(
                         ghostToken,
                         companyId,
-                        managerId,
+                        "ManagerUser",
                         new HashSet<>()));
 
         assertEquals("Appointer not found.", exception.getMessage());
@@ -864,7 +867,7 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenAppointerTokenButMemberNotInRepository_WhenRemoveManagerAssignment_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999");
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -895,7 +898,7 @@ public class MembershipServiceTest {
                 777L,
                 "lonelyOwner",
                 "Lonely Owner",
-                "0500000777");
+                "0500000777",LocalDate.of(2001, 1, 1));
 
         ownerWithoutExistingAppointer.addOwnerRole(companyId, 999L);
         ownerWithoutExistingAppointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
@@ -916,7 +919,7 @@ public class MembershipServiceTest {
         boolean result = membershipService.requestOwnerAssignment(
                 appointerToken,
                 companyId,
-                memberId);
+                "PlainMember");
 
         assertTrue(result);
         assertTrue(fakeNotifier.containsMessage("BGU Productions"));

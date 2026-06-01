@@ -2,23 +2,25 @@ package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
+import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.DiscountDTO;
+import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 
 @Service
@@ -310,6 +312,12 @@ public class CompanyService {
             throw e;
         }
     }
+    //for header presenter
+    public Long getFirstManagedCompanyId(String sessionToken) throws Exception {
+        long memberId = getRegisteredMemberId(sessionToken);
+
+        return membershipDomain.getFirstManagedCompanyId(memberId);
+    }
     private void notifyCompanyStaff(Company company, String message) {
         if (notificationsService == null || company == null || message == null || message.isBlank()) {
             return;
@@ -478,6 +486,7 @@ public class CompanyService {
 
     public void setCompanyPurchasePolicy(String token, Long companyId, PurchasePolicyDTO policyDTO) throws Exception {
         try {
+            logger.logEvent("setCompanyPurchasePolicy started for companyId: " + companyId,ISystemLogger.LogLevel.INFO);
             Company company = canEditPurchasePolicy(token, companyId);
 
             PurchasePolicy policy = mapper.toDomain(policyDTO);
@@ -485,6 +494,8 @@ public class CompanyService {
             company.setPurchasePolicy(policy);
 
             companyRepository.save(company);
+
+            logger.logEvent("setCompanyPurchasePolicy completed successfully for companyId: " + companyId,ISystemLogger.LogLevel.INFO);
 
         } catch (Exception e) {
             logger.logEvent(
@@ -509,5 +520,363 @@ public class CompanyService {
             return company;
     }
 
+/**
+     * Retrieves the purchase policy of a specified company and maps it to a DTO.
+     * Validates the user's session and permissions before allowing access.
+     *
+     * @param token     The authentication token of the current user.
+     * @param companyId The unique identifier of the target company.
+     * @return PurchasePolicyDTO representing the current purchase policy of the company.
+     * @throws Exception If the company is not found, the user lacks permission to view it,
+     * or an internal retrieval error occurs.
+     */
+    public PurchasePolicyDTO getCompanyPurchasePolicy(String token, Long companyId) throws Exception {
+        try {
+            Company company = canViewCompanyDetails(token, companyRepository.findById(companyId)
+                    .orElseThrow(() -> new Exception("Error: Company not found."))) ?
+                    companyRepository.findById(companyId).get() : null;
+
+            if (company == null) {
+                throw new Exception("Error: User does not have permission to view this company's policies.");
+            }
+
+            return mapper.toDTO(company.getPurchasePolicy());
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new Exception(e.getMessage());
+        } catch (Exception e) {
+            throw new Exception("An error occurred while retrieving the purchase policy.");
+        }
+    }
+
+/**
+     * Retrieves the discount policy of a specified company and maps it to a DTO.
+     * Validates the user's session and permissions before allowing access.
+     * Automatically maps Domain discount types (Visible, Coupon, Conditional) back to DTOs,
+     * including translating internal Enums into readable text for the UI.
+     *
+     * @param token     The authentication token of the current user.
+     * @param companyId The unique identifier of the target company.
+     * @return DiscountPolicyDTO representing the current discount policy of the company.
+     * @throws Exception If the company is not found, the user lacks permission, or a retrieval error occurs.
+     */
+    public DiscountPolicyDTO getCompanyDiscountPolicy(String token, Long companyId) throws Exception {
+        logEvent("getCompanyDiscountPolicy started. companyId=" + companyId,
+                ISystemLogger.LogLevel.INFO);
+
+        try {
+            Company company = canViewCompanyDetails(token, companyRepository.findById(companyId)
+                    .orElseThrow(() -> new Exception("Error: Company not found."))) ?
+                    companyRepository.findById(companyId).get() : null;
+
+            if (company == null) {
+                logEvent("getCompanyDiscountPolicy rejected. companyId=" + companyId
+                                + ", reason=no view permission",
+                        ISystemLogger.LogLevel.WARN);
+                throw new Exception("Error: User does not have permission to view this company's policies.");
+            }
+
+            DiscountPolicy domainPolicy = company.getDiscountPolicy();
+
+            if (domainPolicy == null) {
+                logEvent("getCompanyDiscountPolicy completed. companyId=" + companyId
+                                + ", domainPolicy=null, returning empty DTO",
+                        ISystemLogger.LogLevel.INFO);
+                return new DiscountPolicyDTO();
+            }
+
+            DiscountPolicyDTO dto = new DiscountPolicyDTO();
+            dto.setCompositionType(domainPolicy.getDiscountCompositionType());
+
+            List<DiscountDTO> discountDTOs = new java.util.ArrayList<>();
+
+            if (domainPolicy.getDiscounts() != null) {
+                logEvent("getCompanyDiscountPolicy mapping discounts. companyId=" + companyId
+                                + ", composition=" + domainPolicy.getDiscountCompositionType()
+                                + ", domainDiscounts=" + domainPolicy.getDiscounts().size(),
+                        ISystemLogger.LogLevel.DEBUG);
+
+                for (DiscountTypes discount : domainPolicy.getDiscounts()) {
+                    DiscountDTO dDTO = new DiscountDTO();
+
+                    dDTO.setName(discount.getName());
+                    dDTO.setPercentage(discount.getPercentage());
+
+                    // בדיקת סוג ההנחה הספציפי והמרתו
+                    if (discount instanceof ticketsystem.DomainLayer.discount.CouponDiscount) {
+                        ticketsystem.DomainLayer.discount.CouponDiscount coupon =
+                                (ticketsystem.DomainLayer.discount.CouponDiscount) discount;
+
+                        dDTO.setType("COUPON");
+                        dDTO.setCouponCode(coupon.getCouponCode());
+                        dDTO.setEndTime(coupon.getEndTime());
+
+                    } else if (discount instanceof ConditionalDiscount) {
+                        ConditionalDiscount cond = (ConditionalDiscount) discount;
+
+                        dDTO.setType("CONDITIONAL");
+                        dDTO.setEndTime(cond.getEndTime());
+
+                        String threshold = cond.getTicketThreshold() != null ? cond.getTicketThreshold().toString() : "1";
+
+                        if (cond.getCondition() == ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.MAX_TICKET) {
+                            dDTO.setConditionText("מקסימום " + threshold + " כרטיסים");
+                        } else if (cond.getCondition() == ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.DATE) {
+                            dDTO.setConditionText("הנחת תאריך");
+                        } else {
+                            dDTO.setConditionText("מינימום " + threshold + " כרטיסים");
+                        }
+
+                    } else if (discount instanceof ticketsystem.DomainLayer.discount.VisibleDiscount) {
+                        dDTO.setType("VISIBLE");
+                    }
+
+                    logEvent("getCompanyDiscountPolicy mapped discount. companyId=" + companyId
+                                    + ", name=" + dDTO.getName()
+                                    + ", type=" + dDTO.getType()
+                                    + ", percentage=" + dDTO.getPercentage()
+                                    + ", conditionText=" + dDTO.getConditionText()
+                                    + ", endTime=" + dDTO.getEndTime(),
+                            ISystemLogger.LogLevel.DEBUG);
+
+                    discountDTOs.add(dDTO);
+                }
+            }
+
+            dto.setDiscounts(discountDTOs);
+
+            logEvent("getCompanyDiscountPolicy completed. companyId=" + companyId
+                            + ", composition=" + dto.getCompositionType()
+                            + ", dtoDiscounts=" + discountDTOs.size(),
+                    ISystemLogger.LogLevel.INFO);
+
+            return dto;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            logEvent("getCompanyDiscountPolicy failed. companyId=" + companyId
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
+            throw new Exception(e.getMessage());
+        } catch (Exception e) {
+            logEvent("getCompanyDiscountPolicy failed. companyId=" + companyId
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
+            throw new Exception("An error occurred while retrieving the discount policy.");
+        }
+    }
+
+    /**
+     * Sets or updates the discount policy for a specified company based on the provided DTO.
+     * Validates user permissions to ensure only authorized personnel can modify policies.
+     * Maps different discount types (Visible, Coupon, Conditional) from the DTO to Domain entities.
+     * Note: For conditional discounts, it attempts to parse the condition type and threshold
+     * dynamically from the free-text condition string provided by the UI.
+     *
+     * @param token     The authentication token of the current user.
+     * @param companyId The unique identifier of the target company.
+     * @param policyDTO The DiscountPolicyDTO containing the new discount rules and composition type.
+     * @throws Exception If validation fails, the company is not found, or the database save operation fails.
+     */
+    public void setCompanyDiscountPolicy(String token, Long companyId, ticketsystem.DTO.DiscountPolicyDTO policyDTO) throws Exception {
+        int incomingDiscounts = policyDTO == null || policyDTO.getDiscounts() == null
+                ? 0
+                : policyDTO.getDiscounts().size();
+
+        logEvent("setCompanyDiscountPolicy started. companyId=" + companyId
+                        + ", composition=" + (policyDTO == null ? null : policyDTO.getCompositionType())
+                        + ", incomingDiscounts=" + incomingDiscounts,
+                ISystemLogger.LogLevel.INFO);
+
+        try {
+            tokenService.validateToken(token);
+            Long memberId = tokenService.extractUserId(token);
+            logEvent("setCompanyDiscountPolicy token validated. companyId=" + companyId
+                            + ", memberId=" + memberId,
+                    ISystemLogger.LogLevel.DEBUG);
+
+            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new Exception("Error: Company not found."));
+
+            if (!membershipDomain.validatePermission(memberId, companyId, Permission.SET_DISCOUNT_POLICY)) {
+                logEvent("setCompanyDiscountPolicy permission denied. companyId=" + companyId
+                                + ", memberId=" + memberId,
+                        ISystemLogger.LogLevel.WARN);
+                throw new IllegalArgumentException("User does not have permission to manage company discount policy");
+            }
+
+            int beforeCount = company.getDiscountPolicy() == null || company.getDiscountPolicy().getDiscounts() == null
+                    ? 0
+                    : company.getDiscountPolicy().getDiscounts().size();
+
+            logEvent("setCompanyDiscountPolicy permission approved. companyId=" + companyId
+                            + ", memberId=" + memberId
+                            + ", existingDiscounts=" + beforeCount,
+                    ISystemLogger.LogLevel.DEBUG);
+
+            if (policyDTO != null && policyDTO.getDiscounts() != null) {
+                int index = 0;
+                for (ticketsystem.DTO.DiscountDTO discountDTO : policyDTO.getDiscounts()) {
+                    index++;
+
+                    logEvent("setCompanyDiscountPolicy applying discount " + index + "/" + incomingDiscounts
+                                    + ". companyId=" + companyId
+                                    + ", type=" + discountDTO.getType()
+                                    + ", name=" + discountDTO.getName()
+                                    + ", percentage=" + discountDTO.getPercentage()
+                                    + ", couponCodePresent=" + (discountDTO.getCouponCode() != null && !discountDTO.getCouponCode().isBlank())
+                                    + ", endTime=" + discountDTO.getEndTime()
+                                    + ", conditionText=" + discountDTO.getConditionText(),
+                            ISystemLogger.LogLevel.DEBUG);
+
+                    if ("VISIBLE".equals(discountDTO.getType()) || "SIMPLE".equals(discountDTO.getType())) {
+                        company.addVisibleDiscountToCompany(
+                                discountDTO.getName(),
+                                discountDTO.getPercentage()
+                        );
+                    }
+                    else if ("COUPON".equals(discountDTO.getType())) {
+                        company.addCouponDiscountToCompany(
+                                discountDTO.getName(),
+                                discountDTO.getCouponCode(),
+                                discountDTO.getPercentage(),
+                                discountDTO.getEndTime()
+                        );
+                    }
+                    else if ("CONDITIONAL".equals(discountDTO.getType())) {
+
+                        ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition actualCondition =
+                                ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.MIN_TICKET;
+
+                        int threshold = 1;
+                        String conditionStr = discountDTO.getConditionText();
+
+                        if (conditionStr != null && !conditionStr.isBlank()) {
+                            try {
+                                if (conditionStr.contains("<") || conditionStr.toLowerCase().contains("max") || conditionStr.contains("מקסימום")) {
+                                    actualCondition = ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.MAX_TICKET;
+                                } else if (conditionStr.contains("date") || conditionStr.contains("תאריך")) {
+                                    actualCondition = ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.DATE;
+                                }
+
+                                String numberOnly = conditionStr.replaceAll("[^0-9]", "");
+                                if (!numberOnly.isEmpty()) {
+                                    threshold = Integer.parseInt(numberOnly);
+                                }
+                            } catch (Exception e) {
+                                logEvent("setCompanyDiscountPolicy condition parse failed. companyId=" + companyId
+                                                + ", conditionText=" + conditionStr
+                                                + ", fallbackThreshold=1",
+                                        ISystemLogger.LogLevel.WARN);
+                                threshold = 1;
+                            }
+                        }
+
+                        logEvent("setCompanyDiscountPolicy parsed conditional discount. companyId=" + companyId
+                                        + ", condition=" + actualCondition
+                                        + ", threshold=" + threshold
+                                        + ", endTime=" + discountDTO.getEndTime(),
+                                ISystemLogger.LogLevel.DEBUG);
+
+                        company.addConditionalDiscountToCompany(
+                                discountDTO.getName(),
+                                java.time.LocalDateTime.now(),
+                                discountDTO.getEndTime(),
+                                discountDTO.getPercentage(),
+                                actualCondition,
+                                threshold
+                        );
+                    }
+                }
+            }
+
+            companyRepository.save(company);
+
+            int afterCount = company.getDiscountPolicy() == null || company.getDiscountPolicy().getDiscounts() == null
+                    ? 0
+                    : company.getDiscountPolicy().getDiscounts().size();
+
+            logEvent("setCompanyDiscountPolicy completed. companyId=" + companyId
+                            + ", beforeDiscounts=" + beforeCount
+                            + ", incomingDiscounts=" + incomingDiscounts
+                            + ", afterDiscounts=" + afterCount,
+                    ISystemLogger.LogLevel.INFO);
+
+        } catch (Exception e) {
+            logEvent("setCompanyDiscountPolicy failed. companyId=" + companyId
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
+    }
+
+    public boolean hasPermission(String sessionToken, long companyId, Permission permission) throws Exception {
+        long memberId = getRegisteredMemberId(sessionToken);
+
+        if (permission == null) {
+            throw new IllegalArgumentException("Permission cannot be null");
+        }
+
+        return membershipDomain.validatePermission(memberId, companyId, permission);
+    }
+
+    public String getPurchasePolicySummary(Long companyId) {
+        try {
+            Company company = companyRepository.findById(companyId).orElse(null);
+
+            if (company == null || company.getPurchasePolicy() == null) {
+                return "לא הוגדרה מדיניות רכישה";
+            }
+
+            PurchasePolicy policy = company.getPurchasePolicy();
+
+            if (policy.getRootRule() != null && policy.getRootRule().getClass().getSimpleName().equals("AlwaysAllowRule")) {
+                return "ללא הגבלות רכישה מיוחדות";
+            }
+
+            return "מוגדרת חוקיות רכישה מותאמת אישית";
+
+        } catch (Exception e) {
+            logError("Failed to get purchase policy summary for companyId=" + companyId, e);
+            return "שגיאה בשליפת מדיניות הרכישה";
+        }
+    }
+
+    public String getDiscountPolicySummary(Long companyId) {
+        try {
+            Company company = companyRepository.findById(companyId).orElse(null);
+
+            if (company == null || company.getDiscountPolicy() == null) {
+                return "אין הנחות פעילות";
+            }
+
+            DiscountPolicy policy = company.getDiscountPolicy();
+
+            if (policy.getDiscounts() == null || policy.getDiscounts().isEmpty()) {
+                return "אין הנחות פעילות";
+            }
+
+            int discountsCount = policy.getDiscounts().size();
+
+            String compositionMethod = "";
+            if (policy.getDiscountCompositionType() != null) {
+                switch (policy.getDiscountCompositionType().name()) {
+                    case "SUM":
+                        compositionMethod = " (כפל מבצעים)";
+                        break;
+                    case "MAX":
+                        compositionMethod = " (הנחה מקסימלית)";
+                        break;
+                }
+            }
+
+            return discountsCount + " הנחות מוגדרות במערכת" + compositionMethod;
+
+        } catch (Exception e) {
+            logError("Failed to get discount policy summary for companyId=" + companyId, e);
+            return "שגיאה בשליפת מדיניות ההנחות";
+        }
+    }
 
 }
