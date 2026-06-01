@@ -11,6 +11,7 @@ import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.Member;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Component
@@ -22,7 +23,9 @@ public class DevSystemAdminDataInitializer implements CommandLineRunner {
     private static final String ADMIN_PASSWORD = "admin";
     private static final String ADMIN_FULLNAME = "System Administrator";
     private static final String ADMIN_PHONE = "0509999999";
+    private static final LocalDate ADMIN_BIRTH_DATE = LocalDate.of(2000, 6, 1);
 
+    private static final LocalDate SUSPENDED_BIRTH_DATE = LocalDate.of(2000, 1, 1);
     private static final String SUSPENDED_USERNAME = "banned@test.com";
 
     private final UserService userService;
@@ -56,7 +59,7 @@ public class DevSystemAdminDataInitializer implements CommandLineRunner {
 
         // 1. יצירת חשבון משתמש רגיל כדי שהמנהל יוכל לבצע Login לקבלת טוקן
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_FULLNAME, ADMIN_PHONE);
+        userService.signUp(guestToken, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_FULLNAME, ADMIN_PHONE, ADMIN_BIRTH_DATE);
 
         Member adminMember = userRepository.getMemberByUsername(ADMIN_USERNAME);
         if (adminMember == null) {
@@ -95,7 +98,7 @@ public class DevSystemAdminDataInitializer implements CommandLineRunner {
 
         // יצירת המשתמש
         String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, SUSPENDED_USERNAME, "123456", "Suspended User", "0508888888");
+        userService.signUp(guestToken, SUSPENDED_USERNAME, "123456", "Suspended User", "0508888888", SUSPENDED_BIRTH_DATE);
         Member suspendedMember = userRepository.getMemberByUsername(SUSPENDED_USERNAME);
 
         if (suspendedMember != null) {
