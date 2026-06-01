@@ -26,17 +26,19 @@ import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class UserServiceTest {
+
     private static UserService userService;
     private static UserRepository userRepository;
     private static TokenService tokenService;
     private static ITokenRepository tokenRepository;
     private static LogbackSystemLogger logger;
+
     @BeforeEach
     public void setup() {
         logger = new LogbackSystemLogger();
         userRepository = new UserRepository();
         tokenRepository = new TokenRepository();
-        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         userService = new UserService(userRepository, tokenService, logger);
     }
 
@@ -185,6 +187,7 @@ public class UserServiceTest {
         }
 
     }
+
     @Test
     public void testUpdateDetails_concurrent() throws InterruptedException {
         int numberOfThreads = 20;

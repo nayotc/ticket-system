@@ -3,8 +3,6 @@ package ticketsystem.ApplicationLayer;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.springframework.stereotype.Service;
 
@@ -16,7 +14,7 @@ import ticketsystem.DomainLayer.user.Member;
 
 @Service
 public class UserService {
-    
+
     private final IUserRepository userRepository;
     private final ITokenService tokenService;
     private final IPasswordService passwordService;
@@ -31,7 +29,6 @@ public class UserService {
         this.userLoginListeners = new ArrayList<>();
     }
 
-
     // 1. System Visit: Allows a guest to visit the system and receive a session
     // token.
     public String visitSystem() {
@@ -42,7 +39,7 @@ public class UserService {
             logger.logEvent("VisitSystem: guest object created", LogLevel.DEBUG);
 
             String guestToken = tokenService.addActiveSession(guest);
-            logger.logEvent("VisitSystem succeeded: guest session created, guestToken=" + maskToken(guestToken), LogLevel.INFO);
+            logger.logEvent("VisitSystem succeeded: guest session created, guestToken=" + tokenService.maskToken(guestToken), LogLevel.INFO);
 
             return guestToken;
         } catch (Exception e) {
@@ -84,6 +81,7 @@ public class UserService {
             return true;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
+            logger.logError("Sign-up failed: reason=" + e.getMessage() + ", username=" + username, e);
             throw e;
 
         } catch (Exception e) {
@@ -96,12 +94,12 @@ public class UserService {
 // and password, and receive a new session token.
     public String login(String sessionToken, String username, String password) {
         logger.logEvent(
-                "Login started: username=" + username + ", guestToken=" + maskToken(sessionToken),
+                "Login started: username=" + username + ", guestToken=" + tokenService.maskToken(sessionToken),
                 LogLevel.INFO);
 
         try {
             tokenService.validateToken(sessionToken);
-            logger.logEvent("Login validation passed: token=" + maskToken(sessionToken), LogLevel.DEBUG);
+            logger.logEvent("Login validation passed: token=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
             if (!tokenService.isGuestToken(sessionToken)) {
                 logger.logEvent("Login rejected: session is not a guest token", LogLevel.WARN);
@@ -137,21 +135,21 @@ public class UserService {
             String memberToken = tokenService.addActiveSession(member);
             logger.logEvent(
                     "Login member session created: username=" + username
-                            + ", memberId=" + member.getId()
-                            + ", memberToken=" + maskToken(memberToken),
+                    + ", memberId=" + member.getId()
+                    + ", memberToken=" + tokenService.maskToken(memberToken),
                     LogLevel.INFO);
 
             try {
                 logger.logEvent(
-                        "Login post-processing started: notifying listeners, oldGuestToken=" + maskToken(sessionToken)
-                                + ", newMemberToken=" + maskToken(memberToken),
+                        "Login post-processing started: notifying listeners, oldGuestToken=" + tokenService.maskToken(sessionToken)
+                        + ", newMemberToken=" + tokenService.maskToken(memberToken),
                         LogLevel.DEBUG);
 
                 notifyListeners(sessionToken, memberToken);
                 logger.logEvent("Login listeners completed: username=" + username + ", memberId=" + member.getId(), LogLevel.DEBUG);
 
                 tokenService.removeActiveSession(sessionToken);
-                logger.logEvent("Login guest session removed: oldGuestToken=" + maskToken(sessionToken), LogLevel.DEBUG);
+                logger.logEvent("Login guest session removed: oldGuestToken=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
                 logger.logEvent("Login succeeded: username=" + username, LogLevel.INFO);
                 return memberToken;
@@ -175,11 +173,11 @@ public class UserService {
 
     // 4. Exit: Allows a user to exit the system entirely.
     public boolean exit(String sessionToken) {
-        logger.logEvent("Exit started: token=" + maskToken(sessionToken), LogLevel.INFO);
+        logger.logEvent("Exit started: token=" + tokenService.maskToken(sessionToken), LogLevel.INFO);
 
         try {
             tokenService.validateToken(sessionToken);
-            logger.logEvent("Exit validation passed: token=" + maskToken(sessionToken), LogLevel.DEBUG);
+            logger.logEvent("Exit validation passed: token=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
             Long memberId = null;
 
@@ -189,13 +187,13 @@ public class UserService {
             }
 
             tokenService.removeActiveSession(sessionToken);
-            logger.logEvent("Exit session removed: token=" + maskToken(sessionToken) + ", memberId=" + memberId, LogLevel.DEBUG);
+            logger.logEvent("Exit session removed: token=" + tokenService.maskToken(sessionToken) + ", memberId=" + memberId, LogLevel.DEBUG);
 
             logger.logEvent("Exit: session closed", LogLevel.INFO);
             return true;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            logger.logEvent("Exit failed: reason=" + e.getMessage() + ", token=" + maskToken(sessionToken), LogLevel.WARN);
+            logger.logEvent("Exit failed: reason=" + e.getMessage() + ", token=" + tokenService.maskToken(sessionToken), LogLevel.WARN);
             throw e;
 
         } catch (Exception e) {
@@ -206,11 +204,11 @@ public class UserService {
 
     // 5. Log Out: Allows a member to log out and receive a new guest session token.
     public String logOut(String sessionToken) {
-        logger.logEvent("Logout started: memberToken=" + maskToken(sessionToken), LogLevel.INFO);
+        logger.logEvent("Logout started: memberToken=" + tokenService.maskToken(sessionToken), LogLevel.INFO);
 
         try {
             tokenService.validateToken(sessionToken);
-            logger.logEvent("Logout validation passed: token=" + maskToken(sessionToken), LogLevel.DEBUG);
+            logger.logEvent("Logout validation passed: token=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
             if (tokenService.isGuestToken(sessionToken)) {
                 logger.logEvent(
@@ -223,16 +221,16 @@ public class UserService {
             logger.logEvent("Logout member identified: memberId=" + memberId, LogLevel.DEBUG);
 
             tokenService.removeActiveSession(sessionToken);
-            logger.logEvent("Logout member session removed: memberId=" + memberId + ", oldMemberToken=" + maskToken(sessionToken), LogLevel.DEBUG);
+            logger.logEvent("Logout member session removed: memberId=" + memberId + ", oldMemberToken=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
             String guestToken = visitSystem();
-            logger.logEvent("Logout guest session created: memberId=" + memberId + ", newGuestToken=" + maskToken(guestToken), LogLevel.DEBUG);
+            logger.logEvent("Logout guest session created: memberId=" + memberId + ", newGuestToken=" + tokenService.maskToken(guestToken), LogLevel.DEBUG);
 
             logger.logEvent("Logout succeeded: new guest session issued, memberId=" + memberId, LogLevel.INFO);
             return guestToken;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            logger.logEvent("Logout failed: reason=" + e.getMessage() + ", token=" + maskToken(sessionToken), LogLevel.WARN);
+            logger.logEvent("Logout failed: reason=" + e.getMessage() + ", token=" + tokenService.maskToken(sessionToken), LogLevel.WARN);
             throw e;
 
         } catch (Exception e) {
@@ -325,6 +323,7 @@ public class UserService {
             return true;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
+            logger.logError("Update member password failed", e);
             throw e;
 
         } catch (Exception e) {
@@ -335,34 +334,41 @@ public class UserService {
 
     private Member authenticateMemberForUpdate(String sessionToken, String password, String username) {
         if (password == null || password.isBlank() || username == null || username.isBlank()) {
+            logger.logEvent("Authentication rejected: one or more required fields are blank", LogLevel.WARN);
             return null;
         }
         tokenService.validateToken(sessionToken);
         if (!tokenService.isMemberToken(sessionToken)) {
+            logger.logEvent("Authentication rejected: invalid token type", LogLevel.WARN);
             return null;
         }
         Member member = userRepository.getMemberByUsername(username);
         if (member == null) {
+            logger.logEvent("Authentication rejected: member not found", LogLevel.WARN);
             return null;
         }
         if (!tokenService.extractUserId(sessionToken).equals(member.getId())) {
+            logger.logEvent("Authentication rejected: token does not belong to member", LogLevel.WARN);
             return null;
         }
         String hashedPassword = userRepository.getHashedPasswordByUsername(username);
         if (hashedPassword == null) {
+            logger.logEvent("Authentication rejected: hashed password not found", LogLevel.WARN);
             return null;
         }
         if (!passwordService.verifyPassword(password, hashedPassword)) {
+            logger.logEvent("Authentication rejected: invalid password", LogLevel.WARN);
             return null;
         }
+        logger.logEvent("Authentication successful for member update: username=" + username, LogLevel.INFO);
         return member;
     }
 
     private void notifyListeners(String guestToken, String memberToken) {
         logger.logEvent(
                 "Login listeners notification started: listeners=" + userLoginListeners.size()
-                        + ", guestToken=" + maskToken(guestToken)
-                        + ", memberToken=" + maskToken(memberToken),
+                + ", guestToken=" + tokenService.maskToken(guestToken)
+                + ", memberToken=" + tokenService.maskToken(memberToken),
                 LogLevel.DEBUG);
 
         for (UserLoginListener listener : userLoginListeners) {
@@ -377,7 +383,7 @@ public class UserService {
         userLoginListeners.add(listener);
         logger.logEvent(
                 "UserLoginListener added: listener=" + (listener == null ? "null" : listener.getClass().getSimpleName())
-                        + ", totalListeners=" + userLoginListeners.size(),
+                + ", totalListeners=" + userLoginListeners.size(),
                 LogLevel.DEBUG);
     }
 
@@ -385,7 +391,7 @@ public class UserService {
         userLoginListeners.remove(listener);
         logger.logEvent(
                 "UserLoginListener removed: listener=" + (listener == null ? "null" : listener.getClass().getSimpleName())
-                        + ", totalListeners=" + userLoginListeners.size(),
+                + ", totalListeners=" + userLoginListeners.size(),
                 LogLevel.DEBUG);
     }
 
@@ -406,7 +412,7 @@ public class UserService {
             logger.logEvent("Sign-up rejected: invalid phone length", LogLevel.WARN);
             throw new IllegalArgumentException("Phone number must be 9 or 10 digits long.");
         }
-
+        logger.logEvent("Validated and normalized phone number successfully - validateAndNormalizePhone", LogLevel.INFO);
         return normalizedPhone;
     }
 
@@ -422,7 +428,7 @@ public class UserService {
             logger.logEvent("Sign-up rejected: invalid full name length", LogLevel.WARN);
             throw new IllegalArgumentException("Full name must be between 2 and 100 characters.");
         }
-
+        logger.logEvent("Validated and normalized full name successfully - validateAndNormalizeFullName", LogLevel.INFO);
         return normalizedFullName;
     }
 
@@ -436,6 +442,12 @@ public class UserService {
         }
 
         return token.substring(0, 6) + "..." + token.substring(token.length() - 6);
+    }
+
+
+    public String getUserNameById(long id) {
+        Member member = userRepository.getMemberById(id);
+        return member != null ? member.getUserName() : null;
     }
 
 }

@@ -38,7 +38,7 @@ public class UserOrderIntegrationTests {
         logger = new LogbackSystemLogger();
         userRepository = new UserRepository();
         tokenRepository = new TokenRepository();
-        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository);
+        tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         userService = new UserService(userRepository, tokenService, logger);
         orderRepository = new OrderRepository();
         orderService = new OrderService(orderRepository, tokenService, logger, notification);

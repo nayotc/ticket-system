@@ -91,7 +91,7 @@ public class DevRoleTreeDataInitializer {
                 membershipService.requestOwnerAssignment(
                         founderToken,
                         TEST_COMPANY_ID,
-                        owner.getId()
+                        owner.getUserName()
                 );
 
                 String ownerToken = login(OWNER_USERNAME, OWNER_PASSWORD);
@@ -102,7 +102,7 @@ public class DevRoleTreeDataInitializer {
                 membershipService.requestManagerAssignment(
                         founderToken,
                         TEST_COMPANY_ID,
-                        eventManager.getId(),
+                        eventManager.getUserName(),
                         Set.of(
                                 Permission.MANAGE_EVENT_INVENTORY,
                                 Permission.CONFIGURE_HALL_AND_MAP,
@@ -120,7 +120,7 @@ public class DevRoleTreeDataInitializer {
                 membershipService.requestManagerAssignment(
                         ownerToken,
                         TEST_COMPANY_ID,
-                        salesManager.getId(),
+                        salesManager.getUserName(),
                         Set.of(
                                 Permission.VIEW_PURCHASE_HISTORY,
                                 Permission.GENERATE_SALES_REPORT

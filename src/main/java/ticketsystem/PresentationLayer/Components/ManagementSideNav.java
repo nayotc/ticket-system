@@ -15,6 +15,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.DomainLayer.user.Permission;
 

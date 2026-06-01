@@ -198,4 +198,70 @@ public class LotteryService {
         return new ArrayList<>(winnersPool.subList(0, numberOfWinners));
     }
 
+    public boolean hasLotteryForEvent(long eventId) {
+        if (eventId <= 0) {
+            return false;
+        }
+
+        return lotteryRepository.findByEventId(eventId) != null;
+    }
+
+    public long getLotteryIdByEventId(long eventId) {
+        if (eventId <= 0) {
+            throw new IllegalArgumentException("Event ID is invalid.");
+        }
+
+        Lottery lottery = lotteryRepository.findByEventId(eventId);
+
+        if (lottery == null) {
+            throw new IllegalArgumentException("Lottery for event not found.");
+        }
+
+        return lottery.getLotteryId();
+    }
+
+    public boolean registerMemberToLotteryByEventId(String token, long eventId) {
+        if (eventId <= 0) {
+            throw new IllegalArgumentException("Event ID is invalid.");
+        }
+
+        Lottery lottery = lotteryRepository.findByEventId(eventId);
+
+        if (lottery == null) {
+            throw new IllegalArgumentException("Lottery for event not found.");
+        }
+
+        return registerMemberToLottery(token, lottery.getLotteryId());
+    }
+
+    public boolean validateWinnerCodeForEvent(String token, long eventId, String authCode) {
+        try {
+            tokenService.validateToken(token);
+
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId == null) {
+                throw new IllegalArgumentException("Member must be logged in to use a lottery code.");
+            }
+
+            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            if (eventId <= 0) {
+                throw new IllegalArgumentException("Event ID is invalid.");
+            }
+
+            if (authCode == null || authCode.isBlank()) {
+                return false;
+            }
+
+            Lottery lottery = lotteryRepository.findByEventId(eventId);
+            if (lottery == null) {
+                throw new IllegalArgumentException("Lottery for event not found.");
+            }
+
+            return lottery.validateWinnerCode(memberId, authCode.trim());
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+        }
+    }
 }
