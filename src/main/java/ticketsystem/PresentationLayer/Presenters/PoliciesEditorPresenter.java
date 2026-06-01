@@ -10,7 +10,11 @@ import ticketsystem.DTO.PurchaseRuleType;
 
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountPolicyDraftDTO;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountCompositionStrategy;
+import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountConditionType;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchasePolicyDraftDTO;
+import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchasePolicyExpressionDraftDTO;
+import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseExpressionNodeDTO;
+import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseNodeType;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.LogicalOperator;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseRuleField;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.ComparisonOperator;
@@ -32,76 +36,118 @@ public class PoliciesEditorPresenter {
     // A container record to return both policy drafts to the UI
     public record PoliciesDraftData(PurchasePolicyDraftDTO purchaseDraft, DiscountPolicyDraftDTO discountDraft) {}
 
-    public PoliciesDraftData loadPolicies(String sessionToken, Long companyId) {
+    public PurchasePolicyExpressionDraftDTO loadPurchasePolicy(String sessionToken, Long companyId) {
         try {
-            // 1. Fetch and Map Purchase Policy
             PurchasePolicyDTO appPurchasePolicy = companyService.getCompanyPurchasePolicy(sessionToken, companyId);
-            PurchasePolicyDraftDTO uiPurchaseDraft = mapToUiPurchasePolicy(companyId.toString(), appPurchasePolicy);
-            
-            // 2. Fetch and Map Discount Policy
-            DiscountPolicyDTO appDiscountPolicy = companyService.getCompanyDiscountPolicy(sessionToken, companyId);
-            DiscountPolicyDraftDTO uiDiscountDraft = mapToUiDiscountPolicy(companyId.toString(), appDiscountPolicy);
-
-            return new PoliciesDraftData(uiPurchaseDraft, uiDiscountDraft);
+            return mapToUiPurchasePolicyExpression(companyId.toString(), appPurchasePolicy);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new PresentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("An error occurred while loading policy data.");
+            throw new PresentationException("An error occurred while loading the purchase policy.");
         }
     }
 
-    public void savePolicies(String sessionToken, Long companyId, PurchasePolicyDraftDTO purchaseDraft, DiscountPolicyDraftDTO discountDraft) {
+    public void savePurchasePolicy(String sessionToken, Long companyId, PurchasePolicyExpressionDraftDTO purchaseDraft) {
         try {
-            // 1. Save Purchase Policy
-            if (purchaseDraft != null && !purchaseDraft.rules().isEmpty()) {
-                PurchasePolicyDTO appPurchasePolicy = mapToAppPurchasePolicy(purchaseDraft);
-                companyService.setCompanyPurchasePolicy(sessionToken, companyId, appPurchasePolicy);
-            }
+            PurchasePolicyDTO appPurchasePolicy = mapToAppPurchasePolicyExpression(purchaseDraft);
+            companyService.setCompanyPurchasePolicy(sessionToken, companyId, appPurchasePolicy);
 
-            // 2. Save Discount Policy
-            if (discountDraft != null) {
-                DiscountPolicyDTO appDiscountPolicy = mapToAppDiscountPolicy(discountDraft);
-                companyService.setCompanyDiscountPolicy(sessionToken, companyId, appDiscountPolicy);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new PresentationException(e.getMessage());
+        } catch (Exception e) {
+            throw new PresentationException("An error occurred while saving the purchase policy. Please try again.");
+        }
+    }
+
+    public DiscountPolicyDraftDTO loadDiscountPolicy(String sessionToken, Long companyId) {
+        try {
+            DiscountPolicyDTO appDiscountPolicy = companyService.getCompanyDiscountPolicy(sessionToken, companyId);
+            return mapToUiDiscountPolicy(companyId.toString(), appDiscountPolicy);
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new PresentationException(e.getMessage());
+        } catch (Exception e) {
+            throw new PresentationException("An error occurred while loading the discount policy.");
+        }
+    }
+
+    public void saveDiscountPolicy(String sessionToken, Long companyId, DiscountPolicyDraftDTO discountDraft) {
+        try {
+            DiscountPolicyDTO appDiscountPolicy = mapToAppDiscountPolicy(discountDraft);
+            companyService.setCompanyDiscountPolicy(sessionToken, companyId, appDiscountPolicy);
+
+            if (appDiscountPolicy.getCompositionType() != null) {
+                companyService.setCompositionType(sessionToken, companyId, appDiscountPolicy.getCompositionType());
             }
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new PresentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("An error occurred while saving the policies. Please try again.");
+            throw new PresentationException("An error occurred while saving the discount policy. Please try again.");
         }
     }
+
 
     // =================================================================================
     // MAPPING METHODS: APPLICATION TO UI (FLATTENING / READING)
     // =================================================================================
 
     /**
-     * Converts the Application PurchasePolicyDTO tree into a flat PurchasePolicyDraftDTO for the UI.
+     * Converts the Application PurchasePolicyDTO tree into the nested UI expression model.
      */
-    private PurchasePolicyDraftDTO mapToUiPurchasePolicy(String companyId, PurchasePolicyDTO appPolicy) {
+    private PurchasePolicyExpressionDraftDTO mapToUiPurchasePolicyExpression(String companyId, PurchasePolicyDTO appPolicy) {
         if (appPolicy == null || appPolicy.getRootRule() == null) {
-            return new PurchasePolicyDraftDTO(companyId, LogicalOperator.AND, new ArrayList<>());
+            PurchaseExpressionNodeDTO root = new PurchaseExpressionNodeDTO(
+                    UUID.randomUUID().toString(),
+                    PurchaseNodeType.GROUP,
+                    LogicalOperator.AND,
+                    null,
+                    new ArrayList<>()
+            );
+            return new PurchasePolicyExpressionDraftDTO(companyId, root);
         }
 
-        PurchaseRuleDTO root = appPolicy.getRootRule();
-        LogicalOperator rootOperator = LogicalOperator.AND;
-        List<ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseRuleDTO> uiRules = new ArrayList<>();
+        return new PurchasePolicyExpressionDraftDTO(companyId, mapToUiPurchaseNode(appPolicy.getRootRule()));
+    }
 
-        if (root.getType() == PurchaseRuleType.AND || root.getType() == PurchaseRuleType.OR) {
-            rootOperator = root.getType() == PurchaseRuleType.AND ? LogicalOperator.AND : LogicalOperator.OR;
-            
-            if (root.getChildren() != null) {
-                for (PurchaseRuleDTO child : root.getChildren()) {
-                    uiRules.add(mapToUiLeafRule(child));
+    private PurchaseExpressionNodeDTO mapToUiPurchaseNode(PurchaseRuleDTO appRule) {
+        if (appRule == null || appRule.getType() == null || appRule.getType() == PurchaseRuleType.ALWAYS_ALLOW) {
+            return new PurchaseExpressionNodeDTO(
+                    UUID.randomUUID().toString(),
+                    PurchaseNodeType.GROUP,
+                    LogicalOperator.AND,
+                    null,
+                    new ArrayList<>()
+            );
+        }
+
+        if (appRule.getType() == PurchaseRuleType.AND || appRule.getType() == PurchaseRuleType.OR) {
+            List<PurchaseExpressionNodeDTO> children = new ArrayList<>();
+            if (appRule.getChildren() != null) {
+                for (PurchaseRuleDTO child : appRule.getChildren()) {
+                    children.add(mapToUiPurchaseNode(child));
                 }
             }
-        } else if (root.getType() != PurchaseRuleType.ALWAYS_ALLOW) {
-            uiRules.add(mapToUiLeafRule(root));
+
+            return new PurchaseExpressionNodeDTO(
+                    UUID.randomUUID().toString(),
+                    PurchaseNodeType.GROUP,
+                    appRule.getType() == PurchaseRuleType.AND ? LogicalOperator.AND : LogicalOperator.OR,
+                    null,
+                    children
+            );
         }
 
-        return new PurchasePolicyDraftDTO(companyId, rootOperator, uiRules);
+        return new PurchaseExpressionNodeDTO(
+                UUID.randomUUID().toString(),
+                PurchaseNodeType.RULE,
+                null,
+                mapToUiLeafRule(appRule),
+                new ArrayList<>()
+        );
     }
+
 
     /**
      * Converts a single Application leaf rule into a UI PurchaseRuleDTO.
@@ -168,27 +214,75 @@ public class PoliciesEditorPresenter {
      * Converts an Application DiscountDTO into a UI DiscountDTO.
      */
     private ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountDTO mapToUiDiscount(DiscountDTO appDiscount) {
-        ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType type = 
+        ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType type =
                 ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType.SIMPLE;
-        
+
         if ("COUPON".equals(appDiscount.getType())) {
             type = ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType.COUPON;
         } else if ("CONDITIONAL".equals(appDiscount.getType())) {
             type = ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType.CONDITIONAL;
         }
 
-        java.time.LocalDate validUntil = appDiscount.getEndTime() != null ? appDiscount.getEndTime().toLocalDate() : null;
+        java.time.LocalDate validUntil = appDiscount.getEndTime() != null
+                ? appDiscount.getEndTime().toLocalDate()
+                : null;
+
+        String conditionText = appDiscount.getConditionText() == null
+                ? ""
+                : appDiscount.getConditionText().trim();
+
+        DiscountConditionType conditionType = resolveDiscountConditionType(conditionText);
+        Integer ticketThreshold = resolveTicketThreshold(conditionText);
+
+        java.time.LocalDateTime endTime = appDiscount.getEndTime();
+        java.time.LocalDateTime startTime = null;
 
         return new ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountDTO(
                 UUID.randomUUID().toString(),
                 appDiscount.getName(),
                 type,
-                ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountValueType.PERCENTAGE, 
+                ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountValueType.PERCENTAGE,
                 appDiscount.getPercentage() != null ? appDiscount.getPercentage().doubleValue() : 0.0,
                 appDiscount.getCouponCode() != null ? appDiscount.getCouponCode() : "",
                 validUntil,
-                appDiscount.getConditionText() != null ? appDiscount.getConditionText() : ""
+                type == ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType.CONDITIONAL ? conditionType : null,
+                type == ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType.CONDITIONAL ? ticketThreshold : null,
+                type == ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType.CONDITIONAL ? startTime : null,
+                type == ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType.CONDITIONAL ? endTime : null
         );
+    }
+
+    private DiscountConditionType resolveDiscountConditionType(String conditionText) {
+        if (conditionText == null || conditionText.isBlank()) {
+            return DiscountConditionType.MIN_TICKET;
+        }
+
+        if (conditionText.contains("<=") || conditionText.contains("MAX_TICKET")) {
+            return DiscountConditionType.MAX_TICKET;
+        }
+
+        if (conditionText.contains("DATE") || conditionText.contains("תאריך") || conditionText.contains("פעיל")) {
+            return DiscountConditionType.DATE;
+        }
+
+        return DiscountConditionType.MIN_TICKET;
+    }
+
+    private Integer resolveTicketThreshold(String conditionText) {
+        if (conditionText == null || conditionText.isBlank()) {
+            return null;
+        }
+
+        String digits = conditionText.replaceAll("[^0-9]", "");
+        if (digits.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Integer.parseInt(digits);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     // =================================================================================
@@ -196,26 +290,57 @@ public class PoliciesEditorPresenter {
     // =================================================================================
 
     /**
-     * Converts the flat UI Purchase Policy Draft into the Application's PurchasePolicyDTO tree.
+     * Converts the nested UI Purchase Policy Draft into the Application PurchasePolicyDTO tree.
      */
-    private PurchasePolicyDTO mapToAppPurchasePolicy(PurchasePolicyDraftDTO draft) {
-        List<PurchaseRuleDTO> childRules = draft.rules().stream()
-                .map(this::mapToAppLeafRule)
-                .collect(Collectors.toList());
-
-        PurchaseRuleDTO rootRule = new PurchaseRuleDTO();
-        
-        if (draft.rootOperator() == LogicalOperator.AND) {
-            rootRule.setType(PurchaseRuleType.AND);
-        } else {
-            rootRule.setType(PurchaseRuleType.OR);
+    private PurchasePolicyDTO mapToAppPurchasePolicyExpression(PurchasePolicyExpressionDraftDTO draft) {
+        if (draft == null || draft.root() == null) {
+            return new PurchasePolicyDTO(alwaysAllowRule());
         }
-        
-        rootRule.setChildren(childRules);
-        rootRule.setValue(0); 
 
-        return new PurchasePolicyDTO(rootRule);
+        return new PurchasePolicyDTO(mapToAppPurchaseNode(draft.root()));
     }
+
+    private PurchaseRuleDTO mapToAppPurchaseNode(PurchaseExpressionNodeDTO node) {
+        if (node == null) {
+            return alwaysAllowRule();
+        }
+
+        if (node.type() == PurchaseNodeType.RULE) {
+            if (node.rule() == null) {
+                return alwaysAllowRule();
+            }
+            return mapToAppLeafRule(node.rule());
+        }
+
+        List<PurchaseRuleDTO> children = new ArrayList<>();
+        if (node.children() != null) {
+            for (PurchaseExpressionNodeDTO child : node.children()) {
+                PurchaseRuleDTO mappedChild = mapToAppPurchaseNode(child);
+                if (mappedChild.getType() != PurchaseRuleType.ALWAYS_ALLOW) {
+                    children.add(mappedChild);
+                }
+            }
+        }
+
+        if (children.isEmpty()) {
+            return alwaysAllowRule();
+        }
+
+        PurchaseRuleDTO appRule = new PurchaseRuleDTO();
+        appRule.setType(node.operator() == LogicalOperator.OR ? PurchaseRuleType.OR : PurchaseRuleType.AND);
+        appRule.setChildren(children);
+        appRule.setValue(0);
+        return appRule;
+    }
+
+    private PurchaseRuleDTO alwaysAllowRule() {
+        PurchaseRuleDTO rule = new PurchaseRuleDTO();
+        rule.setType(PurchaseRuleType.ALWAYS_ALLOW);
+        rule.setValue(0);
+        rule.setChildren(null);
+        return rule;
+    }
+
 
     /**
      * Converts a single UI rule into an Application leaf rule node.
@@ -270,25 +395,27 @@ public class PoliciesEditorPresenter {
      */
     private DiscountDTO mapToAppDiscount(ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountDTO uiDiscount) {
         DiscountDTO appDiscount = new DiscountDTO();
-        
+
         appDiscount.setName(uiDiscount.name());
         appDiscount.setPercentage(java.math.BigDecimal.valueOf(uiDiscount.value()));
-        
-        if (uiDiscount.validUntil() != null) {
-            appDiscount.setEndTime(uiDiscount.validUntil().atStartOfDay());
-        }
 
         switch (uiDiscount.type()) {
             case SIMPLE:
-                appDiscount.setType("VISIBLE"); 
+                appDiscount.setType("VISIBLE");
                 break;
             case COUPON:
                 appDiscount.setType("COUPON");
                 appDiscount.setCouponCode(uiDiscount.couponCode());
+                if (uiDiscount.validUntil() != null) {
+                    appDiscount.setEndTime(uiDiscount.validUntil().atTime(23, 59));
+                }
                 break;
             case CONDITIONAL:
                 appDiscount.setType("CONDITIONAL");
-                appDiscount.setConditionText(uiDiscount.conditionText()); 
+                appDiscount.setConditionText(uiDiscount.conditionText());
+                if (uiDiscount.endTime() != null) {
+                    appDiscount.setEndTime(uiDiscount.endTime());
+                }
                 break;
             default:
                 throw new PresentationException("Unknown discount type selected.");

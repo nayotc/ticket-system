@@ -486,6 +486,7 @@ public class CompanyService {
 
     public void setCompanyPurchasePolicy(String token, Long companyId, PurchasePolicyDTO policyDTO) throws Exception {
         try {
+            logger.logEvent("setCompanyPurchasePolicy started for companyId: " + companyId,ISystemLogger.LogLevel.INFO);
             Company company = canEditPurchasePolicy(token, companyId);
 
             PurchasePolicy policy = mapper.toDomain(policyDTO);
@@ -493,6 +494,8 @@ public class CompanyService {
             company.setPurchasePolicy(policy);
 
             companyRepository.save(company);
+
+            logger.logEvent("setCompanyPurchasePolicy completed successfully for companyId: " + companyId,ISystemLogger.LogLevel.INFO);
 
         } catch (Exception e) {
             logger.logEvent(
@@ -558,18 +561,27 @@ public class CompanyService {
      * @throws Exception If the company is not found, the user lacks permission, or a retrieval error occurs.
      */
     public DiscountPolicyDTO getCompanyDiscountPolicy(String token, Long companyId) throws Exception {
+        logEvent("getCompanyDiscountPolicy started. companyId=" + companyId,
+                ISystemLogger.LogLevel.INFO);
+
         try {
             Company company = canViewCompanyDetails(token, companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."))) ?
                     companyRepository.findById(companyId).get() : null;
 
             if (company == null) {
+                logEvent("getCompanyDiscountPolicy rejected. companyId=" + companyId
+                                + ", reason=no view permission",
+                        ISystemLogger.LogLevel.WARN);
                 throw new Exception("Error: User does not have permission to view this company's policies.");
             }
 
             DiscountPolicy domainPolicy = company.getDiscountPolicy();
 
             if (domainPolicy == null) {
+                logEvent("getCompanyDiscountPolicy completed. companyId=" + companyId
+                                + ", domainPolicy=null, returning empty DTO",
+                        ISystemLogger.LogLevel.INFO);
                 return new DiscountPolicyDTO();
             }
 
@@ -579,6 +591,11 @@ public class CompanyService {
             List<DiscountDTO> discountDTOs = new java.util.ArrayList<>();
 
             if (domainPolicy.getDiscounts() != null) {
+                logEvent("getCompanyDiscountPolicy mapping discounts. companyId=" + companyId
+                                + ", composition=" + domainPolicy.getDiscountCompositionType()
+                                + ", domainDiscounts=" + domainPolicy.getDiscounts().size(),
+                        ISystemLogger.LogLevel.DEBUG);
+
                 for (DiscountTypes discount : domainPolicy.getDiscounts()) {
                     DiscountDTO dDTO = new DiscountDTO();
 
@@ -614,16 +631,36 @@ public class CompanyService {
                         dDTO.setType("VISIBLE");
                     }
 
+                    logEvent("getCompanyDiscountPolicy mapped discount. companyId=" + companyId
+                                    + ", name=" + dDTO.getName()
+                                    + ", type=" + dDTO.getType()
+                                    + ", percentage=" + dDTO.getPercentage()
+                                    + ", conditionText=" + dDTO.getConditionText()
+                                    + ", endTime=" + dDTO.getEndTime(),
+                            ISystemLogger.LogLevel.DEBUG);
+
                     discountDTOs.add(dDTO);
                 }
             }
 
             dto.setDiscounts(discountDTOs);
+
+            logEvent("getCompanyDiscountPolicy completed. companyId=" + companyId
+                            + ", composition=" + dto.getCompositionType()
+                            + ", dtoDiscounts=" + discountDTOs.size(),
+                    ISystemLogger.LogLevel.INFO);
+
             return dto;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
+            logEvent("getCompanyDiscountPolicy failed. companyId=" + companyId
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
             throw new Exception(e.getMessage());
         } catch (Exception e) {
+            logEvent("getCompanyDiscountPolicy failed. companyId=" + companyId
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
             throw new Exception("An error occurred while retrieving the discount policy.");
         }
     }
@@ -641,20 +678,57 @@ public class CompanyService {
      * @throws Exception If validation fails, the company is not found, or the database save operation fails.
      */
     public void setCompanyDiscountPolicy(String token, Long companyId, ticketsystem.DTO.DiscountPolicyDTO policyDTO) throws Exception {
+        int incomingDiscounts = policyDTO == null || policyDTO.getDiscounts() == null
+                ? 0
+                : policyDTO.getDiscounts().size();
+
+        logEvent("setCompanyDiscountPolicy started. companyId=" + companyId
+                        + ", composition=" + (policyDTO == null ? null : policyDTO.getCompositionType())
+                        + ", incomingDiscounts=" + incomingDiscounts,
+                ISystemLogger.LogLevel.INFO);
+
         try {
             tokenService.validateToken(token);
             Long memberId = tokenService.extractUserId(token);
+            logEvent("setCompanyDiscountPolicy token validated. companyId=" + companyId
+                            + ", memberId=" + memberId,
+                    ISystemLogger.LogLevel.DEBUG);
+
             userAccessService.validateCanPerformNonViewAction(memberId);
 
             Company company = companyRepository.findById(companyId)
                     .orElseThrow(() -> new Exception("Error: Company not found."));
 
             if (!membershipDomain.validatePermission(memberId, companyId, Permission.SET_DISCOUNT_POLICY)) {
+                logEvent("setCompanyDiscountPolicy permission denied. companyId=" + companyId
+                                + ", memberId=" + memberId,
+                        ISystemLogger.LogLevel.WARN);
                 throw new IllegalArgumentException("User does not have permission to manage company discount policy");
             }
 
-            if (policyDTO.getDiscounts() != null) {
+            int beforeCount = company.getDiscountPolicy() == null || company.getDiscountPolicy().getDiscounts() == null
+                    ? 0
+                    : company.getDiscountPolicy().getDiscounts().size();
+
+            logEvent("setCompanyDiscountPolicy permission approved. companyId=" + companyId
+                            + ", memberId=" + memberId
+                            + ", existingDiscounts=" + beforeCount,
+                    ISystemLogger.LogLevel.DEBUG);
+
+            if (policyDTO != null && policyDTO.getDiscounts() != null) {
+                int index = 0;
                 for (ticketsystem.DTO.DiscountDTO discountDTO : policyDTO.getDiscounts()) {
+                    index++;
+
+                    logEvent("setCompanyDiscountPolicy applying discount " + index + "/" + incomingDiscounts
+                                    + ". companyId=" + companyId
+                                    + ", type=" + discountDTO.getType()
+                                    + ", name=" + discountDTO.getName()
+                                    + ", percentage=" + discountDTO.getPercentage()
+                                    + ", couponCodePresent=" + (discountDTO.getCouponCode() != null && !discountDTO.getCouponCode().isBlank())
+                                    + ", endTime=" + discountDTO.getEndTime()
+                                    + ", conditionText=" + discountDTO.getConditionText(),
+                            ISystemLogger.LogLevel.DEBUG);
 
                     if ("VISIBLE".equals(discountDTO.getType()) || "SIMPLE".equals(discountDTO.getType())) {
                         company.addVisibleDiscountToCompany(
@@ -691,9 +765,19 @@ public class CompanyService {
                                     threshold = Integer.parseInt(numberOnly);
                                 }
                             } catch (Exception e) {
+                                logEvent("setCompanyDiscountPolicy condition parse failed. companyId=" + companyId
+                                                + ", conditionText=" + conditionStr
+                                                + ", fallbackThreshold=1",
+                                        ISystemLogger.LogLevel.WARN);
                                 threshold = 1;
                             }
                         }
+
+                        logEvent("setCompanyDiscountPolicy parsed conditional discount. companyId=" + companyId
+                                        + ", condition=" + actualCondition
+                                        + ", threshold=" + threshold
+                                        + ", endTime=" + discountDTO.getEndTime(),
+                                ISystemLogger.LogLevel.DEBUG);
 
                         company.addConditionalDiscountToCompany(
                                 discountDTO.getName(),
@@ -708,10 +792,21 @@ public class CompanyService {
             }
 
             companyRepository.save(company);
-            logger.logEvent("Discount policy updated successfully for company: " + companyId, ISystemLogger.LogLevel.INFO);
+
+            int afterCount = company.getDiscountPolicy() == null || company.getDiscountPolicy().getDiscounts() == null
+                    ? 0
+                    : company.getDiscountPolicy().getDiscounts().size();
+
+            logEvent("setCompanyDiscountPolicy completed. companyId=" + companyId
+                            + ", beforeDiscounts=" + beforeCount
+                            + ", incomingDiscounts=" + incomingDiscounts
+                            + ", afterDiscounts=" + afterCount,
+                    ISystemLogger.LogLevel.INFO);
 
         } catch (Exception e) {
-            logger.logEvent("Failed to set discount policy for company id: " + companyId, ISystemLogger.LogLevel.WARN);
+            logEvent("setCompanyDiscountPolicy failed. companyId=" + companyId
+                            + ", reason=" + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN);
             throw e;
         }
     }

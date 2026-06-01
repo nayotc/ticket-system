@@ -6,6 +6,8 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
@@ -13,13 +15,12 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+import org.springframework.beans.factory.annotation.Autowired;
 import ticketsystem.PresentationLayer.Components.AppCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
@@ -29,28 +30,49 @@ import ticketsystem.PresentationLayer.Presenters.PoliciesEditorPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.function.Consumer;
 
 @Route(value = UiRoutes.POLICIES_EDITOR, layout = ManagementLayout.class)
 public class PoliciesEditor extends Div implements BeforeEnterObserver {
+
+    private static final String DATE_PICKER_DISPLAY_FORMAT = "dd/MM/yy";
+    private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern(DATE_PICKER_DISPLAY_FORMAT);
+    private static final DateTimeFormatter DISPLAY_DATE_TIME = DateTimeFormatter.ofPattern("dd/MM/yy HH:mm");
 
     private String companyId;
 
     private final PoliciesEditorPresenter presenter;
 
-    private final List<PurchaseRuleDTO> purchaseRules = new ArrayList<>();
+    /*
+     * Step 1 only:
+     * These flags are temporary UI flags.
+     * In the next step they should be loaded from MembershipService.hasPermission(...)
+     * through the presenter.
+     */
+    private boolean canEditPurchasePolicy = true;
+    private boolean canEditDiscountPolicy = true;
+
+    private PurchaseExpressionNode purchasePolicyRoot = PurchaseExpressionNode.group(LogicalOperator.AND);
     private final List<DiscountDTO> discounts = new ArrayList<>();
 
-    private final ComboBox<LogicalOperator> purchaseRootOperator = new ComboBox<>();
     private DiscountCompositionStrategy discountCompositionStrategy = DiscountCompositionStrategy.MAXIMUM;
 
-    private final Div purchaseRulesContainer = new Div();
+    private final Div policiesTabsShell = new Div();
+    private final Div policyTabContent = new Div();
+    private final Div purchaseExpressionContainer = new Div();
     private final Div discountsContainer = new Div();
+
+    private Tabs policyTabs;
+    private Tab purchasePolicyTab;
+    private Tab discountPolicyTab;
+    private PolicyTab activePolicyTab = PolicyTab.PURCHASE;
 
     private final Button maximumDiscountButton = new Button("מקסימום");
     private final Button sumDiscountButton = new Button("סכום");
@@ -63,22 +85,28 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         addClassName("policy-editor-page");
 
         Button resetButton = createSecondaryButton("בטל שינויים", "↺");
-        resetButton.addClickListener(event -> resetDraft());
+        resetButton.addClickListener(event -> {
+            if (companyId == null || companyId.isBlank()) {
+                resetDraft();
+                return;
+            }
 
-        Button saveButton = createPrimaryButton("שמור מדיניות", "✓");
-        saveButton.addClickListener(event -> saveDraft());
+            loadDraftForCompany(companyId);
+        });
 
         ViewHeader header = new ViewHeader(
                 "עורך מדיניות",
                 "הגדרת כללי רכישה, מגבלות רכישה, הנחות והרכבת הנחות עבור חברת ההפקה.",
-                resetButton,
-                saveButton
+                resetButton
         );
 
-        Div grid = new Div(createPurchasePolicySection(), createDiscountPolicySection());
-        grid.addClassName("policy-editor-grid");
+        policiesTabsShell.addClassName("policy-editor-tabs-shell");
+        policyTabContent.addClassName("policy-editor-tab-content");
 
-        add(new PageContainer(header, grid));
+        resetDraft();
+        refreshVisiblePolicySections();
+
+        add(new PageContainer(header, policiesTabsShell));
     }
 
     @Override
@@ -90,6 +118,129 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         loadDraftForCompany(companyId);
     }
 
+    private void refreshVisiblePolicySections() {
+        policiesTabsShell.removeAll();
+        policyTabContent.removeAll();
+
+        if (!canEditPurchasePolicy && !canEditDiscountPolicy) {
+            policiesTabsShell.add(createNoAccessiblePoliciesState());
+            return;
+        }
+
+        if (!canAccessActiveTab()) {
+            activePolicyTab = getFirstAccessibleTab();
+        }
+
+        policiesTabsShell.add(createPolicyTabsHeader(), policyTabContent);
+        refreshActivePolicyTabContent();
+    }
+
+    private Component createPolicyTabsHeader() {
+        Div wrapper = new Div();
+        wrapper.addClassName("policy-editor-tabs-wrapper");
+
+        policyTabs = new Tabs();
+        policyTabs.addClassName("policy-editor-tabs");
+
+        if (canEditPurchasePolicy) {
+            purchasePolicyTab = createPolicyTab("⚖", "מדיניות רכישה", "תנאים וקבוצות AND / OR");
+            policyTabs.add(purchasePolicyTab);
+        } else {
+            purchasePolicyTab = null;
+        }
+
+        if (canEditDiscountPolicy) {
+            discountPolicyTab = createPolicyTab("%", "מדיניות הנחות", "סוגי הנחות ושילוב הנחות");
+            policyTabs.add(discountPolicyTab);
+        } else {
+            discountPolicyTab = null;
+        }
+
+        if (activePolicyTab == PolicyTab.PURCHASE && purchasePolicyTab != null) {
+            policyTabs.setSelectedTab(purchasePolicyTab);
+        } else if (activePolicyTab == PolicyTab.DISCOUNT && discountPolicyTab != null) {
+            policyTabs.setSelectedTab(discountPolicyTab);
+        }
+
+        policyTabs.addSelectedChangeListener(event -> {
+            if (event.getSelectedTab() == purchasePolicyTab) {
+                activePolicyTab = PolicyTab.PURCHASE;
+            } else if (event.getSelectedTab() == discountPolicyTab) {
+                activePolicyTab = PolicyTab.DISCOUNT;
+            }
+
+            refreshActivePolicyTabContent();
+        });
+
+        wrapper.add(policyTabs);
+        return wrapper;
+    }
+
+    private Tab createPolicyTab(String iconText, String title, String subtitle) {
+        Tab tab = new Tab(createPolicyTabLabel(iconText, title, subtitle));
+        tab.addClassName("policy-editor-tab");
+        return tab;
+    }
+
+    private Component createPolicyTabLabel(String iconText, String title, String subtitle) {
+        Div label = new Div();
+        label.addClassName("policy-tab-label");
+
+        Span icon = new Span(iconText);
+        icon.addClassName("policy-tab-icon");
+
+        Div text = new Div();
+        text.addClassName("policy-tab-text");
+
+        Span titleSpan = new Span(title);
+        titleSpan.addClassName("policy-tab-title");
+
+        Span subtitleSpan = new Span(subtitle);
+        subtitleSpan.addClassName("policy-tab-subtitle");
+
+        text.add(titleSpan, subtitleSpan);
+        label.add(icon, text);
+        return label;
+    }
+
+    private boolean canAccessActiveTab() {
+        return (activePolicyTab == PolicyTab.PURCHASE && canEditPurchasePolicy)
+                || (activePolicyTab == PolicyTab.DISCOUNT && canEditDiscountPolicy);
+    }
+
+    private PolicyTab getFirstAccessibleTab() {
+        if (canEditPurchasePolicy) {
+            return PolicyTab.PURCHASE;
+        }
+
+        return PolicyTab.DISCOUNT;
+    }
+
+    private void refreshActivePolicyTabContent() {
+        policyTabContent.removeAll();
+
+        if (activePolicyTab == PolicyTab.PURCHASE && canEditPurchasePolicy) {
+            policyTabContent.add(createPurchasePolicySection());
+            return;
+        }
+
+        if (activePolicyTab == PolicyTab.DISCOUNT && canEditDiscountPolicy) {
+            policyTabContent.add(createDiscountPolicySection());
+        }
+    }
+
+    private Component createNoAccessiblePoliciesState() {
+        AppCard card = new AppCard();
+        card.addClassNames("policy-card", "policy-no-access-card");
+
+        card.add(
+                createPolicyTitle("!", "אין הרשאות לעריכת מדיניות"),
+                paragraph("אין לך הרשאה לערוך מדיניות רכישה או מדיניות הנחות בחברה הזו.")
+        );
+
+        return card;
+    }
+
     private Component createPurchasePolicySection() {
         AppCard card = new AppCard();
         card.addClassNames("policy-card", "policy-card-purchase");
@@ -97,9 +248,9 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         card.add(
                 createPolicyAccent("purchase"),
                 createPolicyTitle("⚖", "מדיניות רכישה"),
-                paragraph("הגדר תנאים שחייבים להתקיים כדי לאשר רכישה. ההרכבה תומכת ב־AND ו־OR ומוכנה לעומק נוסף בהמשך."),
-                createPurchaseRuleBuilder(),
-                createAddRuleButton()
+                paragraph("בנה תנאי רכישה מורכב באמצעות קבוצות AND ו־OR. לדוגמה: ((A OR B) AND (C OR D))."),
+                createPurchaseExpressionBuilder(),
+                createPurchasePolicyActions()
         );
 
         return card;
@@ -109,40 +260,47 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         AppCard card = new AppCard();
         card.addClassNames("policy-card", "policy-card-discount");
 
+        discountsContainer.addClassName("discounts-list");
+
         card.add(
                 createPolicyAccent("discount"),
                 createPolicyTitle("%", "מדיניות הנחות"),
+                paragraph("בחר סוג הנחה. רק השדות הרלוונטיים לסוג שנבחר יוצגו בטופס."),
                 createDiscountCompositionSelector(),
                 discountsContainer,
-                createAddDiscountButton()
+                createAddDiscountButton(),
+                createDiscountPolicyActions()
         );
 
-        discountsContainer.addClassName("discounts-list");
         return card;
     }
 
-    private Component createPurchaseRuleBuilder() {
+    private Component createPurchaseExpressionBuilder() {
         Div builder = new Div();
         builder.addClassName("purchase-rule-builder");
 
-        purchaseRootOperator.setItems(LogicalOperator.values());
-        purchaseRootOperator.setItemLabelGenerator(LogicalOperator::getLabel);
-        purchaseRootOperator.setValue(LogicalOperator.AND);
-        purchaseRootOperator.addClassName("purchase-root-operator");
-        purchaseRootOperator.addValueChangeListener(event -> {
-            // TODO: When the Presenter is connected, update the root operator in the policy draft DTO.
-        });
+        purchaseExpressionContainer.addClassName("purchase-expression-tree");
 
-        Div operatorWrapper = new Div(purchaseRootOperator);
-        operatorWrapper.addClassName("purchase-root-operator-wrapper");
-
-        Div line = new Div();
-        line.addClassName("policy-tree-line");
-
-        purchaseRulesContainer.addClassName("purchase-rules-list");
-
-        builder.add(operatorWrapper, line, purchaseRulesContainer);
+        builder.add(purchaseExpressionContainer);
         return builder;
+    }
+
+    private Component createPurchasePolicyActions() {
+        Button savePurchaseButton = createPrimaryButton("שמור מדיניות רכישה", "✓");
+        savePurchaseButton.addClickListener(event -> savePurchaseDraft());
+
+        Div actions = new Div(savePurchaseButton);
+        actions.addClassName("policy-section-actions");
+        return actions;
+    }
+
+    private Component createDiscountPolicyActions() {
+        Button saveDiscountButton = createPrimaryButton("שמור מדיניות הנחות", "✓");
+        saveDiscountButton.addClickListener(event -> saveDiscountDraft());
+
+        Div actions = new Div(saveDiscountButton);
+        actions.addClassName("policy-section-actions");
+        return actions;
     }
 
     private Component createDiscountCompositionSelector() {
@@ -165,13 +323,6 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         wrapper.add(text, actions);
         setDiscountCompositionStrategy(discountCompositionStrategy);
         return wrapper;
-    }
-
-    private Component createAddRuleButton() {
-        Button button = createDashedButton("הוסף חוק חדש", "+");
-        button.addClassName("policy-add-purchase-button");
-        button.addClickListener(event -> openPurchaseRuleDialog(null));
-        return button;
     }
 
     private Component createAddDiscountButton() {
@@ -214,38 +365,185 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         return span;
     }
 
-    private void refreshPurchaseRules() {
-        purchaseRulesContainer.removeAll();
-
-        if (purchaseRules.isEmpty()) {
-            Div empty = new Div();
-            empty.addClassName("policy-empty-state-inline");
-            empty.add(new Span("לא הוגדרו מגבלות רכישה. ברירת המחדל היא ללא מגבלות."));
-            purchaseRulesContainer.add(empty);
-            return;
-        }
-
-        purchaseRules.forEach(rule -> purchaseRulesContainer.add(createPurchaseRuleRow(rule)));
+    private void refreshPurchaseExpression() {
+        purchaseExpressionContainer.removeAll();
+        purchaseExpressionContainer.add(createPurchaseExpressionNode(purchasePolicyRoot, null, 0));
     }
 
-    private Component createPurchaseRuleRow(PurchaseRuleDTO rule) {
+    private Component createPurchaseExpressionNode(
+            PurchaseExpressionNode node,
+            PurchaseExpressionNode parent,
+            int depth
+    ) {
+        if (node.isRule()) {
+            return createPurchaseExpressionRuleRow(node, parent);
+        }
+
+        Div group = new Div();
+        group.addClassNames("purchase-expression-group", "purchase-expression-depth-" + Math.min(depth, 3));
+
+        Div header = new Div();
+        header.addClassName("purchase-expression-group-header");
+
+        Div titleBlock = new Div();
+        titleBlock.addClassName("purchase-expression-group-title-block");
+
+        Span badge = new Span(depth == 0 ? "שורש" : "קבוצה");
+        badge.addClassName("purchase-expression-group-badge");
+
+        Div titleText = new Div();
+        titleText.addClassName("purchase-expression-group-title-text");
+
+        Span title = new Span(depth == 0 ? "הביטוי הראשי" : "קבוצת תנאים");
+        title.addClassName("purchase-expression-group-title");
+
+        Span summary = new Span(createGroupSummary(node));
+        summary.addClassName("purchase-expression-group-summary");
+
+        titleText.add(title, summary);
+        titleBlock.add(badge, titleText);
+
+        ComboBox<LogicalOperator> operator = new ComboBox<>();
+        operator.setItems(LogicalOperator.values());
+        operator.setItemLabelGenerator(LogicalOperator::getLabel);
+        operator.setValue(node.operator());
+        operator.addClassName("purchase-expression-operator");
+        operator.addValueChangeListener(event -> {
+            if (event.getValue() != null) {
+                node.setOperator(event.getValue());
+                refreshPurchaseExpression();
+            }
+        });
+
+        Div operatorBlock = new Div();
+        operatorBlock.addClassName("purchase-expression-operator-block");
+
+        Span operatorLabel = new Span("חיבור בין הילדים");
+        operatorLabel.addClassName("purchase-expression-operator-label");
+        operatorBlock.add(operatorLabel, operator);
+
+        Div actions = new Div();
+        actions.addClassName("purchase-expression-group-actions");
+
+        Button addRule = createSecondaryButton("תנאי", "+");
+        addRule.addClassName("purchase-expression-action-button");
+        addRule.addClickListener(event -> openPurchaseRuleDialog(null, rule -> {
+            node.children().add(PurchaseExpressionNode.rule(rule));
+            refreshPurchaseExpression();
+        }));
+
+        Button addGroup = createSecondaryButton("קבוצה", "+");
+        addGroup.addClassName("purchase-expression-action-button");
+        addGroup.addClickListener(event -> {
+            node.children().add(PurchaseExpressionNode.group(LogicalOperator.AND));
+            refreshPurchaseExpression();
+        });
+
+        actions.add(addRule, addGroup);
+
+        if (parent != null) {
+            Button deleteGroup = createDangerIconButton("מחיקת קבוצה", "×");
+            deleteGroup.addClassName("purchase-expression-delete-group-button");
+            deleteGroup.addClickListener(event -> {
+                parent.children().remove(node);
+                refreshPurchaseExpression();
+            });
+            actions.add(deleteGroup);
+        }
+
+        header.add(titleBlock, operatorBlock, actions);
+
+        Div children = new Div();
+        children.addClassName("purchase-expression-children");
+
+        if (node.children().isEmpty()) {
+            Div empty = new Div();
+            empty.addClassName("policy-empty-state-inline");
+            empty.add(new Span("אין תנאים בקבוצה הזו."));
+            children.add(empty);
+        } else {
+            for (int i = 0; i < node.children().size(); i++) {
+                if (i > 0) {
+                    children.add(createLogicalConnector(node.operator()));
+                }
+
+                PurchaseExpressionNode child = node.children().get(i);
+                children.add(createPurchaseExpressionNode(child, node, depth + 1));
+            }
+        }
+
+        group.add(header, children);
+        return group;
+    }
+
+    private Component createLogicalConnector(LogicalOperator operator) {
+        Div connector = new Div();
+        connector.addClassName("purchase-expression-connector");
+
+        Span label = new Span(operator == LogicalOperator.OR ? "או" : "וגם");
+        label.addClassName("purchase-expression-connector-label");
+
+        connector.add(label);
+        return connector;
+    }
+
+    private String createGroupSummary(PurchaseExpressionNode node) {
+        int groups = 0;
+        int rules = 0;
+
+        for (PurchaseExpressionNode child : node.children()) {
+            if (child.isRule()) {
+                rules++;
+            } else {
+                groups++;
+            }
+        }
+
+        if (groups == 0 && rules == 0) {
+            return "הקבוצה ריקה";
+        }
+
+        List<String> parts = new ArrayList<>();
+
+        if (rules > 0) {
+            parts.add(rules + " תנאים");
+        }
+
+        if (groups > 0) {
+            parts.add(groups + " קבוצות");
+        }
+
+        return String.join(" · ", parts);
+    }
+
+    private Component createPurchaseExpressionRuleRow(
+            PurchaseExpressionNode node,
+            PurchaseExpressionNode parent
+    ) {
+        PurchaseRuleDTO rule = node.rule();
+
         Div row = new Div();
         row.addClassName("purchase-rule-row");
 
-        Span drag = new Span("⋮⋮");
-        drag.addClassName("policy-drag-handle");
+        Span drag = new Span("תנאי");
+        drag.addClassName("policy-condition-badge");
 
         Div text = new Div();
         text.addClassName("purchase-rule-text");
         text.add(new Span(rule.toDisplayText()), smallText(rule.toTechnicalText()));
 
         Button edit = createIconButton("עריכה", "✎");
-        edit.addClickListener(event -> openPurchaseRuleDialog(rule));
+        edit.addClickListener(event -> openPurchaseRuleDialog(rule, updated -> {
+            node.setRule(updated);
+            refreshPurchaseExpression();
+        }));
 
         Button delete = createDangerIconButton("מחיקה", "×");
         delete.addClickListener(event -> {
-            purchaseRules.remove(rule);
-            refreshPurchaseRules();
+            if (parent != null) {
+                parent.children().remove(node);
+                refreshPurchaseExpression();
+            }
         });
 
         Div actions = new Div(edit, delete);
@@ -304,14 +602,30 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
 
         Button edit = createIconButton("עריכה", "✎");
         edit.addClickListener(event -> openDiscountDialog(discount));
-        labels.add(edit);
+
+        Button delete = createDangerIconButton("מחיקה", "×");
+        delete.addClickListener(event -> {
+            discounts.remove(discount);
+            refreshDiscounts();
+        });
+
+        labels.add(edit, delete);
 
         top.add(icon, titleBlock, labels);
 
         Div data = new Div(
-                createDiscountDataBox("סוג הנחה", discount.valueType().getLabel()),
+                createDiscountDataBox("אופן חישוב", discount.valueType().getLabel()),
                 createDiscountDataBox("ערך", discount.formattedValue())
         );
+
+        if (discount.type() == DiscountType.COUPON && discount.validUntil() != null) {
+            data.add(createDiscountDataBox("תוקף קופון", formatDate(discount.validUntil())));
+        }
+
+        if (discount.type() == DiscountType.CONDITIONAL && discount.conditionType() != null) {
+            data.add(createDiscountDataBox("סוג תנאי", discount.conditionType().getLabel()));
+        }
+
         data.addClassName("discount-data-grid");
 
         row.add(top, data);
@@ -332,13 +646,13 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         return box;
     }
 
-    private void openPurchaseRuleDialog(PurchaseRuleDTO existingRule) {
+    private void openPurchaseRuleDialog(PurchaseRuleDTO existingRule, Consumer<PurchaseRuleDTO> onSave) {
         boolean editing = existingRule != null;
         PurchaseRuleDTO draft = editing ? existingRule.copy() : PurchaseRuleDTO.defaultRule();
 
         Dialog dialog = new Dialog();
         dialog.addClassName("policy-editor-dialog");
-        dialog.setHeaderTitle(editing ? "עריכת חוק רכישה" : "הוספת חוק רכישה");
+        dialog.setHeaderTitle(editing ? "עריכת תנאי רכישה" : "הוספת תנאי רכישה");
 
         ComboBox<PurchaseRuleField> field = new ComboBox<>("שדה");
         field.setItems(PurchaseRuleField.values());
@@ -365,7 +679,7 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         Button cancel = createSecondaryButton("ביטול", null);
         cancel.addClickListener(event -> dialog.close());
 
-        Button save = createPrimaryButton(editing ? "עדכן חוק" : "הוסף חוק", null);
+        Button save = createPrimaryButton(editing ? "עדכן תנאי" : "הוסף תנאי", null);
         save.addClickListener(event -> {
             if (field.isEmpty() || operator.isEmpty() || value.isEmpty()) {
                 showError("יש למלא שדה, אופרטור וערך.");
@@ -380,14 +694,7 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
                     unit.getValue() == null ? "" : unit.getValue().trim()
             );
 
-            if (editing) {
-                int index = purchaseRules.indexOf(existingRule);
-                purchaseRules.set(index, updated);
-            } else {
-                purchaseRules.add(updated);
-            }
-
-            refreshPurchaseRules();
+            onSave.accept(updated);
             dialog.close();
         });
 
@@ -398,7 +705,7 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
 
     private void openDiscountDialog(DiscountDTO existingDiscount) {
         boolean editing = existingDiscount != null;
-        DiscountDTO draft = editing ? existingDiscount : DiscountDTO.defaultCoupon();
+        DiscountDTO draft = editing ? existingDiscount : DiscountDTO.defaultDiscount();
 
         Dialog dialog = new Dialog();
         dialog.addClassName("policy-editor-dialog");
@@ -407,7 +714,7 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         TextField name = new TextField("שם ההנחה");
         name.setValue(draft.name());
 
-        ComboBox<DiscountType> type = new ComboBox<>("סוג");
+        ComboBox<DiscountType> type = new ComboBox<>("סוג הנחה");
         type.setItems(DiscountType.values());
         type.setItemLabelGenerator(DiscountType::getLabel);
         type.setValue(draft.type());
@@ -425,15 +732,79 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         couponCode.setValue(draft.couponCode());
         couponCode.setPlaceholder("לדוגמה: EARLYBIRD20");
 
-        DatePicker validUntil = new DatePicker("תוקף עד");
-        validUntil.setValue(draft.validUntil());
+        DatePicker validUntil = createPolicyDatePicker("תוקף קופון עד", draft.validUntil());
 
-        TextField conditionText = new TextField("תנאי להפעלה");
-        conditionText.setValue(draft.conditionText());
-        conditionText.setPlaceholder("לדוגמה: כמות כרטיסים >= 2");
+        ComboBox<DiscountConditionType> conditionType = new ComboBox<>("תנאי להפעלה");
+        conditionType.setItems(DiscountConditionType.values());
+        conditionType.setItemLabelGenerator(DiscountConditionType::getLabel);
+        conditionType.setValue(Objects.requireNonNullElse(draft.conditionType(), DiscountConditionType.MIN_TICKET));
 
-        Div form = new Div(name, type, valueType, value, couponCode, validUntil, conditionText);
+        NumberField ticketThreshold = new NumberField("כמות כרטיסים");
+        ticketThreshold.setMin(1);
+        ticketThreshold.setStep(1);
+        if (draft.ticketThreshold() != null) {
+            ticketThreshold.setValue(draft.ticketThreshold().doubleValue());
+        }
+        ticketThreshold.setPlaceholder("לדוגמה: 2");
+
+        DatePicker startDate = createPolicyDatePicker("מתאריך", draft.startTime() != null ? draft.startTime().toLocalDate() : null);
+
+        DatePicker endDate = createPolicyDatePicker("עד תאריך", draft.endTime() != null ? draft.endTime().toLocalDate() : null);
+
+        Div form = new Div(
+                name,
+                type,
+                valueType,
+                value,
+                couponCode,
+                validUntil,
+                conditionType,
+                ticketThreshold,
+                startDate,
+                endDate
+        );
         form.addClassName("policy-dialog-form");
+
+        applyDiscountTypeVisibility(
+                type.getValue(),
+                conditionType.getValue(),
+                couponCode,
+                validUntil,
+                conditionType,
+                ticketThreshold,
+                startDate,
+                endDate
+        );
+
+        type.addValueChangeListener(event -> {
+            if (event.getValue() == DiscountType.CONDITIONAL && conditionType.isEmpty()) {
+                conditionType.setValue(DiscountConditionType.MIN_TICKET);
+            }
+
+            applyDiscountTypeVisibility(
+                    event.getValue(),
+                    conditionType.getValue(),
+                    couponCode,
+                    validUntil,
+                    conditionType,
+                    ticketThreshold,
+                    startDate,
+                    endDate
+            );
+        });
+
+        conditionType.addValueChangeListener(event ->
+                applyDiscountTypeVisibility(
+                        type.getValue(),
+                        event.getValue(),
+                        couponCode,
+                        validUntil,
+                        conditionType,
+                        ticketThreshold,
+                        startDate,
+                        endDate
+                )
+        );
 
         Button delete = createDangerButton("מחיקה", null);
         delete.setVisible(editing);
@@ -453,15 +824,63 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
                 return;
             }
 
+            DiscountType selectedType = type.getValue();
+            DiscountConditionType selectedCondition = selectedType == DiscountType.CONDITIONAL
+                    ? conditionType.getValue()
+                    : null;
+
+            if (selectedType == DiscountType.COUPON && safeTrim(couponCode.getValue()).isBlank()) {
+                showError("בהנחת קופון יש למלא קוד קופון.");
+                return;
+            }
+
+            Integer normalizedThreshold = null;
+            LocalDateTime normalizedStartTime = null;
+            LocalDateTime normalizedEndTime = null;
+
+            if (selectedType == DiscountType.CONDITIONAL) {
+                if (selectedCondition == null) {
+                    showError("בהנחה מותנית יש לבחור תנאי להפעלה.");
+                    return;
+                }
+
+                if (selectedCondition.requiresTicketThreshold()) {
+                    if (ticketThreshold.isEmpty() || ticketThreshold.getValue() <= 0) {
+                        showError("בתנאי לפי כמות כרטיסים יש להזין כמות חיובית.");
+                        return;
+                    }
+
+                    normalizedThreshold = ticketThreshold.getValue().intValue();
+                }
+
+                if (selectedCondition.requiresDateRange()) {
+                    if (startDate.isEmpty() || endDate.isEmpty()) {
+                        showError("בתנאי לפי תאריך יש למלא תאריך התחלה ותאריך סיום.");
+                        return;
+                    }
+
+                    if (endDate.getValue().isBefore(startDate.getValue())) {
+                        showError("תאריך הסיום לא יכול להיות לפני תאריך ההתחלה.");
+                        return;
+                    }
+
+                    normalizedStartTime = startDate.getValue().atStartOfDay();
+                    normalizedEndTime = endDate.getValue().atTime(23, 59);
+                }
+            }
+
             DiscountDTO updated = new DiscountDTO(
                     draft.id(),
                     name.getValue().trim(),
-                    type.getValue(),
+                    selectedType,
                     valueType.getValue(),
                     value.getValue(),
-                    couponCode.getValue() == null ? "" : couponCode.getValue().trim(),
-                    validUntil.getValue(),
-                    conditionText.getValue() == null ? "" : conditionText.getValue().trim()
+                    selectedType == DiscountType.COUPON ? safeTrim(couponCode.getValue()) : "",
+                    selectedType == DiscountType.COUPON ? validUntil.getValue() : null,
+                    selectedCondition,
+                    normalizedThreshold,
+                    normalizedStartTime,
+                    normalizedEndTime
             );
 
             if (editing) {
@@ -480,6 +899,53 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         dialog.open();
     }
 
+    private void applyDiscountTypeVisibility(
+            DiscountType selectedType,
+            DiscountConditionType selectedCondition,
+            TextField couponCode,
+            DatePicker validUntil,
+            ComboBox<DiscountConditionType> conditionType,
+            NumberField ticketThreshold,
+            DatePicker startDate,
+            DatePicker endDate
+    ) {
+        DiscountType safeType = Objects.requireNonNullElse(selectedType, DiscountType.SIMPLE);
+        DiscountConditionType safeCondition = Objects.requireNonNullElse(selectedCondition, DiscountConditionType.MIN_TICKET);
+
+        boolean coupon = safeType == DiscountType.COUPON;
+        boolean conditional = safeType == DiscountType.CONDITIONAL;
+        boolean ticketCondition = conditional && safeCondition.requiresTicketThreshold();
+        boolean dateCondition = conditional && safeCondition.requiresDateRange();
+
+        couponCode.setVisible(coupon);
+        validUntil.setVisible(coupon);
+        conditionType.setVisible(conditional);
+        ticketThreshold.setVisible(ticketCondition);
+        startDate.setVisible(dateCondition);
+        endDate.setVisible(dateCondition);
+    }
+
+    private DatePicker createPolicyDatePicker(String label, LocalDate value) {
+        DatePicker datePicker = new DatePicker(label);
+        DatePicker.DatePickerI18n i18n = new DatePicker.DatePickerI18n();
+        i18n.setDateFormat(DATE_PICKER_DISPLAY_FORMAT);
+        i18n.setFirstDayOfWeek(0);
+        datePicker.setI18n(i18n);
+        datePicker.setLocale(Locale.forLanguageTag("he-IL"));
+        datePicker.setClearButtonVisible(true);
+        datePicker.setPlaceholder("DD/MM/YY");
+        datePicker.setValue(value);
+        return datePicker;
+    }
+
+    private String formatDate(LocalDate date) {
+        return date == null ? "" : date.format(DISPLAY_DATE);
+    }
+
+    private String safeTrim(String value) {
+        return value == null ? "" : value.trim();
+    }
+
     private void setDiscountCompositionStrategy(DiscountCompositionStrategy strategy) {
         discountCompositionStrategy = Objects.requireNonNullElse(strategy, DiscountCompositionStrategy.MAXIMUM);
 
@@ -491,43 +957,86 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         } else {
             sumDiscountButton.addClassName("discount-composition-button-selected");
         }
-
-        // TODO: When the Presenter is connected, update the discount composition strategy in the policy draft DTO.
     }
 
     private void loadDraftForCompany(String companyId) {
         try {
             Long parsedCompanyId = Long.parseLong(companyId);
-            
-            PoliciesEditorPresenter.PoliciesDraftData data = 
-                    presenter.loadPolicies(UiSession.getMemberToken(), parsedCompanyId);
+            String token = UiSession.getMemberToken();
 
-            this.purchaseRules.clear();
-            this.purchaseRules.addAll(data.purchaseDraft().rules());
-            this.purchaseRootOperator.setValue(data.purchaseDraft().rootOperator());
+            PurchasePolicyExpressionDraftDTO purchaseDraft = presenter.loadPurchasePolicy(
+                    token,
+                    parsedCompanyId
+            );
 
-            this.discounts.clear();
-            this.discounts.addAll(data.discountDraft().discounts());
-            setDiscountCompositionStrategy(data.discountDraft().compositionStrategy());
+            DiscountPolicyDraftDTO discountDraft = presenter.loadDiscountPolicy(
+                    token,
+                    parsedCompanyId
+            );
 
-            refreshPurchaseRules();
-            refreshDiscounts();
+            applyPurchasePolicyDraft(purchaseDraft);
+            applyDiscountPolicyDraft(discountDraft);
+            refreshVisiblePolicySections();
 
         } catch (Exception e) {
-            showError("שגיאה בטעינת המדיניות מהשרת: " + e.getMessage());
+            showError("שגיאה בטעינת המדיניות: " + e.getMessage());
             resetDraft();
+            refreshVisiblePolicySections();
         }
     }
 
-    private void resetDraft() {
-        purchaseRules.clear();
+    private void applyPurchasePolicyDraft(PurchasePolicyExpressionDraftDTO draft) {
+        if (draft == null || draft.root() == null) {
+            purchasePolicyRoot = PurchaseExpressionNode.group(LogicalOperator.AND);
+            refreshPurchaseExpression();
+            return;
+        }
+
+        purchasePolicyRoot = PurchaseExpressionNode.fromDraft(draft.root());
+        refreshPurchaseExpression();
+    }
+
+    private void applyDiscountPolicyDraft(DiscountPolicyDraftDTO draft) {
         discounts.clear();
 
-        purchaseRootOperator.setValue(LogicalOperator.AND);
-        discountCompositionStrategy = DiscountCompositionStrategy.MAXIMUM;
+        if (draft == null) {
+            setDiscountCompositionStrategy(DiscountCompositionStrategy.MAXIMUM);
+            refreshDiscounts();
+            return;
+        }
 
-        purchaseRules.add(new PurchaseRuleDTO(UUID.randomUUID().toString(), PurchaseRuleField.AGE, ComparisonOperator.GREATER_OR_EQUALS, 18, "שנים"));
-        purchaseRules.add(new PurchaseRuleDTO(UUID.randomUUID().toString(), PurchaseRuleField.MAX_TICKETS, ComparisonOperator.LESS_OR_EQUALS, 5, "לרוכש"));
+        setDiscountCompositionStrategy(draft.compositionStrategy());
+
+        if (draft.discounts() != null) {
+            discounts.addAll(draft.discounts());
+        }
+
+        refreshDiscounts();
+    }
+
+    private void resetDraft() {
+        purchasePolicyRoot = PurchaseExpressionNode.group(LogicalOperator.AND);
+
+        PurchaseExpressionNode firstGroup = PurchaseExpressionNode.group(LogicalOperator.OR);
+        firstGroup.children().add(PurchaseExpressionNode.rule(
+                new PurchaseRuleDTO(UUID.randomUUID().toString(), PurchaseRuleField.AGE, ComparisonOperator.GREATER_OR_EQUALS, 18, "שנים")
+        ));
+        firstGroup.children().add(PurchaseExpressionNode.rule(
+                new PurchaseRuleDTO(UUID.randomUUID().toString(), PurchaseRuleField.MAX_TICKETS, ComparisonOperator.LESS_OR_EQUALS, 5, "לרוכש")
+        ));
+
+        PurchaseExpressionNode secondGroup = PurchaseExpressionNode.group(LogicalOperator.OR);
+        secondGroup.children().add(PurchaseExpressionNode.rule(
+                new PurchaseRuleDTO(UUID.randomUUID().toString(), PurchaseRuleField.MIN_TICKETS, ComparisonOperator.GREATER_OR_EQUALS, 2, "בהזמנה")
+        ));
+        secondGroup.children().add(PurchaseExpressionNode.rule(
+                new PurchaseRuleDTO(UUID.randomUUID().toString(), PurchaseRuleField.MAX_TICKETS, ComparisonOperator.LESS_OR_EQUALS, 8, "בהזמנה")
+        ));
+
+        purchasePolicyRoot.children().add(firstGroup);
+        purchasePolicyRoot.children().add(secondGroup);
+
+        discounts.clear();
 
         discounts.add(new DiscountDTO(
                 UUID.randomUUID().toString(),
@@ -537,7 +1046,10 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
                 20,
                 "EARLYBIRD20",
                 LocalDate.now().plusMonths(1),
-                ""
+                null,
+                null,
+                null,
+                null
         ));
 
         discounts.add(new DiscountDTO(
@@ -548,39 +1060,63 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
                 10,
                 "",
                 null,
-                "כמות כרטיסים >= 2"
+                DiscountConditionType.MIN_TICKET,
+                2,
+                null,
+                null
         ));
 
-        setDiscountCompositionStrategy(discountCompositionStrategy);
-        refreshPurchaseRules();
+        setDiscountCompositionStrategy(DiscountCompositionStrategy.MAXIMUM);
+        refreshPurchaseExpression();
         refreshDiscounts();
     }
 
-    private void saveDraft() {
-        PurchasePolicyDraftDTO purchasePolicyDraft = getPurchasePolicyDraft();
-        DiscountPolicyDraftDTO discountPolicyDraft = getDiscountPolicyDraft();
-
+    private void savePurchaseDraft() {
         try {
             Long parsedCompanyId = Long.parseLong(companyId);
-            
-            presenter.savePolicies(
-                    UiSession.getMemberToken(), 
-                    parsedCompanyId, 
-                    purchasePolicyDraft, 
-                    discountPolicyDraft
+
+            presenter.savePurchasePolicy(
+                    UiSession.getMemberToken(),
+                    parsedCompanyId,
+                    getPurchasePolicyExpressionDraft()
             );
-            
-            showSuccess("המדיניות נשמרה והתעדכנה בהצלחה במערכת!");
+
+            showSuccess("מדיניות הרכישה נשמרה והתעדכנה בהצלחה במערכת.");
+
         } catch (Exception e) {
-            showError("שגיאה בשמירת המדיניות: " + e.getMessage());
+            showError("שגיאה בשמירת מדיניות הרכישה: " + e.getMessage());
+        }
+    }
+
+    private void saveDiscountDraft() {
+        try {
+            Long parsedCompanyId = Long.parseLong(companyId);
+
+            presenter.saveDiscountPolicy(
+                    UiSession.getMemberToken(),
+                    parsedCompanyId,
+                    getDiscountPolicyDraft()
+            );
+
+            showSuccess("מדיניות ההנחות נשמרה והתעדכנה בהצלחה במערכת.");
+
+        } catch (Exception e) {
+            showError("שגיאה בשמירת מדיניות ההנחות: " + e.getMessage());
         }
     }
 
     public PurchasePolicyDraftDTO getPurchasePolicyDraft() {
         return new PurchasePolicyDraftDTO(
                 companyId,
-                purchaseRootOperator.getValue(),
-                new ArrayList<>(purchaseRules)
+                purchasePolicyRoot.operator(),
+                collectPurchaseRules(purchasePolicyRoot)
+        );
+    }
+
+    public PurchasePolicyExpressionDraftDTO getPurchasePolicyExpressionDraft() {
+        return new PurchasePolicyExpressionDraftDTO(
+                companyId,
+                purchasePolicyRoot.toDraft()
         );
     }
 
@@ -590,6 +1126,21 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
                 discountCompositionStrategy,
                 new ArrayList<>(discounts)
         );
+    }
+
+    private List<PurchaseRuleDTO> collectPurchaseRules(PurchaseExpressionNode node) {
+        List<PurchaseRuleDTO> rules = new ArrayList<>();
+
+        if (node.isRule()) {
+            rules.add(node.rule());
+            return rules;
+        }
+
+        for (PurchaseExpressionNode child : node.children()) {
+            rules.addAll(collectPurchaseRules(child));
+        }
+
+        return rules;
     }
 
     private Button createPrimaryButton(String text, String iconText) {
@@ -653,6 +1204,11 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
     private void showError(String message) {
         Notification notification = Notification.show(message, 3500, Notification.Position.BOTTOM_CENTER);
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+    }
+
+    public enum PolicyTab {
+        PURCHASE,
+        DISCOUNT
     }
 
     public enum LogicalOperator {
@@ -751,6 +1307,45 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         }
     }
 
+    public enum DiscountConditionType {
+        MIN_TICKET("מינימום כרטיסים", "כמות כרטיסים >=", true, false),
+        MAX_TICKET("מקסימום כרטיסים", "כמות כרטיסים <=", true, false),
+        DATE("טווח תאריכים", "פעיל בין תאריך התחלה לתאריך סיום", false, true);
+
+        private final String label;
+        private final String displayPrefix;
+        private final boolean requiresTicketThreshold;
+        private final boolean requiresDateRange;
+
+        DiscountConditionType(
+                String label,
+                String displayPrefix,
+                boolean requiresTicketThreshold,
+                boolean requiresDateRange
+        ) {
+            this.label = label;
+            this.displayPrefix = displayPrefix;
+            this.requiresTicketThreshold = requiresTicketThreshold;
+            this.requiresDateRange = requiresDateRange;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public String getDisplayPrefix() {
+            return displayPrefix;
+        }
+
+        public boolean requiresTicketThreshold() {
+            return requiresTicketThreshold;
+        }
+
+        public boolean requiresDateRange() {
+            return requiresDateRange;
+        }
+    }
+
     public enum DiscountValueType {
         PERCENTAGE("אחוזים (%)"),
         FIXED_AMOUNT("סכום קבוע (₪)");
@@ -766,10 +1361,117 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         }
     }
 
+    public enum PurchaseNodeType {
+        GROUP,
+        RULE
+    }
+
+    private static class PurchaseExpressionNode {
+        private final String id;
+        private final PurchaseNodeType type;
+        private LogicalOperator operator;
+        private PurchaseRuleDTO rule;
+        private final List<PurchaseExpressionNode> children = new ArrayList<>();
+
+        private PurchaseExpressionNode(
+                String id,
+                PurchaseNodeType type,
+                LogicalOperator operator,
+                PurchaseRuleDTO rule
+        ) {
+            this.id = id;
+            this.type = type;
+            this.operator = operator;
+            this.rule = rule;
+        }
+
+        static PurchaseExpressionNode group(LogicalOperator operator) {
+            return new PurchaseExpressionNode(UUID.randomUUID().toString(), PurchaseNodeType.GROUP, operator, null);
+        }
+
+        static PurchaseExpressionNode rule(PurchaseRuleDTO rule) {
+            PurchaseRuleDTO safeRule = rule == null ? PurchaseRuleDTO.defaultRule() : rule;
+            return new PurchaseExpressionNode(safeRule.id(), PurchaseNodeType.RULE, null, safeRule);
+        }
+
+        boolean isRule() {
+            return type == PurchaseNodeType.RULE;
+        }
+
+        LogicalOperator operator() {
+            return operator;
+        }
+
+        void setOperator(LogicalOperator operator) {
+            this.operator = operator;
+        }
+
+        PurchaseRuleDTO rule() {
+            return rule;
+        }
+
+        void setRule(PurchaseRuleDTO rule) {
+            this.rule = rule;
+        }
+
+        List<PurchaseExpressionNode> children() {
+            return children;
+        }
+
+        static PurchaseExpressionNode fromDraft(PurchaseExpressionNodeDTO draft) {
+            if (draft == null) {
+                return PurchaseExpressionNode.group(LogicalOperator.AND);
+            }
+
+            if (draft.type() == PurchaseNodeType.RULE) {
+                return PurchaseExpressionNode.rule(draft.rule());
+            }
+
+            PurchaseExpressionNode node = new PurchaseExpressionNode(
+                    draft.id() == null || draft.id().isBlank() ? UUID.randomUUID().toString() : draft.id(),
+                    PurchaseNodeType.GROUP,
+                    Objects.requireNonNullElse(draft.operator(), LogicalOperator.AND),
+                    null
+            );
+
+            if (draft.children() != null) {
+                for (PurchaseExpressionNodeDTO child : draft.children()) {
+                    node.children().add(PurchaseExpressionNode.fromDraft(child));
+                }
+            }
+
+            return node;
+        }
+
+        PurchaseExpressionNodeDTO toDraft() {
+            List<PurchaseExpressionNodeDTO> childDrafts = new ArrayList<>();
+            for (PurchaseExpressionNode child : children) {
+                childDrafts.add(child.toDraft());
+            }
+
+            return new PurchaseExpressionNodeDTO(id, type, operator, rule, childDrafts);
+        }
+    }
+
     public record PurchasePolicyDraftDTO(
             String companyId,
             LogicalOperator rootOperator,
             List<PurchaseRuleDTO> rules
+    ) {
+    }
+
+    public record PurchasePolicyExpressionDraftDTO(
+            String companyId,
+            PurchaseExpressionNodeDTO root
+    ) {
+    }
+
+    public record PurchaseExpressionNodeDTO(
+            String id,
+            PurchaseNodeType type,
+            LogicalOperator operator,
+            PurchaseRuleDTO rule,
+            List<PurchaseExpressionNodeDTO> children
     ) {
     }
 
@@ -812,9 +1514,12 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
             double value,
             String couponCode,
             LocalDate validUntil,
-            String conditionText
+            DiscountConditionType conditionType,
+            Integer ticketThreshold,
+            LocalDateTime startTime,
+            LocalDateTime endTime
     ) {
-        public static DiscountDTO defaultCoupon() {
+        public static DiscountDTO defaultDiscount() {
             return new DiscountDTO(
                     UUID.randomUUID().toString(),
                     "הנחה חדשה",
@@ -823,8 +1528,44 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
                     10,
                     "",
                     null,
-                    ""
+                    null,
+                    null,
+                    null,
+                    null
             );
+        }
+
+        public String conditionText() {
+            if (type != DiscountType.CONDITIONAL || conditionType == null) {
+                return "";
+            }
+
+            if (conditionType.requiresTicketThreshold()) {
+                if (ticketThreshold == null) {
+                    return "";
+                }
+
+                return conditionType.getDisplayPrefix() + " " + ticketThreshold;
+            }
+
+            if (conditionType.requiresDateRange()) {
+                if (startTime != null && endTime != null) {
+                    return "תאריך מ-" + startTime.format(DISPLAY_DATE_TIME)
+                            + " עד " + endTime.format(DISPLAY_DATE_TIME);
+                }
+
+                if (endTime != null) {
+                    return "תאריך עד " + endTime.format(DISPLAY_DATE_TIME);
+                }
+
+                if (startTime != null) {
+                    return "תאריך מ-" + startTime.format(DISPLAY_DATE_TIME);
+                }
+
+                return "";
+            }
+
+            return "";
         }
 
         public String formattedValue() {
