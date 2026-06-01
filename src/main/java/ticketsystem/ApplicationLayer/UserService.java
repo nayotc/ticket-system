@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
 import ticketsystem.DTO.MemberDTO;
+import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Guest;
@@ -457,7 +458,7 @@ public class UserService {
     }
 
     //for UI
-    public MemberDTO getMemberDTO(String sessionToken) {
+    public MyAccountDTO getMyAccountDTO(String sessionToken) {
     try {
         tokenService.validateToken(sessionToken);
 
@@ -471,7 +472,7 @@ public class UserService {
             throw new IllegalArgumentException("Member not found.");
         }
 
-        return new MemberDTO(
+        return new MyAccountDTO(
                 member.getId(),
                 member.getUserName(),
                 member.getFullName(),

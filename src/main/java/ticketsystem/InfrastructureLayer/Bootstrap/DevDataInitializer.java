@@ -134,12 +134,12 @@ public class DevDataInitializer implements CommandLineRunner {
     private void createAdditionalTeamMembers() {
         if (!userRepository.isUsernameTaken(MANAGER_USERNAME)) {
             String guestToken = userService.visitSystem();
-            userService.signUp(guestToken, MANAGER_USERNAME, "123456", "Test Manager", "0500000002");
+            userService.signUp(guestToken, MANAGER_USERNAME, "123456", "Test Manager", "0500000002",LocalDate.of(2001, 1, 1));
             System.out.println("Additional team member created: " + MANAGER_USERNAME);
         }
         if (!userRepository.isUsernameTaken(OWNER_USERNAME)) {
             String guestToken = userService.visitSystem();
-            userService.signUp(guestToken, OWNER_USERNAME, "123456", "Test Owner", "0500000003");
+            userService.signUp(guestToken, OWNER_USERNAME, "123456", "Test Owner", "0500000003",LocalDate.of(2001, 1, 1));
             System.out.println("Additional team member created: " + OWNER_USERNAME);
         }
     }

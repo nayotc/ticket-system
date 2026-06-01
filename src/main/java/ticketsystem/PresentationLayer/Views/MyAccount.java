@@ -22,6 +22,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 
 import ticketsystem.DTO.MemberDTO;
+import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.PresentationLayer.Components.AppCard;
@@ -332,7 +333,7 @@ private void openPasswordConfirmationDialog() {
         }
 
         try {
-            MemberDTO member = presenter.loadProfile(UiSession.getMemberToken());
+            MyAccountDTO member = presenter.loadProfile(UiSession.getMemberToken());
             if (member != null) {
                 setProfile(new AccountProfileViewData(
                         member.getEmail(),

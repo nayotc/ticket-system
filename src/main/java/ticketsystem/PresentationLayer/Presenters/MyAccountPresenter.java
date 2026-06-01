@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.MemberDTO;
+import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.PresentationLayer.Views.MyAccount.AccountProfileEditData;
 import ticketsystem.PresentationLayer.Views.MyAccount.AccountProfileViewData;
@@ -23,9 +24,9 @@ public class MyAccountPresenter {
     }
 
     
-    public MemberDTO loadProfile(String token) {
+    public MyAccountDTO loadProfile(String token) {
         try {
-            return userService.getMemberDTO(token);
+            return userService.getMyAccountDTO(token);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new PresentationException(e.getMessage());
@@ -98,48 +99,6 @@ public boolean updatePhone(String token,String password, String username,  Strin
     }
 
 
-    //  public void updatePersonalDetails(String token, AccountProfileEditData data) {
-
-    //     if (data == null) {
-    //         throw new PresentationException("פרטי המשתמש חסרים.");
-    //     }
-
-    //     try {
-
-    //         String currentUsername = loadProfile(token).getEmail();
-
-    //         if (data.email() != null
-    //                 && !data.email().isBlank()
-    //                 && !data.email().equals(currentUsername)) {
-
-    //             updateUsername(
-    //                     token,
-    //                     data.currentPassword(),
-    //                     currentUsername,
-    //                     data.email()
-    //             );
-
-    //             currentUsername = data.email();
-    //         }
-
-    //         if (data.newPassword() != null
-    //                 && !data.newPassword().isBlank()) {
-
-    //             updatePassword(
-    //                     token,
-    //                     data.currentPassword(),
-    //                     currentUsername,
-    //                     data.newPassword()
-    //             );
-    //         }
-
-    //     } catch (PresentationException e) {
-    //         throw e;
-
-    //     } catch (Exception e) {
-    //         throw new PresentationException("שמירת פרטי החשבון נכשלה.");
-    //     }
-    // }
    public void updatePersonalDetails(String token, AccountProfileEditData data) {
 
     if (data == null) {
@@ -151,7 +110,7 @@ public boolean updatePhone(String token,String password, String username,  Strin
     }
 
     try {
-        MemberDTO currentMember = loadProfile(token);
+        MyAccountDTO currentMember = loadProfile(token);
 
         String currentUsername = currentMember.getEmail(); // או getUsername אצלך
         String currentFullName = currentMember.getFullName();
