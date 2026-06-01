@@ -344,34 +344,7 @@ private void openPasswordConfirmationDialog() {
             }
 
             List<OrderDTO> orders = presenter.loadPurchaseHistory(UiSession.getMemberToken());
-            OrderDTO order = new OrderDTO(
-        1001L,
-        List.of(
-                new PurchaseDTO(
-                        5001L,
-                        3,
-                        12,
-                        new BigDecimal("120"),
-                        "VALID",
-                        "ABC123456"
-                ),
-                new PurchaseDTO(
-                        5002L,
-                        3,
-                        13,
-                        new BigDecimal("120"),
-                        "VALID",
-                        "DEF789123"
-                )
-        ),
-        "פסטיבל חלב לעומק",
-        "באר שבע",
-        1L,
-        1L,
-        1L,
-        1L,new BigDecimal(100)
-);
-orders.add(order);
+           
             setPurchaseHistory(orders);
 
         } catch (RuntimeException ex) {

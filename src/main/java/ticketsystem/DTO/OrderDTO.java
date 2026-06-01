@@ -16,7 +16,7 @@ public class OrderDTO {
     private Long companyId;
     private Long managedByMemberId;
     private Long eventId;
-    private BigDecimal total;
+    private BigDecimal totalPrice;
 
     //for json 
     public OrderDTO() {
@@ -32,7 +32,7 @@ public class OrderDTO {
         this.companyId = companyId;
         this.managedByMemberId = managedByMemberId;
         this.eventId = eventId;
-        this.total=total;
+        this.totalPrice=total;
     }
 
     public Long getPurchaseId() {
@@ -94,19 +94,7 @@ public class OrderDTO {
         this.managedByMemberId = managedByMemberId;
     }
     public BigDecimal getTotalPrice(){
-        return total;
+        return totalPrice;
     }
 
-    // @JsonIgnore
-    // public BigDecimal getTotalPrice() {
-    //     if (tickets == null) {
-    //         return BigDecimal.ZERO;
-    //     }
-
-    //     return tickets.stream()
-    //             .filter(Objects::nonNull)
-    //             .map(PurchaseDTO::getPrice)
-    //             .filter(Objects::nonNull)
-    //             .reduce(BigDecimal.ZERO, BigDecimal::add);
-    // }
 }
