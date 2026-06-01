@@ -363,7 +363,7 @@ public class DevDataInitializer implements CommandLineRunner {
                 REPORT_MANAGER_USERNAME,
                 REPORT_MANAGER_PASSWORD,
                 "Report Manager",
-                "0500000002"
+                "0500000002",LocalDate.of(2001, 1, 1)
         );
 
         Member manager = userRepository.getMemberByUsername(REPORT_MANAGER_USERNAME);
