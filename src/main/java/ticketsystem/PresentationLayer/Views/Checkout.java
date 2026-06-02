@@ -132,7 +132,7 @@ public class Checkout extends VerticalLayout {
     }
 
     private String resolveSessionToken() {
-        return UiSession.getMemberToken();
+        return UiSession.getCurrentToken();
     }
 
     private void prefillBuyerDetailsIfLoggedIn(String token) {

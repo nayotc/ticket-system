@@ -165,16 +165,39 @@ public class ReservationTimer extends Div {
     }
 
     public void setDeadline(Long expiresAtEpochMillis) {
-        if (expiresAtEpochMillis == null || expiresAtEpochMillis <= System.currentTimeMillis()) {
-            setVisible(false);
-            getElement().removeAttribute("data-deadline-epoch-millis");
-            time.setText("00:00");
-            return;
+        VaadinSession session = VaadinSession.getCurrent();
+        long now = System.currentTimeMillis();
+
+        Long existingDeadline = session == null ? null : readDeadline(session);
+
+        if (expiresAtEpochMillis == null || expiresAtEpochMillis <= now) {
+            if (existingDeadline != null && existingDeadline > now) {
+                expiresAtEpochMillis = existingDeadline;
+            } else {
+                if (session != null) {
+                    session.setAttribute(DEADLINE_SESSION_KEY, null);
+                }
+
+                setVisible(false);
+                getElement().removeAttribute("data-deadline-epoch-millis");
+                time.setText("00:00");
+                return;
+            }
+        }
+
+        if (existingDeadline != null
+                && existingDeadline > now
+                && expiresAtEpochMillis > existingDeadline) {
+            expiresAtEpochMillis = existingDeadline;
+        }
+
+        if (session != null) {
+            session.setAttribute(DEADLINE_SESSION_KEY, expiresAtEpochMillis);
         }
 
         setVisible(true);
         getElement().setAttribute("data-deadline-epoch-millis", String.valueOf(expiresAtEpochMillis));
-        time.setText(formatRemaining(expiresAtEpochMillis - System.currentTimeMillis()));
+        time.setText(formatRemaining(expiresAtEpochMillis - now));
 
         if (getUI().isPresent()) {
             startClientCountdown();
