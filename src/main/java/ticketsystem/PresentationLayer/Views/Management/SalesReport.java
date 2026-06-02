@@ -16,6 +16,8 @@ import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.server.streams.DownloadHandler;
 import com.vaadin.flow.server.streams.DownloadResponse;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -237,6 +239,25 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         }
     }
 
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        
+        // מפעיל מנגנון "דגימה" (Polling) כל 10 שניות (10,000 מילי-שניות)
+        attachEvent.getUI().setPollInterval(10000);
+        
+        // אומרים למסך מה לעשות בכל פעם שהטיימר מתאפס: לרענן בשקט!
+        attachEvent.getUI().addPollListener(event -> refreshDataSilently());
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        // חובה: מכבים את הדגימה כשהמשתמש עוזב את העמוד כדי למנוע עומס על השרת
+        detachEvent.getUI().setPollInterval(-1);
+        
+        super.onDetach(detachEvent);
+    }
+
     // This function is triggered only by clicking the "Refresh" button while already on the page.
     private void refreshData() {
         String token = UiSession.getMemberToken();
@@ -256,6 +277,24 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         } catch (PresentationException e) {
             showError(e.getMessage());
             UI.getCurrent().navigate(UiRoutes.HOME);
+        }
+    }
+
+    // פונקציית עזר שקטה לרענון אוטומטי ברקע (ללא הודעות קופצות)
+    private void refreshDataSilently() {
+        String token = UiSession.getMemberToken();
+        
+        if (token == null || token.isBlank() || companyId == null) {
+            return;
+        }
+
+        try {
+            SalesReportDTO report = presenter.generateSalesReport(token, companyId);
+            List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
+            
+            bindSalesReport(report, transactions);
+        } catch (Exception ignored) {
+            // מתעלמים משגיאות ברקע כדי לא להפריע לחווית המשתמש
         }
     }
 
