@@ -13,6 +13,7 @@ import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
+@Service
 public class OrderService implements UserLoginListener, EventUpdatesListener,UserExitListener {
 
     private final IOrderRepository orderRepository;

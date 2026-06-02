@@ -566,13 +566,14 @@ public class ReservationService {
                 continue;
             }
 
-            if (reservationDomeinService.timeExpire(event, order)) {
+            if ( reservationDomeinService.timeExpire(event, order)) {
                 notificationsService.notifyGuest(
                         order.getSessionToken(),
                         "Your active order has expired. The reserved tickets were released back to the inventory."
                 );
 
                 expirationWarningSentOrderIds.remove(order.getOrderId());
+                eventRepository.updateEvent(event);
                 orderRepository.deleteOrder(order.getOrderId());
 
                 logger.logEvent(
