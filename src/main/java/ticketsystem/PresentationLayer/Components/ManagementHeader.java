@@ -40,6 +40,7 @@ public class ManagementHeader extends Header {
 
         add(title, actions);
     }
+
     private Button createAccountButton() {
         Button button = new Button(VaadinIcon.USER.create());
         button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -55,25 +56,48 @@ public class ManagementHeader extends Header {
         button.addClassName("management-header-logout-button");
 
         button.addClickListener(event -> {
+            UI ui = UI.getCurrent();
+
+            if (ui == null) {
+                return;
+            }
+
+            if (!UiSession.isLoggedIn()) {
+                ui.navigate(UiRoutes.LOGIN);
+                return;
+            }
+
             try {
                 if (visitCoordinator != null) {
-                    visitCoordinator.logoutToGuest(UI.getCurrent());
+                    visitCoordinator.logoutToGuest(ui);
                 } else {
-                    if (presenter != null) {
-                        presenter.logout(UiSession.getMemberToken());
-                    }
-
-                    UiSession.logout();
+                    fallbackLogout();
                 }
-            } catch (Exception ignored) {
+            } catch (Exception exception) {
                 UiSession.logout();
             }
 
-            UI.getCurrent().navigate(UiRoutes.HOME);
-            UI.getCurrent().getPage().reload();
+            ui.navigate(UiRoutes.HOME);
+
+            /*
+             * Do not call:
+             * ui.getPage().reload();
+             *
+             * It can reload /companies/{id}/manage before the client finishes navigation.
+             */
         });
 
         return button;
+    }
+
+    private void fallbackLogout() throws Exception {
+        String memberToken = UiSession.getMemberToken();
+
+        if (presenter != null && memberToken != null && !memberToken.isBlank()) {
+            presenter.logout(memberToken);
+        }
+
+        UiSession.logout();
     }
 
     public interface ManagementHeaderPresenter {
