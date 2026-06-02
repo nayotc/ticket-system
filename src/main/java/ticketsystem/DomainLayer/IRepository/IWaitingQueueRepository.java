@@ -14,4 +14,6 @@ public interface IWaitingQueueRepository {
 
     public List<String> clearQueue(long eventId);
 
+    int getUserPosition(long eventId, String sessionId);
+
 }

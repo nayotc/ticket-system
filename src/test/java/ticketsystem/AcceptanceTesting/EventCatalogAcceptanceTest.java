@@ -23,6 +23,7 @@ import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
@@ -47,6 +48,7 @@ public class EventCatalogAcceptanceTest {
     private Event rockConcert;
     private Event theaterShow;
     private Event jazzFestival;
+    private Event cancelledRockConcert;
 
     private long company1Id;
     private long company2Id;
@@ -66,7 +68,8 @@ public class EventCatalogAcceptanceTest {
                 eventRepository,
                 companyRepository,
                 tokenService,
-                logger);
+                logger
+        );
 
         tokenService.addValidSession(validSessionId);
 
@@ -94,7 +97,8 @@ public class EventCatalogAcceptanceTest {
                 EventCategory.CONCERT,
                 "The Rockers",
                 BigDecimal.valueOf(99.99),
-                new Pair<>(10, 10));
+                new Pair<>(10, 10)
+        );
 
         theaterShow = new Event(
                 2L,
@@ -107,7 +111,8 @@ public class EventCatalogAcceptanceTest {
                 EventCategory.THEATER,
                 "The Theater Group",
                 BigDecimal.valueOf(79.99),
-                new Pair<>(10, 10));
+                new Pair<>(10, 10)
+        );
 
         jazzFestival = new Event(
                 3L,
@@ -120,7 +125,8 @@ public class EventCatalogAcceptanceTest {
                 EventCategory.CONCERT,
                 "Jazz Ensemble",
                 BigDecimal.valueOf(129.99),
-                new Pair<>(10, 10));
+                new Pair<>(10, 10)
+        );
 
         Event inactiveCompanyEvent = new Event(
                 4L,
@@ -133,12 +139,36 @@ public class EventCatalogAcceptanceTest {
                 EventCategory.CONCERT,
                 "Closed Artist",
                 BigDecimal.valueOf(49.99),
-                new Pair<>(10, 10));
+                new Pair<>(10, 10)
+        );
+
+        cancelledRockConcert = new Event(
+                5L,
+                LocalDateTime.now().plusDays(15),
+                "Cancelled Rock Concert",
+                company1Id,
+                1L,
+                EventLocation.TEL_AVIV,
+                100L,
+                EventCategory.CONCERT,
+                "Cancelled Artist",
+                BigDecimal.valueOf(59.99),
+                new Pair<>(10, 10)
+        );
+
+        activateEvent(rockConcert);
+        activateEvent(theaterShow);
+        activateEvent(jazzFestival);
+        activateEvent(inactiveCompanyEvent);
+        activateEvent(cancelledRockConcert);
+
+        cancelledRockConcert.cancel();
 
         eventRepository.addEvent(rockConcert);
         eventRepository.addEvent(theaterShow);
         eventRepository.addEvent(jazzFestival);
         eventRepository.addEvent(inactiveCompanyEvent);
+        eventRepository.addEvent(cancelledRockConcert);
     }
 
     @Test
@@ -155,6 +185,7 @@ public class EventCatalogAcceptanceTest {
         assertTrue(containsEventId(results, rockConcert.getId()));
         assertFalse(containsEventId(results, theaterShow.getId()));
         assertFalse(containsEventId(results, jazzFestival.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
     }
 
     @Test
@@ -173,6 +204,7 @@ public class EventCatalogAcceptanceTest {
         assertTrue(containsEventId(results, jazzFestival.getId()));
         assertFalse(containsEventId(results, rockConcert.getId()));
         assertFalse(containsEventId(results, theaterShow.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
     }
 
     @Test
@@ -203,6 +235,7 @@ public class EventCatalogAcceptanceTest {
         assertTrue(containsEventId(results, rockConcert.getId()));
         assertTrue(containsEventId(results, jazzFestival.getId()));
         assertFalse(containsEventId(results, theaterShow.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
     }
 
     @Test
@@ -210,6 +243,20 @@ public class EventCatalogAcceptanceTest {
         // Arrange
         SearchCriteria criteria = new SearchCriteria();
         criteria.setSearchTerm("Closed Company Event");
+
+        // Act
+        List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
+
+        // Assert
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void GivenUserEnteredSystemAndCancelledEventMatchesSearch_WhenGlobalSearch_ThenSystemDoesNotReturnCancelledEvent() {
+        // Arrange
+        SearchCriteria criteria = new SearchCriteria();
+        criteria.setSearchTerm("Cancelled Rock");
 
         // Act
         List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
@@ -228,7 +275,8 @@ public class EventCatalogAcceptanceTest {
         // Act
         RuntimeException exception = assertThrows(
                 RuntimeException.class,
-                () -> eventCatalogService.globalSearch(invalidSessionId, criteria));
+                () -> eventCatalogService.globalSearch(invalidSessionId, criteria)
+        );
 
         // Assert
         assertTrue(exception.getMessage().contains("Invalid session ID"));
@@ -239,7 +287,8 @@ public class EventCatalogAcceptanceTest {
         // Act
         RuntimeException exception = assertThrows(
                 RuntimeException.class,
-                () -> eventCatalogService.globalSearch(validSessionId, null));
+                () -> eventCatalogService.globalSearch(validSessionId, null)
+        );
 
         // Assert
         assertTrue(exception.getMessage().contains("Search criteria cannot be null"));
@@ -259,6 +308,7 @@ public class EventCatalogAcceptanceTest {
         assertTrue(containsEventId(results, rockConcert.getId()));
         assertTrue(containsEventId(results, jazzFestival.getId()));
         assertFalse(containsEventId(results, theaterShow.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
     }
 
     @Test
@@ -276,6 +326,7 @@ public class EventCatalogAcceptanceTest {
         assertEquals(1, results.size());
         assertTrue(containsEventId(results, jazzFestival.getId()));
         assertFalse(containsEventId(results, rockConcert.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
     }
 
     @Test
@@ -295,6 +346,20 @@ public class EventCatalogAcceptanceTest {
     }
 
     @Test
+    void GivenUserEnteredSystemAndCancelledCompanyEventMatchesSearch_WhenSearchByCompany_ThenSystemDoesNotReturnCancelledEvent() {
+        // Arrange
+        SearchCriteria criteria = new SearchCriteria();
+        criteria.setSearchTerm("Cancelled Rock");
+
+        // Act
+        List<EventSearchResultDTO> results = eventCatalogService.SearchByCompany(validSessionId, company1Id, criteria);
+
+        // Assert
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
     void GivenInvalidSession_WhenSearchByCompany_ThenSystemRejectsTheSearch() {
         // Arrange
         long companyId = company1Id;
@@ -303,7 +368,8 @@ public class EventCatalogAcceptanceTest {
         // Act
         RuntimeException exception = assertThrows(
                 RuntimeException.class,
-                () -> eventCatalogService.SearchByCompany(invalidSessionId, companyId, criteria));
+                () -> eventCatalogService.SearchByCompany(invalidSessionId, companyId, criteria)
+        );
 
         // Assert
         assertTrue(exception.getMessage().contains("Invalid session ID"));
@@ -317,7 +383,8 @@ public class EventCatalogAcceptanceTest {
         // Act
         RuntimeException exception = assertThrows(
                 RuntimeException.class,
-                () -> eventCatalogService.SearchByCompany(validSessionId, companyId, null));
+                () -> eventCatalogService.SearchByCompany(validSessionId, companyId, null)
+        );
 
         // Assert
         assertTrue(exception.getMessage().contains("Search criteria cannot be null"));
@@ -334,23 +401,30 @@ public class EventCatalogAcceptanceTest {
         // Act
         RuntimeException exception = assertThrows(
                 RuntimeException.class,
-                () -> eventCatalogService.SearchByCompany(validSessionId, companyId, criteria));
+                () -> eventCatalogService.SearchByCompany(validSessionId, companyId, criteria)
+        );
 
         // Assert
         assertTrue(exception.getMessage().contains("Company rating criteria is not applicable"));
     }
 
-    // Helper Methods
+    private void activateEvent(Event event) {
+        event.setStatus(eventStatus.ACTIVE);
+    }
+
     private boolean containsEventId(List<EventSearchResultDTO> events, Long eventId) {
         return events.stream()
                 .anyMatch(event -> event.id().equals(eventId));
     }
 
-    /*
-     * Adjust this method only if your Company constructor or methods are different.
-     */
     private Company createCompany(String name, Long founderId, double rate) {
-        Company company = new Company(name, founderId, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
+        Company company = new Company(
+                name,
+                founderId,
+                PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX)
+        );
+
         company.setRate(rate);
 
         return company;

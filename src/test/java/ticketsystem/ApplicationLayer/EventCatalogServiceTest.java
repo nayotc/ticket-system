@@ -1,7 +1,12 @@
 package ticketsystem.ApplicationLayer;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,20 +15,19 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.ApplicationLayer.EventCatalogService;
-import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 
-
 public class EventCatalogServiceTest {
+
     private EventCatalogService eventCatalogService;
 
     private IEventRepository eventRepository;
@@ -38,10 +42,8 @@ public class EventCatalogServiceTest {
     private Event rockConcert;
     private Event theaterShow;
     private Event jazzFestival;
-    
-    private EventSearchResultDTO rockConcertDTO;
-    private EventSearchResultDTO theaterShowDTO;
-    private EventSearchResultDTO jazzFestivalDTO;
+    private Event cancelledRockConcert;
+    private Event draftRockConcert;
 
     @BeforeEach
     void setUp() {
@@ -49,8 +51,6 @@ public class EventCatalogServiceTest {
         companyRepository = mock(ICompanyRepository.class);
         tokenService = mock(ITokenService.class);
 
-        // Real domain service, because acceptance tests should test behavior,
-        // not only orchestration.
         domainService = new EventCatalogDomainService(companyRepository);
 
         eventCatalogService = new EventCatalogService(
@@ -103,19 +103,56 @@ public class EventCatalogServiceTest {
                 new Pair<>(10, 10)
         );
 
-        rockConcertDTO = EventSearchResultDTO.from(rockConcert);
-        theaterShowDTO = EventSearchResultDTO.from(theaterShow);
-        jazzFestivalDTO = EventSearchResultDTO.from(jazzFestival);
+        cancelledRockConcert = new Event(
+                4L,
+                LocalDateTime.now().plusDays(15),
+                "Cancelled Rock Concert",
+                100L,
+                1L,
+                EventLocation.TEL_AVIV,
+                100L,
+                EventCategory.CONCERT,
+                "Cancelled Artist",
+                BigDecimal.valueOf(59.99),
+                new Pair<>(10, 10)
+        );
+
+        draftRockConcert = new Event(
+                5L,
+                LocalDateTime.now().plusDays(25),
+                "Draft Rock Concert",
+                100L,
+                1L,
+                EventLocation.TEL_AVIV,
+                100L,
+                EventCategory.CONCERT,
+                "Draft Artist",
+                BigDecimal.valueOf(69.99),
+                new Pair<>(10, 10)
+        );
+
+        activateEvent(rockConcert);
+        activateEvent(theaterShow);
+        activateEvent(jazzFestival);
+        activateEvent(cancelledRockConcert);
+
+        cancelledRockConcert.cancel();
     }
 
     @Test
-    void GivenUserEnteredSystemAndMatchingEventsExist_WhenGlobalSearch_ThenSystemReturnsMatchingEvents() {
+    void GivenUserEnteredSystemAndMatchingEventsExist_WhenGlobalSearch_ThenSystemReturnsOnlyActiveMatchingEvents() {
         // Arrange
         SearchCriteria criteria = new SearchCriteria();
         criteria.setSearchTerm("Rock");
 
         when(tokenService.validateToken(validSessionId)).thenReturn(true);
-        when(eventRepository.getAllEvents()).thenReturn(List.of(rockConcert, theaterShow, jazzFestival));
+        when(eventRepository.getAllEvents()).thenReturn(List.of(
+                rockConcert,
+                theaterShow,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
         when(companyRepository.getCompanyIdsByCriteria(criteria)).thenReturn(List.of(100L, 200L));
 
         // Act
@@ -123,9 +160,11 @@ public class EventCatalogServiceTest {
 
         // Assert
         assertEquals(1, results.size());
-        assertTrue(results.contains(rockConcertDTO));
-        assertFalse(results.contains(theaterShowDTO));
-        assertFalse(results.contains(jazzFestivalDTO));
+        assertTrue(containsEventId(results, rockConcert.getId()));
+        assertFalse(containsEventId(results, theaterShow.getId()));
+        assertFalse(containsEventId(results, jazzFestival.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
+        assertFalse(containsEventId(results, draftRockConcert.getId()));
     }
 
     @Test
@@ -136,7 +175,13 @@ public class EventCatalogServiceTest {
         criteria.setLocation(EventLocation.HAIFA);
 
         when(tokenService.validateToken(validSessionId)).thenReturn(true);
-        when(eventRepository.getAllEvents()).thenReturn(List.of(rockConcert, theaterShow, jazzFestival));
+        when(eventRepository.getAllEvents()).thenReturn(List.of(
+                rockConcert,
+                theaterShow,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
         when(companyRepository.getCompanyIdsByCriteria(criteria)).thenReturn(List.of(100L, 200L));
 
         // Act
@@ -144,7 +189,11 @@ public class EventCatalogServiceTest {
 
         // Assert
         assertEquals(1, results.size());
-        assertTrue(results.contains(jazzFestivalDTO));
+        assertTrue(containsEventId(results, jazzFestival.getId()));
+        assertFalse(containsEventId(results, rockConcert.getId()));
+        assertFalse(containsEventId(results, theaterShow.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
+        assertFalse(containsEventId(results, draftRockConcert.getId()));
     }
 
     @Test
@@ -154,7 +203,13 @@ public class EventCatalogServiceTest {
         criteria.setSearchTerm("Basketball");
 
         when(tokenService.validateToken(validSessionId)).thenReturn(true);
-        when(eventRepository.getAllEvents()).thenReturn(List.of(rockConcert, theaterShow, jazzFestival));
+        when(eventRepository.getAllEvents()).thenReturn(List.of(
+                rockConcert,
+                theaterShow,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
         when(companyRepository.getCompanyIdsByCriteria(criteria)).thenReturn(List.of(100L, 200L));
 
         // Act
@@ -163,6 +218,82 @@ public class EventCatalogServiceTest {
         // Assert
         assertNotNull(results);
         assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void GivenUserEnteredSystemAndCancelledEventMatchesSearch_WhenGlobalSearch_ThenSystemDoesNotReturnCancelledEvent() {
+        // Arrange
+        SearchCriteria criteria = new SearchCriteria();
+        criteria.setSearchTerm("Cancelled Rock");
+
+        when(tokenService.validateToken(validSessionId)).thenReturn(true);
+        when(eventRepository.getAllEvents()).thenReturn(List.of(
+                rockConcert,
+                theaterShow,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
+        when(companyRepository.getCompanyIdsByCriteria(criteria)).thenReturn(List.of(100L, 200L));
+
+        // Act
+        List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
+
+        // Assert
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void GivenUserEnteredSystemAndDraftEventMatchesSearch_WhenGlobalSearch_ThenSystemDoesNotReturnDraftEvent() {
+        // Arrange
+        SearchCriteria criteria = new SearchCriteria();
+        criteria.setSearchTerm("Draft Rock");
+
+        when(tokenService.validateToken(validSessionId)).thenReturn(true);
+        when(eventRepository.getAllEvents()).thenReturn(List.of(
+                rockConcert,
+                theaterShow,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
+        when(companyRepository.getCompanyIdsByCriteria(criteria)).thenReturn(List.of(100L, 200L));
+
+        // Act
+        List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
+
+        // Assert
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void GivenUserEnteredSystemAndCompanyRatingFilterIsApplied_WhenGlobalSearch_ThenSystemReturnsOnlyActiveEventsFromMatchingCompanies() {
+        // Arrange
+        SearchCriteria criteria = new SearchCriteria();
+        criteria.setCompanyRate(4.5);
+
+        when(tokenService.validateToken(validSessionId)).thenReturn(true);
+        when(eventRepository.getAllEvents()).thenReturn(List.of(
+                rockConcert,
+                theaterShow,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
+        when(companyRepository.getCompanyIdsByCriteria(criteria)).thenReturn(List.of(100L));
+
+        // Act
+        List<EventSearchResultDTO> results = eventCatalogService.globalSearch(validSessionId, criteria);
+
+        // Assert
+        assertEquals(2, results.size());
+        assertTrue(containsEventId(results, rockConcert.getId()));
+        assertTrue(containsEventId(results, jazzFestival.getId()));
+        assertFalse(containsEventId(results, theaterShow.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
+        assertFalse(containsEventId(results, draftRockConcert.getId()));
     }
 
     @Test
@@ -199,23 +330,29 @@ public class EventCatalogServiceTest {
     }
 
     @Test
-    void GivenUserEnteredSystemAndCompanyHasEvents_WhenSearchByCompany_ThenSystemReturnsCompanyEvents() {
+    void GivenUserEnteredSystemAndCompanyHasEvents_WhenSearchByCompany_ThenSystemReturnsOnlyActiveCompanyEvents() {
         // Arrange
         long companyId = 100L;
-
         SearchCriteria criteria = new SearchCriteria();
 
         when(tokenService.validateToken(validSessionId)).thenReturn(true);
-        when(eventRepository.getEventsByCompanyId(companyId)).thenReturn(List.of(rockConcert, jazzFestival));
+        when(eventRepository.getEventsByCompanyId(companyId)).thenReturn(List.of(
+                rockConcert,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
 
         // Act
         List<EventSearchResultDTO> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
 
         // Assert
         assertEquals(2, results.size());
-        assertTrue(results.contains(rockConcertDTO));
-        assertTrue(results.contains(jazzFestivalDTO));
-        assertFalse(results.contains(theaterShowDTO));
+        assertTrue(containsEventId(results, rockConcert.getId()));
+        assertTrue(containsEventId(results, jazzFestival.getId()));
+        assertFalse(containsEventId(results, theaterShow.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
+        assertFalse(containsEventId(results, draftRockConcert.getId()));
     }
 
     @Test
@@ -227,15 +364,22 @@ public class EventCatalogServiceTest {
         criteria.setSearchTerm("Jazz");
 
         when(tokenService.validateToken(validSessionId)).thenReturn(true);
-        when(eventRepository.getEventsByCompanyId(companyId)).thenReturn(List.of(rockConcert, jazzFestival));
+        when(eventRepository.getEventsByCompanyId(companyId)).thenReturn(List.of(
+                rockConcert,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
 
         // Act
         List<EventSearchResultDTO> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
 
         // Assert
         assertEquals(1, results.size());
-        assertTrue(results.contains(jazzFestivalDTO));
-        assertFalse(results.contains(rockConcertDTO));
+        assertTrue(containsEventId(results, jazzFestival.getId()));
+        assertFalse(containsEventId(results, rockConcert.getId()));
+        assertFalse(containsEventId(results, cancelledRockConcert.getId()));
+        assertFalse(containsEventId(results, draftRockConcert.getId()));
     }
 
     @Test
@@ -247,7 +391,12 @@ public class EventCatalogServiceTest {
         criteria.setSearchTerm("Opera");
 
         when(tokenService.validateToken(validSessionId)).thenReturn(true);
-        when(eventRepository.getEventsByCompanyId(companyId)).thenReturn(List.of(rockConcert, jazzFestival));
+        when(eventRepository.getEventsByCompanyId(companyId)).thenReturn(List.of(
+                rockConcert,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
 
         // Act
         List<EventSearchResultDTO> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
@@ -255,6 +404,74 @@ public class EventCatalogServiceTest {
         // Assert
         assertNotNull(results);
         assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void GivenCancelledCompanyEventMatchesSearch_WhenSearchByCompany_ThenSystemDoesNotReturnCancelledEvent() {
+        // Arrange
+        long companyId = 100L;
+
+        SearchCriteria criteria = new SearchCriteria();
+        criteria.setSearchTerm("Cancelled Rock");
+
+        when(tokenService.validateToken(validSessionId)).thenReturn(true);
+        when(eventRepository.getEventsByCompanyId(companyId)).thenReturn(List.of(
+                rockConcert,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
+
+        // Act
+        List<EventSearchResultDTO> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
+
+        // Assert
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void GivenDraftCompanyEventMatchesSearch_WhenSearchByCompany_ThenSystemDoesNotReturnDraftEvent() {
+        // Arrange
+        long companyId = 100L;
+
+        SearchCriteria criteria = new SearchCriteria();
+        criteria.setSearchTerm("Draft Rock");
+
+        when(tokenService.validateToken(validSessionId)).thenReturn(true);
+        when(eventRepository.getEventsByCompanyId(companyId)).thenReturn(List.of(
+                rockConcert,
+                jazzFestival,
+                cancelledRockConcert,
+                draftRockConcert
+        ));
+
+        // Act
+        List<EventSearchResultDTO> results = eventCatalogService.SearchByCompany(validSessionId, companyId, criteria);
+
+        // Assert
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void GivenCompanyRateFilter_WhenSearchByCompany_ThenSystemRejectsTheSearch() {
+        // Arrange
+        long companyId = 100L;
+
+        SearchCriteria criteria = new SearchCriteria();
+        criteria.setCompanyRate(4.5);
+
+        when(tokenService.validateToken(validSessionId)).thenReturn(true);
+
+        // Act
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> eventCatalogService.SearchByCompany(validSessionId, companyId, criteria)
+        );
+
+        // Assert
+        assertTrue(exception.getMessage().contains("Company rating criteria is not applicable"));
     }
 
     @Test
@@ -313,7 +530,13 @@ public class EventCatalogServiceTest {
         // Assert
         assertTrue(exception.getMessage().contains("Search criteria cannot be null"));
     }
+
+    private void activateEvent(Event event) {
+        event.setStatus(eventStatus.ACTIVE);
+    }
+
+    private boolean containsEventId(List<EventSearchResultDTO> events, Long eventId) {
+        return events.stream()
+                .anyMatch(event -> event.id().equals(eventId));
+    }
 }
-
-    
-

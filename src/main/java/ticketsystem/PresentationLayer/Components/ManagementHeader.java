@@ -40,29 +40,13 @@ public class ManagementHeader extends Header {
 
         add(title, actions);
     }
+
     private Button createAccountButton() {
         Button button = new Button(VaadinIcon.USER.create());
         button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         button.addClassName("header-icon-button");
         button.getElement().setAttribute("aria-label", "אזור אישי");
-        button.addClickListener(event -> {
-            try {
-                if (visitCoordinator != null) {
-                    visitCoordinator.logoutToGuest(UI.getCurrent());
-                } else {
-                    if (presenter != null) {
-                        presenter.logout(UiSession.getMemberToken());
-                    }
-
-                    UiSession.logout();
-                }
-            } catch (Exception ignored) {
-                UiSession.logout();
-            }
-
-            UI.getCurrent().navigate(UiRoutes.HOME);
-            UI.getCurrent().getPage().reload();
-        });
+        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT));
         return button;
     }
 
@@ -72,20 +56,48 @@ public class ManagementHeader extends Header {
         button.addClassName("management-header-logout-button");
 
         button.addClickListener(event -> {
-            try {
-                if (presenter != null) {
-                    presenter.logout(UiSession.getMemberToken());
-                }
-            } catch (Exception ignored) {
-                // The real presenter can show a proper message popup later.
-                // For now, the UI session is cleared so the user leaves management mode.
+            UI ui = UI.getCurrent();
+
+            if (ui == null) {
+                return;
             }
 
-            UiSession.logout();
-            UI.getCurrent().navigate(UiRoutes.HOME);
+            if (!UiSession.isLoggedIn()) {
+                ui.navigate(UiRoutes.LOGIN);
+                return;
+            }
+
+            try {
+                if (visitCoordinator != null) {
+                    visitCoordinator.logoutToGuest(ui);
+                } else {
+                    fallbackLogout();
+                }
+            } catch (Exception exception) {
+                UiSession.logout();
+            }
+
+            ui.navigate(UiRoutes.HOME);
+
+            /*
+             * Do not call:
+             * ui.getPage().reload();
+             *
+             * It can reload /companies/{id}/manage before the client finishes navigation.
+             */
         });
 
         return button;
+    }
+
+    private void fallbackLogout() throws Exception {
+        String memberToken = UiSession.getMemberToken();
+
+        if (presenter != null && memberToken != null && !memberToken.isBlank()) {
+            presenter.logout(memberToken);
+        }
+
+        UiSession.logout();
     }
 
     public interface ManagementHeaderPresenter {

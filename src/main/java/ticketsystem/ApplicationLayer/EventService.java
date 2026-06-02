@@ -27,6 +27,7 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Permission;
 
@@ -45,8 +46,8 @@ public class EventService {
 
     @Autowired
     public EventService(IEventRepository eventRepository, ITokenService tokenService,
-            MembershipDomainService membershipDomain, ISystemLogger logger,
-            UserAccessService userAccessService) {
+                        MembershipDomainService membershipDomain, ISystemLogger logger,
+                        UserAccessService userAccessService) {
         this.eventRepository = eventRepository;
         this.tokenService = tokenService;
         this.membershipDomain = membershipDomain;
@@ -55,8 +56,8 @@ public class EventService {
     }
 
     public Long insertEvent(String sessionId, String eventName, Long companyId, LocalDateTime date,
-            EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
-            Integer mapHigh, Integer mapWidth) {
+                            EventLocation location, Long trafficThreshold, EventCategory category, String artist, BigDecimal price,
+                            Integer mapHigh, Integer mapWidth) {
 
         String context = "SessionId=" + sessionId
                 + ", companyId=" + companyId
@@ -277,6 +278,86 @@ public class EventService {
         }
     }
 
+
+    public Boolean updateEventSaleStatus(String sessionId, Long eventId, SaleStatus targetStatus) {
+        String context = "eventId=" + eventId + ", targetSaleStatus=" + targetStatus;
+        logger.logEvent("Started - updateEventSaleStatus. " + context, LogLevel.INFO);
+
+        try {
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+
+            if (eventId == null) {
+                throw new IllegalArgumentException("Event ID cannot be null");
+            }
+
+            if (targetStatus == null) {
+                throw new IllegalArgumentException("Sale status cannot be null");
+            }
+
+            Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+
+            Long userId = tokenService.extractUserId(sessionId);
+            userAccessService.validateCanPerformNonViewAction(userId);
+
+            if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.MANAGE_EVENT_INVENTORY)) {
+                throw new IllegalArgumentException("User does not have permission to update event sale status");
+            }
+
+            validateSaleStatusTransition(event.getSaleStatus(), targetStatus);
+
+            event.setSaleStatus(targetStatus);
+            eventRepository.updateEvent(event);
+
+            logger.logEvent("Completed - updateEventSaleStatus. " + context, LogLevel.INFO);
+            return true;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            logger.logEvent("Failed - updateEventSaleStatus. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        } catch (Exception e) {
+            logger.logError("Failed - updateEventSaleStatus. " + context + ". Unexpected error: " + e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    private void validateSaleStatusTransition(SaleStatus currentStatus, SaleStatus targetStatus) {
+        SaleStatus current = currentStatus == null ? SaleStatus.NOT_STARTED : currentStatus;
+
+        if (current == targetStatus) {
+            return;
+        }
+
+        if (targetStatus == SaleStatus.PRE_SALE) {
+            if (current != SaleStatus.NOT_STARTED) {
+                throw new IllegalStateException("Cannot move to pre-sale from current sale status");
+            }
+            return;
+        }
+
+        if (targetStatus == SaleStatus.ONGOING) {
+            if (current != SaleStatus.NOT_STARTED && current != SaleStatus.PRE_SALE) {
+                throw new IllegalStateException("Cannot open regular sale from current sale status");
+            }
+            return;
+        }
+
+        if (targetStatus == SaleStatus.NOT_STARTED) {
+            if (current != SaleStatus.NOT_STARTED) {
+                throw new IllegalStateException("Cannot return sale status to not started");
+            }
+            return;
+        }
+
+        if (targetStatus == SaleStatus.SOLD_OUT || targetStatus == SaleStatus.ENDED) {
+            throw new IllegalStateException("Sale status should move to sold out or ended only by the relevant business flow");
+        }
+    }
+
     public Boolean deleteEvent(String sessionId, Long eventId) {
         String context = "eventId=" + eventId;
         logger.logEvent("Started - deleteEvent. " + context, LogLevel.INFO);
@@ -480,8 +561,8 @@ public class EventService {
     private void validateMapHasAtLeastOneTicketArea(EventMapDTO mapDTO) {
         boolean hasTicketArea = mapDTO.getElementDTOs() != null
                 && mapDTO.getElementDTOs()
-                        .stream()
-                        .anyMatch(this::isTicketArea);
+                .stream()
+                .anyMatch(this::isTicketArea);
         logger.logEvent("Validating map contains at least one ticket area - validateMapHasAtLeastOneTicketArea. hasTicketArea=" + hasTicketArea, LogLevel.DEBUG);
 
         if (!hasTicketArea) {
@@ -662,7 +743,7 @@ public class EventService {
 
     // add visible discount to event
     public void addVisibleDiscountToEvent(String token, Long eventId,
-            String name, BigDecimal percentage) throws Exception {
+                                          String name, BigDecimal percentage) throws Exception {
 
         try {
             Event event = canEditEventDiscount(token, eventId);
@@ -685,8 +766,8 @@ public class EventService {
 
     // add coupon discount to event
     public void addCouponDiscountToEvent(String token, Long eventId,
-            String name, String couponCode,
-            BigDecimal percentage, LocalDateTime endTime) throws Exception {
+                                         String name, String couponCode,
+                                         BigDecimal percentage, LocalDateTime endTime) throws Exception {
 
         try {
             Event event = canEditEventDiscount(token, eventId);
@@ -709,10 +790,10 @@ public class EventService {
 
     // add conditional discount to event
     public void addConditionalDiscountToEvent(String token, Long eventId,
-            String name, LocalDateTime startTime,
-            LocalDateTime endTime, BigDecimal percentage,
-            Condition condition,
-            Integer ticketThreshold) throws Exception {
+                                              String name, LocalDateTime startTime,
+                                              LocalDateTime endTime, BigDecimal percentage,
+                                              Condition condition,
+                                              Integer ticketThreshold) throws Exception {
 
         try {
             Event event = canEditEventDiscount(token, eventId);
@@ -742,7 +823,7 @@ public class EventService {
 
     // remove discount from event
     public void removeDiscountFromEvent(String token, Long eventId,
-            Long discountId) throws Exception {
+                                        Long discountId) throws Exception {
 
         try {
             Event event = canEditEventDiscount(token, eventId);
@@ -753,7 +834,7 @@ public class EventService {
 
             logger.logEvent(
                     "Discount removed successfully from event id: "
-                    + eventId + ", discount id: " + discountId,
+                            + eventId + ", discount id: " + discountId,
                     ISystemLogger.LogLevel.INFO
             );
 
@@ -766,7 +847,7 @@ public class EventService {
 
     // set event discount composition type
     public void setEventDiscountCompositionType(String token, Long eventId,
-            DiscountCompositionType compositionType) throws Exception {
+                                                DiscountCompositionType compositionType) throws Exception {
 
         try {
             Event event = canEditEventDiscount(token, eventId);
@@ -777,7 +858,7 @@ public class EventService {
 
             logger.logEvent(
                     "Discount composition type updated successfully for event id: "
-                    + eventId,
+                            + eventId,
                     ISystemLogger.LogLevel.INFO
             );
 
