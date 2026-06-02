@@ -23,6 +23,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import java.time.LocalDate;
@@ -89,8 +90,8 @@ public class ReservationService {
                 throw new IllegalArgumentException("Event not found");
             }
             Lottery lottery = lotteryRepository.findByEventId(eventId);
-
-            if (lottery != null) {
+            Event event = eventRepository.getEventById(eventId);
+            if (lottery != null && !event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
                 Long userId = tokenService.extractUserId(token);
                 reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
             }
@@ -100,7 +101,7 @@ public class ReservationService {
                 throw new IllegalStateException("No active order found for this event");
             }
 
-            Event event = eventRepository.getEventById(eventId);
+            
             reservationDomeinService.selectSeatTicket(order, event, areaId, position);
 
             saveAll(order, event);
