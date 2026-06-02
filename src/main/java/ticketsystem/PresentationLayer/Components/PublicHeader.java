@@ -119,7 +119,7 @@ public class PublicHeader extends Header {
 
     private int getCartItemsCount() {
         try {
-            int count = presenter.getActiveCartItemsCount(UiSession.getMemberToken());
+            int count = presenter.getActiveCartItemsCount(UiSession.getCurrentToken());
             return Math.max(count, 0);
         } catch (Exception exception) {
             return 0;

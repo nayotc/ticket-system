@@ -13,35 +13,40 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.Components.EmptyState;
+import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.PublicLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
+import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
+import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
+import ticketsystem.PresentationLayer.DTO.OrderPricing;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+
 
 @Route(value = UiRoutes.ACTIVE_ORDER_CART, layout = PublicLayout.class)
 public class ActiveOrderCart extends VerticalLayout {
 
-    private final Presenter presenter;
+    private final ReservationPresenter presenter;
 
     private ActiveOrderDTO activeOrder;
-    private CartEventInfo eventInfo;
-    private CartPricing pricing;
+    private OrderEventInfo eventInfo;
+    private OrderPricing pricing;
     private String currentCouponCode = "";
+    private final ReservationTimer reservationTimer = new ReservationTimer();
 
-    public ActiveOrderCart() {
-        this(new DemoActiveOrderCartPresenter());
-    }
 
-    public ActiveOrderCart(Presenter presenter) {
+
+    public ActiveOrderCart(ReservationPresenter presenter) {
         this.presenter = presenter;
 
         getElement().setAttribute("dir", "rtl");
@@ -58,12 +63,15 @@ public class ActiveOrderCart extends VerticalLayout {
             activeOrder = presenter.loadActiveOrder(resolveSessionToken());
 
             if (activeOrder == null || tickets().isEmpty()) {
+                ReservationTimer.clear();
                 renderEmptyCart();
                 return;
             }
 
-            eventInfo = presenter.loadEventInfo(activeOrder.getEventId());
-            pricing = presenter.calculatePricing(activeOrder.getOrderId(), currentCouponCode);
+            eventInfo = loadEventInfo(activeOrder.getEventId());
+            pricing = presenter.calculatePricing(activeOrder, currentCouponCode);
+            reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
+
             renderCart();
         } catch (Exception exception) {
             showError(exception.getMessage());
@@ -72,7 +80,7 @@ public class ActiveOrderCart extends VerticalLayout {
     }
 
     private String resolveSessionToken() {
-        return UiSession.getMemberToken();
+        return UiSession.getCurrentToken();
     }
 
     private void renderCart() {
@@ -81,7 +89,7 @@ public class ActiveOrderCart extends VerticalLayout {
         Div shell = new Div();
         shell.addClassName("cart-shell");
 
-        shell.add(createHeader(), createLayout());
+        shell.add(reservationTimer, createHeader(), createLayout());
 
         add(shell);
     }
@@ -288,7 +296,7 @@ public class ActiveOrderCart extends VerticalLayout {
         }
 
         try {
-            pricing = presenter.applyCoupon(activeOrder.getOrderId(), currentCouponCode);
+            pricing = presenter.applyCoupon(activeOrder, currentCouponCode);
             renderCart();
         } catch (Exception exception) {
             showError(exception.getMessage());
@@ -301,11 +309,20 @@ public class ActiveOrderCart extends VerticalLayout {
         }
 
         try {
-            presenter.removeTicket(activeOrder.getOrderId(), ticket.getTicketId());
+            presenter.removeTicketFromActiveOrder(resolveSessionToken(), activeOrder.getEventId(), ticket.getTicketId());
             loadCart();
+            refreshHeader();
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
+    }
+
+    private void refreshHeader() {
+        getParent()
+                .flatMap(Component::getParent)
+                .filter(PublicLayout.class::isInstance)
+                .map(PublicLayout.class::cast)
+                .ifPresent(PublicLayout::refreshHeader);
     }
 
     private void continueToCheckout() {
@@ -315,19 +332,24 @@ public class ActiveOrderCart extends VerticalLayout {
         }
 
         try {
-            presenter.continueToCheckout(activeOrder.getOrderId());
             UI.getCurrent().navigate(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(activeOrder.getEventId())));
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
     }
 
+    private OrderEventInfo loadEventInfo(Long eventId) {
+        return presenter.loadActiveOrderEventInfo(resolveSessionToken(), eventId);
+    }
+
+
     private void renderEmptyCart() {
         removeAll();
+        ReservationTimer.clear();
 
         Button searchEvents = new Button("חיפוש אירועים");
         searchEvents.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        searchEvents.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.EVENT_SEARCH));
+        searchEvents.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.SEARCH_RESULTS));
 
         EmptyState emptyState = new EmptyState(
                 "🛒",
@@ -380,127 +402,5 @@ public class ActiveOrderCart extends VerticalLayout {
                 Notification.Position.TOP_CENTER
         );
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
-    }
-
-    public interface Presenter {
-        ActiveOrderDTO loadActiveOrder(String sessionToken);
-
-        CartEventInfo loadEventInfo(Long eventId);
-
-        CartPricing calculatePricing(Long orderId, String couponCode);
-
-        CartPricing applyCoupon(Long orderId, String couponCode);
-
-        void removeTicket(Long orderId, Long ticketId);
-
-        void continueToCheckout(Long orderId);
-    }
-
-    public record CartEventInfo(
-            String eventName,
-            String dateText,
-            String locationText
-    ) {
-    }
-
-    public record AppliedDiscount(
-            String name,
-            String description,
-            BigDecimal amount
-    ) {
-    }
-
-    public record CartPricing(
-            BigDecimal subtotal,
-            BigDecimal discountTotal,
-            BigDecimal total,
-            List<AppliedDiscount> appliedDiscounts,
-            List<String> policyMessages
-    ) {
-    }
-
-    private static final class DemoActiveOrderCartPresenter implements Presenter {
-
-        private ActiveOrderDTO order = new ActiveOrderDTO(
-                101L,
-                501L,
-                9001L,
-                new ArrayList<>(List.of(
-                        new TicketDTO(1L, 9001L, 4, 12, new BigDecimal("350")),
-                        new TicketDTO(2L, 9001L, 4, 13, new BigDecimal("350"))
-                ))
-        );
-
-        @Override
-        public ActiveOrderDTO loadActiveOrder(String sessionToken) {
-            return order;
-        }
-
-        @Override
-        public CartEventInfo loadEventInfo(Long eventId) {
-            return new CartEventInfo(
-                    "פסטיבל אלקטרוניקה 2026",
-                    "15 אוגוסט, 21:00",
-                    "גני התערוכה, תל אביב"
-            );
-        }
-
-        @Override
-        public CartPricing calculatePricing(Long orderId, String couponCode) {
-            BigDecimal subtotal = order.getTickets().stream()
-                    .map(TicketDTO::getPrice)
-                    .filter(Objects::nonNull)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            List<AppliedDiscount> discounts = new ArrayList<>();
-            List<String> messages = new ArrayList<>();
-
-            messages.add("המחיר הסופי מחושב לפי מדיניות הרכישה וההנחות לפני המעבר לתשלום.");
-
-            BigDecimal discountTotal = BigDecimal.ZERO;
-
-            if ("EARLY10".equalsIgnoreCase(couponCode)) {
-                discountTotal = subtotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-                discounts.add(new AppliedDiscount(
-                        "קופון EARLY10",
-                        "10% הנחה לפי מדיניות הקופונים",
-                        discountTotal
-                ));
-            }
-
-            BigDecimal total = subtotal.subtract(discountTotal);
-
-            return new CartPricing(
-                    subtotal,
-                    discountTotal,
-                    total,
-                    discounts,
-                    messages
-            );
-        }
-
-        @Override
-        public CartPricing applyCoupon(Long orderId, String couponCode) {
-            return calculatePricing(orderId, couponCode);
-        }
-
-        @Override
-        public void removeTicket(Long orderId, Long ticketId) {
-            List<TicketDTO> remaining = order.getTickets().stream()
-                    .filter(ticket -> !Objects.equals(ticket.getTicketId(), ticketId))
-                    .toList();
-
-            order = new ActiveOrderDTO(
-                    order.getOrderId(),
-                    order.getUserId(),
-                    order.getEventId(),
-                    new ArrayList<>(remaining)
-            );
-        }
-
-        @Override
-        public void continueToCheckout(Long orderId) {
-            // Later: call the real presenter/service validation before navigation.
-        }
     }
 }

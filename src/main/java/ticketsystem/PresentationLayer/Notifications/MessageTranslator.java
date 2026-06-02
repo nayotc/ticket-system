@@ -140,6 +140,16 @@ public final class MessageTranslator {
             return memberName + " ויתר על תפקיד הבעלים בחברת ההפקה \"" + companyName + "\".";
         }
 
+        if (message.contains(" requested to appoint you as manager of the production company \"")) {
+            String memberName = message.substring(0, message.indexOf(" requested to appoint you as manager"));
+            return "מנוי " + memberName + " מבקש למנות אותך למנהל בחברת ההפקה \"" + companyName + "\".";
+        }
+
+        if (message.contains(" requested to appoint you as owner of the production company \"")) {
+            String memberName = message.substring(0, message.indexOf(" requested to appoint you as owner"));
+            return "מנוי " + memberName + " מבקש למנות אותך לבעלים בחברת ההפקה \"" + companyName + "\".";
+        }
+
         return null;
     }
 

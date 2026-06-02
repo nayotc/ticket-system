@@ -76,6 +76,10 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
         return content;
     }
 
+    public void refreshHeader() {
+        renderHeader();
+    }
+
     private void renderHeader() {
         headerContainer.removeAll();
         headerContainer.add(new PublicHeader(
@@ -83,5 +87,5 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
                 headerPresenter,
                 visitCoordinator
         ));
-            }
+    }
 }
