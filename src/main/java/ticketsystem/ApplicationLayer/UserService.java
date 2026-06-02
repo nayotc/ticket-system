@@ -494,18 +494,6 @@ public class UserService {
         return normalizedFullName;
     }
 
-    private String maskToken(String token) {
-        if (token == null) {
-            return "null";
-        }
-
-        if (token.length() <= 12) {
-            return "***";
-        }
-
-        return token.substring(0, 6) + "..." + token.substring(token.length() - 6);
-    }
-
     public String getUserNameById(long id) {
         Member member = userRepository.getMemberById(id);
         return member != null ? member.getUserName() : null;
