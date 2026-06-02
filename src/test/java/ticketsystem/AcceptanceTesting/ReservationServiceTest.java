@@ -196,6 +196,7 @@ public class ReservationServiceTest {
         String lotteryCode = "ABC12345";
 
         Event event = createActiveEvent(eventId);
+        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
         Lottery lottery = new Lottery(1L, eventId, 1);
@@ -219,6 +220,7 @@ public class ReservationServiceTest {
         Long areaId = 1L;
 
         Event event = createActiveEvent(eventId);
+        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
         Lottery lottery = new Lottery(1L, eventId, 1);
@@ -240,6 +242,7 @@ public class ReservationServiceTest {
         Long areaId = 1L;
 
         Event event = createActiveEvent(eventId);
+        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
         Lottery lottery = new Lottery(1L, eventId, 1);
@@ -262,6 +265,7 @@ public class ReservationServiceTest {
         Long otherUserId = 999L;
 
         Event event = createActiveEvent(eventId);
+        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
         Lottery lottery = new Lottery(1L, eventId, 1);
@@ -302,6 +306,7 @@ public class ReservationServiceTest {
         String lotteryCode = "ABC12345";
 
         Event event = createActiveEventWithSeatingArea(eventId);
+        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
         Lottery lottery = new Lottery(1L, eventId, 1);
@@ -393,7 +398,6 @@ public class ReservationServiceTest {
         Long areaId = 1L;
 
         Event event = createActiveEventWithSeatingArea(eventId);
-        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
         reservationService.selectSeatTicket(
@@ -413,8 +417,8 @@ public class ReservationServiceTest {
 
         ActiveOrder updatedOrder = orderRepository.getActiveOrderByUserId(memberId);
 
-        assertTrue(result);
-        assertTrue(updatedOrder.getTickets().isEmpty());
+       assertTrue(result);
+        assertNull(updatedOrder);
     }
 
     @Test
