@@ -91,7 +91,7 @@ public class ReservationService {
             }
             Lottery lottery = lotteryRepository.findByEventId(eventId);
             Event event = eventRepository.getEventById(eventId);
-            if (lottery != null && !event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
+            if (lottery != null && event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
                 Long userId = tokenService.extractUserId(token);
                 reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
             }
