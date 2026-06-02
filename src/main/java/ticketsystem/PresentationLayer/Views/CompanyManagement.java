@@ -269,6 +269,12 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         Div row = new Div();
         row.addClassName("event-management-row");
 
+        boolean cancelled = isCancelledStatus(eventItem.status());
+
+        if (cancelled) {
+            row.addClassName("event-management-row-cancelled");
+        }
+
         Div details = new Div();
         details.addClassName("event-management-details");
 
@@ -283,21 +289,41 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         Div actions = new Div();
         actions.addClassName("event-management-actions");
 
-        // הכפתורים ייווצרו ויתווספו אך ורק אם למשתמש יש הרשאת ניהול אירועים
         if (state.canManageEvents()) {
-            Button edit = new Button("ערוך", VaadinIcon.EDIT.create());
+            Button edit = new Button("ניהול", VaadinIcon.COG.create());
             edit.addClassName("company-secondary-button");
             edit.addClickListener(event -> navigateToEventEditor(eventItem));
 
-            Button cancel = new Button("בטל", VaadinIcon.CLOSE_CIRCLE.create());
+            Button cancel = new Button(
+                    cancelled ? "מבוטל" : "בטל",
+                    cancelled ? VaadinIcon.LOCK.create() : VaadinIcon.CLOSE_CIRCLE.create()
+            );
+
             cancel.addClassName("company-danger-soft-button");
-            cancel.addClickListener(event -> confirmCancelEvent(eventItem));
+
+            if (cancelled) {
+                cancel.addClassName("tn-disabled-action-button");
+                cancel.setEnabled(false);
+                cancel.getElement().setAttribute("title", "האירוע כבר מבוטל");
+                cancel.getElement().setAttribute("aria-label", "האירוע כבר מבוטל");
+            } else {
+                cancel.addClickListener(event -> confirmCancelEvent(eventItem));
+            }
 
             actions.add(edit, cancel);
         }
-        
+
         row.add(details, actions);
         return row;
+    }
+
+    private boolean isCancelledStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return false;
+        }
+
+        String normalized = status.trim().toUpperCase();
+        return normalized.equals("CANCELLED") || normalized.equals("מבוטל");
     }
 
     private Component createTeamManagementCard() {

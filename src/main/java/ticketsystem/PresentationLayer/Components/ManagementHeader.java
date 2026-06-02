@@ -45,6 +45,15 @@ public class ManagementHeader extends Header {
         button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         button.addClassName("header-icon-button");
         button.getElement().setAttribute("aria-label", "אזור אישי");
+        button.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT));
+        return button;
+    }
+
+    private Button createLogoutButton() {
+        Button button = new Button("התנתקות");
+        button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        button.addClassName("management-header-logout-button");
+
         button.addClickListener(event -> {
             try {
                 if (visitCoordinator != null) {
@@ -62,27 +71,6 @@ public class ManagementHeader extends Header {
 
             UI.getCurrent().navigate(UiRoutes.HOME);
             UI.getCurrent().getPage().reload();
-        });
-        return button;
-    }
-
-    private Button createLogoutButton() {
-        Button button = new Button("התנתקות");
-        button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        button.addClassName("management-header-logout-button");
-
-        button.addClickListener(event -> {
-            try {
-                if (presenter != null) {
-                    presenter.logout(UiSession.getMemberToken());
-                }
-            } catch (Exception ignored) {
-                // The real presenter can show a proper message popup later.
-                // For now, the UI session is cleared so the user leaves management mode.
-            }
-
-            UiSession.logout();
-            UI.getCurrent().navigate(UiRoutes.HOME);
         });
 
         return button;

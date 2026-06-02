@@ -196,6 +196,8 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
                 new Pair<>(1, 1),
                 new Pair<>(3, 3)
         ));
+
+        event.setStatus(Event.eventStatus.ACTIVE);
     }
 
     private Event createNightLightsEvent(Company company) {
