@@ -47,6 +47,7 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.lottery.Lottery;
@@ -324,9 +325,11 @@ public class ReservationServiceTest {
         Long areaId = 1L;
 
         Event event = createActiveEventWithSeatingArea(eventId);
+        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
-
+        
         Lottery lottery = new Lottery(1L, eventId, 1);
+        
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -345,6 +348,7 @@ public class ReservationServiceTest {
         Long areaId = 1L;
 
         Event event = createActiveEventWithSeatingArea(eventId);
+        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
         Lottery lottery = new Lottery(1L, eventId, 1);
@@ -367,6 +371,7 @@ public class ReservationServiceTest {
         Long otherUserId = 999L;
 
         Event event = createActiveEventWithSeatingArea(eventId);
+        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
         Lottery lottery = new Lottery(1L, eventId, 1);
@@ -388,6 +393,7 @@ public class ReservationServiceTest {
         Long areaId = 1L;
 
         Event event = createActiveEventWithSeatingArea(eventId);
+        event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
         reservationService.selectSeatTicket(

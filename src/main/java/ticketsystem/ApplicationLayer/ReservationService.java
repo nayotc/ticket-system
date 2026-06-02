@@ -126,8 +126,8 @@ public class ReservationService {
             }
 
             Lottery lottery = lotteryRepository.findByEventId(eventId);
-
-            if (lottery != null) {
+            Event event = eventRepository.getEventById(eventId);
+            if (lottery != null && event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
                 Long userId = tokenService.extractUserId(token);
                 reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
             }
@@ -139,7 +139,7 @@ public class ReservationService {
             if (quantity <= 0) {
                 throw new IllegalArgumentException("Quantity must be greater than zero");
             }
-            Event event = eventRepository.getEventById(eventId);
+            
             reservationDomeinService.selectStandingTicket(order, event, areaId, quantity);
             saveAll(order, event);
             logger.logEvent("Standing ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId
