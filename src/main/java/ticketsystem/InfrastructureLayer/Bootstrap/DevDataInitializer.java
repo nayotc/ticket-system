@@ -28,15 +28,15 @@ import ticketsystem.DomainLayer.IRepository.IUserRepository;
 // DTOs
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
+import ticketsystem.DTO.PurchasePolicyDTO;
+import ticketsystem.DTO.PurchaseRuleDTO;
+import ticketsystem.DTO.PurchaseRuleType;
 // Domain Entities
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
-import ticketsystem.DTO.PurchasePolicyDTO;
-import ticketsystem.DTO.PurchaseRuleDTO;
-import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
@@ -44,10 +44,8 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
-import java.util.Set;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.DomainLayer.user.Permission;
 
 @Component
 @Profile("dev")
@@ -345,10 +343,52 @@ public class DevDataInitializer implements CommandLineRunner {
         eventRepository.addEvent(event2);
         
         System.out.println("Test events generated successfully.");
+
+        Member owner = (Member) userRepository.getMemberByUsername("owner@test.com");
+        if (owner != null) {
+            long ownerId = owner.getId();
+            long mainCompanyId = 1L; // או TEST_COMPANY_ID אם זה המשתנה אצלך
+
+            // 1. אירוע ראשון באחריות ה-Owner: פסטיבל שקיעה
+            Event ownerEvent1 = new Event(
+                    101L, // מזהה אירוע
+                    LocalDateTime.now().plusDays(20), // תאריך
+                    "פסטיבל שקיעה", // שם האירוע
+                    mainCompanyId, // חברת הפקה
+                    ownerId, // מנהל האירוע (ה-Owner שלנו)
+                    EventLocation.TEL_AVIV, // מיקום (עדכני ל-Enum שקיים אצלך אם צריך)
+                    1000L, // תכולה
+                    EventCategory.OTHER, // קטגוריה
+                    "מסיבת חוף אל תוך הלילה", // תיאור
+                    BigDecimal.valueOf(150), // מחיר בסיס
+                    new Pair<>(10, 10) // סידור
+            );
+
+            // 2. אירוע שני באחריות ה-Owner: הופעת ג'אז
+            Event ownerEvent2 = new Event(
+                    102L, 
+                    LocalDateTime.now().plusDays(25), 
+                    "הופעת ג'אז", 
+                    mainCompanyId, 
+                    ownerId, // מנהל האירוע (ה-Owner שלנו)
+                    EventLocation.BEER_SHEVA, // מיקום
+                    300L, // תכולה
+                    EventCategory.OTHER, // קטגוריה
+                    "הופעה חיה", // תיאור
+                    BigDecimal.valueOf(200), // מחיר בסיס
+                    new Pair<>(10, 10) // סידור
+            );
+            
+            eventRepository.addEvent(ownerEvent1);
+            eventRepository.addEvent(ownerEvent2);
+            
+            System.out.println("Created 2 events managed by Owner [ID: " + ownerId + "]");
+        }
     }
 
     /**
-     * Generates test transactions where the test user is the buyer and the founder is the manager.
+     * Generates test transactions where the test user is the buyer, 
+     * and different members (founder, owner) manage the events.
      */
     private void createTestSalesData() {
         System.out.println("Generating test sales data for HistoryService...");
@@ -358,37 +398,68 @@ public class DevDataInitializer implements CommandLineRunner {
         if (!(buyer instanceof Member)) return;
         long buyerId = ((Member) buyer).getId();
         
-        // Fetch the Founder ID (founder@test.com) who manages the event
+        // Fetch the Founder ID (founder@test.com) who manages the first events
         var founder = userRepository.getMemberByUsername(FOUNDER_USERNAME);
         if (!(founder instanceof Member)) return;
         long founderId = ((Member) founder).getId();
+
+        // Fetch the Owner ID (owner@test.com) who manages the new events
+        var owner = userRepository.getMemberByUsername("owner@test.com");
+        if (!(owner instanceof Member)) return;
+        long ownerId = ((Member) owner).getId();
         
+        // ==========================================
+        //         TRANSACTIONS FOR FOUNDER
+        // ==========================================
+
         // Transaction 1: 2 Tickets bought by the regular test member, managed by the Founder
         PurchaseDTO ticket1 = new PurchaseDTO(100L, 1, 12, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-123");
         PurchaseDTO ticket2 = new PurchaseDTO(101L, 1, 13, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-124");
         
-        OrderDTO order1 = new OrderDTO(8492L, List.of(ticket1, ticket2), "פסטיבל אורות הלילה", "תל אביב", buyerId, TEST_COMPANY_ID, founderId, 91L,new BigDecimal(100));
+        OrderDTO order1 = new OrderDTO(8492L, List.of(ticket1, ticket2), "פסטיבל אורות הלילה", "תל אביב", buyerId, TEST_COMPANY_ID, founderId, 91L, new BigDecimal(100));
         historyService.onOrderCompleted(order1);
 
         // Transaction 2: 1 Ticket bought by the regular test member, managed by the Founder
         PurchaseDTO ticket3 = new PurchaseDTO(102L, 2, 5, BigDecimal.valueOf(120), "ACTIVE", "BARCODE-125");
-        OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, TEST_COMPANY_ID, founderId, 92L,new BigDecimal(100));
+        OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, TEST_COMPANY_ID, founderId, 92L, new BigDecimal(100));
         historyService.onOrderCompleted(order2);
         
-        System.out.println("Test sales data generated successfully. Buyer: " + TEST_USERNAME + ", Founder: " + FOUNDER_USERNAME);
+
+        // ==========================================
+        //          TRANSACTIONS FOR OWNER
+        // ==========================================
+
+        // Transaction 3: 2 Tickets for "Sunset Festival" managed by Owner
+        PurchaseDTO ticket4 = new PurchaseDTO(103L, 3, 1, BigDecimal.valueOf(150), "ACTIVE", "BARCODE-126");
+        PurchaseDTO ticket5 = new PurchaseDTO(104L, 3, 2, BigDecimal.valueOf(150), "ACTIVE", "BARCODE-127");
+        
+        OrderDTO order3 = new OrderDTO(8493L, List.of(ticket4, ticket5), "פסטיבל שקיעה", "תל אביב", buyerId, TEST_COMPANY_ID, ownerId, 101L, new BigDecimal(100));
+        historyService.onOrderCompleted(order3);
+
+        // Transaction 4: 1 Ticket for "Jazz Concert" managed by Owner
+        PurchaseDTO ticket6 = new PurchaseDTO(105L, 4, 1, BigDecimal.valueOf(200), "ACTIVE", "BARCODE-128");
+        OrderDTO order4 = new OrderDTO(8494L, List.of(ticket6), "הופעת ג'אז", "באר שבע", buyerId, TEST_COMPANY_ID, ownerId, 102L, new BigDecimal(100));
+        historyService.onOrderCompleted(order4);
+
+
+        System.out.println("Test sales data generated successfully. Buyer: " + TEST_USERNAME);
         
         // Printing a detailed console summary of the loaded mock transactions
-        System.out.println("=========================================================================");
-        System.out.println("DEVELOPMENT MOCK SALES DATA SUMMARY FOR COMPANY ID: #" + TEST_COMPANY_ID);
-        System.out.println("-------------------------------------------------------------------------");
-        System.out.println(" -> Order #8492: 'Night Lights Festival' (Tel Aviv)");
-        System.out.println("    Tickets: 2 | Price: 180.00 NIS each | Status: ACTIVE | Buyer ID: " + buyerId);
-        System.out.println(" -> Order #8491: 'Rock Concert in the Desert' (Beer Sheva)");
-        System.out.println("    Tickets: 1 | Price: 120.00 NIS | Status: ACTIVE | Buyer ID: " + buyerId);
-        System.out.println("-------------------------------------------------------------------------");
-        System.out.println(" -> EXPECTED REPORT TOTALS: 3 Tickets Sold | Total Revenue: 480.00 NIS");
-        System.out.println("=========================================================================");
-        System.out.println();
+        // System.out.println("=========================================================================");
+        // System.out.println("DEVELOPMENT MOCK SALES DATA SUMMARY FOR COMPANY ID: #" + TEST_COMPANY_ID);
+        // System.out.println("-------------------------------------------------------------------------");
+        // System.out.println(" -> Order #8492: 'Night Lights Festival' (Tel Aviv) [Manager: Founder]");
+        // System.out.println("    Tickets: 2 | Price: 180.00 NIS each | Status: ACTIVE | Buyer ID: " + buyerId);
+        // System.out.println(" -> Order #8491: 'Rock Concert in the Desert' (Beer Sheva) [Manager: Founder]");
+        // System.out.println("    Tickets: 1 | Price: 120.00 NIS | Status: ACTIVE | Buyer ID: " + buyerId);
+        // System.out.println(" -> Order #8493: 'Sunset Festival' (Tel Aviv) [Manager: Owner]");
+        // System.out.println("    Tickets: 2 | Price: 150.00 NIS each | Status: ACTIVE | Buyer ID: " + buyerId);
+        // System.out.println(" -> Order #8494: 'Jazz Concert' (Beer Sheva) [Manager: Owner]");
+        // System.out.println("    Tickets: 1 | Price: 200.00 NIS | Status: ACTIVE | Buyer ID: " + buyerId);
+        // System.out.println("-------------------------------------------------------------------------");
+        // System.out.println(" -> EXPECTED REPORT TOTALS (All Managers): 6 Tickets Sold | Total Revenue: 980.00 NIS");
+        // System.out.println("=========================================================================");
+        // System.out.println();
     }
 
     private void createReportOnlyManager() {
