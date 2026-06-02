@@ -7,10 +7,10 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import ticketsystem.ApplicationLayer.Events.UserExitListener;
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
-import ticketsystem.DTO.MemberDTO;
-import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
+import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
@@ -23,6 +23,7 @@ public class UserService {
     private final IPasswordService passwordService;
     private final ISystemLogger logger;
     private final List<UserLoginListener> userLoginListeners;
+    private final List<UserExitListener> userExitListeners;
 
     public UserService(IUserRepository userRepository, ITokenService tokenService, ISystemLogger logger) {
         this.userRepository = userRepository;
@@ -30,6 +31,7 @@ public class UserService {
         this.passwordService = new PasswordService();
         this.logger = logger;
         this.userLoginListeners = new ArrayList<>();
+        this.userExitListeners = new ArrayList<>();
     }
 
     // 1. System Visit: Allows a guest to visit the system and receive a session
@@ -42,7 +44,9 @@ public class UserService {
             logger.logEvent("VisitSystem: guest object created", LogLevel.DEBUG);
 
             String guestToken = tokenService.addActiveSession(guest);
-            logger.logEvent("VisitSystem succeeded: guest session created, guestToken=" + tokenService.maskToken(guestToken), LogLevel.INFO);
+            logger.logEvent(
+                    "VisitSystem succeeded: guest session created, guestToken=" + tokenService.maskToken(guestToken),
+                    LogLevel.INFO);
 
             return guestToken;
         } catch (Exception e) {
@@ -53,7 +57,8 @@ public class UserService {
 
     // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
     // username and password.
-    public boolean signUp(String sessionToken, String username, String password, String fullName, String phone,LocalDate birthDate) {
+    public boolean signUp(String sessionToken, String username, String password, String fullName, String phone,
+            LocalDate birthDate) {
         try {
             if (username == null || username.isBlank() || password == null || password.isBlank()) {
                 logger.logEvent("Sign-up rejected: blank username or password", LogLevel.WARN);
@@ -83,7 +88,8 @@ public class UserService {
             }
 
             String hashedPassword = passwordService.hashPassword(password);
-            userRepository.addRegisteredMember(newId, new Member(newId, username, normalizedFullName, normalizedPhone,birthDate), hashedPassword);
+            userRepository.addRegisteredMember(newId,
+                    new Member(newId, username, normalizedFullName, normalizedPhone, birthDate), hashedPassword);
             logger.logEvent("Sign-up succeeded: new member registered, username=" + username, LogLevel.INFO);
             return true;
 
@@ -98,7 +104,7 @@ public class UserService {
     }
 
     // 3. Login: Allows a guest to log in as a member by providing their username
-// and password, and receive a new session token.
+    // and password, and receive a new session token.
     public String login(String sessionToken, String username, String password) {
         logger.logEvent(
                 "Login started: username=" + username + ", guestToken=" + tokenService.maskToken(sessionToken),
@@ -121,10 +127,12 @@ public class UserService {
             logger.logEvent("Login input validation passed: username=" + username, LogLevel.DEBUG);
 
             String hashedPassword = userRepository.getHashedPasswordByUsername(username);
-            logger.logEvent("Login password hash lookup completed: username=" + username + ", found=" + (hashedPassword != null), LogLevel.DEBUG);
+            logger.logEvent("Login password hash lookup completed: username=" + username + ", found="
+                    + (hashedPassword != null), LogLevel.DEBUG);
 
             if (hashedPassword == null || !passwordService.verifyPassword(password, hashedPassword)) {
-                // Single message avoids distinguishing unknown user vs wrong password (user enumeration).
+                // Single message avoids distinguishing unknown user vs wrong password (user
+                // enumeration).
                 logger.logEvent("Login rejected: invalid credentials, username=" + username, LogLevel.WARN);
                 throw new IllegalArgumentException("Invalid username or password.");
             }
@@ -137,26 +145,30 @@ public class UserService {
                         LogLevel.WARN);
                 throw new IllegalStateException("Login failed. Please try again.");
             }
-            logger.logEvent("Login member loaded: username=" + username + ", memberId=" + member.getId(), LogLevel.DEBUG);
+            logger.logEvent("Login member loaded: username=" + username + ", memberId=" + member.getId(),
+                    LogLevel.DEBUG);
 
             String memberToken = tokenService.addActiveSession(member);
             logger.logEvent(
                     "Login member session created: username=" + username
-                    + ", memberId=" + member.getId()
-                    + ", memberToken=" + tokenService.maskToken(memberToken),
+                            + ", memberId=" + member.getId()
+                            + ", memberToken=" + tokenService.maskToken(memberToken),
                     LogLevel.INFO);
 
             try {
                 logger.logEvent(
-                        "Login post-processing started: notifying listeners, oldGuestToken=" + tokenService.maskToken(sessionToken)
-                        + ", newMemberToken=" + tokenService.maskToken(memberToken),
+                        "Login post-processing started: notifying listeners, oldGuestToken="
+                                + tokenService.maskToken(sessionToken)
+                                + ", newMemberToken=" + tokenService.maskToken(memberToken),
                         LogLevel.DEBUG);
 
-                notifyListeners(sessionToken, memberToken);
-                logger.logEvent("Login listeners completed: username=" + username + ", memberId=" + member.getId(), LogLevel.DEBUG);
+                notifyLoginListeners(sessionToken, memberToken);
+                logger.logEvent("Login listeners completed: username=" + username + ", memberId=" + member.getId(),
+                        LogLevel.DEBUG);
 
                 tokenService.removeActiveSession(sessionToken);
-                logger.logEvent("Login guest session removed: oldGuestToken=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
+                logger.logEvent("Login guest session removed: oldGuestToken=" + tokenService.maskToken(sessionToken),
+                        LogLevel.DEBUG);
 
                 logger.logEvent("Login succeeded: username=" + username, LogLevel.INFO);
                 return memberToken;
@@ -194,13 +206,16 @@ public class UserService {
             }
 
             tokenService.removeActiveSession(sessionToken);
-            logger.logEvent("Exit session removed: token=" + tokenService.maskToken(sessionToken) + ", memberId=" + memberId, LogLevel.DEBUG);
+            logger.logEvent(
+                    "Exit session removed: token=" + tokenService.maskToken(sessionToken) + ", memberId=" + memberId,
+                    LogLevel.DEBUG);
 
             logger.logEvent("Exit: session closed", LogLevel.INFO);
             return true;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            logger.logEvent("Exit failed: reason=" + e.getMessage() + ", token=" + tokenService.maskToken(sessionToken), LogLevel.WARN);
+            logger.logEvent("Exit failed: reason=" + e.getMessage() + ", token=" + tokenService.maskToken(sessionToken),
+                    LogLevel.WARN);
             throw e;
 
         } catch (Exception e) {
@@ -228,16 +243,20 @@ public class UserService {
             logger.logEvent("Logout member identified: memberId=" + memberId, LogLevel.DEBUG);
 
             tokenService.removeActiveSession(sessionToken);
-            logger.logEvent("Logout member session removed: memberId=" + memberId + ", oldMemberToken=" + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
+            logger.logEvent("Logout member session removed: memberId=" + memberId + ", oldMemberToken="
+                    + tokenService.maskToken(sessionToken), LogLevel.DEBUG);
 
             String guestToken = visitSystem();
-            logger.logEvent("Logout guest session created: memberId=" + memberId + ", newGuestToken=" + tokenService.maskToken(guestToken), LogLevel.DEBUG);
+            logger.logEvent("Logout guest session created: memberId=" + memberId + ", newGuestToken="
+                    + tokenService.maskToken(guestToken), LogLevel.DEBUG);
 
             logger.logEvent("Logout succeeded: new guest session issued, memberId=" + memberId, LogLevel.INFO);
             return guestToken;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            logger.logEvent("Logout failed: reason=" + e.getMessage() + ", token=" + tokenService.maskToken(sessionToken), LogLevel.WARN);
+            logger.logEvent(
+                    "Logout failed: reason=" + e.getMessage() + ", token=" + tokenService.maskToken(sessionToken),
+                    LogLevel.WARN);
             throw e;
 
         } catch (Exception e) {
@@ -371,34 +390,68 @@ public class UserService {
         return member;
     }
 
-    private void notifyListeners(String guestToken, String memberToken) {
+    private void notifyLoginListeners(String guestToken, String memberToken) {
         logger.logEvent(
                 "Login listeners notification started: listeners=" + userLoginListeners.size()
-                + ", guestToken=" + tokenService.maskToken(guestToken)
-                + ", memberToken=" + tokenService.maskToken(memberToken),
+                        + ", guestToken=" + tokenService.maskToken(guestToken)
+                        + ", memberToken=" + tokenService.maskToken(memberToken),
                 LogLevel.DEBUG);
 
         for (UserLoginListener listener : userLoginListeners) {
-            logger.logEvent("Login listener notification: listener=" + listener.getClass().getSimpleName(), LogLevel.DEBUG);
+            logger.logEvent("Login listener notification: listener=" + listener.getClass().getSimpleName(),
+                    LogLevel.DEBUG);
             listener.onUserLogin(guestToken, memberToken);
         }
 
-        logger.logEvent("Login listeners notification finished: listeners=" + userLoginListeners.size(), LogLevel.DEBUG);
+        logger.logEvent("Login listeners notification finished: listeners=" + userLoginListeners.size(),
+                LogLevel.DEBUG);
     }
 
     public void addUserLoginListener(UserLoginListener listener) {
         userLoginListeners.add(listener);
         logger.logEvent(
                 "UserLoginListener added: listener=" + (listener == null ? "null" : listener.getClass().getSimpleName())
-                + ", totalListeners=" + userLoginListeners.size(),
+                        + ", totalListeners=" + userLoginListeners.size(),
                 LogLevel.DEBUG);
     }
 
     public void removeUserLoginListener(UserLoginListener listener) {
         userLoginListeners.remove(listener);
         logger.logEvent(
-                "UserLoginListener removed: listener=" + (listener == null ? "null" : listener.getClass().getSimpleName())
-                + ", totalListeners=" + userLoginListeners.size(),
+                "UserLoginListener removed: listener="
+                        + (listener == null ? "null" : listener.getClass().getSimpleName())
+                        + ", totalListeners=" + userLoginListeners.size(),
+                LogLevel.DEBUG);
+    }
+
+    public void notifyExitListeners(String userToken) {
+        logger.logEvent(
+                "Exit listeners notification started: listeners=" + userExitListeners.size(),
+                LogLevel.DEBUG);
+
+        for (UserExitListener listener : userExitListeners) {
+            logger.logEvent("Exit listener notification: listener=" + listener.getClass().getSimpleName(),
+                    LogLevel.DEBUG);
+            listener.onUserExit(userToken);
+        }
+
+        logger.logEvent("Exit listeners notification finished: listeners=" + userExitListeners.size(), LogLevel.DEBUG);
+    }
+
+    public void addUserExitListener(UserExitListener listener) {
+        userExitListeners.add(listener);
+        logger.logEvent(
+                "UserExitListener added: listener=" + (listener == null ? "null" : listener.getClass().getSimpleName())
+                        + ", totalListeners=" + userExitListeners.size(),
+                LogLevel.DEBUG);
+    }
+
+    public void removeUserExitListener(UserExitListener listener) {
+        userExitListeners.remove(listener);
+        logger.logEvent(
+                "UserExitListener removed: listener="
+                        + (listener == null ? "null" : listener.getClass().getSimpleName())
+                        + ", totalListeners=" + userExitListeners.size(),
                 LogLevel.DEBUG);
     }
 
@@ -419,7 +472,8 @@ public class UserService {
             logger.logEvent("Sign-up rejected: invalid phone length", LogLevel.WARN);
             throw new IllegalArgumentException("Phone number must be 9 or 10 digits long.");
         }
-        logger.logEvent("Validated and normalized phone number successfully - validateAndNormalizePhone", LogLevel.INFO);
+        logger.logEvent("Validated and normalized phone number successfully - validateAndNormalizePhone",
+                LogLevel.INFO);
         return normalizedPhone;
     }
 
@@ -435,87 +489,71 @@ public class UserService {
             logger.logEvent("Sign-up rejected: invalid full name length", LogLevel.WARN);
             throw new IllegalArgumentException("Full name must be between 2 and 100 characters.");
         }
-        logger.logEvent("Validated and normalized full name successfully - validateAndNormalizeFullName", LogLevel.INFO);
+        logger.logEvent("Validated and normalized full name successfully - validateAndNormalizeFullName",
+                LogLevel.INFO);
         return normalizedFullName;
     }
-
-    private String maskToken(String token) {
-        if (token == null) {
-            return "null";
-        }
-
-        if (token.length() <= 12) {
-            return "***";
-        }
-
-        return token.substring(0, 6) + "..." + token.substring(token.length() - 6);
-    }
-
 
     public String getUserNameById(long id) {
         Member member = userRepository.getMemberById(id);
         return member != null ? member.getUserName() : null;
     }
 
-    //for UI
+    // for UI
     public MyAccountDTO getMyAccountDTO(String sessionToken) {
-    try {
-        tokenService.validateToken(sessionToken);
+        try {
+            tokenService.validateToken(sessionToken);
 
-        Long memberId = tokenService.extractUserId(sessionToken);
-        if (memberId == null) {
-            throw new IllegalArgumentException("User is not logged in.");
+            Long memberId = tokenService.extractUserId(sessionToken);
+            if (memberId == null) {
+                throw new IllegalArgumentException("User is not logged in.");
+            }
+
+            Member member = userRepository.getMemberById(memberId);
+            if (member == null) {
+                throw new IllegalArgumentException("Member not found.");
+            }
+
+            return new MyAccountDTO(
+                    member.getId(),
+                    member.getUserName(),
+                    member.getFullName(),
+                    member.getPhone(),
+                    member.getBirthDate());
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
+        } catch (Exception e) {
+            logger.logError("Failed to get member DTO", e);
+            throw e;
         }
-
-        Member member = userRepository.getMemberById(memberId);
-        if(member==null){
-            throw new IllegalArgumentException("Member not found.");
-        }
-
-        return new MyAccountDTO(
-                member.getId(),
-                member.getUserName(),
-                member.getFullName(),
-                member.getPhone(),
-                member.getBirthDate()
-        );
-
-    } catch (IllegalArgumentException | IllegalStateException e) {
-        throw e;
-
-    } catch (Exception e) {
-        logger.logError("Failed to get member DTO", e);
-        throw e;
     }
-}
 
+    public boolean updateMemberFullName(String sessionToken,
+            String password,
+            String username,
+            String newFullName) {
+        try {
+            if (newFullName == null || newFullName.isBlank()) {
+                logger.logEvent("Update full name rejected: full name is blank", LogLevel.WARN);
+                throw new IllegalArgumentException("Full name cannot be blank.");
+            }
 
-   public boolean updateMemberFullName(String sessionToken,
-                                    String password,
-                                    String username,
-                                    String newFullName) {
-    try {
-        if (newFullName == null || newFullName.isBlank()) {
-            logger.logEvent("Update full name rejected: full name is blank", LogLevel.WARN);
-            throw new IllegalArgumentException("Full name cannot be blank.");
-        }
+            Member member = authenticateMemberForUpdate(
+                    sessionToken,
+                    password,
+                    username);
 
+            if (member == null) {
+                logger.logEvent(
+                        "Update full name rejected: authentication failed, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalArgumentException("Invalid username or password.");
+            }
 
-        Member member = authenticateMemberForUpdate(
-                sessionToken,
-                password,
-                username
-        );
-
-        if (member == null) {
-            logger.logEvent(
-                    "Update full name rejected: authentication failed, username=" + username,
-                    LogLevel.WARN);
-            throw new IllegalArgumentException("Invalid username or password.");
-        }
-
-        member.setFullName(newFullName);
-         boolean ok = userRepository.updateMember(member);
+            member.setFullName(newFullName);
+            boolean ok = userRepository.updateMember(member);
             if (!ok) {
                 logger.logEvent(
                         "Update password rejected: repository update failed, username=" + username,
@@ -523,48 +561,47 @@ public class UserService {
                 throw new IllegalStateException("Password update failed. Please try again.");
             }
 
-        logger.logEvent(
-                "Member full name updated: username=" + username,
-                LogLevel.INFO);
-
-        return true;
-
-    } catch (IllegalArgumentException | IllegalStateException e) {
-        throw e;
-
-    } catch (Exception e) {
-        logger.logError("Update member full name failed", e);
-        throw e;
-    }
-}
-
-public boolean updateMemberPhone(String sessionToken,
-                                 String password,
-                                 String username,
-                                 String newPhone) {
-    try {
-        if (newPhone == null || newPhone.isBlank()) {
-            logger.logEvent("Update phone rejected: phone is blank", LogLevel.WARN);
-            throw new IllegalArgumentException("Phone cannot be blank.");
-        }
-
-        String normalizedPhone = validateAndNormalizePhone(newPhone);
-
-        Member member = authenticateMemberForUpdate(
-                sessionToken,
-                password,
-                username
-        );
-
-        if (member == null) {
             logger.logEvent(
-                    "Update phone rejected: authentication failed, username=" + username,
-                    LogLevel.WARN);
-            throw new IllegalArgumentException("Invalid username or password.");
-        }
+                    "Member full name updated: username=" + username,
+                    LogLevel.INFO);
 
-        member.setPhone(normalizedPhone);
-        boolean ok = userRepository.updateMember(member);
+            return true;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+
+        } catch (Exception e) {
+            logger.logError("Update member full name failed", e);
+            throw e;
+        }
+    }
+
+    public boolean updateMemberPhone(String sessionToken,
+            String password,
+            String username,
+            String newPhone) {
+        try {
+            if (newPhone == null || newPhone.isBlank()) {
+                logger.logEvent("Update phone rejected: phone is blank", LogLevel.WARN);
+                throw new IllegalArgumentException("Phone cannot be blank.");
+            }
+
+            String normalizedPhone = validateAndNormalizePhone(newPhone);
+
+            Member member = authenticateMemberForUpdate(
+                    sessionToken,
+                    password,
+                    username);
+
+            if (member == null) {
+                logger.logEvent(
+                        "Update phone rejected: authentication failed, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalArgumentException("Invalid username or password.");
+            }
+
+            member.setPhone(normalizedPhone);
+            boolean ok = userRepository.updateMember(member);
             if (!ok) {
                 logger.logEvent(
                         "Update password rejected: repository update failed, username=" + username,
@@ -572,18 +609,18 @@ public boolean updateMemberPhone(String sessionToken,
                 throw new IllegalStateException("Password update failed. Please try again.");
             }
 
-        logger.logEvent(
-                "Member phone updated: username=" + username,
-                LogLevel.INFO);
+            logger.logEvent(
+                    "Member phone updated: username=" + username,
+                    LogLevel.INFO);
 
-        return true;
+            return true;
 
-    } catch (IllegalArgumentException | IllegalStateException e) {
-        throw e;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
 
-    } catch (Exception e) {
-        logger.logError("Update member phone failed", e);
-        throw e;
+        } catch (Exception e) {
+            logger.logError("Update member phone failed", e);
+            throw e;
+        }
     }
-}
 }
