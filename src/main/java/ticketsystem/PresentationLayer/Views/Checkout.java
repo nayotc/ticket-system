@@ -21,6 +21,7 @@ import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Components.EmptyState;
 import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.Photos;
@@ -40,6 +41,7 @@ import java.util.Objects;
 @Route(value = UiRoutes.CHECKOUT)
 public class Checkout extends VerticalLayout {
 
+    private final UiVisitCoordinator visitCoordinator;
     private final ReservationPresenter presenter;
 
 
@@ -61,8 +63,9 @@ public class Checkout extends VerticalLayout {
     private final TextField expiry = new TextField("תוקף *");
     private final PasswordField cvv = new PasswordField("CVV *");
 
-    public Checkout(ReservationPresenter presenter) {
+    public Checkout(ReservationPresenter presenter, UiVisitCoordinator visitCoordinator) {
         this.presenter = presenter;
+        this.visitCoordinator = visitCoordinator;
 
         getElement().setAttribute("dir", "rtl");
         addClassName("checkout-page");
@@ -71,6 +74,8 @@ public class Checkout extends VerticalLayout {
         setWidthFull();
 
         configureFields();
+
+        this.visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
         loadCheckout();
     }
 
