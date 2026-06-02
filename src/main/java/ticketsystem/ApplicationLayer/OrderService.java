@@ -3,6 +3,8 @@ package ticketsystem.ApplicationLayer;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -10,6 +12,7 @@ import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
+@Service
 public class OrderService implements UserLoginListener, EventUpdatesListener {
 
     private final IOrderRepository orderRepository;
