@@ -8,9 +8,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -18,21 +21,20 @@ import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.SuspentionUserDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
-import ticketsystem.DomainLayer.user.User;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import java.util.Map;
-import java.util.Set;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Suspension;
-import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
-import ticketsystem.DomainLayer.history.Purchase;
-import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.user.User;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 
+@Service
 public class SystemAdminService {
 
     private final ISystemAdminRepository adminRepository;
@@ -67,8 +69,8 @@ public class SystemAdminService {
         this.historyRepository = historyRepository;
         this.membershipDomain = membershipDomain;
         this.objectMapper = new ObjectMapper();
-        this.notificationsService=notificationsService;
-    }   
+        this.notificationsService = notificationsService;
+    }
 
 //Use Case: Ticket System Initialization
     public boolean initSystem() {
@@ -147,81 +149,81 @@ public class SystemAdminService {
 
         } catch (Exception e) {
             logger.logEvent("Company role cleanup rejected, memberId=" + memberIdToDelete
-                            + ", reason=" + e.getMessage(),
+                    + ", reason=" + e.getMessage(),
                     LogbackSystemLogger.LogLevel.WARN);
             throw new Exception("Failed to remove user from companies: " + e.getMessage(), e);
         }
     }
 
-   // Use Case 6.1: Close Production Company by System Admin
-public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) throws Exception {
-    SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+    // Use Case 6.1: Close Production Company by System Admin
+    public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) throws Exception {
+        SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
-    if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
-        logger.logEvent("Unauthorized access. Invalid admin credentials.",
-                LogbackSystemLogger.LogLevel.WARN);
-        throw new Exception("Unauthorized access. Invalid admin credentials.");
-    }
+        if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
+            logger.logEvent("Unauthorized access. Invalid admin credentials.",
+                    LogbackSystemLogger.LogLevel.WARN);
+            throw new Exception("Unauthorized access. Invalid admin credentials.");
+        }
 
-    Company company = companyRepository.findById(companyId)
-            .orElseThrow(() -> new Exception("Error: Company not found."));
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new Exception("Error: Company not found."));
 
-    Set<Long> staffMemberIds = membershipDomain.getManagementSubTreeMemberIds(
-            company.getFounderId(),
-            company.getId()
-    );
-
-    membershipDomain.cancelAllRolesForCompany(companyId);
-
-    company.closeBySystemAdmin();
-
-    companyRepository.save(company);
-
-    if (notificationsService != null) {
-        notificationsService.notifyMembers(
-                staffMemberIds,
-                "The production company \"" + company.getName()
-                        + "\" was closed by a system administrator, and your role in this company was removed."
+        Set<Long> staffMemberIds = membershipDomain.getManagementSubTreeMemberIds(
+                company.getFounderId(),
+                company.getId()
         );
+
+        membershipDomain.cancelAllRolesForCompany(companyId);
+
+        company.closeBySystemAdmin();
+
+        companyRepository.save(company);
+
+        if (notificationsService != null) {
+            notificationsService.notifyMembers(
+                    staffMemberIds,
+                    "The production company \"" + company.getName()
+                    + "\" was closed by a system administrator, and your role in this company was removed."
+            );
+        }
+
+        logger.logEvent("Production company closed by System Admin. companyId=" + companyId
+                + ", adminId=" + adminId,
+                LogbackSystemLogger.LogLevel.INFO);
+
+        return new CompanyDTO(company);
     }
-
-    logger.logEvent("Production company closed by System Admin. companyId=" + companyId
-                    + ", adminId=" + adminId,
-            LogbackSystemLogger.LogLevel.INFO);
-
-    return new CompanyDTO(company);
-}
 
     // Use Case: View Purchase History by Company and Event 6.4
     public Map<Long, Map<String, List<OrderDTO>>> getPurchaseHistoryByCompanyAndEvent(long adminId) {
-            try {
-                SystemAdmin admin = adminRepository.getAdminById("" + adminId);
-                if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
-                    throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
-                }
-                List<Purchase> allPurchases = historyRepository.getAllPurchases();
-                checkIfHistoryIsEmpty(allPurchases);
-                                if(allPurchases == null || allPurchases.isEmpty()){
-                    throw new IllegalStateException("No purchases have been made yet.");
-                }
-                return allPurchases.stream()
+        try {
+            SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+            if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
+                throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
+            }
+            List<Purchase> allPurchases = historyRepository.getAllPurchases();
+            checkIfHistoryIsEmpty(allPurchases);
+            if (allPurchases == null || allPurchases.isEmpty()) {
+                throw new IllegalStateException("No purchases have been made yet.");
+            }
+            return allPurchases.stream()
                     .collect(Collectors.groupingBy(
-                        Purchase::getCompanyId, 
-                        Collectors.groupingBy(
-                            Purchase::getEventName, 
-                            Collectors.mapping(    
-                                purchase -> objectMapper.convertValue(purchase, OrderDTO.class),
-                                Collectors.toList()
+                            Purchase::getCompanyId,
+                            Collectors.groupingBy(
+                                    Purchase::getEventName,
+                                    Collectors.mapping(
+                                            purchase -> objectMapper.convertValue(purchase, OrderDTO.class),
+                                            Collectors.toList()
+                                    )
                             )
-                        ) 
                     ));
-            } catch (Exception e) {
-                if (!(e instanceof IllegalStateException && "No purchase history is available.".equals(e.getMessage()))) {
-                    logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
-                }
-                throw e; 
-            } 
+        } catch (Exception e) {
+            if (!(e instanceof IllegalStateException && "No purchase history is available.".equals(e.getMessage()))) {
+                logger.logEvent("ERROR: An unexpected error occurred while retrieving purchase history: " + e.getMessage(), LogbackSystemLogger.LogLevel.WARN);
+            }
+            throw e;
         }
+    }
 
     // Use Case: View Purchase History by Buyer 6.4
     public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(long adminId) {
@@ -292,24 +294,23 @@ public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) th
 
     //uc 6.7 - Suspend Member by Admin
     public boolean suspendMemberByAdmin(long adminId, long memberId, LocalDateTime startDate,
-                      LocalDateTime endDate, String reason ) {
-        try{
+            LocalDateTime endDate, String reason) {
+        try {
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
                 logger.logEvent("Unauthorized access. Invalid admin credentials.",
                         LogbackSystemLogger.LogLevel.WARN);
-                        throw new IllegalArgumentException("Unauthorized access. Invalid admin credentials.");
+                throw new IllegalArgumentException("Unauthorized access. Invalid admin credentials.");
             }
             Member member = userRepository.getMemberById(memberId);
             if (member == null) {
                 logger.logEvent("Member with ID " + memberId + " was not found.",
                         LogbackSystemLogger.LogLevel.INFO);
-                        throw new IllegalArgumentException("Member with ID " + memberId + " was not found.");
+                throw new IllegalArgumentException("Member with ID " + memberId + " was not found.");
             }
             member.suspendMember(adminId, startDate, endDate, reason);
             return userRepository.updateMember(member);
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             logger.logEvent("An unexpected error occurred while suspending the member: " + e.getMessage(),
                     LogbackSystemLogger.LogLevel.INFO);
             throw e;
@@ -359,7 +360,7 @@ public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) th
                         if (end != null && start != null) {
                             durationInDays = ChronoUnit.DAYS.between(start, end);
                         }
-                        
+
                         return new SuspentionUserDTO(
                                 member.getId(),
                                 suspension.getReason(),
@@ -377,6 +378,21 @@ public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) th
             logger.logEvent("An unexpected error occurred while viewing suspended members: " + e.getMessage(),
                     LogbackSystemLogger.LogLevel.INFO);
             throw e;
+        }
+    }
+
+    public void promoteMemberToSystemAdmin(long memberId) throws Exception {
+        try {
+            Member member = userRepository.getMemberById(memberId);
+            if (member == null) {
+                throw new Exception("Member with ID " + memberId + " not found for promotion to System Admin.");
+            }
+            SystemAdmin newAdmin = new SystemAdmin(member.getId().toString(), member.getUserName(), Boolean.TRUE);
+            adminRepository.addAdmin(newAdmin);
+            logger.logEvent("Member with ID " + memberId + " promoted to System Admin successfully.", LogbackSystemLogger.LogLevel.INFO);
+        } catch (Exception e) {
+            logger.logError("Failed to promote member with ID " + memberId + " to System Admin: " + e.getMessage(), e);
+            throw new Exception("Failed to promote member to System Admin: " + e.getMessage(), e);
         }
     }
 }

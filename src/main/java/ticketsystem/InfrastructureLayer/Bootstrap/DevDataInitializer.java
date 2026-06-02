@@ -15,6 +15,7 @@ import org.springframework.core.annotation.Order;
 //Services
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.EventService;
+import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.ITokenService;
@@ -67,10 +68,13 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private static final String REPORT_MANAGER_USERNAME = "report@test.com";
     private static final String REPORT_MANAGER_PASSWORD = "123456";
+    private static final String SYSTEM_ADMIN_USERNAME = "sysadmin@test.com";
+    private static final String SYSTEM_ADMIN_PASSWORD = "123456";
     
     private final ITokenService tokenService;
     private final UserService userService;
     private final IUserRepository userRepository;
+    private final SystemAdminService systemAdminService;
     private final MembershipService membershipService;
     private final CompanyService companyService;
     private final ICompanyRepository companyRepository;
@@ -79,10 +83,11 @@ public class DevDataInitializer implements CommandLineRunner {
     private final IEventRepository eventRepository;
 
 
-    public DevDataInitializer(ITokenService tokenService, UserService userService, IUserRepository userRepository, MembershipService membershipService, CompanyService companyService, ICompanyRepository companyRepository, HistoryService historyService, EventService eventService, IEventRepository eventRepository) {
+    public DevDataInitializer(ITokenService tokenService, UserService userService, IUserRepository userRepository, SystemAdminService systemAdminService, MembershipService membershipService, CompanyService companyService, ICompanyRepository companyRepository, HistoryService historyService, EventService eventService, IEventRepository eventRepository) {
         this.tokenService = tokenService;
         this.userService = userService;
         this.userRepository = userRepository;
+        this.systemAdminService = systemAdminService;
         this.membershipService = membershipService;
         this.companyService = companyService;
         this.companyRepository = companyRepository;
@@ -93,6 +98,7 @@ public class DevDataInitializer implements CommandLineRunner {
 
     public void run(String... args) throws Exception {
         createTestMember();               // 1. Create the regular buyer member
+        createTestSystemAdmin();          // 1.1 Create a member and promote to system admin
         createTestFounder();              // 2. Create the company founder member
         createAdditionalTeamMembers();    // 3. Create extra members for management testing
         createTestCompany();              // 4. Create the main production company 
@@ -114,6 +120,38 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println("Dev user created:");
         System.out.println("username: " + TEST_USERNAME);
         System.out.println("password: " + TEST_PASSWORD);
+    }
+
+    private void createTestSystemAdmin() {
+        if (userRepository.isUsernameTaken(SYSTEM_ADMIN_USERNAME)) {
+            System.out.println("Dev system admin user already exists: " + SYSTEM_ADMIN_USERNAME);
+            try {
+                Member existing = (Member) userRepository.getMemberByUsername(SYSTEM_ADMIN_USERNAME);
+                if (existing != null) {
+                    systemAdminService.promoteMemberToSystemAdmin(existing.getId());
+                }
+            } catch (Exception e) {
+                System.out.println("Failed to promote existing user to system admin: " + e.getMessage());
+            }
+            return;
+        }
+
+        String guestToken = userService.visitSystem();
+        userService.signUp(guestToken, SYSTEM_ADMIN_USERNAME, SYSTEM_ADMIN_PASSWORD, "Dev System Admin", "0500000004", LocalDate.of(2001, 1, 1));
+
+        Member adminMember = (Member) userRepository.getMemberByUsername(SYSTEM_ADMIN_USERNAME);
+        if (adminMember != null) {
+            try {
+                systemAdminService.promoteMemberToSystemAdmin(adminMember.getId());
+                System.out.println("Dev system admin created and promoted:");
+                System.out.println("username: " + SYSTEM_ADMIN_USERNAME);
+                System.out.println("password: " + SYSTEM_ADMIN_PASSWORD);
+            } catch (Exception e) {
+                System.out.println("Failed to promote user to system admin: " + e.getMessage());
+            }
+        } else {
+            System.out.println("Failed to find system admin member after signup: " + SYSTEM_ADMIN_USERNAME);
+        }
     }
 
     private void createTestFounder() {
