@@ -26,22 +26,26 @@ import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
+import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
+import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
+import ticketsystem.PresentationLayer.DTO.OrderPricing;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 @Route(value = UiRoutes.CHECKOUT)
 public class Checkout extends VerticalLayout {
 
-    private final Presenter presenter;
+    private final ReservationPresenter presenter;
+
 
     private ActiveOrderDTO activeOrder;
-    private CheckoutEventInfo eventInfo;
-    private CheckoutPricing pricing;
+    private OrderEventInfo eventInfo;
+    private OrderPricing pricing;
     private final ReservationTimer reservationTimer = new ReservationTimer();
 
     private int currentStep = 1;
@@ -57,11 +61,7 @@ public class Checkout extends VerticalLayout {
     private final TextField expiry = new TextField("תוקף *");
     private final PasswordField cvv = new PasswordField("CVV *");
 
-    public Checkout() {
-        this(new DemoCheckoutPresenter());
-    }
-
-    public Checkout(Presenter presenter) {
+    public Checkout(ReservationPresenter presenter) {
         this.presenter = presenter;
 
         getElement().setAttribute("dir", "rtl");
@@ -119,8 +119,8 @@ public class Checkout extends VerticalLayout {
 
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
-            eventInfo = presenter.loadEventInfo(activeOrder.getEventId());
-            pricing = presenter.calculatePricing(activeOrder.getOrderId());
+            eventInfo = presenter.loadActiveOrderEventInfo(token, activeOrder.getEventId());
+            pricing = presenter.calculatePricing(activeOrder, "");
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
@@ -136,29 +136,7 @@ public class Checkout extends VerticalLayout {
     }
 
     private void prefillBuyerDetailsIfLoggedIn(String token) {
-        if (!UiSession.isLoggedIn()) {
-            return;
-        }
-
-        CheckoutBuyerDetails details = presenter.loadBuyerDetails(token);
-
-        if (details == null) {
-            return;
-        }
-
-        if (!isBlank(details.fullName())) {
-            fullName.setValue(details.fullName());
-        }
-
-        if (!isBlank(details.email())) {
-            email.setValue(details.email());
-        }
-
-        if (!isBlank(details.phone())) {
-            phone.setValue(details.phone());
-        }
-
-        personalDetailsLoadedFromProfile = true;
+        // TODO: Connect buyer details from user/profile presenter when available.
     }
 
     private void renderCheckout() {
@@ -541,7 +519,7 @@ public class Checkout extends VerticalLayout {
                     resolveSessionToken(),
                     activeOrder.getEventId(),
                     details,
-                    collectBuyerDetails()
+                    ""
             );
 
             if (success) {
@@ -556,15 +534,6 @@ public class Checkout extends VerticalLayout {
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
-    }
-
-    private CheckoutBuyerDetails collectBuyerDetails() {
-        return new CheckoutBuyerDetails(
-                fullName.getValue().trim(),
-                email.getValue().trim(),
-                phone.getValue().trim(),
-                personalDetailsLoadedFromProfile
-        );
     }
 
     private boolean validatePersonalDetails() {
@@ -753,129 +722,5 @@ public class Checkout extends VerticalLayout {
                 Notification.Position.TOP_CENTER
         );
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-    }
-
-    public interface Presenter {
-        ActiveOrderDTO loadActiveOrder(String sessionToken);
-
-        CheckoutEventInfo loadEventInfo(Long eventId);
-
-        CheckoutPricing calculatePricing(Long orderId);
-
-        CheckoutBuyerDetails loadBuyerDetails(String sessionToken);
-
-        boolean checkout(
-                String sessionToken,
-                Long eventId,
-                PaymentDetails paymentDetails,
-                CheckoutBuyerDetails buyerDetails
-        );
-    }
-
-    public record CheckoutEventInfo(
-            String eventName,
-            String dateText,
-            String locationText
-    ) {
-    }
-
-    public record CheckoutBuyerDetails(
-            String fullName,
-            String email,
-            String phone,
-            boolean loadedFromProfile
-    ) {
-    }
-
-    public record AppliedDiscount(
-            String name,
-            String description,
-            BigDecimal amount
-    ) {
-    }
-
-    public record CheckoutPricing(
-            BigDecimal subtotal,
-            BigDecimal discountTotal,
-            BigDecimal total,
-            List<AppliedDiscount> appliedDiscounts,
-            List<String> policyMessages
-    ) {
-    }
-
-    private static final class DemoCheckoutPresenter implements Presenter {
-
-        private final ActiveOrderDTO order = new ActiveOrderDTO(
-                101L,
-                501L,
-                9001L,
-                new ArrayList<>(List.of(
-                        new TicketDTO(1L, 9001L, 4, 12, new BigDecimal("350")),
-                        new TicketDTO(2L, 9001L, 4, 13, new BigDecimal("350"))
-                )),
-                System.currentTimeMillis() + 15 * 60 * 1000
-        );
-
-        @Override
-        public ActiveOrderDTO loadActiveOrder(String sessionToken) {
-            return order;
-        }
-
-        @Override
-        public CheckoutEventInfo loadEventInfo(Long eventId) {
-            return new CheckoutEventInfo(
-                    "פסטיבל אלקטרוניקה 2026",
-                    "15 אוגוסט, 21:00",
-                    "גני התערוכה, תל אביב"
-            );
-        }
-
-        @Override
-        public CheckoutPricing calculatePricing(Long orderId) {
-            BigDecimal subtotal = order.getTickets().stream()
-                    .map(TicketDTO::getPrice)
-                    .filter(Objects::nonNull)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal discount = subtotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-
-            return new CheckoutPricing(
-                    subtotal,
-                    discount,
-                    subtotal.subtract(discount),
-                    List.of(new AppliedDiscount(
-                            "קופון EARLY10",
-                            "10% הנחה לפי מדיניות הקופונים",
-                            discount
-                    )),
-                    List.of("המחיר הסופי חושב לפי מדיניות הרכישה וההנחות לפני ביצוע התשלום.")
-            );
-        }
-
-        @Override
-        public CheckoutBuyerDetails loadBuyerDetails(String sessionToken) {
-            if (sessionToken == null || sessionToken.isBlank()) {
-                return new CheckoutBuyerDetails("", "", "", false);
-            }
-
-            return new CheckoutBuyerDetails(
-                    "שם של הלקוח",
-                    "name@example.com",
-                    "050-1234567",
-                    true
-            );
-        }
-
-        @Override
-        public boolean checkout(
-                String sessionToken,
-                Long eventId,
-                PaymentDetails paymentDetails,
-                CheckoutBuyerDetails buyerDetails
-        ) {
-            // Later:
-            // return reservationService.checkout(sessionToken, eventId, paymentDetails);
-            return true;
-        }
     }
 }
