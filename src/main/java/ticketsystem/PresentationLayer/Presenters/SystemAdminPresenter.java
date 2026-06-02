@@ -1,10 +1,12 @@
 package ticketsystem.PresentationLayer.Presenters;
 
 import org.springframework.stereotype.Component;
+
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.UserService;
+import ticketsystem.ApplicationLayer.EventService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.SuspentionUserDTO;
@@ -21,17 +23,19 @@ public class SystemAdminPresenter {
     private final SystemAdminService systemAdminService;
     private final UserService userService;
     private final CompanyService companyService;
+    private final EventService eventService;
     private final ITokenService tokenService;
 
-    // Injecting all necessary services to aggregate data for the admin dashboard
     public SystemAdminPresenter(SystemAdminService systemAdminService, 
                                 UserService userService, 
                                 CompanyService companyService, 
-                                ITokenService tokenService) {
+                                ITokenService tokenService,
+                                EventService eventService) {
         this.systemAdminService = systemAdminService;
         this.userService = userService;
         this.companyService = companyService;
         this.tokenService = tokenService;
+        this.eventService = eventService;
     }
 
     /**
@@ -48,9 +52,6 @@ public class SystemAdminPresenter {
         }
     }
 
-    /**
-     * Exposes the current admin's ID to the View so it can disable self-actions.
-     */
     public long getCurrentAdminId(String token) throws PresentationException {
         return validateAndGetAdminId(token);
     }
@@ -137,7 +138,6 @@ public class SystemAdminPresenter {
             long adminId = validateAndGetAdminId(token);
             return systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
         } catch (IllegalStateException e) {
-            // החזרת מפה ריקה באלגנטיות כדי למנוע קריסה ב-View
             return Map.of();
         } catch (PresentationException e) {
             throw e;
@@ -151,12 +151,27 @@ public class SystemAdminPresenter {
             long adminId = validateAndGetAdminId(token);
             return systemAdminService.getPurchaseHistoryByBuyer(adminId);
         } catch (IllegalStateException e) {
-            // החזרת מפה ריקה באלגנטיות כדי למנוע קריסה ב-View
             return Map.of();
         } catch (PresentationException e) {
             throw e;
         } catch (Exception e) {
             throw new PresentationException("Failed to load purchase history by buyer. Please try again.");
+        }
+    }
+
+    public String getEventDateFormatted(String token, long eventId) {
+        try {
+            validateAndGetAdminId(token);
+
+            var event = eventService.getEvent(token, eventId);
+            
+            if (event != null && event.date() != null) {
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+                return event.date().format(formatter);
+            }
+            return "לא זמין";
+        } catch (Exception e) {
+            return "לא זמין";
         }
     }
 
@@ -193,7 +208,6 @@ public class SystemAdminPresenter {
             long adminId = validateAndGetAdminId(token);
             return systemAdminService.viewSuspendedMembersByAdmin(adminId);
         } catch (IllegalStateException e) {
-            // אם הרשימה ריקה ואין משתמשים מושעים, מחזירים רשימה ריקה במקום לזרוק שגיאה
             return List.of();
         } catch (PresentationException e) {
             throw e;

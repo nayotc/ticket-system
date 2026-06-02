@@ -74,6 +74,7 @@ public class SystemAdminDashboard extends Div {
     private final TextField userHistorySearch = new TextField();
 
     private Long currentLoggedInAdminId = null;
+    private final Div metricsContainer = new Div();
 
     public SystemAdminDashboard() {
         this(null);
@@ -88,9 +89,16 @@ public class SystemAdminDashboard extends Div {
 
         loadInitialData();
 
+        // הגדרת עיצוב למכל הסטטיסטיקות
+        metricsContainer.setId("admin-overview");
+        metricsContainer.addClassName("system-admin-metrics-grid");
+        
+        // יצירה ראשונית של הסטטיסטיקות
+        refreshMetrics();
+
         add(
                 createHeader(),
-                createMetrics(),
+                metricsContainer, // <--- שימוש במכל ששמרנו במקום בפונקציה הישנה
                 createDashboardGrid()
         );
     }
@@ -144,20 +152,16 @@ public class SystemAdminDashboard extends Div {
         );
     }
 
-    private Div createMetrics() {
-        Div metrics = new Div();
-        metrics.setId("admin-overview");
-        metrics.addClassName("system-admin-metrics-grid");
-
-        metrics.add(
-                new MetricCard("סך הכל מנויים", String.valueOf(allUsers.size()), "פעילים ומושעים במערכת"),
-                new MetricCard("חברות פעילות", String.valueOf(allCompanies.size()), "חברות שאפשר לסגור"),
-                new MetricCard("רכישות לפי חברה", String.valueOf(companyHistoryRows.size()), "מקובץ לפי חברה ואירוע"),
-                new MetricCard("רכישות לפי משתמש", String.valueOf(userHistoryRows.size()), "מקובץ לפי מזהה משתמש")
-        );
-
-        return metrics;
-    }
+    private void refreshMetrics() {
+            metricsContainer.removeAll(); // מנקים את הקלפים הישנים
+            
+            metricsContainer.add(
+                    new MetricCard("סך הכל מנויים", String.valueOf(allUsers.size()), "פעילים ומושעים במערכת"),
+                    new MetricCard("חברות פעילות", String.valueOf(allCompanies.size()), "חברות שאפשר לסגור"),
+                    new MetricCard("רכישות לפי חברה", String.valueOf(companyHistoryRows.size()), "מקובץ לפי חברה ואירוע"),
+                    new MetricCard("רכישות לפי משתמש", String.valueOf(userHistoryRows.size()), "מקובץ לפי מזהה משתמש")
+            );
+        }
 
     private Div createDashboardGrid() {
         Div grid = new Div();
@@ -306,16 +310,26 @@ public class SystemAdminDashboard extends Div {
                 .setAutoWidth(true)
                 .setFlexGrow(0);
 
-        // usersGrid.addColumn(AdminUserRow::lastSeen)
-        //         .setHeader("פעילות אחרונה")
-        //         .setAutoWidth(true);
-
         usersGrid.addComponentColumn(this::createUserActions)
                 .setHeader("פעולות")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
 
         usersGrid.setItems(allUsers);
+    }
+
+    private void refreshUsersGrid() {
+        try {
+            String token = UiSession.getMemberToken();
+            
+            allUsers.clear();
+            allUsers.addAll(presenter.loadActiveUsers(token));
+            usersGrid.getDataProvider().refreshAll();
+            refreshMetrics();
+            
+        } catch (Exception e) {
+            showError("שגיאה ברענון רשימת המשתמשים: " + e.getMessage());
+        }
     }
 
     private void configureCompaniesGrid() {
@@ -331,7 +345,6 @@ public class SystemAdminDashboard extends Div {
                 .setHeader("שם חברה")
                 .setAutoWidth(true);
 
-        // במקום להציג רק את ה-founderId, אנחנו מעבירים אותו לפונקציה findUserEmail שמחזירה את המייל
         companiesGrid.addColumn(company -> findUserEmail(company.founderId()))
                 .setHeader("מייסד")
                 .setAutoWidth(true);
@@ -349,6 +362,20 @@ public class SystemAdminDashboard extends Div {
         companiesGrid.setItems(allCompanies);
     }
 
+    private void refreshCompaniesGrid() {
+        try {
+            String token = UiSession.getMemberToken();
+            
+            allCompanies.clear();
+            allCompanies.addAll(toCompanyRows(presenter.loadActiveCompanies(token)));
+            companiesGrid.getDataProvider().refreshAll();
+            refreshMetrics();
+            
+        } catch (Exception e) {
+            showError("שגיאה ברענון רשימת החברות: " + e.getMessage());
+        }
+    }
+
     private void configureCompanyHistoryGrid() {
         companyHistoryGrid.addClassName("system-admin-data-grid");
         companyHistoryGrid.setHeight("420px");
@@ -361,7 +388,7 @@ public class SystemAdminDashboard extends Div {
                 .setHeader("שם אירוע")
                 .setAutoWidth(true);
 
-        companyHistoryGrid.addColumn(PurchaseByCompanyRow::eventDate)
+        companyHistoryGrid.addColumn(row -> presenter.getEventDateFormatted(UiSession.getMemberToken(), row.eventId()))
                 .setHeader("תאריך אירוע")
                 .setAutoWidth(true);
 
@@ -377,9 +404,9 @@ public class SystemAdminDashboard extends Div {
                 .setHeader("שם משתמש")
                 .setAutoWidth(true);
 
-        companyHistoryGrid.addColumn(PurchaseByCompanyRow::purchaseDate)
-                .setHeader("תאריך רכישה")
-                .setAutoWidth(true);
+        // companyHistoryGrid.addColumn(PurchaseByCompanyRow::purchaseDate)
+        //         .setHeader("תאריך רכישה")
+        //         .setAutoWidth(true);
 
         companyHistoryGrid.addColumn(PurchaseByCompanyRow::amount)
                 .setHeader("סכום")
@@ -412,17 +439,17 @@ public class SystemAdminDashboard extends Div {
                 .setHeader("מיקום")
                 .setAutoWidth(true);
 
-        userHistoryGrid.addColumn(PurchaseByUserRow::eventDate)
-                .setHeader("תאריך אירוע")
-                .setAutoWidth(true);
+        userHistoryGrid.addColumn(row -> presenter.getEventDateFormatted(UiSession.getMemberToken(), row.eventId()))
+            .setHeader("תאריך אירוע")
+            .setAutoWidth(true);
 
         userHistoryGrid.addColumn(PurchaseByUserRow::purchaseId)
                 .setHeader("מס רכישה")
                 .setAutoWidth(true);
 
-        userHistoryGrid.addColumn(PurchaseByUserRow::purchaseDate)
-                .setHeader("תאריך רכישה")
-                .setAutoWidth(true);
+        // userHistoryGrid.addColumn(PurchaseByUserRow::purchaseDate)
+        //         .setHeader("תאריך רכישה")
+        //         .setAutoWidth(true);
 
         userHistoryGrid.addColumn(PurchaseByUserRow::ticketCount)
                 .setHeader("מספר כרטיסים")
@@ -472,14 +499,24 @@ public class SystemAdminDashboard extends Div {
             suspendAction.addClickListener(event -> openSuspendDialog(user));
         }
 
+        boolean isFounder = allCompanies.stream()
+                .anyMatch(company -> Objects.equals(company.founderId(), user.id()));
+
+        // כפתור הסרה מכל החברות
         Button removeFromCompanies = new Button("הסר מכל החברות", VaadinIcon.UNLINK.create());
         removeFromCompanies.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         removeFromCompanies.addClassName("system-admin-secondary-action");
-        removeFromCompanies.addClickListener(event -> confirm(
-                "הסרה מכל החברות",
-                "המשתמש יוסר מכל התפקידים שלו בכל חברות ההפקה.",
-                () -> removeUserFromAllCompanies(user)
-        ));
+
+        if (isFounder) {
+            removeFromCompanies.setEnabled(false);
+            removeFromCompanies.getElement().setProperty("title", "לא ניתן להסיר מייסד מחברות. יש לסגור את החברה בבעלותו קודם.");
+        } else {
+            removeFromCompanies.addClickListener(event -> confirm(
+                    "הסרה מכל החברות",
+                    "המשתמש יוסר מכל התפקידים שלו בכל חברות ההפקה.",
+                    () -> removeUserFromAllCompanies(user)
+            ));
+        }
 
         // כפתור המחיקה
         Button delete = new Button("מחיקה", VaadinIcon.TRASH.create());
@@ -602,7 +639,7 @@ public class SystemAdminDashboard extends Div {
                 presenter.suspendMember(UiSession.getMemberToken(), user.id(), LocalDateTime.now(), endDate, reason);
             }
             showSuccess("המשתמש הושעה בהצלחה");
-            loadInitialData(); // ריענון הטבלה כדי להראות את הסטטוס החדש
+            refreshUsersGrid(); // ריענון הטבלה כדי להראות את הסטטוס החדש
         } catch (PresentationException e) {
             showError(e.getMessage());
         }
@@ -614,7 +651,7 @@ public class SystemAdminDashboard extends Div {
                 presenter.revokeSuspension(UiSession.getMemberToken(), user.id());
             }
             showSuccess("המשתמש הוחזר לפעילות בהצלחה");
-            loadInitialData();
+            refreshUsersGrid();
         } catch (PresentationException e) {
             showError(e.getMessage());
         }
@@ -626,20 +663,23 @@ public class SystemAdminDashboard extends Div {
                 presenter.removeUserFromAllCompanies(UiSession.getMemberToken(), user.id());
             }
             showSuccess("המשתמש הוסר מכל החברות");
-            loadInitialData();
-        } catch (PresentationException e) {
-            showError(e.getMessage());
+            refreshUsersGrid();
+        } catch (Exception e) {
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.contains("Failed to remove user")) {
+                errorMessage = "שגיאה: לא ניתן להסיר את המשתמש. ייתכן שיש לו תפקיד ניהולי שלא ניתן לביטול כרגע.";
+            }
+            showError(errorMessage);
         }
     }
 
-    
     private void deleteUser(AdminUserRow user) {
         try {
             if (presenter != null) {
                 presenter.deleteUser(UiSession.getMemberToken(), user.id());
             }
             showSuccess("המשתמש נמחק מהמערכת בהצלחה");
-            loadInitialData(); // ריענון הנתונים כדי להעלים את המשתמש מהטבלה
+            refreshUsersGrid();
         } catch (PresentationException e) {
             showError(e.getMessage());
         }
@@ -653,6 +693,7 @@ public class SystemAdminDashboard extends Div {
             allCompanies.removeIf(row -> Objects.equals(row.id(), company.id()));
             companiesGrid.setItems(allCompanies);
             showSuccess("החברה נסגרה בהצלחה");
+            refreshCompaniesGrid();
         } catch (PresentationException e) {
             showError(e.getMessage());
         }
@@ -746,18 +787,14 @@ public class SystemAdminDashboard extends Div {
             userHistoryRows.addAll(toUserHistoryRows(presenter.loadPurchaseHistoryByBuyer(token)));
             
         } catch (Exception exception) {
-            // השרת זיהה שאין למשתמש הרשאות אדמין וזרק שגיאה.
-            // מרוקנים את כל הרשימות כדי שהמסך יהיה ריק לחלוטין
+
             allUsers.clear();
             allCompanies.clear();
             companyHistoryRows.clear();
             userHistoryRows.clear();
 
-            // מציגים הודעת שגיאה ברורה למשתמש שמסבירה גם את המעבר
             showError("גישה נדחתה: אין לך הרשאות של מנהל מערכת. הנך מועבר/ת לעמוד הראשי.");
 
-            // עוקפים את מחזור החיים של Vaadin בעזרת השהייה של 2.5 שניות,
-            // כך שהמשתמש יספיק לקרוא את השגיאה ואז ייזרק החוצה בצורה חלקה.
             if (UI.getCurrent() != null) {
                 UI.getCurrent().getPage().executeJs("setTimeout(() => { window.location.href = '/' }, 2500);");
             }
@@ -777,72 +814,24 @@ public class SystemAdminDashboard extends Div {
 
         companyHistoryRows.clear();
         companyHistoryRows.add(new PurchaseByCompanyRow(
-                "LiveNation Israel",
-                "רוק בפארק",
-                "20/07/2026",
-                "תל אביב",
-                9001L,
-                "נועם כהן",
-                "25/05/2026",
-                "₪640",
-                2
+                "LiveNation Israel", "רוק בפארק", "תל אביב", 101L, 9001L, "נועם כהן", "₪640", 2
         ));
         companyHistoryRows.add(new PurchaseByCompanyRow(
-                "LiveNation Israel",
-                "רוק בפארק",
-                "20/07/2026",
-                "תל אביב",
-                9002L,
-                "מאיה לוי",
-                "25/05/2026",
-                "₪320",
-                1
+                "LiveNation Israel", "רוק בפארק", "תל אביב", 101L, 9002L, "מאיה לוי", "₪320", 1
         ));
         companyHistoryRows.add(new PurchaseByCompanyRow(
-                "Zappa Group",
-                "סטנדאפ לילה",
-                "04/08/2026",
-                "ירושלים",
-                9003L,
-                "נועם כהן",
-                "25/05/2026",
-                "₪450",
-                3
+                "Zappa Group", "סטנדאפ לילה", "ירושלים", 102L, 9003L, "נועם כהן", "₪450", 3
         ));
 
         userHistoryRows.clear();
         userHistoryRows.add(new PurchaseByUserRow(
-                "noam@test.com",
-                "נועם כהן",
-                "רוק בפארק",
-                "תל אביב",
-                "20/07/2026",
-                9001L,
-                "25/05/2026",
-                2,
-                "₪640"
+                "noam@test.com", "נועם כהן", "רוק בפארק", "תל אביב", 101L, 9001L, 2, "₪640"
         ));
         userHistoryRows.add(new PurchaseByUserRow(
-                "noam@test.com",
-                "נועם כהן",
-                "סטנדאפ לילה",
-                "ירושלים",
-                "04/08/2026",
-                9003L,
-                "25/05/2026",
-                3,
-                "₪450"
+                "noam@test.com", "נועם כהן", "סטנדאפ לילה", "ירושלים", 102L, 9003L, 3, "₪450"
         ));
         userHistoryRows.add(new PurchaseByUserRow(
-                "maya@test.com",
-                "מאיה לוי",
-                "רוק בפארק",
-                "תל אביב",
-                "20/07/2026",
-                9002L,
-                "25/05/2026",
-                1,
-                "₪320"
+                "maya@test.com", "מאיה לוי", "רוק בפארק", "תל אביב", 101L, 9002L, 1, "₪320"
         ));
     }
 
@@ -883,11 +872,10 @@ public class SystemAdminDashboard extends Div {
                     rows.add(new PurchaseByCompanyRow(
                             findCompanyName(companyId),
                             eventName,
-                            unavailableDate(),
                             order.getLocation(),
+                            order.getEventId(), // מושכים את המזהה מה-DTO
                             order.getPurchaseId(),
                             findUserName(order.getMemberId()),
-                            unavailableDate(),
                             formatMoney(totalAmount(order)),
                             ticketCount(order)
                     ));
@@ -916,9 +904,8 @@ public class SystemAdminDashboard extends Div {
                         findUserName(buyerId),
                         order.getEventName(),
                         order.getLocation(),
-                        unavailableDate(),
+                        order.getEventId(), // מושכים את המזהה מה-DTO
                         order.getPurchaseId(),
-                        unavailableDate(),
                         ticketCount(order),
                         formatMoney(totalAmount(order))
                 ));
@@ -1047,11 +1034,10 @@ public class SystemAdminDashboard extends Div {
     private record PurchaseByCompanyRow(
             String companyName,
             String eventName,
-            String eventDate,
             String location,
+            Long eventId,
             Long purchaseId,
             String buyerName,
-            String purchaseDate,
             String amount,
             int ticketCount
     ) {
@@ -1062,13 +1048,11 @@ public class SystemAdminDashboard extends Div {
             String buyerName,
             String eventName,
             String location,
-            String eventDate,
+            Long eventId,
             Long purchaseId,
-            String purchaseDate,
             int ticketCount,
             String amount
     ) {
     }
-
 
 }
