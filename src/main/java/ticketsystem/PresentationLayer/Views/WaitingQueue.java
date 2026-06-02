@@ -40,16 +40,12 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
     private final Button enterSelectionButton = new Button("כניסה לבחירת כרטיסים", VaadinIcon.TICKET.create());
     private final Button leaveQueueButton = new Button("יציאה מהתור", VaadinIcon.CLOSE_SMALL.create());
 
-    public WaitingQueue() {
-        this(null);
-    }
-
     /*
      * Later, when a real presenter exists as a Spring bean, annotate this constructor
      * with @Autowired and remove the no-args constructor above.
      */
     public WaitingQueue(WaitingQueuePresenter presenter) {
-        this.presenter = presenter == null ? new EmptyWaitingQueuePresenter() : presenter;
+        this.presenter = presenter;
         buildView();
     }
 
@@ -217,7 +213,7 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
     }
 
     private String getCurrentSessionToken() {
-        return UiSession.getMemberToken();
+        return UiSession.getCurrentToken();
     }
 
     private String routeForEvent(String routeTemplate) {
@@ -253,24 +249,4 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
         void leaveQueue(long eventId, String sessionToken) throws Exception;
     }
 
-    public class EmptyWaitingQueuePresenter implements WaitingQueuePresenter {
-
-        private static final String DEMO_EVENT_NAME = "מרתון צחוק";
-        private static final int DEMO_POSITION = 128;
-        private static final int DEMO_ESTIMATED_WAIT_MINUTES = 8;
-
-        @Override
-        public WaitingQueueSnapshot getQueueSnapshot(long eventId, String sessionToken) {
-            return WaitingQueueSnapshot.waiting(
-                    DEMO_EVENT_NAME,
-                    DEMO_POSITION,
-                    DEMO_ESTIMATED_WAIT_MINUTES
-            );
-        }
-
-        @Override
-        public void leaveQueue(long eventId, String sessionToken) {
-            // Temporary no-op until this presenter is connected to WaitingQueueService.leaveQueue.
-        }
-    }
 }

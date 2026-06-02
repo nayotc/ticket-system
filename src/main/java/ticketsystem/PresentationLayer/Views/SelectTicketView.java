@@ -581,7 +581,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
                 selectedSeats.remove(key);
 
             } else if (isSeatAvailable(seat)) {
-                reservationPresenter.selectSeatTicket(token, eventId, area.id(), row, number, null);
+                reservationPresenter.selectSeatTicket(token, eventId, area.id(), row, number, currentLotteryCode());
                 refreshReservationTimer();
                 selectedSeats.put(key, new SelectedSeat(area.id(), safeText(area.name(), "אזור ישיבה"), row, number, ticketPrice()));
             }
@@ -617,7 +617,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
         try {
             if (delta > 0) {
-                reservationPresenter.selectStandingTicket(token, eventId, area.id(), delta, null);
+                reservationPresenter.selectStandingTicket(token, eventId, area.id(), delta, currentLotteryCode());
                 refreshReservationTimer();
             } else if (delta < 0) {
                 reservationPresenter.removeStandingTicketsFromActiveOrder(token, eventId, area.id(), -delta);
@@ -872,6 +872,9 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
     private String currentToken() {
         return UiSession.getCurrentToken();
+    }
+    private String currentLotteryCode() {
+        return UiSession.getLotteryCode(eventId);
     }
 
     private String formatDate(LocalDateTime date) {

@@ -21,6 +21,7 @@ public final class UiSession {
     public static final String GUEST_TOKEN = "guestToken";
     public static final String MEMBER_TOKEN = "memberToken";
     public static final String NOTIFICATION_TARGET_ID = "notificationTargetId";
+    private static final String LOTTERY_CODE_PREFIX = "lotteryCode:";
 
     /**
      * Starts a guest UI session.
@@ -207,5 +208,48 @@ public final class UiSession {
 
     public static boolean hasGuestSession() {
         return getGuestToken() != null;
+    }
+
+    public static void setLotteryCode(Long eventId, String lotteryCode) {
+        if (eventId == null || lotteryCode == null || lotteryCode.isBlank()) {
+            return;
+        }
+
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return;
+        }
+
+        session.setAttribute(LOTTERY_CODE_PREFIX + eventId, lotteryCode.trim());
+    }
+
+    public static String getLotteryCode(Long eventId) {
+        if (eventId == null) {
+            return null;
+        }
+
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return null;
+        }
+
+        Object value = session.getAttribute(LOTTERY_CODE_PREFIX + eventId);
+        return value instanceof String code && !code.isBlank() ? code : null;
+    }
+
+    public static void clearLotteryCode(Long eventId) {
+        if (eventId == null) {
+            return;
+        }
+
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return;
+        }
+
+        session.setAttribute(LOTTERY_CODE_PREFIX + eventId, null);
     }
 }

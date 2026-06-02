@@ -705,6 +705,14 @@ public class ReservationPresenter {
 
             case "Ticket removal failed. Please try again." ->
                     "הסרת הכרטיסים נכשלה. יש לנסות שוב.";
+            
+            case "Lottery code is required for this event" ->
+                "נדרש קוד זכייה בהגרלה כדי לבחור כרטיסים לאירוע הזה.";
+            
+            case "Invalid lottery code",
+                "Invalid winner code",
+                "Lottery code is invalid" ->
+                    "קוד ההגרלה אינו תקין.";
 
             default ->
                     "בחירת הכרטיסים נכשלה. יש לנסות שוב.";

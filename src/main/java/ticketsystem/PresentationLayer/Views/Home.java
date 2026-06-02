@@ -25,6 +25,8 @@ import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.EventCard
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 
 
 import java.util.Map;
@@ -224,13 +226,31 @@ public class Home extends PageContainer {
      */
     private EventCard.EventCardActionHandler createEventCardActionHandler() {
         return new EventCard.EventCardActionHandler() {
-            @Override
-            public void onPurchaseRequested(Long eventId) {
-                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
-            }
+        @Override
+        public void onPurchaseRequested(Long eventId) {
+        try {
+                EventCardPresenter.PurchaseRequestResult result =
+                        eventCardPresenter.requestPurchase(
+                                UiSession.getCurrentToken(),
+                                eventId
+                        );
 
-            @Override
-            public void onLotteryRegistrationRequested(Long eventId) {
+                Notification.show(
+                        result.message(),
+                        2500,
+                        Notification.Position.TOP_CENTER
+                );
+
+                UI.getCurrent().navigate(result.route());
+
+        } catch (PresentationException e) {
+                showError(e.getMessage());
+        }
+        }
+
+        @Override
+        public void onLotteryRegistrationRequested(Long eventId) {
+        try {
                 eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
 
                 Notification.show(
@@ -238,7 +258,11 @@ public class Home extends PageContainer {
                         3000,
                         Notification.Position.TOP_CENTER
                 );
-            }
+
+        } catch (PresentationException e) {
+                showError(e.getMessage());
+        }
+        }
 
             @Override
             public boolean isPreSaleCodeValid(Long eventId, String lotteryCode) {
@@ -249,10 +273,29 @@ public class Home extends PageContainer {
                 );
             }
 
-            @Override
-            public void onPreSaleApproved(Long eventId, String lotteryCode) {
-                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
-            }
+                @Override
+                public void onPreSaleApproved(Long eventId, String lotteryCode) {
+                try {
+                        UiSession.setLotteryCode(eventId, lotteryCode);
+
+                        EventCardPresenter.PurchaseRequestResult result =
+                                eventCardPresenter.requestPurchase(
+                                        UiSession.getCurrentToken(),
+                                        eventId
+                                );
+
+                        Notification.show(
+                                result.message(),
+                                2500,
+                                Notification.Position.TOP_CENTER
+                        );
+
+                        UI.getCurrent().navigate(result.route());
+
+                } catch (PresentationException e) {
+                        showError(e.getMessage());
+                }
+                }
         };
     }
 
@@ -303,4 +346,12 @@ public class Home extends PageContainer {
 
         return card;
     }
+    private void showError(String message) {
+        Notification notification = Notification.show(
+                message == null || message.isBlank() ? "הפעולה נכשלה" : message,
+                3500,
+                Notification.Position.TOP_CENTER
+        );
+        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
 }
