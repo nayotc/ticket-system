@@ -7,9 +7,11 @@ import ticketsystem.PresentationLayer.Components.PublicHeader;
 public class PublicHeaderPresenter implements PublicHeader.HeaderPresenter {
 
     private final CompanyPresenter companyPresenter;
+    private final ReservationPresenter reservationPresenter;
 
-    public PublicHeaderPresenter(CompanyPresenter companyPresenter) {
+    public PublicHeaderPresenter(CompanyPresenter companyPresenter, ReservationPresenter reservationPresenter) {
         this.companyPresenter = companyPresenter;
+        this.reservationPresenter = reservationPresenter;
     }
 
     @Override
@@ -19,6 +21,15 @@ public class PublicHeaderPresenter implements PublicHeader.HeaderPresenter {
 
     @Override
     public int getActiveCartItemsCount(String sessionToken) {
-        return 0;
+        try {
+            if (sessionToken == null || sessionToken.isBlank()) {
+                return 0;
+            }
+
+            return reservationPresenter.getActiveCartItemsCount(sessionToken);
+
+        } catch (Exception exception) {
+            return 0;
+        }
     }
 }
