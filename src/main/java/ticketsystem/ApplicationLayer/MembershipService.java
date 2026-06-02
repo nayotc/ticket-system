@@ -147,9 +147,9 @@ public class MembershipService {
             // Notify the target member about the pending assignment
             notificationsService.notifyMemberAssignment(
                     targetMemberId,
-                    "You received a request to become a manager of the production company \""
-                            + getCompanyName(companyId) + "\".",
-                    companyId);
+                    buildAssignmentRequestMessage(appointer, "manager", companyId),
+                    companyId
+            );
 
             logger.logEvent(
                     "Completed - requestManagerAssignment. pending role created for targetMemberId=" + targetMemberId,
@@ -157,7 +157,7 @@ public class MembershipService {
 
             return true;
 
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             // Expected validation / use-case errors
             logger.logEvent("Invalid requestManagerAssignment criteria: " + e.getMessage(), LogLevel.WARN);
             throw e;
@@ -228,9 +228,9 @@ public class MembershipService {
             if (notificationsService != null && targetMemberId != null) {
                 notificationsService.notifyMemberAssignment(
                         targetMemberId,
-                        "You received a request to become an owner of the production company \""
-                                + getCompanyName(companyId) + "\".",
-                        companyId);
+                        buildAssignmentRequestMessage(appointer, "owner", companyId),
+                        companyId
+                );
             }
 
             logger.logEvent(
@@ -241,7 +241,7 @@ public class MembershipService {
             // Return the actual result from the domain layer
             return true;
 
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             // Expected validation / use-case errors
             logger.logEvent("Invalid requestOwnerAssignment criteria: " + e.getMessage(), LogLevel.WARN);
             throw e;
@@ -1009,5 +1009,22 @@ public class MembershipService {
             logger.logError("Failed to get pending assignments count for companyId=" + companyId, e);
             return 0; 
         }
+    }
+
+    private String buildAssignmentRequestMessage(Member appointer, String roleName, Long companyId) {
+        return safeMemberName(appointer)
+                + " requested to appoint you as "
+                + roleName
+                + " of the production company \""
+                + getCompanyName(companyId)
+                + "\".";
+    }
+
+    private String safeMemberName(Member member) {
+        if (member == null || member.getUserName() == null || member.getUserName().isBlank()) {
+            return "A member";
+        }
+
+        return member.getUserName();
     }
 }
