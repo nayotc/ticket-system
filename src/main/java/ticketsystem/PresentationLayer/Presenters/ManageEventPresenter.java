@@ -37,12 +37,10 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
 
     @Override
     public Long createEvent(CreateEvent.CreateEventRequest request) {
-        Long eventId = null;
-
         try {
             validateCreateEventRequest(request);
 
-            eventId = eventService.insertEvent(
+            Long eventId = eventService.insertEvent(
                     request.sessionId(),
                     request.eventName(),
                     request.companyId(),
@@ -426,7 +424,7 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
                     discount.startTime(),
                     discount.endTime(),
                     percentage,
-                    parseCondition(toConditionName(discount.conditionType())),
+                    parseCondition(discount.conditionType()),
                     discount.ticketThreshold()
             );
             default -> throw new IllegalArgumentException("Unsupported discount type");
@@ -503,11 +501,77 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             throw new IllegalArgumentException("Discount condition cannot be empty");
         }
 
-        try {
-            return Condition.valueOf(conditionText.trim().toUpperCase());
-        } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("Unsupported discount condition");
+        String normalized = conditionText.trim().toUpperCase();
+
+        if (normalized.contains("DATE") || normalized.contains("TIME") || normalized.contains("תאריך")) {
+            return firstExistingCondition(
+                    "DATE",
+                    "DATE_RANGE",
+                    "TIME_RANGE",
+                    "BETWEEN_DATES"
+            );
         }
+
+        if (normalized.contains("MIN") || normalized.contains("מינימום") || normalized.contains("לפחות")) {
+            return firstExistingCondition(
+                    "MIN_TICKET",
+                    "MIN_TICKETS",
+                    "MINIMUM_TICKET",
+                    "MINIMUM_TICKETS"
+            );
+        }
+
+        if (normalized.contains("MAX") || normalized.contains("מקסימום")) {
+            return firstExistingCondition(
+                    "MAX_TICKET",
+                    "MAX_TICKETS",
+                    "MAXIMUM_TICKET",
+                    "MAXIMUM_TICKETS"
+            );
+        }
+
+        throw new IllegalArgumentException("Unsupported discount condition");
+    }
+
+    private Condition parseCondition(EditEvent.DiscountConditionType conditionType) {
+        if (conditionType == null) {
+            throw new IllegalArgumentException("Discount condition cannot be empty");
+        }
+
+        return switch (conditionType) {
+            case MIN_TICKET -> firstExistingCondition(
+                    "MIN_TICKET",
+                    "MIN_TICKETS",
+                    "MINIMUM_TICKET",
+                    "MINIMUM_TICKETS"
+            );
+
+            case MAX_TICKET -> firstExistingCondition(
+                    "MAX_TICKET",
+                    "MAX_TICKETS",
+                    "MAXIMUM_TICKET",
+                    "MAXIMUM_TICKETS"
+            );
+
+            case DATE -> firstExistingCondition(
+                    "DATE",
+                    "DATE_RANGE",
+                    "TIME_RANGE",
+                    "BETWEEN_DATES"
+            );
+        };
+    }
+
+    private Condition firstExistingCondition(String... candidates) {
+        for (String candidate : candidates) {
+            try {
+                return Condition.valueOf(candidate);
+            } catch (IllegalArgumentException ignored) {
+                // Try next alias
+            }
+        }
+
+        throw new IllegalArgumentException("Unsupported discount condition");
     }
 
     private void validateUpdateEventRequest(EditEvent.UpdateEventRequest request) {

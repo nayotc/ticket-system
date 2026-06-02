@@ -428,10 +428,26 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
         quickActions.addClassName("edit-event-sale-status-actions");
 
         if ("ACTIVE".equalsIgnoreCase(loadedEvent.status())) {
-            if (presenter.hasLottery(UiSession.getMemberToken(), eventId)) {
-                Button startPreSale = createPrimaryButton("הגרל זוכים ופתח מכירה מוקדמת", "🔑");
+            boolean hasLottery = presenter.hasLottery(UiSession.getMemberToken(), eventId);
+            SaleStatus currentStatus = currentSaleStatus();
+
+            boolean notStarted = currentStatus == null || currentStatus == SaleStatus.NOT_STARTED;
+            boolean preSale = currentStatus == SaleStatus.PRE_SALE;
+            boolean ongoing = currentStatus == SaleStatus.ONGOING;
+
+            boolean showPreSaleButton = hasLottery && notStarted;
+
+            boolean showRegularSaleButton =
+                    (hasLottery && preSale)
+                            || (!hasLottery && notStarted);
+
+            boolean showCloseSaleButton = preSale || ongoing;
+
+            if (showPreSaleButton) {
+                Button startPreSale = createPrimaryButton("פתח מכירה מוקדמת", "🔑");
                 startPreSale.addClassName("edit-event-sale-status-main-button");
                 startPreSale.addClassName("edit-event-lottery-sale-button");
+
                 startPreSale.addClickListener(event -> conductLottery());
 
                 applyDisabledState(
@@ -439,30 +455,52 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
                         canMoveToPreSale(),
                         "לא ניתן לפתוח מכירה מוקדמת במצב האירוע הנוכחי"
                 );
+
                 quickActions.add(startPreSale);
             }
 
-            Button openRegularSale = createPrimaryButton("פתח מכירה רגילה", "🎟");
-            openRegularSale.addClassName("edit-event-sale-status-main-button");
-            openRegularSale.addClickListener(event -> updateSaleStatus(SaleStatus.ONGOING));
+            if (showRegularSaleButton) {
+                Button openRegularSale = createPrimaryButton("פתח מכירה רגילה", "🎟");
+                openRegularSale.addClassName("edit-event-sale-status-main-button");
 
-            applyDisabledState(
-                    openRegularSale,
-                    canMoveToOngoing(),
-                    "לא ניתן לפתוח מכירה רגילה במצב האירוע הנוכחי"
-            );
+                openRegularSale.addClickListener(event -> updateSaleStatus(SaleStatus.ONGOING));
 
-            quickActions.add(openRegularSale);
+                applyDisabledState(
+                        openRegularSale,
+                        canMoveToOngoing(),
+                        "לא ניתן לפתוח מכירה רגילה במצב האירוע הנוכחי"
+                );
+
+                quickActions.add(openRegularSale);
+            }
+
+//            if (showCloseSaleButton) {
+//                Button closeSale = createDangerButton("סגור מכירה", "⏹");
+//                closeSale.addClassName("edit-event-sale-status-main-button");
+//                closeSale.addClassName("edit-event-sale-status-close-button");
+//
+//                closeSale.addClickListener(event -> updateSaleStatus(SaleStatus.ENDED));
+//
+//                applyDisabledState(
+//                        closeSale,
+//                        canCloseSale(),
+//                        "לא ניתן לסגור מכירה במצב האירוע הנוכחי"
+//                );
+//
+//                quickActions.add(closeSale);
+//            }
         }
 
         Button cancelEvent = createDangerButton("בטל אירוע", "×");
         cancelEvent.addClassName("edit-event-sale-status-main-button");
         cancelEvent.addClassName("edit-event-sale-status-cancel-button");
+
         applyDisabledState(
                 cancelEvent,
                 !isCancelledEvent(),
                 "האירוע כבר מבוטל"
         );
+
         cancelEvent.addClickListener(event -> confirmCancelEvent());
         quickActions.add(cancelEvent);
 
@@ -505,6 +543,15 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
 
         SaleStatus current = currentSaleStatus();
         return current == null || current == SaleStatus.NOT_STARTED || current == SaleStatus.PRE_SALE;
+    }
+
+    private boolean canCloseSale() {
+        if (isCancelledEvent()) {
+            return false;
+        }
+
+        SaleStatus current = currentSaleStatus();
+        return current == SaleStatus.PRE_SALE || current == SaleStatus.ONGOING;
     }
 
     private SaleStatus currentSaleStatus() {
