@@ -225,11 +225,9 @@ public class MembershipPresenter {
             // שגיאות שכבר טופלו ועטפו בהצלחה ב-Presenter
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            // תפיסת שגיאות אימות וולידציה שמגיעות משכבת הלוגיקה והעברתן כמסר נקי למסך
-            throw new PresentationException(e.getMessage());
+            throw presentationException(e.getMessage());
         } catch (Exception e) {
-            // חסימת שגיאות מערכת פנימיות (כמו בעיות תקשורת עם ה-DB) והצגת הודעה כללית ומאובטחת
-            throw new PresentationException("אירעה שגיאה בלתי צפויה בעת טעינת נתוני ניהול החברה.");
+            throw presentationException(extractUsefulMessage(e));
         }
     }
 
@@ -242,9 +240,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw presentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("Manager Assignment to company "+ companyId +" failed. Please try again later.");
+            throw presentationException(extractUsefulMessage(e));
         }
     }
 
@@ -257,9 +255,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw presentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("Owner Assignment to company "+ companyId +" failed. Please try again later.");
+            throw presentationException(extractUsefulMessage(e));
         }
     }
 
@@ -272,9 +270,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw presentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("Failed to update manager permissions. Please try again later.");
+            throw presentationException(extractUsefulMessage(e));
         }
     }
 
@@ -287,9 +285,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw presentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("Failed to remove manager assignment. Please try again later.");
+            throw presentationException(extractUsefulMessage(e));
         }
     }
 
@@ -317,9 +315,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw presentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("Failed to give up ownership. Please try again later.");
+            throw presentationException(extractUsefulMessage(e));
         }
     }
 
@@ -332,9 +330,189 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw presentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("Failed to cancel event. Please try again later.");
+            throw presentationException(extractUsefulMessage(e));
         }
+    }
+
+    public void approveAssignment(String sessionToken, Long companyId) {
+        try {
+            boolean success = membershipService.approveAssignment(sessionToken, companyId);
+            if (!success) {
+                throw new PresentationException("אישור המינוי נכשל.");
+            }
+        } catch (PresentationException e) {
+            throw e;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw presentationException(e.getMessage());
+        } catch (Exception e) {
+            throw presentationException(extractUsefulMessage(e));
+        }
+    }
+
+    public void rejectAssignment(String sessionToken, Long companyId) {
+        try {
+            boolean success = membershipService.rejectAssignment(sessionToken, companyId);
+            if (!success) {
+                throw new PresentationException("דחיית המינוי נכשלה.");
+            }
+        } catch (PresentationException e) {
+            throw e;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw presentationException(e.getMessage());
+        } catch (Exception e) {
+            throw presentationException(extractUsefulMessage(e));
+        }
+    }
+
+    private PresentationException presentationException(String message) {
+        return new PresentationException(translateError(message));
+    }
+
+    private String translateError(String message) {
+        String cleanMessage = cleanErrorMessage(message);
+
+        if (cleanMessage == null || cleanMessage.isBlank()) {
+            return "אירעה שגיאה. נסו שוב.";
+        }
+
+        return switch (cleanMessage) {
+            case "Session authentication failed.",
+                 "Invalid session ID",
+                 "Invalid token.",
+                 "Member ID not found in token." ->
+                    "פג תוקף החיבור. יש להתחבר מחדש.";
+
+            case "Appointer not found." ->
+                    "המשתמש שמבצע את המינוי לא נמצא במערכת.";
+
+            case "Target Member not found." ->
+                    "המשתמש שברצונך למנות לא נמצא במערכת.";
+
+            case "Target Manager not found." ->
+                    "המנהל שברצונך לעדכן לא נמצא במערכת.";
+
+            case "Company not found.",
+                 "Error: Company not found." ->
+                    "החברה לא נמצאה.";
+
+            case "This user already has an active or pending role in this company" ->
+                    "למשתמש הזה כבר יש תפקיד פעיל או בקשת מינוי ממתינה בחברה הזו.";
+
+            case "The appointer ID could not be determined." ->
+                    "לא ניתן לזהות מי יצר את בקשת המינוי.";
+
+            case "Appointee not found." ->
+                    "המשתמש שקיבל את בקשת המינוי לא נמצא.";
+
+            case "User does not have permission to assign manager.",
+                 "User does not have permission to assign owner.",
+                 "User does not have permission to manage team.",
+                 "User does not have permission." ->
+                    "אין לך הרשאה לבצע את המינוי הזה.";
+
+            case "Cannot assign role to yourself.",
+                 "User cannot assign himself." ->
+                    "לא ניתן למנות את עצמך לתפקיד הזה.";
+
+            case "No pending assignment found.",
+                 "No pending role assignment found." ->
+                    "לא נמצאה בקשת מינוי שממתינה לאישור.";
+
+            default -> translateDynamicError(cleanMessage);
+        };
+    }
+
+    private String translateDynamicError(String message) {
+        if (message.startsWith("Target member with name '") && message.endsWith("' not found.")) {
+            String userName = extractBetween(message, "Target member with name '", "' not found.");
+            return "המשתמש \"" + userName + "\" לא נמצא במערכת.";
+        }
+
+        if (message.startsWith("Manager with name '") && message.endsWith("' not found.")) {
+            String userName = extractBetween(message, "Manager with name '", "' not found.");
+            return "המנהל \"" + userName + "\" לא נמצא במערכת.";
+        }
+
+        if (message.contains("already has an active or pending role")) {
+            return "למשתמש הזה כבר יש תפקיד פעיל או בקשת מינוי ממתינה בחברה הזו.";
+        }
+
+        if (message.contains("permission")) {
+            return "אין לך הרשאה לבצע את הפעולה הזו.";
+        }
+
+        return message;
+    }
+
+    private String extractUsefulMessage(Exception exception) {
+        if (exception == null) {
+            return null;
+        }
+
+        Throwable current = exception;
+
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+
+        if (current.getMessage() != null && !current.getMessage().isBlank()) {
+            return current.getMessage();
+        }
+
+        return exception.getMessage();
+    }
+
+    private String cleanErrorMessage(String message) {
+        if (message == null) {
+            return null;
+        }
+
+        String clean = message.trim();
+
+        clean = removePrefix(clean, "An error occurred while requesting manager assignment: ");
+        clean = removePrefix(clean, "An error occurred while requesting owner assignment: ");
+        clean = removePrefix(clean, "An error occurred while updating manager permissions: ");
+        clean = removePrefix(clean, "An error occurred while removing manager assignment: ");
+        clean = removePrefix(clean, "An error occurred while removing owner assignment: ");
+        clean = removePrefix(clean, "An error occurred while approving assignment: ");
+        clean = removePrefix(clean, "An error occurred while rejecting assignment: ");
+        clean = removePrefix(clean, "An error occurred while retrieving companies for member: ");
+        clean = removePrefix(clean, "An error occurred while retrieving company team members: ");
+
+        return clean.trim();
+    }
+
+    private String removePrefix(String value, String prefix) {
+        if (value == null || prefix == null) {
+            return value;
+        }
+
+        if (value.startsWith(prefix)) {
+            return value.substring(prefix.length());
+        }
+
+        return value;
+    }
+
+    private String extractBetween(String value, String prefix, String suffix) {
+        if (value == null || prefix == null || suffix == null) {
+            return "";
+        }
+
+        int start = value.indexOf(prefix);
+        if (start < 0) {
+            return "";
+        }
+
+        start += prefix.length();
+
+        int end = value.indexOf(suffix, start);
+        if (end < 0 || end <= start) {
+            return "";
+        }
+
+        return value.substring(start, end);
     }
 }
