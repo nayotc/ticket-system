@@ -14,7 +14,8 @@ public class MessagePopup extends Dialog {
     public enum Type {
         SUCCESS,
         ERROR,
-        NOTIFICATION
+        NOTIFICATION,
+        ASSIGNMENT
     }
 
     private MessagePopup(
@@ -33,7 +34,7 @@ public class MessagePopup extends Dialog {
         setModal(true);
         setDraggable(false);
         setResizable(false);
-        setCloseOnEsc(true);
+        setCloseOnEsc(type != Type.ASSIGNMENT);
         setCloseOnOutsideClick(false);
 
         add(createCard(type, title, message, primaryText, primaryAction, secondaryText, secondaryAction));
@@ -149,6 +150,10 @@ public class MessagePopup extends Dialog {
             return "message-popup-card-error";
         }
 
+        if (type == Type.ASSIGNMENT) {
+            return "message-popup-card-assignment";
+        }
+
         return "message-popup-card-notification";
     }
 
@@ -161,6 +166,9 @@ public class MessagePopup extends Dialog {
         } else if (type == Type.ERROR) {
             icon.setText("!");
             icon.addClassName("message-popup-icon-error");
+        } else if (type == Type.ASSIGNMENT) {
+            icon.add(VaadinIcon.USER.create());
+            icon.addClassName("message-popup-icon-assignment");
         } else {
             icon.add(VaadinIcon.BELL.create());
             icon.addClassName("message-popup-icon-notification");
@@ -229,5 +237,31 @@ public class MessagePopup extends Dialog {
         });
 
         return button;
+    }
+
+    public static void showAssignmentRequest(
+            String title,
+            String message,
+            Runnable onAccept,
+            Runnable onDecline
+    ) {
+        assignmentRequest(title, message, onAccept, onDecline).open();
+    }
+
+    public static MessagePopup assignmentRequest(
+            String title,
+            String message,
+            Runnable onAccept,
+            Runnable onDecline
+    ) {
+        return new MessagePopup(
+                Type.ASSIGNMENT,
+                title,
+                message,
+                "קבל",
+                onAccept,
+                "סרב",
+                onDecline
+        );
     }
 }
