@@ -31,6 +31,7 @@ import ticketsystem.PresentationLayer.Layouts.BookingLayout;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -64,7 +65,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     private final ReservationTimer reservationTimer = new ReservationTimer();
 
     private final ReservationPresenter reservationPresenter;
-
+    private final UiVisitCoordinator visitCoordinator;
     private EventDTO eventDTO;
     private EventMapDTO mapDTO;
     private Long eventId;
@@ -72,8 +73,9 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     private int cellSize = BASE_MAP_CELL_SIZE;
 
     @Autowired
-    public SelectTicketView(ReservationPresenter reservationPresenter) {
+    public SelectTicketView(ReservationPresenter reservationPresenter, UiVisitCoordinator visitCoordinator) {
         this.reservationPresenter = reservationPresenter;
+        this.visitCoordinator = visitCoordinator;
 
         addClassName("ticket-selection-page");
         setSizeFull();
@@ -102,6 +104,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
             return;
         }
 
+        visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
         loadTicketSelectionEventData();
     }
 
