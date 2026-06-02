@@ -229,4 +229,15 @@ public class SystemAdminPresenter {
             throw new PresentationException("Error logs retrieval failed. Please try again.");
         }
     }
+
+    public boolean canAccessSystemAdmin(String token) throws PresentationException {
+        try {
+            long userId = validateAndGetAdminId(token);
+            return systemAdminService.isSystemAdmin(userId);
+        } catch (PresentationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new PresentationException("Failed to verify admin access. Please log in again.");
+        }
+    }
 }

@@ -394,4 +394,12 @@ public class SystemAdminService {
             throw new Exception("Failed to promote member to System Admin: " + e.getMessage(), e);
         }
     }
+
+    public boolean isSystemAdmin(Long memberId) {
+        if (memberId == null) {
+            return false;
+        }
+
+        return adminRepository.isSystemAdmin(String.valueOf(memberId));
+    }
 }

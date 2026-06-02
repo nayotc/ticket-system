@@ -22,14 +22,9 @@ public class PublicHeader extends Header {
     private final UiVisitCoordinator visitCoordinator;
 
     public PublicHeader(boolean showAuthAction,
-                        UiVisitCoordinator visitCoordinator) {
-        this(showAuthAction, new EmptyHeaderPresenter(), visitCoordinator);
-    }
-
-    public PublicHeader(boolean showAuthAction,
                         HeaderPresenter presenter,
                         UiVisitCoordinator visitCoordinator) {
-        this.presenter = presenter == null ? new EmptyHeaderPresenter() : presenter;
+        this.presenter = presenter;
         this.visitCoordinator = visitCoordinator;
 
         addClassName("top-nav");
@@ -214,19 +209,6 @@ public class PublicHeader extends Header {
 
         Long getFirstManagedCompanyId(String sessionToken) throws Exception;
 
-        default boolean canAccessSystemAdmin(String sessionToken) throws Exception {
-            return false;
-        }
-    }
-
-    private static class EmptyHeaderPresenter implements HeaderPresenter {
-        @Override
-        public Long getFirstManagedCompanyId(String sessionToken) {
-            return null;
-        }
-        @Override
-        public int getActiveCartItemsCount(String sessionToken) {
-            return 0;
-        }
+        boolean canAccessSystemAdmin(String sessionToken) throws Exception ;
     }
 }
