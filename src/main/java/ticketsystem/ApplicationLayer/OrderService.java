@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+import ticketsystem.ApplicationLayer.Events.UserExitListener;
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
