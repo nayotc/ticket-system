@@ -22,6 +22,7 @@ import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.Components.EmptyState;
+import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
@@ -41,6 +42,7 @@ public class Checkout extends VerticalLayout {
     private ActiveOrderDTO activeOrder;
     private CheckoutEventInfo eventInfo;
     private CheckoutPricing pricing;
+    private final ReservationTimer reservationTimer = new ReservationTimer();
 
     private int currentStep = 1;
     private boolean personalDetailsLoadedFromProfile = false;
@@ -110,9 +112,12 @@ public class Checkout extends VerticalLayout {
             activeOrder = presenter.loadActiveOrder(token);
 
             if (activeOrder == null || tickets().isEmpty()) {
+                ReservationTimer.clear();
                 renderEmptyCheckout();
                 return;
             }
+
+            reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
             eventInfo = presenter.loadEventInfo(activeOrder.getEventId());
             pricing = presenter.calculatePricing(activeOrder.getOrderId());
@@ -127,7 +132,7 @@ public class Checkout extends VerticalLayout {
     }
 
     private String resolveSessionToken() {
-        return UiSession.getMemberToken();
+        return UiSession.getCurrentToken();
     }
 
     private void prefillBuyerDetailsIfLoggedIn(String token) {
@@ -163,6 +168,7 @@ public class Checkout extends VerticalLayout {
         page.addClassName("checkout-shell");
 
         page.add(
+                reservationTimer,
                 createMinimalHeader(),
                 createMainContent()
         );
@@ -539,6 +545,8 @@ public class Checkout extends VerticalLayout {
             );
 
             if (success) {
+                ReservationTimer.clear();
+                reservationTimer.refreshFromSession();
                 showSuccess("הרכישה הושלמה בהצלחה");
                 UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT);
             } else {
@@ -657,6 +665,7 @@ public class Checkout extends VerticalLayout {
 
     private void renderEmptyCheckout() {
         removeAll();
+        ReservationTimer.clear();
 
         Div page = new Div();
         page.addClassName("checkout-shell");
@@ -803,7 +812,8 @@ public class Checkout extends VerticalLayout {
                 new ArrayList<>(List.of(
                         new TicketDTO(1L, 9001L, 4, 12, new BigDecimal("350")),
                         new TicketDTO(2L, 9001L, 4, 13, new BigDecimal("350"))
-                ))
+                )),
+                System.currentTimeMillis() + 15 * 60 * 1000
         );
 
         @Override

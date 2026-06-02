@@ -14,6 +14,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import org.springframework.beans.factory.annotation.Autowired;
+import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
@@ -24,6 +25,7 @@ import ticketsystem.DTO.Event.SeatPositionDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.PresentationLayer.Components.Notifications;
+import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.BookingLayout;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
@@ -59,6 +61,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     private final Span totalPrice = new Span("₪0");
     private final Button continueButton = new Button("המשך לסיכום הזמנה");
     private final Span zoomValue = new Span("100%");
+    private final ReservationTimer reservationTimer = new ReservationTimer();
 
     private final ReservationPresenter reservationPresenter;
 
@@ -84,7 +87,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
         Div summarySection = createSummarySection();
 
-        shell.add(mapSection, summarySection);
+        shell.add(reservationTimer, mapSection, summarySection);
         add(shell);
     }
 
@@ -579,6 +582,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
             } else if (isSeatAvailable(seat)) {
                 reservationPresenter.selectSeatTicket(token, eventId, area.id(), row, number, null);
+                refreshReservationTimer();
                 selectedSeats.put(key, new SelectedSeat(area.id(), safeText(area.name(), "אזור ישיבה"), row, number, ticketPrice()));
             }
 
@@ -614,6 +618,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         try {
             if (delta > 0) {
                 reservationPresenter.selectStandingTicket(token, eventId, area.id(), delta, null);
+                refreshReservationTimer();
             } else if (delta < 0) {
                 reservationPresenter.removeStandingTicketsFromActiveOrder(token, eventId, area.id(), -delta);
             }
@@ -674,6 +679,11 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         emptySelection.setVisible(count == 0);
         selectedTicketsList.setVisible(count > 0);
         continueButton.setEnabled(count > 0);
+
+        if (count == 0) {
+            ReservationTimer.clear();
+            reservationTimer.refreshFromSession();
+        }
     }
 
     private Div createSelectedSeatRow(SelectedSeat selectedSeat) {
@@ -888,6 +898,22 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     private record SelectedStandingArea(Long areaId, String areaName, int quantity, BigDecimal price) {
         static SelectedStandingArea empty(StandingAreaDTO area, BigDecimal price) {
             return new SelectedStandingArea(area.id(), area.name(), 0, price);
+        }
+    }
+
+    private void refreshReservationTimer() {
+        try {
+            ActiveOrderDTO order = reservationPresenter.loadActiveOrder(currentToken());
+
+            if (order == null || order.getTickets() == null || order.getTickets().isEmpty()) {
+                reservationTimer.setVisible(false);
+                return;
+            }
+
+            reservationTimer.setDeadline(order.getExpiresAtEpochMillis());
+
+        } catch (Exception e) {
+            reservationTimer.setVisible(false);
         }
     }
 }
