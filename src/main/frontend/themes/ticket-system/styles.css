@@ -8975,3 +8975,116 @@ vaadin-button.edit-event-sale-status-main-button {
     box-sizing: border-box;
 }
 
+vaadin-button.edit-event-lottery-sale-button[theme~="primary"] {
+    background: linear-gradient(135deg, var(--tn-primary-fixed), var(--tn-primary));
+    color: var(--tn-on-primary);
+    border: 1px solid rgba(208, 188, 255, 0.72);
+    box-shadow: 0 0 16px rgba(208, 188, 255, 0.34);
+}
+
+vaadin-button.edit-event-lottery-sale-button[theme~="primary"]:hover {
+    background: var(--tn-primary-fixed);
+    color: var(--tn-on-primary);
+    border-color: rgba(233, 221, 255, 0.90);
+    box-shadow: 0 0 22px rgba(208, 188, 255, 0.48);
+}
+
+vaadin-button.edit-event-lottery-sale-button[theme~="primary"]::part(label),
+vaadin-button.edit-event-lottery-sale-button[theme~="primary"]::part(prefix) {
+    color: var(--tn-on-primary);
+}
+
+vaadin-button.edit-event-lottery-sale-button[disabled],
+vaadin-button.edit-event-lottery-sale-button[theme~="primary"][disabled] {
+    background: rgba(208, 188, 255, 0.26);
+    color: rgba(233, 221, 255, 0.62);
+    border-color: rgba(208, 188, 255, 0.22);
+    box-shadow: none;
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+/* =========================
+   Disabled action buttons
+   Clear non-clickable state
+   ========================= */
+
+vaadin-button.tn-disabled-action-button[disabled],
+.edit-event-page vaadin-button.edit-event-sale-status-main-button[disabled],
+.company-management-page vaadin-button.company-danger-soft-button[disabled] {
+    background: rgba(45, 52, 73, 0.34) !important;
+    color: rgba(203, 195, 215, 0.46) !important;
+    border: 1px dashed rgba(149, 142, 160, 0.34) !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    filter: grayscale(0.55);
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+vaadin-button.tn-disabled-action-button[disabled]:hover,
+.edit-event-page vaadin-button.edit-event-sale-status-main-button[disabled]:hover,
+.company-management-page vaadin-button.company-danger-soft-button[disabled]:hover {
+    background: rgba(45, 52, 73, 0.34) !important;
+    color: rgba(203, 195, 215, 0.46) !important;
+    border-color: rgba(149, 142, 160, 0.34) !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+vaadin-button.tn-disabled-action-button[disabled]::part(label),
+vaadin-button.tn-disabled-action-button[disabled]::part(prefix),
+vaadin-button.tn-disabled-action-button[disabled]::part(suffix),
+.edit-event-page vaadin-button.edit-event-sale-status-main-button[disabled]::part(label),
+.edit-event-page vaadin-button.edit-event-sale-status-main-button[disabled]::part(prefix),
+.company-management-page vaadin-button.company-danger-soft-button[disabled]::part(label),
+.company-management-page vaadin-button.company-danger-soft-button[disabled]::part(prefix) {
+    color: rgba(203, 195, 215, 0.46) !important;
+}
+
+vaadin-button.tn-disabled-action-button[disabled] vaadin-icon,
+vaadin-button.tn-disabled-action-button[disabled] .policy-button-icon {
+    color: rgba(203, 195, 215, 0.46) !important;
+}
+
+/* Disabled danger buttons */
+vaadin-button.policy-danger-button.tn-disabled-action-button[disabled],
+vaadin-button.edit-event-sale-status-cancel-button.tn-disabled-action-button[disabled],
+vaadin-button.company-danger-soft-button.tn-disabled-action-button[disabled] {
+    background: rgba(255, 180, 171, 0.08) !important;
+    color: rgba(255, 180, 171, 0.46) !important;
+    border: 1px dashed rgba(255, 180, 171, 0.26) !important;
+}
+
+vaadin-button.policy-danger-button.tn-disabled-action-button[disabled]::part(label),
+vaadin-button.policy-danger-button.tn-disabled-action-button[disabled]::part(prefix),
+vaadin-button.edit-event-sale-status-cancel-button.tn-disabled-action-button[disabled]::part(label),
+vaadin-button.edit-event-sale-status-cancel-button.tn-disabled-action-button[disabled]::part(prefix),
+vaadin-button.company-danger-soft-button.tn-disabled-action-button[disabled]::part(label),
+vaadin-button.company-danger-soft-button.tn-disabled-action-button[disabled]::part(prefix) {
+    color: rgba(255, 180, 171, 0.46) !important;
+}
+
+/* Disabled primary buttons */
+vaadin-button.policy-primary-button.tn-disabled-action-button[disabled],
+vaadin-button.edit-event-lottery-sale-button.tn-disabled-action-button[disabled] {
+    background: rgba(68, 226, 205, 0.10) !important;
+    color: rgba(203, 195, 215, 0.46) !important;
+    border: 1px dashed rgba(68, 226, 205, 0.22) !important;
+    box-shadow: none !important;
+}
+
+/* Cancelled rows in company management */
+.event-management-row-cancelled {
+    background: rgba(45, 52, 73, 0.34);
+    border-color: rgba(149, 142, 160, 0.16);
+}
+
+.event-management-row-cancelled .event-management-title {
+    color: rgba(218, 226, 253, 0.58);
+}
+
+.event-management-row-cancelled .event-management-meta {
+    color: rgba(203, 195, 215, 0.46);
+}
+

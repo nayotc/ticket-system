@@ -427,38 +427,82 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
         Div quickActions = new Div();
         quickActions.addClassName("edit-event-sale-status-actions");
 
-        if (presenter.hasLottery(UiSession.getMemberToken(), eventId)) {
-            Button startPreSale = createPrimaryButton("הגרל זוכים ופתח מכירה מוקדמת", "🔑");
-            startPreSale.addClassName("edit-event-sale-status-main-button");
-            startPreSale.addClickListener(event -> updateSaleStatus(SaleStatus.PRE_SALE));
-            startPreSale.setEnabled(canMoveToPreSale());
-            quickActions.add(startPreSale);
+        if ("ACTIVE".equalsIgnoreCase(loadedEvent.status())) {
+            if (presenter.hasLottery(UiSession.getMemberToken(), eventId)) {
+                Button startPreSale = createPrimaryButton("הגרל זוכים ופתח מכירה מוקדמת", "🔑");
+                startPreSale.addClassName("edit-event-sale-status-main-button");
+                startPreSale.addClassName("edit-event-lottery-sale-button");
+                startPreSale.addClickListener(event -> conductLottery());
+
+                applyDisabledState(
+                        startPreSale,
+                        canMoveToPreSale(),
+                        "לא ניתן לפתוח מכירה מוקדמת במצב האירוע הנוכחי"
+                );
+                quickActions.add(startPreSale);
+            }
+
+            Button openRegularSale = createPrimaryButton("פתח מכירה רגילה", "🎟");
+            openRegularSale.addClassName("edit-event-sale-status-main-button");
+            openRegularSale.addClickListener(event -> updateSaleStatus(SaleStatus.ONGOING));
+
+            applyDisabledState(
+                    openRegularSale,
+                    canMoveToOngoing(),
+                    "לא ניתן לפתוח מכירה רגילה במצב האירוע הנוכחי"
+            );
+
+            quickActions.add(openRegularSale);
         }
 
-        Button openRegularSale = createPrimaryButton("פתח מכירה רגילה", "🎟");
-        openRegularSale.addClassName("edit-event-sale-status-main-button");
-        openRegularSale.addClickListener(event -> updateSaleStatus(SaleStatus.ONGOING));
-        openRegularSale.setEnabled(canMoveToOngoing());
-        quickActions.add(openRegularSale);
-
-        if (!"CANCELLED".equalsIgnoreCase(loadedEvent.status())) {
-            Button cancelEvent = createDangerButton("בטל אירוע", "×");
-            cancelEvent.addClassName("edit-event-sale-status-main-button");
-            cancelEvent.addClassName("edit-event-sale-status-cancel-button");
-            cancelEvent.addClickListener(event -> confirmCancelEvent());
-            quickActions.add(cancelEvent);
-        }
+        Button cancelEvent = createDangerButton("בטל אירוע", "×");
+        cancelEvent.addClassName("edit-event-sale-status-main-button");
+        cancelEvent.addClassName("edit-event-sale-status-cancel-button");
+        applyDisabledState(
+                cancelEvent,
+                !isCancelledEvent(),
+                "האירוע כבר מבוטל"
+        );
+        cancelEvent.addClickListener(event -> confirmCancelEvent());
+        quickActions.add(cancelEvent);
 
         wrapper.add(quickActions);
         return wrapper;
     }
 
+    private void applyDisabledState(Button button, boolean enabled, String disabledTitle) {
+        button.setEnabled(enabled);
+
+        if (enabled) {
+            button.removeClassName("tn-disabled-action-button");
+            button.getElement().removeAttribute("title");
+            button.getElement().removeAttribute("aria-label");
+            return;
+        }
+
+        button.addClassName("tn-disabled-action-button");
+        button.getElement().setAttribute("title", disabledTitle);
+        button.getElement().setAttribute("aria-label", disabledTitle);
+    }
+
+    private boolean isCancelledEvent() {
+        return loadedEvent != null && "CANCELLED".equalsIgnoreCase(loadedEvent.status());
+    }
+
     private boolean canMoveToPreSale() {
+        if (isCancelledEvent()) {
+            return false;
+        }
+
         SaleStatus current = currentSaleStatus();
         return current == null || current == SaleStatus.NOT_STARTED;
     }
 
     private boolean canMoveToOngoing() {
+        if (isCancelledEvent()) {
+            return false;
+        }
+
         SaleStatus current = currentSaleStatus();
         return current == null || current == SaleStatus.NOT_STARTED || current == SaleStatus.PRE_SALE;
     }
@@ -479,7 +523,7 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
 
     private void conductLottery() {
         try {
-            presenter.conductLottery(UiSession.getMemberToken(), eventId);
+            presenter.conductLottery(UiSession.getMemberToken(), eventId, companyId);
             presenter.updateEventSaleStatus(UiSession.getMemberToken(), eventId, SaleStatus.PRE_SALE);
             Notifications.success("הגרלה בוצעה בהצלחה, מכירה מוקדמת נפתחה.");
             loadEventDetails();
@@ -1907,7 +1951,7 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
 
         boolean hasLottery(String token, Long eventId);
 
-        void conductLottery(String token, Long eventId);
+        void conductLottery(String token, Long eventId, Long companyId);
     }
 
     public record UpdateEventRequest(String sessionId, EventDTO event) {

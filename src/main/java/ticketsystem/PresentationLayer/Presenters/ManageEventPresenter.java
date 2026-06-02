@@ -258,11 +258,12 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
     }
 
     @Override
-    public void conductLottery(String sessionId, Long eventId) {
+    public void conductLottery(String sessionId, Long eventId, Long companyId) {
         try {
             validateEventId(eventId);
-            // TODO: update function
-            lotteryService.conductLotteryDraw(sessionId, eventId, 1);
+            Long lotteryId = lotteryService.getLotteryIdByEventId(eventId); // Validate lottery existence before conducting draw
+            lotteryService.closeLotteryRegistration(sessionId, lotteryId, companyId); // Ensure registration is closed before conducting draw
+            lotteryService.conductLotteryDraw(sessionId, lotteryId, companyId);
         } catch (PresentationException exception) {
             throw exception;
         } catch (IllegalArgumentException | IllegalStateException exception) {
@@ -272,6 +273,7 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             throw new PresentationException("אירעה שגיאה בעת ביצוע ההגרלה. נסו שוב.");
         }
     }
+
 
     private PurchasePolicyDTO mapToAppPurchasePolicyExpression(EditEvent.PurchasePolicyExpressionDraftDTO draft) {
         if (draft == null || draft.root() == null) {
