@@ -276,6 +276,8 @@ public class Home extends PageContainer {
                 @Override
                 public void onPreSaleApproved(Long eventId, String lotteryCode) {
                 try {
+                        UiSession.setLotteryCode(eventId, lotteryCode);
+
                         EventCardPresenter.PurchaseRequestResult result =
                                 eventCardPresenter.requestPurchase(
                                         UiSession.getCurrentToken(),

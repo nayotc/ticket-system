@@ -87,11 +87,11 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
 
             printWinnerCode(preSaleLotteryId);
 
-            System.out.println("Registration test username: " + REGISTRATION_TEST_USERNAME);
-            System.out.println("Registration test password: " + REGISTRATION_TEST_PASSWORD);
-            System.out.println("Winner username: " + WINNER_USERNAME);
-            System.out.println("Winner password: " + WINNER_PASSWORD);
-            System.out.println("Use the printed/generated code from this run.");
+        System.out.println("Registration test username: " + REGISTRATION_TEST_USERNAME);
+        System.out.println("Registration test password: " + REGISTRATION_TEST_PASSWORD);
+        System.out.println("Winner username: " + WINNER_USERNAME);
+        System.out.println("Winner password: " + WINNER_PASSWORD);
+        System.out.println("Use the printed/generated code from this run.");
 
         } catch (Exception e) {
             System.out.println("Failed to initialize temporary lottery test data: " + e.getMessage());
