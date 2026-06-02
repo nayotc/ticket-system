@@ -1,6 +1,5 @@
 package ticketsystem.PresentationLayer.Views;
 
-
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -19,6 +18,7 @@ import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.Components.EmptyState;
+import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.PublicLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
@@ -29,6 +29,7 @@ import ticketsystem.PresentationLayer.DTO.OrderPricing;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -41,6 +42,7 @@ public class ActiveOrderCart extends VerticalLayout {
     private OrderEventInfo eventInfo;
     private OrderPricing pricing;
     private String currentCouponCode = "";
+    private final ReservationTimer reservationTimer = new ReservationTimer();
 
 
 
@@ -61,12 +63,15 @@ public class ActiveOrderCart extends VerticalLayout {
             activeOrder = presenter.loadActiveOrder(resolveSessionToken());
 
             if (activeOrder == null || tickets().isEmpty()) {
+                ReservationTimer.clear();
                 renderEmptyCart();
                 return;
             }
 
             eventInfo = loadEventInfo(activeOrder.getEventId());
             pricing = presenter.calculatePricing(activeOrder, currentCouponCode);
+            reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
+
             renderCart();
         } catch (Exception exception) {
             showError(exception.getMessage());
@@ -84,7 +89,7 @@ public class ActiveOrderCart extends VerticalLayout {
         Div shell = new Div();
         shell.addClassName("cart-shell");
 
-        shell.add(createHeader(), createLayout());
+        shell.add(reservationTimer, createHeader(), createLayout());
 
         add(shell);
     }
@@ -340,6 +345,7 @@ public class ActiveOrderCart extends VerticalLayout {
 
     private void renderEmptyCart() {
         removeAll();
+        ReservationTimer.clear();
 
         Button searchEvents = new Button("חיפוש אירועים");
         searchEvents.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

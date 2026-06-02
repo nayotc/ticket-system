@@ -9,12 +9,14 @@ public class ActiveOrderDTO {
     private Long userId;  
     private Long eventId;
     private List<TicketDTO> tickets;
+    private Long expiresAtEpochMillis;
 
-    public ActiveOrderDTO(Long orderId,  Long userId, Long eventId, List<TicketDTO> tickets) {
+    public ActiveOrderDTO(Long orderId, Long userId, Long eventId, List<TicketDTO> tickets, Long expiresAtEpochMillis) {
         this.orderId = orderId;
         this.userId = userId;
         this.eventId = eventId;
         this.tickets = tickets;
+        this.expiresAtEpochMillis = expiresAtEpochMillis;
     }
     
     public Long getOrderId() {
@@ -31,6 +33,10 @@ public class ActiveOrderDTO {
 
     public List<TicketDTO> getTickets() {
         return tickets;
+    }
+
+    public Long getExpiresAtEpochMillis() {
+        return expiresAtEpochMillis;
     }
 
 }
