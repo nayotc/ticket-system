@@ -43,7 +43,7 @@ public class DevQueueTestDataInitializer {
                     EventCategory.CONCERT,
                     "Amazing Events",
                     new BigDecimal("249"),
-                    100L,
+                    0L,
                     SaleStatus.ONGOING
             );
 
