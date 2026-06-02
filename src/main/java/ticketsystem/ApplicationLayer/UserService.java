@@ -637,4 +637,26 @@ public class UserService {
         }
     }
 
+
+    public Member getMemberById(Long memberId) {
+        try {
+            if (memberId == null) {
+                logger.logEvent("Get member by ID rejected: null memberId", LogLevel.WARN);
+                throw new IllegalArgumentException("Member ID cannot be null.");
+            }
+            Member member = userRepository.getMemberById(memberId);
+            if (member == null) {
+                logger.logEvent("Get member by ID: member not found, memberId=" + memberId, LogLevel.INFO);
+            } else {
+                logger.logEvent("Get member by ID: member found, memberId=" + memberId, LogLevel.INFO);
+            }
+            return member;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.logError("Failed to get member by ID", e);
+            throw e;
+        }
+    }
+
 }

@@ -134,6 +134,50 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
             throw e;
         }
     }
+
+    // פונקציה חדשה וייעודית עבור דוח המכירות של המנהלים (כוללת סינון לפי עץ ניהול)
+    public List<OrderDTO> getManagerFilteredHistoryForCompany(String token, long companyId) {
+        try {
+            // 1. אימות טוקן
+            if (!tokenService.validateToken(token)) {
+                throw new IllegalArgumentException("Invalid or expired token");
+            }
+            if (!tokenService.isMemberToken(token)) {
+                throw new IllegalArgumentException("Only members can generate sales reports");
+            }
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId == null) {
+                throw new IllegalArgumentException("Could not extract user id from token");
+            }
+            // 2. אימות הרשאות לדוח מכירות
+            if (!membershipDomainService.validatePermission(memberId, companyId, Permission.GENERATE_SALES_REPORT)) {
+                throw new IllegalArgumentException("Insufficient permissions to generate sales report");
+            }
+            // 3. הבאת תת-העץ של המנהל (עוטפים ב-HashSet כדי שנוכל להוסיף אליו את המנהל עצמו בבטחה)
+            Set<Long> allowedManagers = new java.util.HashSet<>(
+                membershipDomainService.getManagementSubTreeMemberIds(memberId, companyId)
+            );
+            allowedManagers.add(memberId); // מוסיפים את המנהל המבקש
+
+            // 4. שליפת כל העסקאות וסינון לפי מי שניהל את האירוע
+            List<Purchase> allPurchases = historyRepository.getPurchasesByCompanyId(companyId);
+            
+            List<Purchase> filteredPurchases = allPurchases.stream()
+                    .filter(purchase -> allowedManagers.contains(purchase.getManagedByMemberId()))
+                    .toList();
+
+            // 5. המרה ל-DTO והחזרה
+            return objectMapper.convertValue(
+                filteredPurchases, 
+                new TypeReference<List<OrderDTO>>() {}
+            );
+
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Failed to retrieve filtered sales history: " + e.getMessage(), ISystemLogger.LogLevel.WARN);
+            throw e;
+        }
+    }
+
     public SalesReportDTO generateSalesReport(String token, long companyId) {
         try {
             if (!tokenService.validateToken(token)) {
@@ -235,60 +279,24 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
 
         notifyPurchasedBuyers(purchases, updateMessage);
     }
+
     private void notifyPurchasedBuyers(List<Purchase> purchases, String message) {
-    if (notificationsService == null || purchases == null || purchases.isEmpty()
-            || message == null || message.isBlank()) {
-        return;
-    }
-
-    List<Long> buyerMemberIds = purchases.stream()
-            .map(Purchase::getMemberId)
-            .filter(Objects::nonNull)
-            .distinct()
-            .toList();
-
-    if (buyerMemberIds.isEmpty()) {
-        return;
-    }
-
-    notificationsService.notifyMembers(buyerMemberIds, message);
-}
-
-    public InputStream exportCompanyTransactionsToCsv(String token, long companyId) throws Exception {
-        // 1. Fetch the data using existing logic (this also validates permissions)
-        List<OrderDTO> transactions = getHistoryForCompany(token, companyId);
-        
-        StringBuilder csvBuilder = new StringBuilder();
-        
-        // 2. Add UTF-8 BOM so Excel reads Hebrew characters correctly
-        csvBuilder.append('\ufeff');
-        
-        // 3. Append CSV Headers
-        csvBuilder.append("מספר עסקה,שם אירוע,מיקום,מזהה משתמש,סכום לתשלום\n");
-        
-        // 4. Append Data Rows
-        for (OrderDTO order : transactions) {
-            BigDecimal totalAmount = order.getTickets().stream()
-                .map(PurchaseDTO::getPrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-                
-            csvBuilder.append(order.getPurchaseId()).append(",")
-                      .append(escapeCsv(order.getEventName())).append(",")
-                      .append(escapeCsv(order.getLocation())).append(",")
-                      .append(order.getMemberId()).append(",")
-                      .append(totalAmount).append("\n");
+        if (notificationsService == null || purchases == null || purchases.isEmpty()
+                || message == null || message.isBlank()) {
+            return;
         }
-        
-        // 5. Convert the string to an InputStream that Vaadin can send to the browser
-        return new ByteArrayInputStream(csvBuilder.toString().getBytes(StandardCharsets.UTF_8));
+
+        List<Long> buyerMemberIds = purchases.stream()
+                .map(Purchase::getMemberId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (buyerMemberIds.isEmpty()) {
+            return;
+        }
+
+        notificationsService.notifyMembers(buyerMemberIds, message);
     }
 
-    // Helper method to prevent commas in the text from breaking the CSV format
-    private String escapeCsv(String value) {
-        if (value == null) return "";
-        if (value.contains(",")) {
-            return "\"" + value + "\"";
-        }
-        return value;
-    }
 }
