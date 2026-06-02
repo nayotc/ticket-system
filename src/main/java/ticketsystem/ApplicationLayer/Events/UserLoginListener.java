@@ -8,5 +8,6 @@ public interface UserLoginListener {
                                                             // actions to take when a user logs in, such as merging
                                                             // guest orders into the user's account or updating the
                                                             // user's session information.
+   
 
 }

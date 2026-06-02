@@ -16,6 +16,7 @@ public class ListenersConfiguration {
              UserService userService, EventService eventService, OrderService orderService) {
         reservationService.addOrderListener(historyService);
         userService.addUserLoginListener(orderService);
+        userService.addUserExitListener(orderService);
         eventService.addEventUpdatesListener(historyService);
         eventService.addEventUpdatesListener(orderService);
     }

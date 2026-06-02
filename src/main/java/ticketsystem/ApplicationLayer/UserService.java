@@ -204,6 +204,9 @@ public class UserService {
                 memberId = tokenService.extractUserId(sessionToken);
                 logger.logEvent("Exit member identified: memberId=" + memberId, LogLevel.DEBUG);
             }
+            else{
+                notifyExitListeners(sessionToken);
+            }
 
             tokenService.removeActiveSession(sessionToken);
             logger.logEvent(

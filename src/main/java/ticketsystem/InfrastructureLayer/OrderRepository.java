@@ -116,7 +116,11 @@ public class OrderRepository implements IOrderRepository {
         if (order == null) {
             throw new IllegalArgumentException("Order cannot be null");
         }
-
+        if(order.getTickets().isEmpty()) {
+            deleteOrder(order.getOrderId());
+            return;
+        }
+        
         orders.compute(order.getOrderId(), (id, currentOrder) -> {
             if (currentOrder == null) {
                 throw new IllegalArgumentException("Order not found with id: " + id);

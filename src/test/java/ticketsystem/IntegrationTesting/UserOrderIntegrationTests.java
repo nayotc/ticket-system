@@ -87,6 +87,16 @@ public class UserOrderIntegrationTests {
                 guestToken,
                 null,
                 100L);
+        Ticket ticket = new Ticket(
+        1L,
+        100L,
+        10L,
+        1, // row
+        1, // chair
+        BigDecimal.valueOf(100)
+);
+
+GuestOrder.addTicket(ticket);
         orderRepository.addOrder(GuestOrder);
         // Act - login again
         userService.login(guestToken, "member", "password");
@@ -161,37 +171,81 @@ public class UserOrderIntegrationTests {
         assertEquals(2, orderRepository.getActiveOrderByUserId(member.getId()).getTickets().size());
     }
 
-    @Test
-    public void testUserLogin_WhenGuestAndMemberHaveOrdersForDifferentEvents_ThenGuestOrderDeleted() {
-        // Arrange - visit → sign up
-        String guestToken = userService.visitSystem();
-        userService.signUp(
-                guestToken,
-                "member",
-                "password",
-                "Test User",
-                "0500000000",LocalDate.of(2001, 1, 1)
-        );
-        String memberToken = userService.login(guestToken, "member", "password");
-        Member member = userRepository.getMemberByUsername("member");
-        ActiveOrder memberOrder = new ActiveOrder(
-                orderRepository.getNextId(),
-                memberToken,
-                member.getId(), 200L);
-        orderRepository.addOrder(memberOrder);
-        guestToken = userService.logOut(memberToken);
-        ActiveOrder guestOrder = new ActiveOrder(
-                orderRepository.getNextId(),
-                guestToken,
-                null, 300L);
-        orderRepository.addOrder(guestOrder);
-        // Act - login again
-        userService.login(guestToken, "member", "password");
-        // Assert - guest order deleted and member order remains
-        assertNotNull(orderRepository.getActiveOrderByUserId(member.getId()));
-        assertEquals(memberOrder.getOrderId(), orderRepository.getActiveOrderByUserId(member.getId()).getOrderId());
-        assertEquals(OrderStatus.CANCELLED, orderRepository.getActiveOrderBySessionToken(guestToken).getStatus());
-        assertEquals(OrderStatus.CANCELLED, orderRepository.findOrderById(guestOrder.getOrderId()).getStatus());
+  @Test
+public void testUserLogin_WhenGuestAndMemberHaveOrdersForDifferentEvents_ThenGuestOrderDeleted() {
+    String guestToken = userService.visitSystem();
 
-    }
+    userService.signUp(
+            guestToken,
+            "member",
+            "password",
+            "Test User",
+            "0500000000",
+            LocalDate.of(2001, 1, 1)
+    );
+
+    String memberToken = userService.login(guestToken, "member", "password");
+    Member member = userRepository.getMemberByUsername("member");
+
+    Long memberEventId = 200L;
+    Long guestEventId = 300L;
+    Long areaId = 1L;
+
+    ActiveOrder memberOrder = new ActiveOrder(
+            orderRepository.getNextId(),
+            memberToken,
+            member.getId(),
+            memberEventId
+    );
+
+    memberOrder.addTicket(new Ticket(
+            1L,
+            memberEventId,
+            areaId,
+            1,
+            1,
+            BigDecimal.valueOf(100)
+    ));
+
+    orderRepository.addOrder(memberOrder);
+
+    guestToken = userService.logOut(memberToken);
+
+    ActiveOrder guestOrder = new ActiveOrder(
+            orderRepository.getNextId(),
+            guestToken,
+            null,
+            guestEventId
+    );
+
+    guestOrder.addTicket(new Ticket(
+            2L,
+            guestEventId,
+            areaId,
+            1,
+            2,
+            BigDecimal.valueOf(100)
+    ));
+
+    orderRepository.addOrder(guestOrder);
+
+    userService.login(guestToken, "member", "password");
+
+    ActiveOrder updatedMemberOrder = orderRepository.getActiveOrderByUserId(member.getId());
+
+    assertNotNull(updatedMemberOrder);
+    assertEquals(memberOrder.getOrderId(), updatedMemberOrder.getOrderId());
+
+    ActiveOrder deletedGuestOrder =
+        orderRepository.getActiveOrderBySessionToken(guestToken);
+
+assertNotNull(deletedGuestOrder);
+assertEquals(OrderStatus.CANCELLED, deletedGuestOrder.getStatus());
+
+ActiveOrder guestOrderById =
+        orderRepository.findOrderById(guestOrder.getOrderId());
+
+assertNotNull(guestOrderById);
+assertEquals(OrderStatus.CANCELLED, guestOrderById.getStatus());
+}
 }
