@@ -67,7 +67,24 @@ public class OrderService implements UserLoginListener, EventUpdatesListener {
         }
 
     }
+     @Override
+    public void onGuestExit(String guestToken) {
 
+        try {
+            ActiveOrder guestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
+            if (guestOrder == null) {
+                return;
+            }
+            guestOrder.cancelOrder();
+            orderRepository.updateOrder(guestOrder);
+
+        } catch (Exception e) {
+            logger.logEvent("Failed to cancel guest order: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+
+    }
+    
     @Override
     public void onEventCanceled(Long eventId) {
         List<ActiveOrder> affectedOrders = orderRepository.getActiveOrdersByEventId(eventId);
