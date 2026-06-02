@@ -12,6 +12,7 @@ import ticketsystem.DTO.Event.SeatDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DTO.seatPositionDTO;
+import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.EventMapDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.EventTicketSelectionDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.MapElementDto;
@@ -26,6 +27,7 @@ import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
 import ticketsystem.PresentationLayer.DTO.OrderPricing;
+
 
 
 import java.math.BigDecimal;
@@ -237,6 +239,47 @@ public class ReservationPresenter {
      */
     public OrderPricing applyCoupon(ActiveOrderDTO activeOrder, String couponCode) {
         return calculatePricing(activeOrder, couponCode);
+    }
+
+    /**
+     * Completes checkout for the current active order.
+     *
+     * This method is used by the checkout view to submit the active order for
+     * payment through the reservation application service. The final amount,
+     * purchase-policy validation and coupon validation are handled by the service.
+     *
+     * @param token active guest/member session token
+     * @param eventId event identifier of the active order
+     * @param paymentDetails payment details entered in the checkout view
+     * @param couponCode optional coupon code entered by the user
+     * @return true if checkout completed successfully
+     */
+    public boolean checkout(String token, Long eventId, PaymentDetails paymentDetails, String couponCode) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            return reservationService.checkout(
+                    token,
+                    eventId,
+                    paymentDetails,
+                    normalizeOptionalText(couponCode)
+            );
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Checkout failed. Please try again.");
+        }
     }
 
     public EventMapDTO loadEventMap (String token, Long eventId) {
