@@ -531,7 +531,11 @@ public class Checkout extends VerticalLayout {
                 ReservationTimer.clear();
                 reservationTimer.refreshFromSession();
                 showSuccess("הרכישה הושלמה בהצלחה");
-                UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT);
+                if (UiSession.isLoggedIn()) {
+                    UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT);
+                } else {
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
             } else {
                 showError("התשלום לא הושלם");
             }
