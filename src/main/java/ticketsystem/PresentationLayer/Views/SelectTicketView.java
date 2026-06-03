@@ -659,36 +659,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         }
     }
 
-    // private void refreshSummary() {
-    //     selectedTicketsList.removeAll();
-
-    //     for (SelectedSeat seat : selectedSeats.values()) {
-    //         selectedTicketsList.add(createSelectedSeatRow(seat));
-    //     }
-
-    //     for (SelectedStandingArea standingArea : selectedStandingAreas.values()) {
-    //         selectedTicketsList.add(createSelectedStandingRow(standingArea));
-    //     }
-
-    //     int count = selectedSeats.size() + selectedStandingAreas.values().stream().mapToInt(SelectedStandingArea::quantity).sum();
-    //     BigDecimal total = selectedSeats.values().stream()
-    //             .map(SelectedSeat::price)
-    //             .reduce(BigDecimal.ZERO, BigDecimal::add)
-    //             .add(selectedStandingAreas.values().stream()
-    //                     .map(area -> area.price().multiply(BigDecimal.valueOf(area.quantity())))
-    //                     .reduce(BigDecimal.ZERO, BigDecimal::add));
-
-    //     totalTickets.setText(count + " כרטיסים");
-    //     totalPrice.setText(formatMoney(total));
-    //     emptySelection.setVisible(count == 0);
-    //     selectedTicketsList.setVisible(count > 0);
-    //     continueButton.setEnabled(count > 0);
-
-    //     if (count == 0) {
-    //         ReservationTimer.clear();
-    //         reservationTimer.refreshFromSession();
-    //     }
-    // }
+    
     private void refreshSummary() {
     selectedTicketsList.removeAll();
 
