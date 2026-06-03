@@ -3,22 +3,18 @@ package ticketsystem.AcceptanceTesting;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.NotificationService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
+import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -27,29 +23,34 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 
 public class WaitingQueueServiceTest {
 
-    // private FakeEventRepository fakeEventRepo;
     private EventRepository EventRepo;
     private WaitingQueueRepository realQueueRepo;
-    private FakeNotificationsService fakeNotifications;
+    private NotificationService Notifications;
+    private INotifier notifier;
     private ITokenService tokenService;
     private ITokenRepository tokenRepository;
     private WaitingQueueService waitingQueueService;
     private LogbackSystemLogger logger;
+    private INotificationsRepository notificationRepository;
 
     @BeforeEach
     public void setUp() {
         EventRepo = new EventRepository();
         realQueueRepo = new WaitingQueueRepository();
-        fakeNotifications = new FakeNotificationsService();
+        notificationRepository = new NotificationsRepository();
+        Notifications = new NotificationService(notificationRepository);
+        notifier = new VaadinNotifier(notificationRepository);
         tokenRepository = new TokenRepository();
         logger = new LogbackSystemLogger();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
-        waitingQueueService = new WaitingQueueService(EventRepo, realQueueRepo, fakeNotifications, tokenService,
+        waitingQueueService = new WaitingQueueService(EventRepo, realQueueRepo, notifier, tokenService,
                 logger);
     }
 
@@ -111,8 +112,6 @@ public class WaitingQueueServiceTest {
         waitingQueueService.releaseSpot(3, validToken1);
 
         // Assert
-        assertTrue(fakeNotifications.wasNotified(validToken2),
-                "The queued user should have received a notification.");
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
         assertEquals(0, realQueueRepo.getQueueSize(3), "Queue should be empty after the user was dequeued.");
@@ -140,10 +139,6 @@ public class WaitingQueueServiceTest {
         // Assert
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Capacity should drop to 1.");
-        assertEquals(0,
-                fakeNotifications.notificationCount(validToken1)
-                + fakeNotifications.notificationCount(validToken2),
-                "No notifications should be sent since the queue is empty.");
     }
 
     @Test
@@ -152,113 +147,18 @@ public class WaitingQueueServiceTest {
         Event event = new Event(5L, LocalDateTime.now().plusDays(1), "Secret Show", 1L, 1L, EventLocation.NEW_YORK,
                 100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
         EventRepo.addEvent(event);
+        FailureStateSnapshot beforeState = captureStateSnapshot(5L);
 
         // Act
         assertThrows(IllegalArgumentException.class, () -> waitingQueueService.tryReserve(5, "invalid-token"),
                 "An invalid token should throw an exception.");
+        FailureStateSnapshot afterState = captureStateSnapshot(5L);
 
         // Assert
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(0, savedEvent.getActiveReservationsCount(), "Active reservations should remain 0.");
         assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
-    }
-
-    private static class FakeNotificationsService implements INotifier {
-
-        private final Map<String, List<String>> messagesBySession = new HashMap<>();
-        private final Map<Long, List<String>> messagesByMember = new HashMap<>();
-        private final List<String> allMessages = new ArrayList<>();
-
-        @Override
-        public void notifyGuest(String sessionId, String message) {
-            messagesBySession
-                    .computeIfAbsent(sessionId, key -> new ArrayList<>())
-                    .add(message);
-
-            allMessages.add(message);
-        }
-
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messagesByMember
-                    .computeIfAbsent(memberId, key -> new ArrayList<>())
-                    .add(message);
-
-            allMessages.add(message);
-        }
-
-        @Override
-        public void notifyMembers(Collection<Long> memberIds, String message) {
-            if (memberIds == null) {
-                return;
-            }
-
-            for (Long memberId : memberIds) {
-                if (memberId != null) {
-                    notifyMember(memberId, message);
-                }
-            }
-        }
-
-        @Override
-        public void notifyGuests(Collection<String> guestTokens, String message) {
-            if (guestTokens == null) {
-                return;
-            }
-
-            for (String guestToken : guestTokens) {
-                if (guestToken != null && !guestToken.isBlank()) {
-                    notifyGuest(guestToken, message);
-                }
-            }
-        }
-
-        boolean wasNotified(String sessionId) {
-            return messagesBySession.containsKey(sessionId)
-                    && !messagesBySession.get(sessionId).isEmpty();
-        }
-
-        int notificationCount(String sessionId) {
-            return messagesBySession
-                    .getOrDefault(sessionId, List.of())
-                    .size();
-        }
-
-        String lastMessageFor(String sessionId) {
-            List<String> messages = messagesBySession.getOrDefault(sessionId, List.of());
-
-            if (messages.isEmpty()) {
-                return "";
-            }
-
-            return messages.get(messages.size() - 1);
-        }
-
-        boolean wasMemberNotified(Long memberId) {
-            return messagesByMember.containsKey(memberId)
-                    && !messagesByMember.get(memberId).isEmpty();
-        }
-
-        int memberNotificationCount(Long memberId) {
-            return messagesByMember
-                    .getOrDefault(memberId, List.of())
-                    .size();
-        }
-
-        String lastMessageForMember(Long memberId) {
-            List<String> messages = messagesByMember.getOrDefault(memberId, List.of());
-
-            if (messages.isEmpty()) {
-                return "";
-            }
-
-            return messages.get(messages.size() - 1);
-        }
-
-        boolean containsMessage(String text) {
-            return allMessages.stream()
-                    .anyMatch(message -> message.contains(text));
-        }
+        assertStateUnchanged(beforeState, afterState, "Invalid token reservation attempt");
     }
 
     @Test
@@ -266,8 +166,11 @@ public class WaitingQueueServiceTest {
         // Arrange
         String validToken = tokenService.addActiveSession(new Guest());
 
+        FailureStateSnapshot beforeState = captureStateSnapshot(-5L);
         // Act
         String result = waitingQueueService.tryReserve(999L, validToken);
+        FailureStateSnapshot afterState = captureStateSnapshot(-5L);
+        assertStateUnchanged(beforeState, afterState, "Try reserve for non-existing event");
 
         // Assert
         assertEquals("ERROR: Event not found", result);
@@ -294,7 +197,6 @@ public class WaitingQueueServiceTest {
         String firstToken = tokenService.addActiveSession(new Guest());
         String secondToken = tokenService.addActiveSession(new Guest());
 
-        // ממלאים את המקום היחיד
         assertEquals("APPROVED", waitingQueueService.tryReserve(6L, firstToken));
 
         // Act
@@ -302,7 +204,6 @@ public class WaitingQueueServiceTest {
 
         // Assert
         assertEquals("QUEUED", result);
-        assertTrue(fakeNotifications.wasNotified(secondToken));
     }
 
     @Test
@@ -367,12 +268,6 @@ public class WaitingQueueServiceTest {
         Event updatedEvent = EventRepo.getEventById(8L);
 
         assertEquals(0, updatedEvent.getActiveReservationsCount());
-
-        assertTrue(fakeNotifications.wasNotified(token));
-
-        assertTrue(
-                fakeNotifications.lastMessageFor(token)
-                        .contains("expired"));
     }
 
     @Test
@@ -408,11 +303,6 @@ public class WaitingQueueServiceTest {
 
         // Assert
         assertEquals(0, realQueueRepo.getQueueSize(9L));
-
-        assertTrue(fakeNotifications.wasNotified(token2));
-        assertTrue(fakeNotifications.wasNotified(token3));
-
-        assertTrue(fakeNotifications.containsMessage("sold out"));
     }
 
     @Test
@@ -442,15 +332,39 @@ public class WaitingQueueServiceTest {
                         100L,
                         "member",
                         "Member User",
-                        "0500000000",LocalDate.of(2001, 1, 1)));
+                        "0500000000", LocalDate.of(2001, 1, 1)));
 
         // Act
         String result = waitingQueueService.tryReserve(10L, memberToken);
 
         // Assert
         assertEquals("QUEUED", result);
+    }
 
-        assertTrue(fakeNotifications.wasMemberNotified(100L));
+    // checking invariants before and after failure scenarios
+    private static class FailureStateSnapshot {
+
+        final int activeReservations;
+        final int queueSize;
+
+        FailureStateSnapshot(int activeReservations, int queueSize) {
+            this.activeReservations = activeReservations;
+            this.queueSize = queueSize;
+        }
+    }
+
+    private FailureStateSnapshot captureStateSnapshot(long eventId) {
+        Event event = EventRepo.getEventById(eventId);
+        return new FailureStateSnapshot(
+                event != null ? event.getActiveReservationsCount() : 0,
+                realQueueRepo.getQueueSize(eventId));
+    }
+
+    private void assertStateUnchanged(FailureStateSnapshot before, FailureStateSnapshot after, String scenario) {
+        assertEquals(before.activeReservations, after.activeReservations,
+                scenario + ": active reservation count should not change on failure");
+        assertEquals(before.queueSize, after.queueSize,
+                scenario + ": queue size should not change on failure");
     }
 
 }

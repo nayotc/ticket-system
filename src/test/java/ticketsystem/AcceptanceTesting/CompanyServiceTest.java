@@ -3,8 +3,6 @@ package ticketsystem.AcceptanceTesting;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -24,6 +22,8 @@ import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.DiscountDTO;
+import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
@@ -42,10 +42,10 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.DTO.DiscountDTO;
-import ticketsystem.DTO.DiscountPolicyDTO;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 public class CompanyServiceTest {
 
@@ -53,13 +53,14 @@ public class CompanyServiceTest {
     private UserService userService;
     private ITokenService tokenService;
     private ISystemLogger testLogger;
-    private FakeNotifier fakeNotifier;
+    private INotifier Notifier;
     private String founderToken;
     private String nonFounderToken;
     private IUserRepository userRepository;
     private MembershipDomainService membershipDomain;
     private ICompanyRepository companyRepository;
     private UserAccessService userAccessService;
+    private NotificationsRepository notificationRepository;
 
     private static final String VALID_COMPANY_NAME = "BGU Productions";
 
@@ -87,10 +88,11 @@ public class CompanyServiceTest {
         userService = new UserService(userRepository, tokenService, testLogger);
         membershipDomain = new MembershipDomainService(userRepository);
         userService = new UserService(userRepository, tokenService, testLogger);
-        fakeNotifier = new FakeNotifier();
+        notificationRepository = new NotificationsRepository();
+        Notifier = new VaadinNotifier(notificationRepository);
         userAccessService = new UserAccessService(userRepository);
         companyService = new CompanyService(companyRepository, tokenService, membershipDomain, testLogger,
-                userAccessService, fakeNotifier);
+                userAccessService, Notifier);
 
         founderToken = createLoggedInMember("noa_user", "password123");
         nonFounderToken = createLoggedInMember("other_user", "password123");
@@ -99,7 +101,7 @@ public class CompanyServiceTest {
     private String createLoggedInMember(String username, String password) {
         String guestToken = userService.visitSystem();
 
-        boolean signedUp = userService.signUp(guestToken, username, password, "Test User", "0500000000",LocalDate.of(2001, 1, 1));
+        boolean signedUp = userService.signUp(guestToken, username, password, "Test User", "0500000000", LocalDate.of(2001, 1, 1));
         assertTrue(signedUp, "Member signup should succeed during test setup.");
 
         String memberToken = userService.login(guestToken, username, password);
@@ -593,25 +595,26 @@ public class CompanyServiceTest {
                 999999L,
                 DiscountCompositionType.SUM));
     }
+
     @Test
-        void GivenFounderWithCompany_WhenGetFirstManagedCompanyId_ThenReturnsCreatedCompanyId() throws Exception {
+    void GivenFounderWithCompany_WhenGetFirstManagedCompanyId_ThenReturnsCreatedCompanyId() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         Long managedCompanyId = companyService.getFirstManagedCompanyId(founderToken);
 
         assertNotNull(managedCompanyId);
         assertEquals(companyDTO.getId(), managedCompanyId);
-        }
+    }
 
-        @Test
-        void GivenMemberWithoutManagedCompany_WhenGetFirstManagedCompanyId_ThenReturnsNull() throws Exception {
+    @Test
+    void GivenMemberWithoutManagedCompany_WhenGetFirstManagedCompanyId_ThenReturnsNull() throws Exception {
         Long managedCompanyId = companyService.getFirstManagedCompanyId(nonFounderToken);
 
         assertEquals(null, managedCompanyId);
-        }
+    }
 
-        @Test
-        void GivenFounder_WhenHasPermissionForDiscountPolicy_ThenReturnsTrue() throws Exception {
+    @Test
+    void GivenFounder_WhenHasPermissionForDiscountPolicy_ThenReturnsTrue() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         boolean result = companyService.hasPermission(
@@ -621,10 +624,10 @@ public class CompanyServiceTest {
         );
 
         assertTrue(result);
-        }
+    }
 
-        @Test
-        void GivenRegularMember_WhenHasPermissionForDiscountPolicy_ThenReturnsFalse() throws Exception {
+    @Test
+    void GivenRegularMember_WhenHasPermissionForDiscountPolicy_ThenReturnsFalse() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         boolean result = companyService.hasPermission(
@@ -634,10 +637,10 @@ public class CompanyServiceTest {
         );
 
         assertFalse(result);
-        }
+    }
 
-        @Test
-        void GivenFounder_WhenHasPermissionWithNullPermission_ThenThrowsException() throws Exception {
+    @Test
+    void GivenFounder_WhenHasPermissionWithNullPermission_ThenThrowsException() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         IllegalArgumentException exception = assertThrows(
@@ -646,10 +649,10 @@ public class CompanyServiceTest {
         );
 
         assertEquals("Permission cannot be null", exception.getMessage());
-        }
+    }
 
-        @Test
-        void GivenCompanyWithoutPurchasePolicyChange_WhenGetCompanyPurchasePolicy_ThenReturnsDefaultPolicyDTO() throws Exception {
+    @Test
+    void GivenCompanyWithoutPurchasePolicyChange_WhenGetCompanyPurchasePolicy_ThenReturnsDefaultPolicyDTO() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         PurchasePolicyDTO result = companyService.getCompanyPurchasePolicy(founderToken, companyDTO.getId());
@@ -657,10 +660,10 @@ public class CompanyServiceTest {
         assertNotNull(result);
         assertNotNull(result.getRootRule());
         assertEquals(PurchaseRuleType.ALWAYS_ALLOW, result.getRootRule().getType());
-        }
+    }
 
-        @Test
-        void GivenCompanyWithMaxTicketsPolicy_WhenGetCompanyPurchasePolicy_ThenReturnsSavedPolicyDTO() throws Exception {
+    @Test
+    void GivenCompanyWithMaxTicketsPolicy_WhenGetCompanyPurchasePolicy_ThenReturnsSavedPolicyDTO() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         companyService.setCompanyPurchasePolicy(
@@ -675,20 +678,20 @@ public class CompanyServiceTest {
         assertNotNull(result.getRootRule());
         assertEquals(PurchaseRuleType.MAX_TICKETS, result.getRootRule().getType());
         assertEquals(4, result.getRootRule().getValue());
-        }
+    }
 
-        @Test
-        void GivenMissingCompany_WhenGetCompanyPurchasePolicy_ThenThrowsGenericRetrievalException() {
+    @Test
+    void GivenMissingCompany_WhenGetCompanyPurchasePolicy_ThenThrowsGenericRetrievalException() {
         Exception exception = assertThrows(
                 Exception.class,
                 () -> companyService.getCompanyPurchasePolicy(founderToken, 999999L)
         );
 
         assertEquals("An error occurred while retrieving the purchase policy.", exception.getMessage());
-        }
+    }
 
-        @Test
-        void GivenCompanyWithoutDiscounts_WhenGetCompanyDiscountPolicy_ThenReturnsEmptyDiscountPolicyDTO() throws Exception {
+    @Test
+    void GivenCompanyWithoutDiscounts_WhenGetCompanyDiscountPolicy_ThenReturnsEmptyDiscountPolicyDTO() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         DiscountPolicyDTO result = companyService.getCompanyDiscountPolicy(founderToken, companyDTO.getId());
@@ -697,10 +700,10 @@ public class CompanyServiceTest {
         assertEquals(DiscountCompositionType.MAX, result.getCompositionType());
         assertNotNull(result.getDiscounts());
         assertTrue(result.getDiscounts().isEmpty());
-        }
+    }
 
-        @Test
-        void GivenCompanyWithVisibleDiscount_WhenGetCompanyDiscountPolicy_ThenMapsVisibleDiscountToDTO() throws Exception {
+    @Test
+    void GivenCompanyWithVisibleDiscount_WhenGetCompanyDiscountPolicy_ThenMapsVisibleDiscountToDTO() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         companyService.addVisibleDiscountToCompany(
@@ -719,10 +722,10 @@ public class CompanyServiceTest {
         assertEquals("VISIBLE", discount.getType());
         assertEquals("Visible Discount", discount.getName());
         assertEquals(BigDecimal.valueOf(10), discount.getPercentage());
-        }
+    }
 
-        @Test
-        void GivenCompanyWithCouponDiscount_WhenGetCompanyDiscountPolicy_ThenMapsCouponDiscountToDTO() throws Exception {
+    @Test
+    void GivenCompanyWithCouponDiscount_WhenGetCompanyDiscountPolicy_ThenMapsCouponDiscountToDTO() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
         LocalDateTime endTime = LocalDateTime.now().plusDays(7);
 
@@ -746,10 +749,10 @@ public class CompanyServiceTest {
         assertEquals("BGU10", discount.getCouponCode());
         assertEquals(BigDecimal.valueOf(15), discount.getPercentage());
         assertEquals(endTime, discount.getEndTime());
-        }
+    }
 
-        @Test
-        void GivenCompanyWithConditionalMinTicketDiscount_WhenGetCompanyDiscountPolicy_ThenMapsConditionalDiscountToDTO() throws Exception {
+    @Test
+    void GivenCompanyWithConditionalMinTicketDiscount_WhenGetCompanyDiscountPolicy_ThenMapsConditionalDiscountToDTO() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
         LocalDateTime endTime = LocalDateTime.now().plusDays(7);
 
@@ -775,10 +778,10 @@ public class CompanyServiceTest {
         assertEquals(BigDecimal.valueOf(20), discount.getPercentage());
         assertEquals(endTime, discount.getEndTime());
         assertEquals("מינימום 2 כרטיסים", discount.getConditionText());
-        }
+    }
 
-        @Test
-        void GivenFounder_WhenSetCompanyDiscountPolicyWithVisibleCouponAndConditionalDiscounts_ThenDiscountsAreAddedToCompany() throws Exception {
+    @Test
+    void GivenFounder_WhenSetCompanyDiscountPolicyWithVisibleCouponAndConditionalDiscounts_ThenDiscountsAreAddedToCompany() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         DiscountDTO visible = new DiscountDTO();
@@ -813,10 +816,10 @@ public class CompanyServiceTest {
         assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof VisibleDiscount);
         assertTrue(company.getDiscountPolicy().getDiscounts().get(1) instanceof CouponDiscount);
         assertTrue(company.getDiscountPolicy().getDiscounts().get(2) instanceof ConditionalDiscount);
-        }
+    }
 
-        @Test
-        void GivenUserWithoutDiscountPermission_WhenSetCompanyDiscountPolicy_ThenThrowsException() throws Exception {
+    @Test
+    void GivenUserWithoutDiscountPermission_WhenSetCompanyDiscountPolicy_ThenThrowsException() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         DiscountDTO visible = new DiscountDTO();
@@ -834,10 +837,10 @@ public class CompanyServiceTest {
         );
 
         assertEquals("User does not have permission to manage company discount policy", exception.getMessage());
-        }
+    }
 
-        @Test
-        void GivenMissingCompany_WhenSetCompanyDiscountPolicy_ThenThrowsException() {
+    @Test
+    void GivenMissingCompany_WhenSetCompanyDiscountPolicy_ThenThrowsException() {
         DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
         policyDTO.setCompositionType(DiscountCompositionType.MAX);
         policyDTO.setDiscounts(List.of());
@@ -846,26 +849,26 @@ public class CompanyServiceTest {
                 Exception.class,
                 () -> companyService.setCompanyDiscountPolicy(founderToken, 999999L, policyDTO)
         );
-        }
+    }
 
-        @Test
-        void GivenMissingCompany_WhenGetPurchasePolicySummary_ThenReturnsNoPurchasePolicyMessage() {
+    @Test
+    void GivenMissingCompany_WhenGetPurchasePolicySummary_ThenReturnsNoPurchasePolicyMessage() {
         String summary = companyService.getPurchasePolicySummary(999999L);
 
         assertEquals("לא הוגדרה מדיניות רכישה", summary);
-        }
+    }
 
-        @Test
-        void GivenCompanyWithDefaultPurchasePolicy_WhenGetPurchasePolicySummary_ThenReturnsNoRestrictionsMessage() throws Exception {
+    @Test
+    void GivenCompanyWithDefaultPurchasePolicy_WhenGetPurchasePolicySummary_ThenReturnsNoRestrictionsMessage() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         String summary = companyService.getPurchasePolicySummary(companyDTO.getId());
 
         assertEquals("ללא הגבלות רכישה מיוחדות", summary);
-        }
+    }
 
-        @Test
-        void GivenCompanyWithCustomPurchasePolicy_WhenGetPurchasePolicySummary_ThenReturnsCustomPolicyMessage() throws Exception {
+    @Test
+    void GivenCompanyWithCustomPurchasePolicy_WhenGetPurchasePolicySummary_ThenReturnsCustomPolicyMessage() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         companyService.setCompanyPurchasePolicy(
@@ -877,26 +880,26 @@ public class CompanyServiceTest {
         String summary = companyService.getPurchasePolicySummary(companyDTO.getId());
 
         assertEquals("מוגדרת חוקיות רכישה מותאמת אישית", summary);
-        }
+    }
 
-        @Test
-        void GivenMissingCompany_WhenGetDiscountPolicySummary_ThenReturnsNoDiscountsMessage() {
+    @Test
+    void GivenMissingCompany_WhenGetDiscountPolicySummary_ThenReturnsNoDiscountsMessage() {
         String summary = companyService.getDiscountPolicySummary(999999L);
 
         assertEquals("אין הנחות פעילות", summary);
-        }
+    }
 
-        @Test
-        void GivenCompanyWithoutDiscounts_WhenGetDiscountPolicySummary_ThenReturnsNoDiscountsMessage() throws Exception {
+    @Test
+    void GivenCompanyWithoutDiscounts_WhenGetDiscountPolicySummary_ThenReturnsNoDiscountsMessage() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         String summary = companyService.getDiscountPolicySummary(companyDTO.getId());
 
         assertEquals("אין הנחות פעילות", summary);
-        }
+    }
 
-        @Test
-        void GivenCompanyWithDiscountAndMaxComposition_WhenGetDiscountPolicySummary_ThenReturnsDiscountCountAndMaxText() throws Exception {
+    @Test
+    void GivenCompanyWithDiscountAndMaxComposition_WhenGetDiscountPolicySummary_ThenReturnsDiscountCountAndMaxText() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         companyService.addVisibleDiscountToCompany(
@@ -909,10 +912,10 @@ public class CompanyServiceTest {
         String summary = companyService.getDiscountPolicySummary(companyDTO.getId());
 
         assertEquals("1 הנחות מוגדרות במערכת (הנחה מקסימלית)", summary);
-        }
+    }
 
-        @Test
-        void GivenCompanyWithDiscountAndSumComposition_WhenGetDiscountPolicySummary_ThenReturnsDiscountCountAndSumText() throws Exception {
+    @Test
+    void GivenCompanyWithDiscountAndSumComposition_WhenGetDiscountPolicySummary_ThenReturnsDiscountCountAndSumText() throws Exception {
         CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
 
         companyService.addVisibleDiscountToCompany(
@@ -931,10 +934,10 @@ public class CompanyServiceTest {
         String summary = companyService.getDiscountPolicySummary(companyDTO.getId());
 
         assertEquals("1 הנחות מוגדרות במערכת (כפל מבצעים)", summary);
-        }
+    }
 
-        @Test
-        void GivenCompaniesExist_WhenGetAllCompanies_ThenReturnsAllCompanyDTOs() throws Exception {
+    @Test
+    void GivenCompaniesExist_WhenGetAllCompanies_ThenReturnsAllCompanyDTOs() throws Exception {
         CompanyDTO firstCompany = companyService.createProductionCompany(founderToken, "First Company");
         CompanyDTO secondCompany = companyService.createProductionCompany(founderToken, "Second Company");
 
@@ -943,7 +946,7 @@ public class CompanyServiceTest {
         assertNotNull(companies);
         assertTrue(companies.stream().anyMatch(company -> company.getId() == firstCompany.getId()));
         assertTrue(companies.stream().anyMatch(company -> company.getId() == secondCompany.getId()));
-        }
+    }
 
     private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {
         return new PurchasePolicyDTO(
@@ -953,52 +956,6 @@ public class CompanyServiceTest {
     private PurchasePolicyDTO minAgePolicyDTO(int minAge) {
         return new PurchasePolicyDTO(
                 new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, minAge, null));
-    }
-
-    private static class FakeNotifier implements INotifier {
-
-        private final List<String> messages = new ArrayList<>();
-
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyGuest(String guestToken, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyMembers(Collection<Long> memberIds, String message) {
-            if (memberIds == null) {
-                return;
-            }
-
-            for (Long memberId : memberIds) {
-                if (memberId != null) {
-                    notifyMember(memberId, message);
-                }
-            }
-        }
-
-        @Override
-        public void notifyGuests(Collection<String> guestTokens, String message) {
-            if (guestTokens == null) {
-                return;
-            }
-
-            for (String guestToken : guestTokens) {
-                if (guestToken != null && !guestToken.isBlank()) {
-                    notifyGuest(guestToken, message);
-                }
-            }
-        }
-
-        boolean containsMessage(String text) {
-            return messages.stream()
-                    .anyMatch(message -> message.contains(text));
-        }
     }
 
 }
