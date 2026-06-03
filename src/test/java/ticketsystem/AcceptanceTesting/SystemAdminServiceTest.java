@@ -3,9 +3,7 @@ package ticketsystem.AcceptanceTesting;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -42,12 +40,14 @@ import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 public class SystemAdminServiceTest {
 
@@ -62,7 +62,8 @@ public class SystemAdminServiceTest {
     OrderRepository orderRepo;
     LogbackSystemLogger logger = new LogbackSystemLogger();
     private MembershipDomainService membershipDomain;
-    private FakeNotifier fakeNotifier;
+    private INotifier notifier;
+    private NotificationsRepository notificationRepo;
 
     private UserAccessService userAccessService;
 
@@ -79,9 +80,10 @@ public class SystemAdminServiceTest {
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         membershipDomain = new MembershipDomainService(userRepo);
-        fakeNotifier = new FakeNotifier();
+        notificationRepo = new NotificationsRepository();
+        notifier = new VaadinNotifier(notificationRepo);
         userAccessService = new UserAccessService(userRepo);
-        companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger, userAccessService, fakeNotifier);
+        companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger, userAccessService, notifier);
         orderRepo = new OrderRepository();
         historyRepo = new HistoryRepository();
         systemAdminService = new SystemAdminService(
@@ -92,7 +94,7 @@ public class SystemAdminServiceTest {
                 orderRepo,
                 tokenService,
                 companyRepo, logger, historyRepo,
-                membershipDomain, fakeNotifier
+                membershipDomain, notifier
         );
     }
 
@@ -112,13 +114,16 @@ public class SystemAdminServiceTest {
     @Test
     public void givenEmptyRepository_whenInitSystem_thenInitializationFails() {
         PaymentServiceProxy.isConnectionSuccessful = true;
+        FailureStateSnapshot beforeState = captureStateSnapshot();
 
         // Act
         boolean result = systemAdminService.initSystem();
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         // Assert
         assertFalse(result, "Acceptance Test Failed: System allowed initialization without a System Admin.");
         assertFalse(PaymentServiceProxy.wasConnectCalled, "Payment service should not be contacted if no admin exists.");
+        assertStateUnchanged(beforeState, afterState, "Init system without admin");
     }
 
     @Test
@@ -128,12 +133,15 @@ public class SystemAdminServiceTest {
 
         PaymentServiceProxy.isConnectionSuccessful = false;
         SecureBarcodeProxy.isConnectionSuccessful = true;
+        FailureStateSnapshot beforeState = captureStateSnapshot();
 
         // Act
         boolean result = systemAdminService.initSystem();
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         // Assert
         assertFalse(result, "Acceptance Test Failed: System should fail to initialize if payment service is down.");
+        assertStateUnchanged(beforeState, afterState, "Init system when payment service is down");
     }
 
     @Test
@@ -143,19 +151,27 @@ public class SystemAdminServiceTest {
 
         PaymentServiceProxy.isConnectionSuccessful = true;
         SecureBarcodeProxy.isConnectionSuccessful = false;
+        FailureStateSnapshot beforeState = captureStateSnapshot();
 
         // Act
         boolean result = systemAdminService.initSystem();
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         // Assert
         assertFalse(result, "Acceptance Test Failed: System should fail to initialize if barcode service is down.");
+        assertStateUnchanged(beforeState, afterState, "Init system when barcode service is down");
     }
 
     // Use case: delete member by admin
     @Test
     public void givenInvalidAdminId_whenDeleteMember_thenReturnsUnauthorizedError() {
+        FailureStateSnapshot beforeState = captureStateSnapshot();
+
         String result = systemAdminService.deleteMemberByAdmin(-5L, 1L);
+        FailureStateSnapshot afterState = captureStateSnapshot();
+
         assertTrue(result.startsWith("ERROR: Unauthorized access"), "Should reject invalid token.");
+        assertStateUnchanged(beforeState, afterState, "Delete member with invalid admin");
     }
 
     @Test
@@ -165,11 +181,15 @@ public class SystemAdminServiceTest {
         realAdminRepo.addAdmin(admin);
         long nonExistentMemberId = 99L;
 
+        FailureStateSnapshot beforeState = captureStateSnapshot();
+
         // Act
         String result = systemAdminService.deleteMemberByAdmin(1L, nonExistentMemberId);
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         // Assert
         assertEquals("ERROR: Member with ID 99 was not found.", result, "Should return not found error.");
+        assertStateUnchanged(beforeState, afterState, "Delete non-existent member");
     }
 
     @Test
@@ -179,7 +199,7 @@ public class SystemAdminServiceTest {
         realAdminRepo.addAdmin(admin);
         long memberId = 1L;
 
-        Member member = new Member(memberId, "TestUser", "Test User", "0500000001",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "TestUser", "Test User", "0500000001", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "hashedPassword123");
 
         // Act
@@ -202,14 +222,14 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(new SystemAdmin(String.valueOf(adminId), "admin", true));
 
-        Member founder = new Member(founderId, "founder", "Founder User", "0500000002",LocalDate.of(2001, 1, 1));
+        Member founder = new Member(founderId, "founder", "Founder User", "0500000002", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(founderId, founder, "password123");
         String founderSessionId = tokenService.addActiveSession(founder);
 
         CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
         long companyId = createdCompany.getId();
 
-        Member owner = new Member(ownerId, "owner", "Owner User", "0500000003",LocalDate.of(2001, 1, 1));
+        Member owner = new Member(ownerId, "owner", "Owner User", "0500000003", LocalDate.of(2001, 1, 1));
         owner.addOwnerRole(companyId, founderId);
         owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepo.addRegisteredMember(ownerId, owner, "password123");
@@ -217,7 +237,7 @@ public class SystemAdminServiceTest {
         Set<Permission> managerPermissions = new HashSet<>();
         managerPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
-        Member manager = new Member(managerId, "manager", "Manager User", "0500000004",LocalDate.of(2001, 1, 1));
+        Member manager = new Member(managerId, "manager", "Manager User", "0500000004", LocalDate.of(2001, 1, 1));
         manager.addManagerRole(companyId, founderId, managerPermissions);
         manager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepo.addRegisteredMember(managerId, manager, "password123");
@@ -252,15 +272,18 @@ public class SystemAdminServiceTest {
         // Arrange
         long nonAdminId = 10L;
         long founderId = 20L;
-        Member founder = new Member(founderId, "founder", "Founder User", "0500000005",LocalDate.of(2001, 1, 1));
+        Member founder = new Member(founderId, "founder", "Founder User", "0500000005", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(founderId, founder, "password123");
         String founderSessionId = tokenService.addActiveSession(founder);
 
         CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
+        FailureStateSnapshot beforeState = captureStateSnapshot();
         // Act + Assert
         Exception exception = assertThrows(Exception.class, ()
                 -> systemAdminService.closeProductionCompanyByAdmin(nonAdminId, createdCompany.getId())
         );
+
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         assertTrue(exception.getMessage().contains("Unauthorized access"),
                 "Should throw unauthorized access exception.");
@@ -269,6 +292,7 @@ public class SystemAdminServiceTest {
                 .orElseThrow(() -> new Exception("Company was not found"));
 
         assertTrue(savedCompany.isActive(), "Company should remain active after a failed closure attempt.");
+        assertStateUnchanged(beforeState, afterState, "Close company by non-admin");
     }
 
 // Use Case 6.4: View Purchase History by Buyer
@@ -288,7 +312,7 @@ public class SystemAdminServiceTest {
                 "Jazz Festival",
                 "Shuni",
                 buyer1_Id,
-                50L, 4L, 60L,new BigDecimal(100)
+                50L, 4L, 60L, new BigDecimal(100)
         );
 
         Purchase purchase2 = new Purchase(
@@ -297,7 +321,7 @@ public class SystemAdminServiceTest {
                 "Jazz Festival",
                 "Shuni",
                 buyer1_Id,
-                50L, 4L, 60L,new BigDecimal(100)
+                50L, 4L, 60L, new BigDecimal(100)
         );
 
         Purchase purchase3 = new Purchase(
@@ -306,7 +330,7 @@ public class SystemAdminServiceTest {
                 "Rock Concert",
                 "Barby",
                 buyer2_Id,
-                50L, 4L, 61L,new BigDecimal(100)
+                50L, 4L, 61L, new BigDecimal(100)
         );
 
         historyRepo.addPurchase(purchase1);
@@ -343,28 +367,35 @@ public class SystemAdminServiceTest {
         // --- 2. NO PURCHASE HISTORY EXISTS ---
         // empty historyRepo, no purchases added
         // --- 3 & 4. Action & Assertions (System displays message / throws exception) ---
+        FailureStateSnapshot beforeState = captureStateSnapshot();
+
         Exception exception = assertThrows(IllegalStateException.class, () -> {
             systemAdminService.getPurchaseHistoryByBuyer(adminId);
         });
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         assertTrue(exception.getMessage().contains("No purchases have been made yet."),
                 "Exception message should indicate that no history is available");
+        assertStateUnchanged(beforeState, afterState, "View purchase history with no history");
     }
 
     // Use Case 6.4: View Purchase History by Buyer - Failure Scenarios
     @Test
     void AcceptanceTest_ViewPurchaseHistoryByBuyer_Failure_UnauthorizedAccess() {
         // --- 1. Preparation (Simulating an unauthorized request) ---
-        // נשתמש ב-ID של אדמין שלא קיים במערכת (או שלא הוספנו ל-repo)
         long unauthorizedAdminId = 999L;
 
         // --- 2 & 3 & 4. Action & Assertions ---
+        FailureStateSnapshot beforeState = captureStateSnapshot();
+
         Exception exception = assertThrows(SecurityException.class, () -> {
             systemAdminService.getPurchaseHistoryByBuyer(unauthorizedAdminId);
         });
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         assertTrue(exception.getMessage().contains("Unauthorized access"),
                 "Exception message should indicate unauthorized access");
+        assertStateUnchanged(beforeState, afterState, "View purchase history with unauthorized admin");
     }
 
     // Use Case 6.4: View Global Purchase History (By Company and Event)
@@ -387,7 +418,7 @@ public class SystemAdminServiceTest {
                 "Expo TLV",
                 666L,
                 companyId, 4L,
-                52L,new BigDecimal(100)
+                52L, new BigDecimal(100)
         );
         Purchase purchase2 = new Purchase(
                 5L,
@@ -396,7 +427,7 @@ public class SystemAdminServiceTest {
                 "Expo TLV",
                 777L,
                 companyId, 4L,
-                52L,new BigDecimal(100)
+                52L, new BigDecimal(100)
         );
         //one purchase for a different event but same company, to check the grouping by event name as well
         Purchase purchase3 = new Purchase(
@@ -405,7 +436,7 @@ public class SystemAdminServiceTest {
                 event2_Name,
                 "Expo TLV",
                 888L,
-                companyId, 4L, 53L,new BigDecimal(100)
+                companyId, 4L, 53L, new BigDecimal(100)
         );
 
         historyRepo.addPurchase(purchase1);
@@ -441,12 +472,16 @@ public class SystemAdminServiceTest {
         // --- 2. NO PURCHASE HISTORY EXISTS ---
         // empty historyRepo, no purchases added
         // --- 3 & 4. Action & Assertions ---
+        FailureStateSnapshot beforeState = captureStateSnapshot();
+
         Exception exception = assertThrows(IllegalStateException.class, () -> {
             systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
         });
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         assertTrue(exception.getMessage().contains("No purchase history"),
                 "Exception message should indicate that no history is available");
+        assertStateUnchanged(beforeState, afterState, "View company history with no history");
     }
 
     // Use Case 6.4: View Global Purchase History (By Company and Event) - Failure Scenarios
@@ -456,61 +491,19 @@ public class SystemAdminServiceTest {
         long unauthorizedAdminId = 999L; // ID that does not correspond to any real admin in the repository
 
         // --- 2 & 3 & 4. Action & Assertions ---
+        FailureStateSnapshot beforeState = captureStateSnapshot();
+
         Exception exception = assertThrows(SecurityException.class, () -> {
             systemAdminService.getPurchaseHistoryByCompanyAndEvent(unauthorizedAdminId);
         });
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         assertTrue(exception.getMessage().contains("Unauthorized access"),
                 "Exception message should indicate unauthorized access for invalid admin");
+        assertStateUnchanged(beforeState, afterState, "View company history with unauthorized admin");
     }
 
-    private static class FakeNotifier implements INotifier {
-
-        private final List<String> messages = new ArrayList<>();
-
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyGuest(String guestToken, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyMembers(Collection<Long> memberIds, String message) {
-            if (memberIds == null) {
-                return;
-            }
-
-            for (Long memberId : memberIds) {
-                if (memberId != null) {
-                    notifyMember(memberId, message);
-                }
-            }
-        }
-
-        @Override
-        public void notifyGuests(Collection<String> guestTokens, String message) {
-            if (guestTokens == null) {
-                return;
-            }
-
-            for (String guestToken : guestTokens) {
-                if (guestToken != null && !guestToken.isBlank()) {
-                    notifyGuest(guestToken, message);
-                }
-            }
-        }
-
-        boolean containsMessage(String text) {
-            return messages.stream()
-                    .anyMatch(message -> message.contains(text));
-        }
-    }
     // -------------------- UC 6.7: Suspend Member by System Admin -------------------
-
     @Test
     void GivenActiveSystemAdminAndExistingMember_WhenSuspendMemberTemporarily_ThenMemberIsSuspendedAndSaved() {
         long adminId = 1L;
@@ -518,7 +511,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "baduser", "Bad User", "0501112222",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "baduser", "Bad User", "0501112222", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         LocalDateTime start = LocalDateTime.now().minusMinutes(1);
@@ -553,7 +546,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "permanentuser", "Permanent User", "0502223333",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "permanentuser", "Permanent User", "0502223333", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         LocalDateTime start = LocalDateTime.now().minusMinutes(1);
@@ -582,8 +575,10 @@ public class SystemAdminServiceTest {
         long invalidAdminId = 999L;
         long memberId = 102L;
 
-        Member member = new Member(memberId, "regularuser", "Regular User", "0503334444",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "regularuser", "Regular User", "0503334444", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
+
+        FailureStateSnapshot beforeState = captureStateSnapshot();
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -596,11 +591,15 @@ public class SystemAdminServiceTest {
                 )
         );
 
+        FailureStateSnapshot afterState = captureStateSnapshot();
+
         Member savedMember = userRepo.getMemberById(memberId);
 
         assertTrue(exception.getMessage().contains("Unauthorized access"));
         assertNotNull(savedMember);
         assertFalse(savedMember.isSuspended());
+
+        assertStateUnchanged(beforeState, afterState, "Suspend member with invalid admin");
     }
 
     @Test
@@ -609,6 +608,7 @@ public class SystemAdminServiceTest {
         long missingMemberId = 999L;
 
         realAdminRepo.addAdmin(admin);
+        FailureStateSnapshot beforeState = captureStateSnapshot();
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -620,8 +620,10 @@ public class SystemAdminServiceTest {
                         "Missing member"
                 )
         );
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         assertTrue(exception.getMessage().contains("was not found"));
+        assertStateUnchanged(beforeState, afterState, "Revoke suspension for missing member");
     }
 
     @Test
@@ -631,11 +633,13 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "dateuser", "Date User", "0504445555",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "dateuser", "Date User", "0504445555", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         LocalDateTime start = LocalDateTime.now().plusDays(10);
         LocalDateTime end = LocalDateTime.now().plusDays(1);
+
+        FailureStateSnapshot beforeState = captureStateSnapshot();
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -648,11 +652,13 @@ public class SystemAdminServiceTest {
                 )
         );
 
+        FailureStateSnapshot afterState = captureStateSnapshot();
         Member savedMember = userRepo.getMemberById(memberId);
 
         assertTrue(exception.getMessage().contains("End date cannot be before start date"));
         assertNotNull(savedMember);
         assertFalse(savedMember.isSuspended());
+        assertStateUnchanged(beforeState, afterState, "Suspend member with invalid dates");
     }
 
     @Test
@@ -662,7 +668,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "alreadySuspended", "Already Suspended", "0505556666",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "alreadySuspended", "Already Suspended", "0505556666", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         systemAdminService.suspendMemberByAdmin(
@@ -698,7 +704,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "suspendeduser", "Suspended User", "0506667777",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "suspendeduser", "Suspended User", "0506667777", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         systemAdminService.suspendMemberByAdmin(
@@ -728,9 +734,10 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "blockeduser", "Blocked User", "0507778888",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "blockeduser", "Blocked User", "0507778888", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
+        FailureStateSnapshot beforeState = captureStateSnapshot();
         systemAdminService.suspendMemberByAdmin(
                 adminId,
                 memberId,
@@ -743,11 +750,13 @@ public class SystemAdminServiceTest {
                 IllegalArgumentException.class,
                 () -> systemAdminService.revokeMemberByAdmin(invalidAdminId, memberId)
         );
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         Member savedMember = userRepo.getMemberById(memberId);
 
         assertTrue(exception.getMessage().contains("Unauthorized access"));
         assertTrue(savedMember.isSuspended());
+        assertStateUnchanged(beforeState, afterState, "Revoke suspension with invalid admin");
     }
 
     @Test
@@ -756,13 +765,16 @@ public class SystemAdminServiceTest {
         long missingMemberId = 999L;
 
         realAdminRepo.addAdmin(admin);
+        FailureStateSnapshot beforeState = captureStateSnapshot();
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> systemAdminService.revokeMemberByAdmin(adminId, missingMemberId)
         );
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         assertTrue(exception.getMessage().contains("was not found"));
+        assertStateUnchanged(beforeState, afterState, "Revoke suspension for missing member");
     }
 
     @Test
@@ -772,18 +784,21 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "regularmember", "Regular Member", "0508889999",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "regularmember", "Regular Member", "0508889999", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
+        FailureStateSnapshot beforeState = captureStateSnapshot();
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
                 () -> systemAdminService.revokeMemberByAdmin(adminId, memberId)
         );
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         Member savedMember = userRepo.getMemberById(memberId);
 
         assertTrue(exception.getMessage().contains("Member is not suspended"));
         assertFalse(savedMember.isSuspended());
+        assertStateUnchanged(beforeState, afterState, "Revoke suspension for member that is not suspended");
     }
 
     @Test
@@ -792,16 +807,16 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member normalMember = new Member(300L, "normal", "Normal User", "0500000001",LocalDate.of(2001, 1, 1));
+        Member normalMember = new Member(300L, "normal", "Normal User", "0500000001", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(300L, normalMember, "password123");
 
-        Member temporarySuspendedMember = new Member(301L, "temporary", "Temporary Suspended", "0500000002",LocalDate.of(2001, 1, 1));
+        Member temporarySuspendedMember = new Member(301L, "temporary", "Temporary Suspended", "0500000002", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(301L, temporarySuspendedMember, "password123");
 
-        Member permanentSuspendedMember = new Member(302L, "permanent", "Permanent Suspended", "0500000003",LocalDate.of(2001, 1, 1));
+        Member permanentSuspendedMember = new Member(302L, "permanent", "Permanent Suspended", "0500000003", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(302L, permanentSuspendedMember, "password123");
 
-        Member revokedSuspensionMember = new Member(303L, "revoked", "Revoked User", "0500000004",LocalDate.of(2001, 1, 1));
+        Member revokedSuspensionMember = new Member(303L, "revoked", "Revoked User", "0500000004", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(303L, revokedSuspensionMember, "password123");
 
         LocalDateTime start = LocalDateTime.now().minusDays(1);
@@ -869,7 +884,7 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member normalMember = new Member(304L, "happy", "Happy User", "0500000005",LocalDate.of(2001, 1, 1));
+        Member normalMember = new Member(304L, "happy", "Happy User", "0500000005", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(304L, normalMember, "password123");
 
         IllegalStateException exception = assertThrows(
@@ -899,9 +914,10 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(admin);
 
-        Member member = new Member(memberId, "expired", "Expired Suspension", "0500000006",LocalDate.of(2001, 1, 1));
+        Member member = new Member(memberId, "expired", "Expired Suspension", "0500000006", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
+        FailureStateSnapshot beforeState = captureStateSnapshot();
         systemAdminService.suspendMemberByAdmin(
                 adminId,
                 memberId,
@@ -914,7 +930,30 @@ public class SystemAdminServiceTest {
                 IllegalStateException.class,
                 () -> systemAdminService.viewSuspendedMembersByAdmin(adminId)
         );
+        FailureStateSnapshot afterState = captureStateSnapshot();
 
         assertTrue(exception.getMessage().contains("No suspended members found"));
+        assertStateUnchanged(beforeState, afterState, "View suspended members with only expired suspensions");
+    }
+
+    // for checking invariants before and after failure scenarios
+    private record FailureStateSnapshot(int adminCount, int registeredMemberCount, int companyCount, int purchaseCount) {
+
+    }
+
+    private FailureStateSnapshot captureStateSnapshot() {
+        return new FailureStateSnapshot(
+                realAdminRepo.countAdmins(),
+                userRepo.getAllMembers().size(),
+                companyRepo.findAll().size(),
+                historyRepo.getAllPurchases().size()
+        );
+    }
+
+    private void assertStateUnchanged(FailureStateSnapshot before, FailureStateSnapshot after, String scenario) {
+        assertEquals(before.adminCount, after.adminCount, scenario + ": admin count should not change on failure");
+        assertEquals(before.registeredMemberCount, after.registeredMemberCount, scenario + ": registered member count should not change on failure");
+        assertEquals(before.companyCount, after.companyCount, scenario + ": company count should not change on failure");
+        assertEquals(before.purchaseCount, after.purchaseCount, scenario + ": purchase count should not change on failure");
     }
 }
