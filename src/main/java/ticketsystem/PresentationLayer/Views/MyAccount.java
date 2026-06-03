@@ -81,13 +81,12 @@ public class MyAccount extends PageContainer implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        //if (!UiSession.isLoggedIn()) {
-            //event.rerouteTo(UiRoutes.LOGIN);
-            //return;
-        //}
+        if (!UiSession.isLoggedIn()) {
+            event.rerouteTo(UiRoutes.HOME);
+            return;
+        }
 
         loadDataFromPresenter();
-
     }
 
     public void setPresenter(MyAccountPresenter presenter) {
