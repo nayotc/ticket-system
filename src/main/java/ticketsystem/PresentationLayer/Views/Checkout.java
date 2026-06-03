@@ -20,6 +20,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
@@ -60,6 +61,8 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
     private final TextField fullName = new TextField("שם מלא *");
     private final EmailField email = new EmailField("דואר אלקטרוני *");
     private final TextField phone = new TextField("מספר טלפון *");
+    private final DatePicker birthDate = new DatePicker("תאריך לידה *");
+    private final TextField couponCode = new TextField("קוד קופון");
 
     private final TextField payerName = new TextField("שם בעל הכרטיס *");
     private final TextField cardNumber = new TextField("מספר כרטיס *");
@@ -116,6 +119,19 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         phone.getElement().setAttribute("dir", "ltr");
         phone.addClassName("checkout-field");
 
+        birthDate.setPlaceholder("בחר תאריך לידה");
+        birthDate.setRequiredIndicatorVisible(true);
+        birthDate.setMax(LocalDate.now());
+        birthDate.setWidthFull();
+        birthDate.addClassName("checkout-field");
+        birthDate.setErrorMessage("יש להזין תאריך לידה תקין");
+
+        couponCode.setPlaceholder("לדוגמה: SUMMER26");
+        couponCode.getElement().setAttribute("dir", "ltr");
+        couponCode.setClearButtonVisible(true);
+        couponCode.setWidthFull();
+        couponCode.addClassName("checkout-field");
+
         payerName.setPlaceholder("ישראל ישראלי");
         payerName.addClassName("checkout-field");
 
@@ -155,7 +171,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
             eventInfo = presenter.loadActiveOrderEventInfo(token, activeOrder.getEventId());
-            pricing = presenter.calculatePricing(activeOrder, "");
+            pricing = presenter.calculatePricing(activeOrder, normalizedCouponCode());
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
@@ -207,6 +223,10 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
         if (isBlank(phone.getValue()) && !isBlank(buyer.getPhone())) {
             phone.setValue(buyer.getPhone());
+        }
+
+        if (birthDate.getValue() == null && buyer.getBirthDate() != null) {
+            birthDate.setValue(buyer.getBirthDate());
         }
     }
 
@@ -329,7 +349,10 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         contactGrid.addClassName("checkout-two-columns");
         contactGrid.add(email, phone);
 
-        form.add(fullNameRow, contactGrid);
+        Div birthDateRow = new Div(birthDate);
+        birthDateRow.addClassName("checkout-field-row");
+
+        form.add(fullNameRow, contactGrid, birthDateRow);
 
         Button continueButton = new Button("המשך לתשלום", VaadinIcon.ARROW_BACKWARD.create());
         continueButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -532,8 +555,42 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         Span secureText = iconText(VaadinIcon.LOCK, "תשלום מאובטח באמצעות TixNow");
         secureText.addClassName("checkout-secure-text");
 
-        card.add(title, eventBlock, ticketsBlock, prices, total, policyMessages, secureText);
+        card.add(title, eventBlock, ticketsBlock, createCheckoutCouponSection(), prices, total, policyMessages, secureText);
         return card;
+    }
+
+    private Div createCheckoutCouponSection() {
+        Div section = new Div();
+        section.addClassName("checkout-field-row");
+
+        Button applyCoupon = new Button("הפעל קופון");
+        applyCoupon.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        applyCoupon.addClassName("checkout-secondary-action");
+        applyCoupon.addClickListener(event -> applyCheckoutCoupon());
+
+        section.add(couponCode, applyCoupon);
+        return section;
+    }
+
+    private void applyCheckoutCoupon() {
+        if (activeOrder == null) {
+            return;
+        }
+
+        try {
+            pricing = presenter.calculatePricing(activeOrder, normalizedCouponCode());
+            renderCheckout();
+
+            if (isBlank(normalizedCouponCode())) {
+                showSuccess("קוד הקופון נוקה");
+            } else if (pricing.discountTotal().compareTo(BigDecimal.ZERO) > 0 || !pricing.appliedDiscounts().isEmpty()) {
+                showSuccess("קוד הקופון הופעל");
+            } else {
+                showSuccess("קוד הקופון נשמר וייבדק בעת התשלום");
+            }
+        } catch (Exception exception) {
+            showError(exception.getMessage());
+        }
     }
 
     private Div createTicketSummaryRow(TicketDTO ticket) {
@@ -584,13 +641,17 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         }
 
         try {
-            PaymentDetails details = new PaymentDetails(resolvePaymentMethodId(), payerName.getValue().trim(), LocalDate.now() );
+            PaymentDetails details = new PaymentDetails(
+                    resolvePaymentMethodId(),
+                    payerName.getValue().trim(),
+                    birthDate.getValue()
+            );
 
             boolean success = presenter.checkout(
                     resolveSessionToken(),
                     activeOrder.getEventId(),
                     details,
-                    ""
+                    normalizedCouponCode()
             );
 
             if (success) {
@@ -631,6 +692,16 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         if (isBlank(phone.getValue())) {
             phone.setInvalid(true);
             phone.setErrorMessage("יש להזין מספר טלפון");
+            valid = false;
+        }
+
+        if (birthDate.getValue() == null) {
+            birthDate.setInvalid(true);
+            birthDate.setErrorMessage("יש להזין תאריך לידה");
+            valid = false;
+        } else if (birthDate.getValue().isAfter(LocalDate.now())) {
+            birthDate.setInvalid(true);
+            birthDate.setErrorMessage("תאריך לידה לא יכול להיות עתידי");
             valid = false;
         }
 
@@ -687,6 +758,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         fullName.setInvalid(false);
         email.setInvalid(false);
         phone.setInvalid(false);
+        birthDate.setInvalid(false);
     }
 
     private void resetPaymentValidation() {
@@ -779,6 +851,11 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String normalizedCouponCode() {
+        String value = couponCode.getValue();
+        return value == null ? "" : value.trim();
     }
 
     private void showError(String message) {

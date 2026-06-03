@@ -11,6 +11,7 @@ import com.vaadin.flow.router.RouterLayout;
 
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import com.vaadin.flow.component.UI;
+import ticketsystem.PresentationLayer.Constants.UiRoutes;
 
 public class BookingLayout extends VerticalLayout implements RouterLayout {
 
@@ -42,9 +43,9 @@ public class BookingLayout extends VerticalLayout implements RouterLayout {
         H1 title = new H1("בחירת כרטיסים");
         title.addClassName("booking-title");
 
-        Span brand = new Span("TixNow");
+        Span brand = new Span ("TixNow");
         brand.addClassName("brand-logo");
-        brand.getStyle().set("cursor", "pointer");
+        brand.addClassName("clickable-icon");
         brand.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.HOME));
 
         header.add(backIcon, title, brand);
