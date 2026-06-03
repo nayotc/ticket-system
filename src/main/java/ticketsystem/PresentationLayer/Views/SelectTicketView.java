@@ -15,6 +15,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import org.springframework.beans.factory.annotation.Autowired;
 import ticketsystem.DTO.ActiveOrderDTO;
+import ticketsystem.DTO.TicketDTO;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
@@ -137,7 +138,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
             setEventData(null, null);
         }
     }
-
+    
     private void reloadTicketSelectionEventDataKeepingSelection() {
         String token = currentToken();
 
@@ -658,36 +659,99 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         }
     }
 
+    // private void refreshSummary() {
+    //     selectedTicketsList.removeAll();
+
+    //     for (SelectedSeat seat : selectedSeats.values()) {
+    //         selectedTicketsList.add(createSelectedSeatRow(seat));
+    //     }
+
+    //     for (SelectedStandingArea standingArea : selectedStandingAreas.values()) {
+    //         selectedTicketsList.add(createSelectedStandingRow(standingArea));
+    //     }
+
+    //     int count = selectedSeats.size() + selectedStandingAreas.values().stream().mapToInt(SelectedStandingArea::quantity).sum();
+    //     BigDecimal total = selectedSeats.values().stream()
+    //             .map(SelectedSeat::price)
+    //             .reduce(BigDecimal.ZERO, BigDecimal::add)
+    //             .add(selectedStandingAreas.values().stream()
+    //                     .map(area -> area.price().multiply(BigDecimal.valueOf(area.quantity())))
+    //                     .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+    //     totalTickets.setText(count + " כרטיסים");
+    //     totalPrice.setText(formatMoney(total));
+    //     emptySelection.setVisible(count == 0);
+    //     selectedTicketsList.setVisible(count > 0);
+    //     continueButton.setEnabled(count > 0);
+
+    //     if (count == 0) {
+    //         ReservationTimer.clear();
+    //         reservationTimer.refreshFromSession();
+    //     }
+    // }
     private void refreshSummary() {
-        selectedTicketsList.removeAll();
+    selectedTicketsList.removeAll();
 
-        for (SelectedSeat seat : selectedSeats.values()) {
-            selectedTicketsList.add(createSelectedSeatRow(seat));
-        }
+    ActiveOrderDTO order = reservationPresenter.loadActiveOrder(currentToken());
 
-        for (SelectedStandingArea standingArea : selectedStandingAreas.values()) {
-            selectedTicketsList.add(createSelectedStandingRow(standingArea));
-        }
-
-        int count = selectedSeats.size() + selectedStandingAreas.values().stream().mapToInt(SelectedStandingArea::quantity).sum();
-        BigDecimal total = selectedSeats.values().stream()
-                .map(SelectedSeat::price)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .add(selectedStandingAreas.values().stream()
-                        .map(area -> area.price().multiply(BigDecimal.valueOf(area.quantity())))
-                        .reduce(BigDecimal.ZERO, BigDecimal::add));
-
-        totalTickets.setText(count + " כרטיסים");
-        totalPrice.setText(formatMoney(total));
-        emptySelection.setVisible(count == 0);
-        selectedTicketsList.setVisible(count > 0);
-        continueButton.setEnabled(count > 0);
-
-        if (count == 0) {
-            ReservationTimer.clear();
-            reservationTimer.refreshFromSession();
-        }
+    if (order == null || order.getTickets() == null || order.getTickets().isEmpty()) {
+        emptySelection.setVisible(true);
+        selectedTicketsList.setVisible(false);
+        totalTickets.setText("0 כרטיסים");
+        totalPrice.setText("₪0");
+        continueButton.setEnabled(false);
+        return;
     }
+
+    for (TicketDTO ticket : order.getTickets()) {
+        selectedTicketsList.add(createSelectedTicketRowFromOrder(ticket));
+    }
+
+    int count = order.getTickets().size();
+
+    BigDecimal total = order.getTickets().stream()
+            .map(TicketDTO::getPrice)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+    totalTickets.setText(count + " כרטיסים");
+    totalPrice.setText(formatMoney(total));
+    emptySelection.setVisible(false);
+    selectedTicketsList.setVisible(true);
+    continueButton.setEnabled(true);
+}
+
+private Div createSelectedTicketRowFromOrder(TicketDTO ticket) {
+    Div row = new Div();
+    row.addClassName("selected-ticket-row");
+
+    Div text = new Div();
+    text.addClassName("selected-ticket-text");
+    text.add(
+            new Span("כרטיס"),
+            new Span("שורה " + ticket.getRow() + " • מושב " + ticket.getChair())
+    );
+
+    Span price = new Span(formatMoney(ticket.getPrice()));
+    price.addClassName("selected-ticket-price");
+
+    Button remove = new Button("הסר");
+    remove.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+    remove.addClassName("selected-ticket-remove");
+
+    remove.addClickListener(event -> {
+        reservationPresenter.removeTicketFromActiveOrder(
+                currentToken(),
+                eventId,
+                ticket.getTicketId()
+        );
+
+        reloadTicketSelectionEventDataKeepingSelection();
+        refreshSummary();
+    });
+
+    row.add(text, price, remove);
+    return row;
+}
 
     private Div createSelectedSeatRow(SelectedSeat selectedSeat) {
         Div row = new Div();
