@@ -31,6 +31,7 @@ import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
 import ticketsystem.PresentationLayer.DTO.OrderPricing;
+import ticketsystem.DTO.MyAccountDTO;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -140,8 +141,44 @@ public class Checkout extends VerticalLayout {
         return UiSession.getCurrentToken();
     }
 
+    /**
+     * Prefills buyer contact details for logged-in members.
+     *
+     * Checkout supports both guest and member purchases. Guest users must enter
+     * their buyer details manually, while logged-in members can reuse the profile
+     * details stored in the system.
+     *
+     * The method intentionally does nothing for guest sessions, because guest
+     * tokens do not have member profile data and calling the profile loading flow
+     * with a guest token would fail.
+     *
+     * Existing field values are not overwritten. This protects details that the
+     * user may have already typed manually before the checkout view is re-rendered.
+     *
+     * @param token the current UI session token, expected to be a member token
+     *              when the user is logged in
+     */
     private void prefillBuyerDetailsIfLoggedIn(String token) {
-        // TODO: Connect buyer details from user/profile presenter when available.
+        if (!UiSession.isLoggedIn()) {
+            return;
+        }
+
+        MyAccountDTO buyer = presenter.loadBuyerDetails(token);
+        if (buyer == null) {
+            return;
+        }
+
+        if (isBlank(fullName.getValue()) && !isBlank(buyer.getFullName())) {
+            fullName.setValue(buyer.getFullName());
+        }
+
+        if (isBlank(email.getValue()) && !isBlank(buyer.getEmail())) {
+            email.setValue(buyer.getEmail());
+        }
+
+        if (isBlank(phone.getValue()) && !isBlank(buyer.getPhone())) {
+            phone.setValue(buyer.getPhone());
+        }
     }
 
     private void renderCheckout() {
