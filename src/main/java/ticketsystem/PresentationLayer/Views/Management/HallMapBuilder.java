@@ -1032,16 +1032,30 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         int startX = clamp(preferredX, 1, maxX);
         int startY = clamp(preferredY, 1, maxY);
 
+        /*
+         * Search from the preferred position to the end of the map.
+         * In the first row, start from startX.
+         * In the following rows, start from column 1.
+         */
         for (int y = startY; y <= maxY; y++) {
-            for (int x = startX; x <= maxX; x++) {
+            int currentStartX = (y == startY) ? startX : 1;
+
+            for (int x = currentStartX; x <= maxX; x++) {
                 if (isLocationAvailable(-1, x, y, width, height)) {
                     return new PairDTO<>(x, y);
                 }
             }
         }
 
-        for (int y = 1; y <= maxY; y++) {
-            for (int x = 1; x <= maxX; x++) {
+        /*
+         * Optional wrap-around:
+         * Search only the area before the preferred position.
+         * This avoids scanning the same cells twice.
+         */
+        for (int y = 1; y <= startY; y++) {
+            int currentMaxX = (y == startY) ? startX - 1 : maxX;
+
+            for (int x = 1; x <= currentMaxX; x++) {
                 if (isLocationAvailable(-1, x, y, width, height)) {
                     return new PairDTO<>(x, y);
                 }
