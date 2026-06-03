@@ -17,6 +17,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.TicketDTO;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Components.EmptyState;
 import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
@@ -36,6 +37,7 @@ import java.util.List;
 @Route(value = UiRoutes.ACTIVE_ORDER_CART, layout = PublicLayout.class)
 public class ActiveOrderCart extends VerticalLayout {
 
+    private final UiVisitCoordinator visitCoordinator;
     private final ReservationPresenter presenter;
 
     private ActiveOrderDTO activeOrder;
@@ -46,8 +48,9 @@ public class ActiveOrderCart extends VerticalLayout {
 
 
 
-    public ActiveOrderCart(ReservationPresenter presenter) {
+    public ActiveOrderCart(ReservationPresenter presenter, UiVisitCoordinator visitCoordinator) {
         this.presenter = presenter;
+        this.visitCoordinator = visitCoordinator;
 
         getElement().setAttribute("dir", "rtl");
         addClassName("active-order-cart-page");
@@ -55,6 +58,7 @@ public class ActiveOrderCart extends VerticalLayout {
         setSpacing(false);
         setWidthFull();
 
+        this.visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
         loadCart();
     }
 

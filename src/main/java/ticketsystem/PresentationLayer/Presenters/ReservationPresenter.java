@@ -12,6 +12,9 @@ import ticketsystem.DTO.Event.SeatDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DTO.seatPositionDTO;
+import ticketsystem.DTO.PaymentDetails;
+import ticketsystem.ApplicationLayer.UserService;
+import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.EventMapDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.EventTicketSelectionDto;
 import ticketsystem.PresentationLayer.DTO.TicketSelectionViewModel.MapElementDto;
@@ -28,6 +31,7 @@ import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
 import ticketsystem.PresentationLayer.DTO.OrderPricing;
 
 
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,10 +41,12 @@ public class ReservationPresenter {
 
     private final ReservationService reservationService;
     private final EventService eventService;
+    private final UserService userService;
 
-    public ReservationPresenter(ReservationService reservationService, EventService eventService) {
+    public ReservationPresenter(ReservationService reservationService, EventService eventService, UserService userService) {
         this.reservationService = reservationService;
         this.eventService = eventService;
+        this.userService = userService;
     }
 
     /**
@@ -69,6 +75,41 @@ public class ReservationPresenter {
 
         } catch (Exception e) {
             throw presentationError("Active order could not be loaded. Please try again.");
+        }
+    }
+
+    /**
+     * Loads the logged-in buyer's profile details for checkout prefill.
+     *
+     * This method is used by the checkout view only when the current UI session
+     * belongs to a logged-in member. It retrieves the member profile from
+     * UserService using the member session token, so checkout can prefill buyer
+     * fields such as full name, email and phone.
+     *
+     * Guest sessions should not call this method, because guests do not have
+     * member profile details.
+     *
+     * @param token active member session token
+     * @return buyer profile details for the logged-in member
+     * @throws PresentationException if the token is missing, invalid, belongs to
+     *                               a non-member session, or the profile cannot be loaded
+     */
+    public MyAccountDTO loadBuyerDetails(String token) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw checkoutError("No active session found. Please refresh and try again.");
+            }
+
+            return userService.getMyAccountDTO(token);
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw checkoutError(e.getMessage());
+
+        } catch (Exception e) {
+            throw checkoutError("Buyer details could not be loaded. Please try again.");
         }
     }
 
@@ -237,6 +278,47 @@ public class ReservationPresenter {
      */
     public OrderPricing applyCoupon(ActiveOrderDTO activeOrder, String couponCode) {
         return calculatePricing(activeOrder, couponCode);
+    }
+
+    /**
+     * Completes checkout for the current active order.
+     *
+     * This method is used by the checkout view to submit the active order for
+     * payment through the reservation application service. The final amount,
+     * purchase-policy validation and coupon validation are handled by the service.
+     *
+     * @param token active guest/member session token
+     * @param eventId event identifier of the active order
+     * @param paymentDetails payment details entered in the checkout view
+     * @param couponCode optional coupon code entered by the user
+     * @return true if checkout completed successfully
+     */
+    public boolean checkout(String token, Long eventId, PaymentDetails paymentDetails, String couponCode) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            return reservationService.checkout(
+                    token,
+                    eventId,
+                    paymentDetails,
+                    normalizeOptionalText(couponCode)
+            );
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Checkout failed. Please try again.");
+        }
     }
 
     public EventMapDTO loadEventMap (String token, Long eventId) {
@@ -644,11 +726,11 @@ public class ReservationPresenter {
         return new PresentationException(translateReservationError(message));
     }
 
+
     private String translateReservationError(String message) {
         if (message == null || message.isBlank()) {
             return "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
         }
-
         return switch (message) {
             case "No active session found. Please refresh and try again." ->
                     "לא נמצאה פעילות משתמש. יש לרענן את העמוד ולנסות שוב.";
@@ -716,6 +798,84 @@ public class ReservationPresenter {
 
             default ->
                     "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
+        };
+    }
+
+    private PresentationException checkoutError(String message) {
+        return new PresentationException(translateCheckoutError(message));
+    }
+
+    private String translateCheckoutError(String message) {
+        if (message == null || message.isBlank()) {
+            return "הרכישה לא הושלמה. יש לנסות שוב.";
+        }
+
+        return switch (message) {
+            case "No active session found. Please refresh and try again." ->
+                    "לא נמצאה פעילות משתמש. יש לרענן את העמוד ולנסות שוב.";
+
+            case "User is not logged in." ->
+                    "יש להתחבר כדי להשלים את הפעולה.";
+
+            case "Member not found." ->
+                    "לא ניתן היה למצוא את פרטי המשתמש המחובר.";
+
+            case "Buyer details could not be loaded. Please try again." ->
+                    "לא ניתן היה לטעון את פרטי המשתמש. יש לנסות שוב.";
+
+            case "Failed to get member DTO" ->
+                    "טעינת פרטי המשתמש נכשלה. יש לנסות שוב.";
+
+            case "No active order found for this event" ->
+                    "לא נמצאה הזמנה פעילה לאירוע הזה.";
+
+            case "No active order found" ->
+                    "לא נמצאה הזמנה פעילה.";
+
+            case "No active order or event found" ->
+                    "לא נמצאה הזמנה פעילה או שלא ניתן למצוא את האירוע.";
+
+            case "No active order with tickets" ->
+                    "לא נמצאה הזמנה פעילה עם כרטיסים.";
+
+            case "Active order could not be loaded. Please try again." ->
+                    "טעינת ההזמנה הפעילה נכשלה. יש לנסות שוב.";
+
+            case "User is not allowed to view this order" ->
+                    "אין לך הרשאה לצפות בהזמנה הזו.";
+
+            case "Payment details are missing" ->
+                    "חסרים פרטי תשלום.";
+
+            case "Payment details are invalid" ->
+                    "פרטי התשלום אינם תקינים.";
+
+            case "Payment method is invalid" ->
+                    "אמצעי התשלום אינו תקין.";
+
+            case "Payment failed" ->
+                    "התשלום נכשל. יש לבדוק את פרטי התשלום ולנסות שוב.";
+
+            case "Checkout failed. Please try again." ->
+                    "התשלום לא הושלם. יש לנסות שוב.";
+
+            case "Checkout could not be completed. Please try again." ->
+                    "הרכישה לא הושלמה. יש לנסות שוב.";
+
+            case "Order checkout failed" ->
+                    "השלמת ההזמנה נכשלה. יש לנסות שוב.";
+
+            case "Failed to complete checkout" ->
+                    "לא ניתן היה להשלים את הרכישה. יש לנסות שוב.";
+
+            case "Purchase could not be completed" ->
+                    "הרכישה לא הושלמה. יש לנסות שוב.";
+
+            case "Order is not active" ->
+                    "ההזמנה כבר אינה פעילה.";
+
+            default ->
+                    "הרכישה לא הושלמה. יש לנסות שוב.";
         };
     }
 }
