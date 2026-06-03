@@ -20,6 +20,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
@@ -60,6 +61,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
     private final TextField fullName = new TextField("שם מלא *");
     private final EmailField email = new EmailField("דואר אלקטרוני *");
     private final TextField phone = new TextField("מספר טלפון *");
+    private final DatePicker birthDate = new DatePicker("תאריך לידה *");
 
     private final TextField payerName = new TextField("שם בעל הכרטיס *");
     private final TextField cardNumber = new TextField("מספר כרטיס *");
@@ -115,6 +117,13 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         phone.setPlaceholder("050-1234567");
         phone.getElement().setAttribute("dir", "ltr");
         phone.addClassName("checkout-field");
+
+        birthDate.setPlaceholder("בחר תאריך לידה");
+        birthDate.setRequiredIndicatorVisible(true);
+        birthDate.setMax(LocalDate.now());
+        birthDate.setWidthFull();
+        birthDate.addClassName("checkout-field");
+        birthDate.setErrorMessage("יש להזין תאריך לידה תקין");
 
         payerName.setPlaceholder("ישראל ישראלי");
         payerName.addClassName("checkout-field");
@@ -207,6 +216,10 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
         if (isBlank(phone.getValue()) && !isBlank(buyer.getPhone())) {
             phone.setValue(buyer.getPhone());
+        }
+
+        if (birthDate.getValue() == null && buyer.getBirthDate() != null) {
+            birthDate.setValue(buyer.getBirthDate());
         }
     }
 
@@ -329,7 +342,10 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         contactGrid.addClassName("checkout-two-columns");
         contactGrid.add(email, phone);
 
-        form.add(fullNameRow, contactGrid);
+        Div birthDateRow = new Div(birthDate);
+        birthDateRow.addClassName("checkout-field-row");
+
+        form.add(fullNameRow, contactGrid, birthDateRow);
 
         Button continueButton = new Button("המשך לתשלום", VaadinIcon.ARROW_BACKWARD.create());
         continueButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -584,7 +600,11 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         }
 
         try {
-            PaymentDetails details = new PaymentDetails(resolvePaymentMethodId(), payerName.getValue().trim(), LocalDate.now() );
+            PaymentDetails details = new PaymentDetails(
+                    resolvePaymentMethodId(),
+                    payerName.getValue().trim(),
+                    birthDate.getValue()
+            );
 
             boolean success = presenter.checkout(
                     resolveSessionToken(),
@@ -631,6 +651,16 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         if (isBlank(phone.getValue())) {
             phone.setInvalid(true);
             phone.setErrorMessage("יש להזין מספר טלפון");
+            valid = false;
+        }
+
+        if (birthDate.getValue() == null) {
+            birthDate.setInvalid(true);
+            birthDate.setErrorMessage("יש להזין תאריך לידה");
+            valid = false;
+        } else if (birthDate.getValue().isAfter(LocalDate.now())) {
+            birthDate.setInvalid(true);
+            birthDate.setErrorMessage("תאריך לידה לא יכול להיות עתידי");
             valid = false;
         }
 
@@ -687,6 +717,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         fullName.setInvalid(false);
         email.setInvalid(false);
         phone.setInvalid(false);
+        birthDate.setInvalid(false);
     }
 
     private void resetPaymentValidation() {
