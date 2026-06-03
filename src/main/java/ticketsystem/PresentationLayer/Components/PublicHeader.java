@@ -162,16 +162,39 @@ public class PublicHeader extends Header {
         button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         button.addClickListener(event -> {
+            UI ui = UI.getCurrent();
+
             if (UiSession.isLoggedIn()) {
-                visitCoordinator.logoutToGuest(UI.getCurrent());
-                UI.getCurrent().navigate(UiRoutes.HOME);
-                UI.getCurrent().getPage().reload();
-            } else {
-                UI.getCurrent().navigate(UiRoutes.LOGIN);
+                try {
+                    if (visitCoordinator != null) {
+                        visitCoordinator.logoutToGuest(ui);
+                    } else {
+                        UiSession.logout();
+                    }
+                } catch (Exception exception) {
+                    UiSession.logout();
+                }
+
+                ui.getPage().setLocation(toClientRoute(UiRoutes.HOME));
+                return;
             }
+
+            ui.navigate(UiRoutes.LOGIN);
         });
 
         return button;
+    }
+
+    private String toClientRoute(String route) {
+        if (route == null || route.isBlank()) {
+            return "/";
+        }
+
+        if (route.startsWith("/")) {
+            return route;
+        }
+
+        return "/" + route;
     }
 
     private Anchor navLink(String text, String route) {
