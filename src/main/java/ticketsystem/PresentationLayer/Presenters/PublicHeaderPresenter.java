@@ -8,10 +8,12 @@ public class PublicHeaderPresenter implements PublicHeader.HeaderPresenter {
 
     private final CompanyPresenter companyPresenter;
     private final ReservationPresenter reservationPresenter;
+    private final SystemAdminPresenter systemAdminPresenter;
 
-    public PublicHeaderPresenter(CompanyPresenter companyPresenter, ReservationPresenter reservationPresenter) {
+    public PublicHeaderPresenter(CompanyPresenter companyPresenter, ReservationPresenter reservationPresenter, SystemAdminPresenter systemAdminPresenter) {
         this.companyPresenter = companyPresenter;
         this.reservationPresenter = reservationPresenter;
+        this.systemAdminPresenter = systemAdminPresenter;
     }
 
     @Override
@@ -32,4 +34,10 @@ public class PublicHeaderPresenter implements PublicHeader.HeaderPresenter {
             return 0;
         }
     }
+
+    @Override
+    public boolean canAccessSystemAdmin(String token) throws Exception {
+        return systemAdminPresenter.canAccessSystemAdmin(token);
+    }
+    
 }

@@ -1,23 +1,23 @@
 package ticketsystem.DomainLayer;
 
-
 import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.stereotype.Service;
-
-import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Event.eventStatus;
 
 @Service
 public class EventCatalogDomainService {
 
-    ICompanyRepository companyRepository;
-    public EventCatalogDomainService(ICompanyRepository companyRepository){
-        this.companyRepository=companyRepository;
+    private final ICompanyRepository companyRepository;
+
+    public EventCatalogDomainService(ICompanyRepository companyRepository) {
+        this.companyRepository = companyRepository;
     }
 
     public List<Event> globalSearch(List<Event> events, List<Long> companies, SearchCriteria criteria) {
@@ -35,7 +35,8 @@ public class EventCatalogDomainService {
 
         return events.stream()
                 .filter(event -> event != null)
-                .filter(event -> matchesSearchCriteria(event,companies,criteria))
+                .filter(this::isActive)
+                .filter(event -> matchesSearchCriteria(event, companies, criteria))
                 .collect(Collectors.toList());
     }
 
@@ -54,49 +55,77 @@ public class EventCatalogDomainService {
 
         return events.stream()
                 .filter(event -> event != null)
+                .filter(this::isActive)
                 .filter(event -> event.matchesSearchCriteria(criteria))
                 .collect(Collectors.toList());
     }
 
     private boolean matchesSearchCriteria(Event event, List<Long> companies, SearchCriteria criteria) {
         if (!companies.contains(event.getCompanyId())) {
-            return false; // Event does not belong to one of the specified companies
+            return false;
         }
+
         return event.matchesSearchCriteria(criteria);
     }
-    
-     public BigDecimal calculateFinalPrice(Long companyId,Event event,BigDecimal totalPrice,int ticketCount,String couponCode) {
-        if (companyId == null)  throw new IllegalArgumentException("Company id cannot be null");
-        if (event == null) throw new IllegalArgumentException("Event cannot be null");
-        if (totalPrice == null) throw new IllegalArgumentException("Total price cannot be null");
-        if (ticketCount < 0) throw new IllegalArgumentException("Ticket count cannot be negative");
-           Company company=companyRepository.findById(companyId).orElseThrow(() -> new IllegalArgumentException("Company not found"));
-            BigDecimal companyDiscount =
-                    company.calculateDiscountCompany(totalPrice, ticketCount, couponCode);
 
-            BigDecimal priceAfterCompanyDiscount =
-                    totalPrice.subtract(companyDiscount);
+    public BigDecimal calculateFinalPrice(Long companyId, Event event, BigDecimal totalPrice, int ticketCount, String couponCode) {
+        if (companyId == null) {
+            throw new IllegalArgumentException("Company id cannot be null");
+        }
 
-            if (priceAfterCompanyDiscount.compareTo(BigDecimal.ZERO) < 0) {
-                priceAfterCompanyDiscount = BigDecimal.ZERO;
-            }
+        if (event == null) {
+            throw new IllegalArgumentException("Event cannot be null");
+        }
 
-            BigDecimal eventDiscount =event.calculateDiscountEvent(
-                            priceAfterCompanyDiscount,
-                            ticketCount,
-                            couponCode
-                    );
+        validateEventNotCancelled(event);
 
-            BigDecimal finalPrice =
-                    priceAfterCompanyDiscount.subtract(eventDiscount);
+        if (totalPrice == null) {
+            throw new IllegalArgumentException("Total price cannot be null");
+        }
 
-            if (finalPrice.compareTo(BigDecimal.ZERO) < 0) {
-                finalPrice = BigDecimal.ZERO;
-            }
-            return finalPrice;
+        if (ticketCount < 0) {
+            throw new IllegalArgumentException("Ticket count cannot be negative");
+        }
 
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        BigDecimal companyDiscount =
+                company.calculateDiscountCompany(totalPrice, ticketCount, couponCode);
+
+        BigDecimal priceAfterCompanyDiscount =
+                totalPrice.subtract(companyDiscount);
+
+        if (priceAfterCompanyDiscount.compareTo(BigDecimal.ZERO) < 0) {
+            priceAfterCompanyDiscount = BigDecimal.ZERO;
+        }
+
+        BigDecimal eventDiscount =
+                event.calculateDiscountEvent(priceAfterCompanyDiscount, ticketCount, couponCode);
+
+        BigDecimal finalPrice =
+                priceAfterCompanyDiscount.subtract(eventDiscount);
+
+        if (finalPrice.compareTo(BigDecimal.ZERO) < 0) {
+            finalPrice = BigDecimal.ZERO;
+        }
+
+        return finalPrice;
     }
+
     public void canPurchaseByCompanyPolicy(long companyId, int ticketCount, int buyerAge) {
-        companyRepository.findById(companyId).orElseThrow(() -> new IllegalArgumentException("Company not found")).canPurchase(ticketCount, buyerAge);
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"))
+                .canPurchase(ticketCount, buyerAge);
+    }
+
+    private boolean isActive(Event event) {
+        return event.getStatus() == eventStatus.ACTIVE;
+    }
+
+    private void validateEventNotCancelled(Event event) {
+        if (event.getStatus() == eventStatus.CANCELLED) {
+            throw new IllegalStateException("Cannot purchase tickets for a cancelled event");
+        }
     }
 }

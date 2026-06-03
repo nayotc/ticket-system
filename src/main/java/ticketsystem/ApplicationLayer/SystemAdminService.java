@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ticketsystem.DTO.CompanyDTO;
@@ -394,5 +393,13 @@ public class SystemAdminService {
             logger.logError("Failed to promote member with ID " + memberId + " to System Admin: " + e.getMessage(), e);
             throw new Exception("Failed to promote member to System Admin: " + e.getMessage(), e);
         }
+    }
+
+    public boolean isSystemAdmin(Long memberId) {
+        if (memberId == null) {
+            return false;
+        }
+
+        return adminRepository.isSystemAdmin(String.valueOf(memberId));
     }
 }

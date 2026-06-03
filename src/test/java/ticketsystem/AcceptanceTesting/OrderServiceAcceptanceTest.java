@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +18,7 @@ import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
+import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
@@ -78,7 +80,7 @@ public class OrderServiceAcceptanceTest {
                 guestToken,
                 null,
                 eventId);
-
+        guestOrder.addTicket(new Ticket(1L, eventId, 10L,0,0,new BigDecimal(10))); // add a ticket to guest order to differentiate it from member order
         orderRepository.addOrder(guestOrder);
 
         orderService.onUserLogin(guestToken, memberToken);
@@ -96,6 +98,7 @@ public class OrderServiceAcceptanceTest {
     @Test
     void AcceptanceTest_OnUserLogin_WhenGuestAndMemberHaveOrdersForSameEvent_ThenOrdersAreMergedAndGuestOrderIsDeleted() {
         Long eventId = 200L;
+        Long areaId = 10L;
 
         ActiveOrder guestOrder = new ActiveOrder(
                 1L,
@@ -108,7 +111,7 @@ public class OrderServiceAcceptanceTest {
                 memberToken,
                 userId,
                 eventId);
-
+        memberOrder.addTicket(new Ticket(1L, eventId, areaId,0,0,new BigDecimal(10))); // add a ticket to member order to differentiate it from guest order
         orderRepository.addOrder(guestOrder);
         orderRepository.addOrder(memberOrder);
 
@@ -141,7 +144,8 @@ public class OrderServiceAcceptanceTest {
                 memberToken,
                 userId,
                 memberEventId);
-
+        guestOrder.addTicket(new Ticket(1L, guestEventId, 10L,0,0,new BigDecimal(10))); // add a ticket to guest order to differentiate it from member order
+        memberOrder.addTicket(new Ticket(2L, memberEventId, 20L,0,0,new BigDecimal(20))); // add a ticket to member order to differentiate it from guest order
         orderRepository.addOrder(guestOrder);
         orderRepository.addOrder(memberOrder);
 

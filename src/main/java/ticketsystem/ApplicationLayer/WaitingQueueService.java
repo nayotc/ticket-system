@@ -8,7 +8,9 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import org.springframework.stereotype.Service;
 
+@Service
 public class WaitingQueueService {
 
     private final IEventRepository eventRepository;
@@ -238,6 +240,52 @@ public class WaitingQueueService {
         notificationsService.notifyMembers(memberIds, message);
         notificationsService.notifyGuests(guestTokens, message);
         logger.logEvent("Notified " + memberIds.size() + " members and " + guestTokens.size() + " guests with message: " + message, LogLevel.INFO);
+    }
+    public int getQueuePosition(long eventId, String tokenString) {
+        if (tokenString == null || tokenString.isBlank()) {
+            throw new IllegalArgumentException("Invalid token");
+        }
+
+        if (!(tokenService.validateToken(tokenString))) {
+            logger.logEvent("Invalid token provided for queue position request.", LogbackSystemLogger.LogLevel.INFO);
+            throw new IllegalArgumentException("Invalid token");
+        }
+
+        Event event = eventRepository.getEventById(eventId);
+
+        if (event == null) {
+            logger.logEvent("Queue position requested for non-existent event. Event ID: " + eventId,
+                    LogbackSystemLogger.LogLevel.INFO);
+            throw new IllegalArgumentException("Event not found");
+        }
+
+        if (event.isSoldOut()) {
+            throw new IllegalStateException("Sold Out");
+        }
+
+        return queueRepository.getUserPosition(eventId, tokenString);
+    }
+
+    public String getQueueEventName(long eventId) {
+        Event event = eventRepository.getEventById(eventId);
+
+        if (event == null) {
+            logger.logEvent("Queue event name requested for non-existent event. Event ID: " + eventId,
+                    LogbackSystemLogger.LogLevel.INFO);
+            throw new IllegalArgumentException("Event not found");
+        }
+
+        return event.getName();
+    }
+
+    public int estimateWaitMinutes(long eventId, String tokenString) {
+        int position = getQueuePosition(eventId, tokenString);
+
+        if (position <= 0) {
+            return 0;
+        }
+
+        return Math.max(1, (position + 4) / 5);
     }
 
 }

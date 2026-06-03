@@ -204,6 +204,9 @@ public class UserService {
                 memberId = tokenService.extractUserId(sessionToken);
                 logger.logEvent("Exit member identified: memberId=" + memberId, LogLevel.DEBUG);
             }
+            else{
+                notifyExitListeners(sessionToken);
+            }
 
             tokenService.removeActiveSession(sessionToken);
             logger.logEvent(
@@ -623,4 +626,40 @@ public class UserService {
             throw e;
         }
     }
+
+    /**
+     * Retrieves all registered members in the system.
+     * Used primarily by the System Admin Dashboard.
+     */
+    public List<Member> getAllUsers() {
+        try {
+            return userRepository.getAllMembers();
+        } catch (Exception e) {
+            logger.logError("Failed to retrieve all users", e);
+            throw new RuntimeException("Failed to retrieve all users", e);
+        }
+    }
+
+
+    public Member getMemberById(Long memberId) {
+        try {
+            if (memberId == null) {
+                logger.logEvent("Get member by ID rejected: null memberId", LogLevel.WARN);
+                throw new IllegalArgumentException("Member ID cannot be null.");
+            }
+            Member member = userRepository.getMemberById(memberId);
+            if (member == null) {
+                logger.logEvent("Get member by ID: member not found, memberId=" + memberId, LogLevel.INFO);
+            } else {
+                logger.logEvent("Get member by ID: member found, memberId=" + memberId, LogLevel.INFO);
+            }
+            return member;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.logError("Failed to get member by ID", e);
+            throw e;
+        }
+    }
+
 }

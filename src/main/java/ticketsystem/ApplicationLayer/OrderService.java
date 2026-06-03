@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
+import ticketsystem.ApplicationLayer.Events.UserExitListener;
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
@@ -13,7 +14,7 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 
 @Service
-public class OrderService implements UserLoginListener, EventUpdatesListener {
+public class OrderService implements UserLoginListener, EventUpdatesListener,UserExitListener {
 
     private final IOrderRepository orderRepository;
     private final TokenService tokenService;
@@ -67,7 +68,24 @@ public class OrderService implements UserLoginListener, EventUpdatesListener {
         }
 
     }
+     @Override
+    public void onUserExit(String guestToken) {
 
+        try {
+            ActiveOrder guestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
+            if (guestOrder == null) {
+                return;
+            }
+            guestOrder.cancelOrder();
+            orderRepository.updateOrder(guestOrder);
+
+        } catch (Exception e) {
+            logger.logEvent("Failed to cancel guest order: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        }
+
+    }
+    
     @Override
     public void onEventCanceled(Long eventId) {
         List<ActiveOrder> affectedOrders = orderRepository.getActiveOrdersByEventId(eventId);

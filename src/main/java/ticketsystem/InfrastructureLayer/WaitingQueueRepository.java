@@ -11,6 +11,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 
+import org.springframework.stereotype.Repository;
+
+@Repository
 public class WaitingQueueRepository implements IWaitingQueueRepository {
 
     //fifo
@@ -115,6 +118,32 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
                 return new ArrayList<>(queue);
             }
             return Collections.emptyList();
+        }
+    }
+    @Override
+    public int getUserPosition(long eventId, String token) {
+        if (token == null || token.isBlank()) {
+            return -1;
+        }
+
+        synchronized (getEventLock(eventId)) {
+            Queue<String> queue = eventQueues.get(eventId);
+
+            if (queue == null || queue.isEmpty()) {
+                return -1;
+            }
+
+            int position = 1;
+
+            for (String queuedToken : queue) {
+                if (token.equals(queuedToken)) {
+                    return position;
+                }
+
+                position++;
+            }
+
+            return -1;
         }
     }
 }
