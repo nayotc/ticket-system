@@ -3,7 +3,6 @@ package ticketsystem.PresentationLayer.Presenters;
 import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.LotteryService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
-import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 
 @Component
