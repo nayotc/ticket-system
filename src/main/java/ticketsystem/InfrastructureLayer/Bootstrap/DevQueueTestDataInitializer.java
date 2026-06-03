@@ -22,7 +22,9 @@ public class DevQueueTestDataInitializer {
     private static final long COMPANY_ID = 1L;
 
     private static final long APPROVED_EVENT_ID = 30L;
-    private static final long QUEUED_EVENT_ID = 20L;
+    private static final long QUEUED_EVENT_ID = 70L;
+    private static final long PRE_SALE_QUEUED_EVENT_ID = 1L;
+    public static final String PRE_SALE_QUEUED_EVENT_NAME = "ליין שישי אלקטרוני";
 
     public static final String APPROVED_EVENT_NAME = "פסטיבל אורות הלילה";
     public static final String QUEUED_EVENT_NAME = "מרתון צחוק תל אביבי";
@@ -43,7 +45,7 @@ public class DevQueueTestDataInitializer {
                     EventCategory.CONCERT,
                     "Amazing Events",
                     new BigDecimal("249"),
-                    0L,
+                    1000L,
                     SaleStatus.ONGOING
             );
 
@@ -57,10 +59,21 @@ public class DevQueueTestDataInitializer {
                     0L,
                     SaleStatus.ONGOING
             );
+            ensureEvent(
+            PRE_SALE_QUEUED_EVENT_ID,
+            PRE_SALE_QUEUED_EVENT_NAME,
+            EventLocation.TEL_AVIV,
+            EventCategory.CONCERT,
+            "Electronic Line",
+            new BigDecimal("180"),
+            0L,
+            SaleStatus.PRE_SALE
+    );
 
             System.out.println("Temporary queue test data initialized.");
             System.out.println("Approved event id: " + APPROVED_EVENT_ID);
             System.out.println("Queued event id: " + QUEUED_EVENT_ID);
+            System.out.println("Pre-sale queued event id: " + PRE_SALE_QUEUED_EVENT_ID);
 
         } catch (Exception e) {
             System.out.println("Failed to initialize temporary queue test data: " + e.getMessage());
