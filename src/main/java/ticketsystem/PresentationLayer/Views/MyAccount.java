@@ -231,10 +231,10 @@ private void configureFields() {
                 .setAutoWidth(true)
                 .setFlexGrow(0);
 
-        historyGrid.addComponentColumn(row -> new StatusBadge(row.getStatusLabel(), row.getStatusType()))
-                .setHeader("סטטוס")
-                .setAutoWidth(true)
-                .setFlexGrow(0);
+        // historyGrid.addComponentColumn(row -> new StatusBadge(row.getStatusLabel(), row.getStatusType()))
+        //         .setHeader("סטטוס")
+        //         .setAutoWidth(true)
+        //         .setFlexGrow(0);
 
         historyGrid.setItemDetailsRenderer(
                 new ComponentRenderer<>(this::createTicketsDetails)
@@ -398,10 +398,10 @@ public void setProfile(AccountProfileViewData profile) {
                 eventId == null ? "אירוע" : "אירוע #" + eventId
         );
 
-        String date = firstNonBlank(
-                asText(readRaw(order, "purchaseDate", "createdAt", "orderDate", "date")),
-                "לא זמין"
-        );
+        // String date = firstNonBlank(
+        //         asText(readRaw(order, "purchaseDate", "createdAt", "orderDate", "date")),
+        //         "לא זמין"
+        // );
 
         String tickets = firstNonBlank(
                 countTickets(order),
@@ -410,10 +410,10 @@ public void setProfile(AccountProfileViewData profile) {
 
         String total = formatMoney(readRaw(order, "totalPrice", "totalAmount", "price", "total"));
 
-        String status = firstNonBlank(
-                asText(readRaw(order, "status", "orderStatus", "purchaseStatus")),
-                "הושלם"
-        );
+        // String status = firstNonBlank(
+        //         asText(readRaw(order, "status", "orderStatus", "purchaseStatus")),
+        //         "הושלם"
+        // );
         List<PurchaseDTO> ticketsList =order.getTickets() == null ? List.of() : order.getTickets();
 
         return new MyPurchaseRow(
@@ -421,8 +421,8 @@ public void setProfile(AccountProfileViewData profile) {
                 eventName,
                 tickets,
                 total,
-                translateStatus(status),
-                statusType(status),
+                // translateStatus(status),
+                // statusType(status),
                 "צפה",ticketsList
         );
     }
@@ -628,8 +628,8 @@ public void setProfile(AccountProfileViewData profile) {
     ticketsGrid.addColumn(ticket -> formatMoney(ticket.getPrice()))
             .setHeader("מחיר");
 
-    ticketsGrid.addColumn(PurchaseDTO::getStatus)
-            .setHeader("סטטוס");
+    // ticketsGrid.addColumn(PurchaseDTO::getStatus)
+    //         .setHeader("סטטוס");
 
     ticketsGrid.addColumn(PurchaseDTO::getSecureBarcode)
             .setHeader("ברקוד");
@@ -645,8 +645,8 @@ public void setProfile(AccountProfileViewData profile) {
         private final String eventName;
         private final String ticketsCount;
         private final String totalAmount;
-        private final String statusLabel;
-        private final StatusBadge.Type statusType;
+        // private final String statusLabel;
+        // private final StatusBadge.Type statusType;
         private final String actionText;
         private final List<PurchaseDTO> tickets;
 
@@ -655,16 +655,16 @@ public void setProfile(AccountProfileViewData profile) {
                 String eventName,
                 String ticketsCount,
                 String totalAmount,
-                String statusLabel,
-                StatusBadge.Type statusType,
+                // String statusLabel,
+                // StatusBadge.Type statusType,
                 String actionText,List<PurchaseDTO> tickets
         ) {
             this.purchaseId = purchaseId;
             this.eventName = eventName;
             this.ticketsCount = ticketsCount;
             this.totalAmount = totalAmount;
-            this.statusLabel = statusLabel;
-            this.statusType = statusType;
+            // this.statusLabel = statusLabel;
+            // this.statusType = statusType;
             this.actionText = actionText;
             this.tickets=tickets;
         }
@@ -685,13 +685,13 @@ public void setProfile(AccountProfileViewData profile) {
             return totalAmount;
         }
 
-        public String getStatusLabel() {
-            return statusLabel;
-        }
+        // public String getStatusLabel() {
+        //     return statusLabel;
+        // }
 
-        public StatusBadge.Type getStatusType() {
-            return statusType;
-        }
+        // public StatusBadge.Type getStatusType() {
+        //     return statusType;
+        // }
 
         public String getActionText() {
             return actionText;
