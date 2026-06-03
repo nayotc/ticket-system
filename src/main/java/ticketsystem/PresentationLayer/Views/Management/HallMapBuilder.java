@@ -63,6 +63,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
     private final TextField seatingNameField = new TextField("שם אזור ישיבה");
     private final IntegerField seatingRowsField = new IntegerField("שורות");
     private final IntegerField seatingColumnsField = new IntegerField("מושבים בשורה");
+    private static final String MAP_OVERLAP_MESSAGE = "לא ניתן למקם אלמנט על אלמנט אחר";
 
     private final TextField standingNameField = new TextField("שם אזור עמידה");
     private final IntegerField standingCapacityField = new IntegerField("קיבולת מרבית");
@@ -389,6 +390,11 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         int safeHeight = positive(height);
         PairDTO<Integer, Integer> location = nextAvailableLocation(x, y, safeWidth, safeHeight);
 
+        if (location == null) {
+            showWarning("אין מקום פנוי להוספת האלמנט במפה. הזז או מחק אלמנטים קיימים.");
+            return;
+        }
+
         elements.add(new ElementDTO(
                 nextElementId++,
                 name,
@@ -396,6 +402,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                 new PairDTO<>(safeWidth, safeHeight),
                 type
         ));
+
         selectedIndex = elements.size() - 1;
         renderAll();
     }
@@ -407,7 +414,18 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         int width = Math.min(Math.max(columns / 2, 6), mapWidth());
         int height = Math.min(Math.max(rows / 2, 4), mapHeight());
-        PairDTO<Integer, Integer> location = nextAvailableLocation(Math.max(1, mapWidth() / 3), Math.max(1, mapHeight() / 2), width, height);
+
+        PairDTO<Integer, Integer> location = nextAvailableLocation(
+                Math.max(1, mapWidth() / 3),
+                Math.max(1, mapHeight() / 2),
+                width,
+                height
+        );
+
+        if (location == null) {
+            showWarning("אין מקום פנוי להוספת אזור ישיבה במפה.");
+            return;
+        }
 
         elements.add(new SeatingAreaDTO(
                 nextElementId++,
@@ -431,7 +449,18 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         int width = 8;
         int height = 5;
-        PairDTO<Integer, Integer> location = nextAvailableLocation(Math.max(1, mapWidth() / 2), Math.max(1, mapHeight() / 2), width, height);
+
+        PairDTO<Integer, Integer> location = nextAvailableLocation(
+                Math.max(1, mapWidth() / 2),
+                Math.max(1, mapHeight() / 2),
+                width,
+                height
+        );
+
+        if (location == null) {
+            showWarning("אין מקום פנוי להוספת אזור עמידה במפה.");
+            return;
+        }
 
         elements.add(new StandingAreaDTO(
                 nextElementId++,
@@ -683,6 +712,13 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         int safeX = clamp(x, 1, maxXFor(size.first()));
         int safeY = clamp(y, 1, maxYFor(size.second()));
 
+        if (!isLocationAvailable(index, safeX, safeY, size.first(), size.second())) {
+            showWarning(MAP_OVERLAP_MESSAGE);
+            selectedIndex = index;
+            renderAll();
+            return;
+        }
+
         elements.set(index, updateGeometry(current, nameOf(current), safeX, safeY, size.first(), size.second()));
         selectedIndex = index;
         renderAll();
@@ -787,10 +823,18 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         }
 
         IMapElementDTO current = elements.get(selectedIndex);
+
         int width = positive(elementWidthField.getValue());
         int height = positive(elementHeightField.getValue());
         int x = clamp(positive(elementXField.getValue()), 1, maxXFor(width));
         int y = clamp(positive(elementYField.getValue()), 1, maxYFor(height));
+
+        if (!isLocationAvailable(selectedIndex, x, y, width, height)) {
+            showWarning(MAP_OVERLAP_MESSAGE);
+            updatePropertiesFields(current);
+            renderCanvas();
+            return;
+        }
 
         IMapElementDTO updated = updateGeometry(
                 current,
@@ -863,6 +907,11 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         if (token == null || token.isBlank()) {
             showWarning("כדי לשמור את המפה יש להתחבר למערכת");
             UI.getCurrent().navigate(UiRoutes.LOGIN);
+            return;
+        }
+
+        if (hasOverlappingElements()) {
+            showWarning("לא ניתן לשמור מפה עם אלמנטים חופפים. הזז את האלמנטים כך שלא יכסו אחד את השני.");
             return;
         }
 
@@ -979,46 +1028,101 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
     private PairDTO<Integer, Integer> nextAvailableLocation(int preferredX, int preferredY, int width, int height) {
         int maxX = maxXFor(width);
         int maxY = maxYFor(height);
-        int x = clamp(preferredX, 1, maxX);
-        int y = clamp(preferredY, 1, maxY);
 
-        for (int attempt = 0; attempt < 80; attempt++) {
-            if (!overlapsAny(x, y, width, height)) {
-                return new PairDTO<>(x, y);
-            }
+        int startX = clamp(preferredX, 1, maxX);
+        int startY = clamp(preferredY, 1, maxY);
 
-            x += NEW_ELEMENT_OFFSET;
-            y += NEW_ELEMENT_OFFSET;
-
-            if (x > maxX || y > maxY) {
-                x = 1 + (attempt * NEW_ELEMENT_OFFSET) % maxX;
-                y = 1 + ((attempt * NEW_ELEMENT_OFFSET) / Math.max(1, maxX)) % maxY;
+        for (int y = startY; y <= maxY; y++) {
+            for (int x = startX; x <= maxX; x++) {
+                if (isLocationAvailable(-1, x, y, width, height)) {
+                    return new PairDTO<>(x, y);
+                }
             }
         }
 
-        return new PairDTO<>(clamp(preferredX, 1, maxX), clamp(preferredY, 1, maxY));
+        for (int y = 1; y <= maxY; y++) {
+            for (int x = 1; x <= maxX; x++) {
+                if (isLocationAvailable(-1, x, y, width, height)) {
+                    return new PairDTO<>(x, y);
+                }
+            }
+        }
+
+        return null;
     }
 
     private boolean overlapsAny(int x, int y, int width, int height) {
-        for (IMapElementDTO element : elements) {
+        return !isLocationAvailable(-1, x, y, width, height);
+    }
+
+    private boolean isLocationAvailable(int ignoredIndex, int x, int y, int width, int height) {
+        for (int i = 0; i < elements.size(); i++) {
+            if (i == ignoredIndex) {
+                continue;
+            }
+
+            IMapElementDTO element = elements.get(i);
             PairDTO<Integer, Integer> otherLocation = locationOf(element);
             PairDTO<Integer, Integer> otherSize = sizeOf(element);
-            int otherX = otherLocation.first();
-            int otherY = otherLocation.second();
-            int otherWidth = otherSize.first();
-            int otherHeight = otherSize.second();
 
-            boolean separated = x + width <= otherX
-                    || otherX + otherWidth <= x
-                    || y + height <= otherY
-                    || otherY + otherHeight <= y;
+            if (rectanglesOverlap(
+                    x,
+                    y,
+                    width,
+                    height,
+                    otherLocation.first(),
+                    otherLocation.second(),
+                    otherSize.first(),
+                    otherSize.second()
+            )) {
+                return false;
+            }
+        }
 
-            if (!separated) {
-                return true;
+        return true;
+    }
+
+    private boolean hasOverlappingElements() {
+        for (int i = 0; i < elements.size(); i++) {
+            PairDTO<Integer, Integer> firstLocation = locationOf(elements.get(i));
+            PairDTO<Integer, Integer> firstSize = sizeOf(elements.get(i));
+
+            for (int j = i + 1; j < elements.size(); j++) {
+                PairDTO<Integer, Integer> secondLocation = locationOf(elements.get(j));
+                PairDTO<Integer, Integer> secondSize = sizeOf(elements.get(j));
+
+                if (rectanglesOverlap(
+                        firstLocation.first(),
+                        firstLocation.second(),
+                        firstSize.first(),
+                        firstSize.second(),
+                        secondLocation.first(),
+                        secondLocation.second(),
+                        secondSize.first(),
+                        secondSize.second()
+                )) {
+                    return true;
+                }
             }
         }
 
         return false;
+    }
+
+    private boolean rectanglesOverlap(
+            int x,
+            int y,
+            int width,
+            int height,
+            int otherX,
+            int otherY,
+            int otherWidth,
+            int otherHeight
+    ) {
+        return x < otherX + otherWidth
+                && x + width > otherX
+                && y < otherY + otherHeight
+                && y + height > otherY;
     }
 
     private int maxXFor(int width) {
