@@ -41,7 +41,9 @@ import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-
+import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.MemberDTO;
+import ticketsystem.DTO.RoleTreeDTO;
 /**
  * Acceptance Tests for MembershipService. This class uses real Domain objects
  * and relies on existing Repository implementations.
@@ -922,6 +924,248 @@ public class MembershipServiceTest {
                 "PlainMember");
 
         assertTrue(result);
+        assertTrue(fakeNotifier.containsMessage("BGU Productions"));
+    }
+    @Test
+    public void GivenFounder_WhenViewRolesAndPermissionsTreeDto_ThenReturnsRoleTreeDto() throws Exception {
+        RoleTreeDTO tree = membershipService.viewRolesAndPermissionsTreeDto(appointerToken, companyId);
+
+        assertNotNull(tree, "Role tree DTO should not be null.");
+    }
+
+    @Test
+    public void GivenOwner_WhenViewRolesAndPermissionsTreeDto_ThenReturnsRoleTreeDto() throws Exception {
+        RoleTreeDTO tree = membershipService.viewRolesAndPermissionsTreeDto(ownerToken, companyId);
+
+        assertNotNull(tree, "Owner should be allowed to view role tree DTO.");
+    }
+
+    @Test
+    public void GivenManager_WhenViewRolesAndPermissionsTreeDto_ThenThrowsException() {
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            membershipService.viewRolesAndPermissionsTreeDto(managerToken, companyId);
+        });
+
+        assertTrue(exception.getMessage().contains("Only Owners")
+                || exception.getMessage().contains("Founder")
+                || exception.getMessage().contains("viewing roles and permissions tree"));
+    }
+
+    @Test
+    public void GivenMissingCompany_WhenViewRolesAndPermissionsTreeDto_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            membershipService.viewRolesAndPermissionsTreeDto(appointerToken, 9999L);
+        });
+
+        assertEquals("Error: Company not found.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenInvalidToken_WhenViewRolesAndPermissionsTreeDto_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            membershipService.viewRolesAndPermissionsTreeDto("invalid-token", companyId);
+        });
+
+        assertTrue(exception.getMessage().contains("Session authentication failed")
+                || exception.getMessage().toLowerCase().contains("token"));
+    }
+
+    @Test
+    public void GivenFounder_WhenGetCompaniesByMember_ThenReturnsManagedCompanies() throws Exception {
+        List<CompanyDTO> companies = membershipService.getCompaniesByMember(appointerToken);
+
+        assertNotNull(companies);
+        assertFalse(companies.isEmpty(), "Founder should have at least one managed company.");
+        assertTrue(companies.stream().anyMatch(company -> company.getId() == companyId));
+    }
+
+    @Test
+    public void GivenOwner_WhenGetCompaniesByMember_ThenReturnsManagedCompanies() throws Exception {
+        List<CompanyDTO> companies = membershipService.getCompaniesByMember(ownerToken);
+
+        assertNotNull(companies);
+        assertFalse(companies.isEmpty(), "Owner should have at least one managed company.");
+        assertTrue(companies.stream().anyMatch(company -> company.getId() == companyId));
+    }
+
+    @Test
+    public void GivenRegularMemberWithoutRole_WhenGetCompaniesByMember_ThenReturnsEmptyList() throws Exception {
+        List<CompanyDTO> companies = membershipService.getCompaniesByMember(appointeeToken);
+
+        assertNotNull(companies);
+        assertTrue(companies.isEmpty(), "Member without company role should not have managed companies.");
+    }
+
+    @Test
+    public void GivenInvalidToken_WhenGetCompaniesByMember_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            membershipService.getCompaniesByMember("invalid-token");
+        });
+
+        assertTrue(exception.getMessage().contains("Session authentication failed")
+                || exception.getMessage().toLowerCase().contains("token"));
+    }
+
+    @Test
+    public void GivenFounder_WhenGetCompanyTeamMembers_ThenReturnsCompanyTeamMembers() throws Exception {
+        List<MemberDTO> teamMembers = membershipService.getCompanyTeamMembers(appointerToken, companyId);
+
+        assertNotNull(teamMembers);
+        assertFalse(teamMembers.isEmpty(), "Company team members list should not be empty.");
+    }
+
+    @Test
+    public void GivenOwner_WhenGetCompanyTeamMembers_ThenReturnsCompanyTeamMembers() throws Exception {
+        List<MemberDTO> teamMembers = membershipService.getCompanyTeamMembers(ownerToken, companyId);
+
+        assertNotNull(teamMembers);
+        assertFalse(teamMembers.isEmpty(), "Owner should be able to load company team members.");
+    }
+
+    @Test
+    public void GivenMissingCompany_WhenGetCompanyTeamMembers_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            membershipService.getCompanyTeamMembers(appointerToken, 9999L);
+        });
+
+        assertEquals("Error: Company not found.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenInvalidToken_WhenGetCompanyTeamMembers_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            membershipService.getCompanyTeamMembers("invalid-token", companyId);
+        });
+
+        assertTrue(exception.getMessage().contains("Session authentication failed")
+                || exception.getMessage().toLowerCase().contains("token"));
+    }
+
+    @Test
+    public void GivenCompanyWithoutPendingAssignments_WhenGetPendingAssignmentsCount_ThenReturnsZero() {
+        int count = membershipService.getPendingAssignmentsCount(companyId);
+
+        assertEquals(0, count);
+    }
+
+    @Test
+    public void GivenPendingManagerAssignment_WhenGetPendingAssignmentsCount_ThenReturnsOne() throws Exception {
+        Set<Permission> permissions = new HashSet<>();
+        permissions.add(Permission.MANAGE_EVENT_INVENTORY);
+
+        membershipService.requestManagerAssignment(
+                appointerToken,
+                companyId,
+                "PlainMember",
+                permissions
+        );
+
+        int count = membershipService.getPendingAssignmentsCount(companyId);
+
+        assertEquals(1, count);
+    }
+
+    @Test
+    public void GivenPendingOwnerAssignment_WhenGetPendingAssignmentsCount_ThenReturnsOne() throws Exception {
+        membershipService.requestOwnerAssignment(
+                appointerToken,
+                companyId,
+                "PlainMember"
+        );
+
+        int count = membershipService.getPendingAssignmentsCount(companyId);
+
+        assertEquals(1, count);
+    }
+
+    @Test
+    public void GivenPendingAssignmentApproved_WhenGetPendingAssignmentsCount_ThenReturnsZero() throws Exception {
+        Set<Permission> permissions = new HashSet<>();
+        permissions.add(Permission.MANAGE_EVENT_INVENTORY);
+
+        membershipService.requestManagerAssignment(
+                appointerToken,
+                companyId,
+                "PlainMember",
+                permissions
+        );
+
+        membershipService.approveAssignment(appointeeToken, companyId);
+
+        int count = membershipService.getPendingAssignmentsCount(companyId);
+
+        assertEquals(0, count);
+    }
+
+    @Test
+    public void GivenPendingAssignmentRejected_WhenGetPendingAssignmentsCount_ThenReturnsZero() throws Exception {
+        Set<Permission> permissions = new HashSet<>();
+        permissions.add(Permission.MANAGE_EVENT_INVENTORY);
+
+        membershipService.requestManagerAssignment(
+                appointerToken,
+                companyId,
+                "PlainMember",
+                permissions
+        );
+
+        membershipService.rejectAssignment(appointeeToken, companyId);
+
+        int count = membershipService.getPendingAssignmentsCount(companyId);
+
+        assertEquals(0, count);
+    }
+
+    @Test
+    public void GivenMissingCompany_WhenGetPendingAssignmentsCount_ThenReturnsZero() {
+        int count = membershipService.getPendingAssignmentsCount(9999L);
+
+        assertEquals(0, count);
+    }
+
+    @Test
+    public void GivenSuccessfulRequestManagerAssignment_WhenNotificationSent_ThenNotifierContainsCompanyName()
+            throws Exception {
+        Set<Permission> permissions = new HashSet<>();
+        permissions.add(Permission.MANAGE_EVENT_INVENTORY);
+
+        boolean result = membershipService.requestManagerAssignment(
+                appointerToken,
+                companyId,
+                "PlainMember",
+                permissions
+        );
+
+        assertTrue(result);
+        assertTrue(fakeNotifier.containsMessage("BGU Productions"));
+        assertTrue(fakeNotifier.containsMessage("manager"));
+    }
+
+    @Test
+    public void GivenSuccessfulRemoveManagerAssignment_WhenNotificationSent_ThenNotifierContainsRemovalMessage()
+            throws Exception {
+        boolean result = membershipService.removeManagerAssignment(
+                appointerToken,
+                companyId,
+                managerId
+        );
+
+        assertTrue(result);
+        assertTrue(fakeNotifier.containsMessage("manager role"));
+        assertTrue(fakeNotifier.containsMessage("BGU Productions"));
+    }
+
+    @Test
+    public void GivenSuccessfulRemoveOwnerAssignment_WhenNotificationSent_ThenNotifierContainsRemovalMessage()
+            throws Exception {
+        boolean result = membershipService.removeOwnerAssignment(
+                appointerToken,
+                companyId,
+                ownerId
+        );
+
+        assertTrue(result);
+        assertTrue(fakeNotifier.containsMessage("owner role"));
         assertTrue(fakeNotifier.containsMessage("BGU Productions"));
     }
 }

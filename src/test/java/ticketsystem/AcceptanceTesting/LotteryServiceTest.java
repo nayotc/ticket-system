@@ -30,6 +30,7 @@ import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class LotteryServiceTest {
 
@@ -230,6 +231,293 @@ public class LotteryServiceTest {
             lotteryService.conductLotteryDraw(managerToken, lotteryId, companyId);
         });
         assertTrue(exception.getMessage().contains("is not closed yet"), "Should not allow draw on an OPEN lottery");
+    }
+    @Test
+    public void GivenExistingLotteryForEvent_WhenHasLotteryForEvent_ThenReturnsTrue() {
+        lotteryService.addLottery(managerToken, eventId, companyId, 2);
+
+        boolean result = lotteryService.hasLotteryForEvent(managerToken, eventId);
+
+        assertTrue(result);
+    }
+
+    @Test
+    public void GivenNoLotteryForEvent_WhenHasLotteryForEvent_ThenReturnsFalse() {
+        boolean result = lotteryService.hasLotteryForEvent(managerToken, 999L);
+
+        assertFalse(result);
+    }
+
+    @Test
+    public void GivenInvalidEventId_WhenHasLotteryForEvent_ThenReturnsFalse() {
+        boolean result = lotteryService.hasLotteryForEvent(managerToken, 0L);
+
+        assertFalse(result);
+    }
+
+    @Test
+    public void GivenExistingLotteryForEvent_WhenGetLotteryIdByEventId_ThenReturnsLotteryId() {
+        long lotteryId = lotteryService.addLottery(managerToken, eventId, companyId, 2);
+
+        long result = lotteryService.getLotteryIdByEventId(eventId);
+
+        assertEquals(lotteryId, result);
+    }
+
+    @Test
+    public void GivenInvalidEventId_WhenGetLotteryIdByEventId_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.getLotteryIdByEventId(0L)
+        );
+
+        assertEquals("Event ID is invalid.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenEventWithoutLottery_WhenGetLotteryIdByEventId_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.getLotteryIdByEventId(999L)
+        );
+
+        assertEquals("Lottery for event not found.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenExistingLotteryForEvent_WhenRegisterMemberToLotteryByEventId_ThenMemberIsRegistered() {
+        long lotteryId = lotteryService.addLottery(managerToken, eventId, companyId, 2);
+
+        long participantId = 301L;
+        Member participant = new Member(
+                participantId,
+                "eventParticipant",
+                "Event Participant",
+                "0503010301",
+                LocalDate.of(2001, 1, 1)
+        );
+        userRepo.addRegisteredMember(participantId, participant, "pass");
+        String participantToken = tokenService.addActiveSession(participant);
+
+        boolean result = lotteryService.registerMemberToLotteryByEventId(participantToken, eventId);
+
+        Lottery lottery = lotteryRepo.findById(lotteryId);
+
+        assertTrue(result);
+        assertTrue(lottery.getRegisteredMemberIds().contains(participantId));
+    }
+
+    @Test
+    public void GivenInvalidEventId_WhenRegisterMemberToLotteryByEventId_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.registerMemberToLotteryByEventId(managerToken, 0L)
+        );
+
+        assertEquals("Event ID is invalid.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenEventWithoutLottery_WhenRegisterMemberToLotteryByEventId_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.registerMemberToLotteryByEventId(managerToken, 999L)
+        );
+
+        assertEquals("Lottery for event not found.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenCompletedLottery_WhenGetWinners_ThenReturnsWinnerIds() {
+        long participantId = 401L;
+        Member participant = new Member(
+                participantId,
+                "singleWinner",
+                "Single Winner",
+                "0504010401",
+                LocalDate.of(2001, 1, 1)
+        );
+        userRepo.addRegisteredMember(participantId, participant, "pass");
+        String participantToken = tokenService.addActiveSession(participant);
+
+        long lotteryId = lotteryService.addLottery(managerToken, eventId, companyId, 1);
+
+        lotteryService.registerMemberToLottery(participantToken, lotteryId);
+        lotteryService.closeLotteryRegistration(managerToken, lotteryId, companyId);
+        lotteryService.conductLotteryDraw(managerToken, lotteryId, companyId);
+
+        List<Long> winners = lotteryService.getWinners(lotteryId);
+
+        assertEquals(1, winners.size());
+        assertTrue(winners.contains(participantId));
+    }
+
+    @Test
+    public void GivenMissingLottery_WhenGetWinners_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.getWinners(999L)
+        );
+
+        assertEquals("Lottery with ID 999 does not exist.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenUserWithoutPermission_WhenCloseLotteryRegistration_ThenThrowsException() {
+        long lotteryId = lotteryService.addLottery(managerToken, eventId, companyId, 2);
+
+        long normalUserId = 501L;
+        Member normalUser = new Member(
+                normalUserId,
+                "closeNoPermission",
+                "Close No Permission",
+                "0505010501",
+                LocalDate.of(2001, 1, 1)
+        );
+        userRepo.addRegisteredMember(normalUserId, normalUser, "pass");
+        String normalToken = tokenService.addActiveSession(normalUser);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.closeLotteryRegistration(normalToken, lotteryId, companyId)
+        );
+
+        assertEquals("Insufficient permissions to close lottery registration", exception.getMessage());
+    }
+
+    @Test
+    public void GivenMissingLottery_WhenCloseLotteryRegistration_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.closeLotteryRegistration(managerToken, 999L, companyId)
+        );
+
+        assertEquals("Lottery with ID 999 not found.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenUserWithoutPermission_WhenConductLotteryDraw_ThenThrowsException() {
+        long lotteryId = lotteryService.addLottery(managerToken, eventId, companyId, 2);
+
+        long normalUserId = 601L;
+        Member normalUser = new Member(
+                normalUserId,
+                "drawNoPermission",
+                "Draw No Permission",
+                "0506010601",
+                LocalDate.of(2001, 1, 1)
+        );
+        userRepo.addRegisteredMember(normalUserId, normalUser, "pass");
+        String normalToken = tokenService.addActiveSession(normalUser);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.conductLotteryDraw(normalToken, lotteryId, companyId)
+        );
+
+        assertEquals("Insufficient permissions to conduct lottery draw", exception.getMessage());
+    }
+
+    @Test
+    public void GivenMissingLottery_WhenConductLotteryDraw_ThenThrowsException() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.conductLotteryDraw(managerToken, 999L, companyId)
+        );
+
+        assertEquals("Lottery with ID 999 not found.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenWinnerWithWrongCode_WhenValidateWinnerCodeForEvent_ThenReturnsFalse() {
+        long participantId = 702L;
+        Member participant = new Member(
+                participantId,
+                "wrongCodeWinner",
+                "Wrong Code Winner",
+                "0507020702",
+                LocalDate.of(2001, 1, 1)
+        );
+        userRepo.addRegisteredMember(participantId, participant, "pass");
+        String participantToken = tokenService.addActiveSession(participant);
+
+        long lotteryId = lotteryService.addLottery(managerToken, eventId, companyId, 1);
+
+        lotteryService.registerMemberToLottery(participantToken, lotteryId);
+        lotteryService.closeLotteryRegistration(managerToken, lotteryId, companyId);
+        lotteryService.conductLotteryDraw(managerToken, lotteryId, companyId);
+
+        boolean result = lotteryService.validateWinnerCodeForEvent(
+                participantToken,
+                eventId,
+                "WRONG123"
+        );
+
+        assertFalse(result);
+    }
+
+    @Test
+    public void GivenBlankCode_WhenValidateWinnerCodeForEvent_ThenReturnsFalse() {
+        long participantId = 703L;
+        Member participant = new Member(
+                participantId,
+                "blankCodeUser",
+                "Blank Code User",
+                "0507030703",
+                LocalDate.of(2001, 1, 1)
+        );
+        userRepo.addRegisteredMember(participantId, participant, "pass");
+        String participantToken = tokenService.addActiveSession(participant);
+
+        boolean result = lotteryService.validateWinnerCodeForEvent(
+                participantToken,
+                eventId,
+                "   "
+        );
+
+        assertFalse(result);
+    }
+
+    @Test
+    public void GivenInvalidEventId_WhenValidateWinnerCodeForEvent_ThenThrowsException() {
+        long participantId = 704L;
+        Member participant = new Member(
+                participantId,
+                "invalidEventCodeUser",
+                "Invalid Event Code User",
+                "0507040704",
+                LocalDate.of(2001, 1, 1)
+        );
+        userRepo.addRegisteredMember(participantId, participant, "pass");
+        String participantToken = tokenService.addActiveSession(participant);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.validateWinnerCodeForEvent(participantToken, 0L, "ABC123")
+        );
+
+        assertEquals("Event ID is invalid.", exception.getMessage());
+    }
+
+    @Test
+    public void GivenEventWithoutLottery_WhenValidateWinnerCodeForEvent_ThenThrowsException() {
+        long participantId = 705L;
+        Member participant = new Member(
+                participantId,
+                "noLotteryCodeUser",
+                "No Lottery Code User",
+                "0507050705",
+                LocalDate.of(2001, 1, 1)
+        );
+        userRepo.addRegisteredMember(participantId, participant, "pass");
+        String participantToken = tokenService.addActiveSession(participant);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> lotteryService.validateWinnerCodeForEvent(participantToken, 999L, "ABC123")
+        );
+
+        assertEquals("Lottery for event not found.", exception.getMessage());
     }
 
     private static class FakeNotifier implements INotifier {
