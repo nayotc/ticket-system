@@ -629,6 +629,10 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             return "אירעה שגיאה. נסו שוב.";
         }
 
+        if (message.startsWith("Map elements cannot overlap")) {
+            return "לא ניתן לשמור את מפת האולם כי קיימים אלמנטים שחופפים במיקום. הזז את האלמנטים כך שלא יכסו אחד את השני.";
+        }
+
         return switch (message) {
             case "Invalid token.", "Invalid session ID" -> "אנא התחבר מחדש";
             case "User does not have permission to create event for this company.",

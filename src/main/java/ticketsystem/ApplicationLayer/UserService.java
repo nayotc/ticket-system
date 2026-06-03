@@ -81,7 +81,10 @@ public class UserService {
                 logger.logEvent("Sign-up rejected: username already taken, username=" + username, LogLevel.INFO);
                 throw new IllegalArgumentException("Username is already taken.");
             }
-
+            if(password.length() < 5){
+                logger.logEvent("Sign-up rejected: password too short", LogLevel.WARN);
+                throw new IllegalArgumentException("Password must be at least 5 characters long.");
+            }
             Long newId = new SecureRandom().nextLong();
             while (userRepository.isIDTaken(newId)) {
                 newId = new SecureRandom().nextLong();

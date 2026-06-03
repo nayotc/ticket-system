@@ -251,6 +251,7 @@ public class EventService {
 
             validateMapHasAtLeastOneTicketArea(mapDTO);
             validateMapElementsInsideMapBounds(mapDTO);
+            validateMapElementsDoNotOverlap(mapDTO);
 
             logger.logEvent(
                     "Map DTO validated - defineEventMap. " + mapDTOLogContext(mapDTO),
@@ -644,6 +645,68 @@ public class EventService {
         if (x + width > mapWidth || y + height > mapHeight) {
             logger.logEvent("Validation failed - element is outside map bounds: " + elementName, LogLevel.DEBUG);
             throw new IllegalArgumentException("Element is outside map bounds: " + elementName);
+        }
+    }
+
+    private void validateMapElementsDoNotOverlap(EventMapDTO mapDTO) {
+        List<MapElementBounds> existingBounds = new ArrayList<>();
+
+        for (IMapElementDTO element : mapDTO.getElementDTOs()) {
+            MapElementBounds currentBounds = toMapElementBounds(element);
+
+            for (MapElementBounds existing : existingBounds) {
+                if (currentBounds.overlaps(existing)) {
+                    String message = "Map elements cannot overlap: "
+                            + existing.name()
+                            + " and "
+                            + currentBounds.name();
+
+                    logger.logEvent(
+                            "Validation failed - " + message,
+                            LogLevel.DEBUG
+                    );
+
+                    throw new IllegalArgumentException(message);
+                }
+            }
+
+            existingBounds.add(currentBounds);
+        }
+    }
+
+    private MapElementBounds toMapElementBounds(IMapElementDTO element) {
+        PairDTO<Integer, Integer> location = getElementLocation(element);
+        PairDTO<Integer, Integer> size = getElementSize(element);
+
+        return new MapElementBounds(
+                safeElementName(getElementName(element)),
+                location.first(),
+                location.second(),
+                size.first(),
+                size.second()
+        );
+    }
+
+    private String safeElementName(String elementName) {
+        if (elementName == null || elementName.isBlank()) {
+            return "Unnamed element";
+        }
+
+        return elementName.trim();
+    }
+
+    private record MapElementBounds(
+            String name,
+            int x,
+            int y,
+            int width,
+            int height
+    ) {
+        private boolean overlaps(MapElementBounds other) {
+            return x < other.x + other.width
+                    && x + width > other.x
+                    && y < other.y + other.height
+                    && y + height > other.y;
         }
     }
 

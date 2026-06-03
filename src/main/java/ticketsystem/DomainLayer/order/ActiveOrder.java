@@ -204,7 +204,14 @@ public class ActiveOrder {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
-            ticketDTOs.add(new PurchaseDTO(ticket.getTicketId(), ticket.getRow(), ticket.getChair(), ticket.getPrice(),"","" ));
+            ticketDTOs.add(new PurchaseDTO(
+                    ticket.getTicketId(),
+                    ticket.getRow(),
+                    ticket.getChair(),
+                    ticket.getPrice(),
+                    "ACTIVE",
+                    ""
+            ));
         }
 
         if(userId!=null)

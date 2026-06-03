@@ -156,7 +156,7 @@ public class EventServiceAcceptanceTest {
         eventService.addEventUpdatesListener(historyService);
 
         // FIX: Setup a real Member with an ACTIVE Owner role in the DB
-        Member ownerMember = new Member(ownerId, "EventOwnerUser", "Event Owner User", "0500000001",LocalDate.of(2001, 1, 1));
+        Member ownerMember = new Member(ownerId, "EventOwnerUser", "Event Owner User", "0500000001", LocalDate.of(2001, 1, 1));
         ownerMember.addOwnerRole(companyId, 999L);
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password");
@@ -304,7 +304,7 @@ public class EventServiceAcceptanceTest {
         Long plainUserId = 2L;
 
         // Setup a real user WITHOUT any roles
-        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002",LocalDate.of(2001, 1, 1));
+        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(plainUserId, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, plainUserId);
 
@@ -458,7 +458,7 @@ public class EventServiceAcceptanceTest {
         String sessionWithoutPermission = "session-without-update-permission";
 
         // Setup a real user WITHOUT any roles
-        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000003",LocalDate.of(2001, 1, 1));
+        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000003", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(2L, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, 2L);
 
@@ -678,7 +678,7 @@ public class EventServiceAcceptanceTest {
         eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
 
         String sessionWithoutPermission = "session-without-map-permission";
-        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000004",LocalDate.of(2001, 1, 1));
+        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000004", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(2L, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, 2L);
 
@@ -722,6 +722,44 @@ public class EventServiceAcceptanceTest {
                 new ticketsystem.DomainLayer.event.Pair<>(10, 20));
         event.setSaleStatus(SaleStatus.ONGOING);
         return event;
+    }
+
+    @Test
+    void GivenOwnerLoggedInEventExistsAndMapElementsOverlap_WhenDefineEventMap_ThenSystemRejectsAndPreventsSaving() {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        int originalElementCount = elementCount(eventRepository.getEventById(event.getId()));
+        eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
+
+        EventMapDTO overlappingMapDTO = createOverlappingMapDTO();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.defineEventMap(validOwnerSessionId, event.getId(), overlappingMapDTO)
+        );
+
+        Event unchangedEvent = eventRepository.getEventById(event.getId());
+
+        assertTrue(exception.getMessage().contains("Map elements cannot overlap"));
+        assertEquals(originalElementCount, elementCount(unchangedEvent));
+        assertEquals(originalStatus, unchangedEvent.getStatus());
+    }
+
+    @Test
+    void GivenOwnerLoggedInEventExistsAndMapElementsOnlyTouchEdges_WhenDefineEventMap_ThenConfigurationIsSaved() {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        EventMapDTO edgeTouchingMapDTO = createEdgeTouchingMapDTO();
+
+        Boolean result = eventService.defineEventMap(validOwnerSessionId, event.getId(), edgeTouchingMapDTO);
+
+        Event updatedEvent = eventRepository.getEventById(event.getId());
+
+        assertTrue(result);
+        assertNotNull(updatedEvent.getMap());
+        assertEquals(eventStatus.ACTIVE, updatedEvent.getStatus());
     }
 
     // --------------------view Event Map Tests -------------------
@@ -890,7 +928,7 @@ public class EventServiceAcceptanceTest {
                 2L,
                 "userWithoutPermission",
                 "User Without Permission",
-                "0500000000",LocalDate.of(2001, 1, 1)
+                "0500000000", LocalDate.of(2001, 1, 1)
         );
 
         userRepository.addRegisteredMember(
@@ -1054,7 +1092,7 @@ public class EventServiceAcceptanceTest {
 
         String sessionWithoutPermission = "session-without-discount-permission";
 
-        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000005",LocalDate.of(2001, 1, 1));
+        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000005", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(2L, plainUser, "password");
 
         tokenService.addValidSession(sessionWithoutPermission, 2L);
@@ -1299,7 +1337,7 @@ public class EventServiceAcceptanceTest {
                 1L, "Main Stage", new PairDTO<>(0, 0), new PairDTO<>(2, 10), "Stage");
 
         ElementDTO entrance = new ElementDTO(
-                2L, "Main Entrance", new PairDTO<>(9, 0), new PairDTO<>(1, 3), "Entrance");
+                2L, "Main Entrance", new PairDTO<>(10, 0), new PairDTO<>(1, 3), "Entrance");
 
         SeatingAreaDTO seatingArea = new SeatingAreaDTO(
                 3L,
@@ -1328,6 +1366,62 @@ public class EventServiceAcceptanceTest {
         return new EventMapDTO(
                 new PairDTO<>(10, 20),
                 List.of(stage, entrance, seatingArea, standingArea),
+                false
+        );
+    }
+
+    private EventMapDTO createOverlappingMapDTO() {
+        ElementDTO stage = new ElementDTO(
+                1L,
+                "Main Stage",
+                new PairDTO<>(0, 0),
+                new PairDTO<>(4, 4),
+                "Stage"
+        );
+
+        SeatingAreaDTO seatingArea = new SeatingAreaDTO(
+                2L,
+                "Seating Area A",
+                new PairDTO<>(2, 2),
+                new PairDTO<>(4, 4),
+                "SeatingArea",
+                false,
+                4,
+                6,
+                List.of()
+        );
+
+        return new EventMapDTO(
+                new PairDTO<>(10, 20),
+                List.of(stage, seatingArea),
+                false
+        );
+    }
+
+    private EventMapDTO createEdgeTouchingMapDTO() {
+        ElementDTO stage = new ElementDTO(
+                1L,
+                "Main Stage",
+                new PairDTO<>(0, 0),
+                new PairDTO<>(4, 4),
+                "Stage"
+        );
+
+        SeatingAreaDTO seatingArea = new SeatingAreaDTO(
+                2L,
+                "Seating Area A",
+                new PairDTO<>(4, 0),
+                new PairDTO<>(4, 4),
+                "SeatingArea",
+                false,
+                4,
+                6,
+                List.of()
+        );
+
+        return new EventMapDTO(
+                new PairDTO<>(10, 20),
+                List.of(stage, seatingArea),
                 false
         );
     }
@@ -1626,7 +1720,7 @@ public class EventServiceAcceptanceTest {
         String sessionWithoutPermission = "session-without-policy-permission";
         Long plainUserId = 2L;
 
-        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002",LocalDate.of(2001, 1, 1));
+        Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(plainUserId, plainUser, "password");
         tokenService.addValidSession(sessionWithoutPermission, plainUserId);
 

@@ -1,10 +1,9 @@
 package ticketsystem.AcceptanceTesting;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -15,7 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.EventCatalogService;
-import ticketsystem.ApplicationLayer.ITokenService;
+import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
@@ -28,10 +27,11 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
-import ticketsystem.DomainLayer.user.User;
+import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.TokenRepository;
 
 public class EventCatalogAcceptanceTest {
 
@@ -39,10 +39,10 @@ public class EventCatalogAcceptanceTest {
 
     private EventRepository eventRepository;
     private CompanyRepository companyRepository;
-    private FakeTokenService tokenService;
+    private TokenService tokenService;
     private LogbackSystemLogger logger;
 
-    private final String validSessionId = "valid-session";
+    private String validSessionId;
     private final String invalidSessionId = "invalid-session";
 
     private Event rockConcert;
@@ -58,7 +58,7 @@ public class EventCatalogAcceptanceTest {
     void setUp() {
         eventRepository = new EventRepository();
         companyRepository = new CompanyRepository();
-        tokenService = new FakeTokenService();
+        tokenService = new TokenService("default_secret_key_for_development_purposes_only_32_chars", new TokenRepository(), new LogbackSystemLogger());
         logger = new LogbackSystemLogger();
 
         EventCatalogDomainService domainService = new EventCatalogDomainService(companyRepository);
@@ -71,7 +71,8 @@ public class EventCatalogAcceptanceTest {
                 logger
         );
 
-        tokenService.addValidSession(validSessionId);
+        Member member = new Member(1L, "testuser", "Test User", "0501234567", LocalDate.of(2000, 1, 1));
+        validSessionId = tokenService.addActiveSession(member);
 
         Company company1 = createCompany("Live Nation", 1L, 4.8);
         Company company2 = createCompany("Stage Group", 2L, 3.9);
@@ -279,7 +280,7 @@ public class EventCatalogAcceptanceTest {
         );
 
         // Assert
-        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertTrue(exception.getMessage().contains("Invalid or expired security token"));
     }
 
     @Test
@@ -372,7 +373,7 @@ public class EventCatalogAcceptanceTest {
         );
 
         // Assert
-        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertTrue(exception.getMessage().contains("Invalid or expired security token"));
     }
 
     @Test
@@ -426,78 +427,6 @@ public class EventCatalogAcceptanceTest {
         );
 
         company.setRate(rate);
-
         return company;
-    }
-
-    private static class FakeTokenService implements ITokenService {
-
-        private final Set<String> validSessions = new HashSet<>();
-
-        void addValidSession(String sessionId) {
-            validSessions.add(sessionId);
-        }
-
-        @Override
-        public boolean validateToken(String sessionId) {
-            return validSessions.contains(sessionId);
-        }
-
-        @Override
-        public String addActiveSession(User user) {
-            String sessionId = "test-session-" + (validSessions.size() + 1);
-            validSessions.add(sessionId);
-            return sessionId;
-        }
-
-        @Override
-        public boolean isActiveSession(String sessionToken) {
-            return validSessions.contains(sessionToken);
-        }
-
-        @Override
-        public int getTotalActiveSessions() {
-            return validSessions.size();
-        }
-
-        @Override
-        public void removeActiveSession(String sessionToken) {
-            validSessions.remove(sessionToken);
-        }
-
-        @Override
-        public String generateNewGuestToken() {
-            return "guest-token";
-        }
-
-        @Override
-        public String generateNewMemberToken(Long userId) {
-            return "member-token-" + userId;
-        }
-
-        @Override
-        public String extractRole(String token) {
-            return null;
-        }
-
-        @Override
-        public boolean isGuestToken(String token) {
-            return false;
-        }
-
-        @Override
-        public boolean isMemberToken(String token) {
-            return false;
-        }
-
-        @Override
-        public Long extractUserId(String token) {
-            return null;
-        }
-
-        @Override
-        public String maskToken(String token) {
-            return "masked-" + token;
-        }
     }
 }

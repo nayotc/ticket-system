@@ -248,10 +248,16 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
      */
     private EventCard.EventCardActionHandler createEventCardActionHandler() {
         return new EventCard.EventCardActionHandler() {
-            @Override
-            public void onPurchaseRequested(Long eventId) {
-                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
-            }
+        @Override
+        public void onPurchaseRequested(Long eventId) {
+            EventCardPresenter.PurchaseRequestResult result =
+                    eventCardPresenter.requestPurchase(
+                            UiSession.getCurrentToken(),
+                            eventId
+                    );
+
+            UI.getCurrent().navigate(result.route());
+        }
 
             @Override
             public void onLotteryRegistrationRequested(Long eventId) {
@@ -275,7 +281,15 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
 
             @Override
             public void onPreSaleApproved(Long eventId, String lotteryCode) {
-                UI.getCurrent().navigate(eventCardPresenter.purchaseRoute(eventId));
+                UiSession.setLotteryCode(eventId, lotteryCode);
+
+                EventCardPresenter.PurchaseRequestResult result =
+                        eventCardPresenter.requestPurchase(
+                                UiSession.getCurrentToken(),
+                                eventId
+                        );
+
+                UI.getCurrent().navigate(result.route());
             }
         };
     }

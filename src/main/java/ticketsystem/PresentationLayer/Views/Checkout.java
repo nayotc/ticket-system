@@ -18,30 +18,39 @@ import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Components.EmptyState;
 import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
+import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
+import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
+import ticketsystem.PresentationLayer.DTO.OrderPricing;
+import ticketsystem.DTO.MyAccountDTO;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 @Route(value = UiRoutes.CHECKOUT)
-public class Checkout extends VerticalLayout {
+public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
-    private final Presenter presenter;
+    private final UiVisitCoordinator visitCoordinator;
+    private final ReservationPresenter presenter;
 
     private ActiveOrderDTO activeOrder;
-    private CheckoutEventInfo eventInfo;
-    private CheckoutPricing pricing;
+    private OrderEventInfo eventInfo;
+    private OrderPricing pricing;
+    private Long requestedRouteEventId;
     private final ReservationTimer reservationTimer = new ReservationTimer();
 
     private int currentStep = 1;
@@ -57,12 +66,9 @@ public class Checkout extends VerticalLayout {
     private final TextField expiry = new TextField("תוקף *");
     private final PasswordField cvv = new PasswordField("CVV *");
 
-    public Checkout() {
-        this(new DemoCheckoutPresenter());
-    }
-
-    public Checkout(Presenter presenter) {
+    public Checkout(ReservationPresenter presenter, UiVisitCoordinator visitCoordinator) {
         this.presenter = presenter;
+        this.visitCoordinator = visitCoordinator;
 
         getElement().setAttribute("dir", "rtl");
         addClassName("checkout-page");
@@ -71,7 +77,31 @@ public class Checkout extends VerticalLayout {
         setWidthFull();
 
         configureFields();
-        loadCheckout();
+
+        this.visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        requestedRouteEventId = parseRouteEventId(event);
+        loadCheckout(event);
+    }
+
+    private Long parseRouteEventId(BeforeEnterEvent event) {
+        return event.getRouteParameters()
+                .get("eventId")
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .map(this::parseLongOrNull)
+                .orElse(null);
+    }
+
+    private Long parseLongOrNull(String value) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private void configureFields() {
@@ -105,7 +135,7 @@ public class Checkout extends VerticalLayout {
         cvv.addClassName("checkout-field");
     }
 
-    private void loadCheckout() {
+    private void loadCheckout(BeforeEnterEvent event) {
         try {
             String token = resolveSessionToken();
 
@@ -117,10 +147,15 @@ public class Checkout extends VerticalLayout {
                 return;
             }
 
+            if (requestedRouteEventId == null || !Objects.equals(requestedRouteEventId, activeOrder.getEventId())) {
+                event.forwardTo(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(activeOrder.getEventId())));
+                return;
+            }
+
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
-            eventInfo = presenter.loadEventInfo(activeOrder.getEventId());
-            pricing = presenter.calculatePricing(activeOrder.getOrderId());
+            eventInfo = presenter.loadActiveOrderEventInfo(token, activeOrder.getEventId());
+            pricing = presenter.calculatePricing(activeOrder, "");
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
@@ -135,30 +170,44 @@ public class Checkout extends VerticalLayout {
         return UiSession.getCurrentToken();
     }
 
+    /**
+     * Prefills buyer contact details for logged-in members.
+     *
+     * Checkout supports both guest and member purchases. Guest users must enter
+     * their buyer details manually, while logged-in members can reuse the profile
+     * details stored in the system.
+     *
+     * The method intentionally does nothing for guest sessions, because guest
+     * tokens do not have member profile data and calling the profile loading flow
+     * with a guest token would fail.
+     *
+     * Existing field values are not overwritten. This protects details that the
+     * user may have already typed manually before the checkout view is re-rendered.
+     *
+     * @param token the current UI session token, expected to be a member token
+     *              when the user is logged in
+     */
     private void prefillBuyerDetailsIfLoggedIn(String token) {
         if (!UiSession.isLoggedIn()) {
             return;
         }
 
-        CheckoutBuyerDetails details = presenter.loadBuyerDetails(token);
-
-        if (details == null) {
+        MyAccountDTO buyer = presenter.loadBuyerDetails(token);
+        if (buyer == null) {
             return;
         }
 
-        if (!isBlank(details.fullName())) {
-            fullName.setValue(details.fullName());
+        if (isBlank(fullName.getValue()) && !isBlank(buyer.getFullName())) {
+            fullName.setValue(buyer.getFullName());
         }
 
-        if (!isBlank(details.email())) {
-            email.setValue(details.email());
+        if (isBlank(email.getValue()) && !isBlank(buyer.getEmail())) {
+            email.setValue(buyer.getEmail());
         }
 
-        if (!isBlank(details.phone())) {
-            phone.setValue(details.phone());
+        if (isBlank(phone.getValue()) && !isBlank(buyer.getPhone())) {
+            phone.setValue(buyer.getPhone());
         }
-
-        personalDetailsLoadedFromProfile = true;
     }
 
     private void renderCheckout() {
@@ -541,14 +590,18 @@ public class Checkout extends VerticalLayout {
                     resolveSessionToken(),
                     activeOrder.getEventId(),
                     details,
-                    collectBuyerDetails()
+                    ""
             );
 
             if (success) {
                 ReservationTimer.clear();
                 reservationTimer.refreshFromSession();
                 showSuccess("הרכישה הושלמה בהצלחה");
-                UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT);
+                if (UiSession.isLoggedIn()) {
+                    UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT);
+                } else {
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
             } else {
                 showError("התשלום לא הושלם");
             }
@@ -556,15 +609,6 @@ public class Checkout extends VerticalLayout {
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
-    }
-
-    private CheckoutBuyerDetails collectBuyerDetails() {
-        return new CheckoutBuyerDetails(
-                fullName.getValue().trim(),
-                email.getValue().trim(),
-                phone.getValue().trim(),
-                personalDetailsLoadedFromProfile
-        );
     }
 
     private boolean validatePersonalDetails() {
@@ -753,129 +797,5 @@ public class Checkout extends VerticalLayout {
                 Notification.Position.TOP_CENTER
         );
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-    }
-
-    public interface Presenter {
-        ActiveOrderDTO loadActiveOrder(String sessionToken);
-
-        CheckoutEventInfo loadEventInfo(Long eventId);
-
-        CheckoutPricing calculatePricing(Long orderId);
-
-        CheckoutBuyerDetails loadBuyerDetails(String sessionToken);
-
-        boolean checkout(
-                String sessionToken,
-                Long eventId,
-                PaymentDetails paymentDetails,
-                CheckoutBuyerDetails buyerDetails
-        );
-    }
-
-    public record CheckoutEventInfo(
-            String eventName,
-            String dateText,
-            String locationText
-    ) {
-    }
-
-    public record CheckoutBuyerDetails(
-            String fullName,
-            String email,
-            String phone,
-            boolean loadedFromProfile
-    ) {
-    }
-
-    public record AppliedDiscount(
-            String name,
-            String description,
-            BigDecimal amount
-    ) {
-    }
-
-    public record CheckoutPricing(
-            BigDecimal subtotal,
-            BigDecimal discountTotal,
-            BigDecimal total,
-            List<AppliedDiscount> appliedDiscounts,
-            List<String> policyMessages
-    ) {
-    }
-
-    private static final class DemoCheckoutPresenter implements Presenter {
-
-        private final ActiveOrderDTO order = new ActiveOrderDTO(
-                101L,
-                501L,
-                9001L,
-                new ArrayList<>(List.of(
-                        new TicketDTO(1L, 9001L, 4, 12, new BigDecimal("350")),
-                        new TicketDTO(2L, 9001L, 4, 13, new BigDecimal("350"))
-                )),
-                System.currentTimeMillis() + 15 * 60 * 1000
-        );
-
-        @Override
-        public ActiveOrderDTO loadActiveOrder(String sessionToken) {
-            return order;
-        }
-
-        @Override
-        public CheckoutEventInfo loadEventInfo(Long eventId) {
-            return new CheckoutEventInfo(
-                    "פסטיבל אלקטרוניקה 2026",
-                    "15 אוגוסט, 21:00",
-                    "גני התערוכה, תל אביב"
-            );
-        }
-
-        @Override
-        public CheckoutPricing calculatePricing(Long orderId) {
-            BigDecimal subtotal = order.getTickets().stream()
-                    .map(TicketDTO::getPrice)
-                    .filter(Objects::nonNull)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal discount = subtotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-
-            return new CheckoutPricing(
-                    subtotal,
-                    discount,
-                    subtotal.subtract(discount),
-                    List.of(new AppliedDiscount(
-                            "קופון EARLY10",
-                            "10% הנחה לפי מדיניות הקופונים",
-                            discount
-                    )),
-                    List.of("המחיר הסופי חושב לפי מדיניות הרכישה וההנחות לפני ביצוע התשלום.")
-            );
-        }
-
-        @Override
-        public CheckoutBuyerDetails loadBuyerDetails(String sessionToken) {
-            if (sessionToken == null || sessionToken.isBlank()) {
-                return new CheckoutBuyerDetails("", "", "", false);
-            }
-
-            return new CheckoutBuyerDetails(
-                    "שם של הלקוח",
-                    "name@example.com",
-                    "050-1234567",
-                    true
-            );
-        }
-
-        @Override
-        public boolean checkout(
-                String sessionToken,
-                Long eventId,
-                PaymentDetails paymentDetails,
-                CheckoutBuyerDetails buyerDetails
-        ) {
-            // Later:
-            // return reservationService.checkout(sessionToken, eventId, paymentDetails);
-            return true;
-        }
     }
 }

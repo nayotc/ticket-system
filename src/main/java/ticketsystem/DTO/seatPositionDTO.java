@@ -16,5 +16,13 @@ public class seatPositionDTO {
 
     public int getChair() { return chair; }
     public void setChair(int chair) { this.chair = chair; }
+
+    @Override
+    public String toString() {
+        return "seatPositionDTO{" +
+                "row=" + row +
+                ", chair=" + chair +
+                '}';
+    }
     
 }
