@@ -5,9 +5,12 @@ import java.time.LocalDate;
 public class PaymentDetails {
     
     
-    private final String paymentMethodId; // Stripe / Fake
-    private final String payerName;
-    private final LocalDate birthDate;
+    private String paymentMethodId; // Stripe / Fake
+    private String payerName;
+    private LocalDate birthDate;
+
+    public PaymentDetails() {
+    }
 
     public PaymentDetails(String paymentMethodId, String payerName, LocalDate birthDate) {
         this.paymentMethodId = paymentMethodId;
@@ -24,5 +27,14 @@ public class PaymentDetails {
     }
     public LocalDate getBirthDate() {
         return birthDate;
+    }
+    public void setPaymentMethodId(String paymentMethodId) {
+        this.paymentMethodId = paymentMethodId;
+    }
+    public void setPayerName(String payerName) {
+        this.payerName = payerName;
+    }
+     public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
     }
 }

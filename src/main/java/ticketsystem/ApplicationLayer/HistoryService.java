@@ -52,6 +52,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         this.userAccessService = userAccessService;
         this.notificationsService = notificationsService;
         this.paymentService = paymentService;
+        this.objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
     }
 
     
@@ -60,12 +61,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
     public void onOrderCompleted(OrderDTO order) {
         try {
             long newPurchaseId = historyRepository.generateNextId();
-            order.setPurchaseId(newPurchaseId);
-            
-            ObjectMapper objectMapper = new ObjectMapper();
-            
-            // --- זו השורה שפותרת את הקריסה! ---
-            objectMapper.registerModule(new JavaTimeModule());
+            order.setPurchaseId(newPurchaseId);            
             
             Purchase purchase = objectMapper.convertValue(order, Purchase.class);
             historyRepository.addPurchase(purchase);     
