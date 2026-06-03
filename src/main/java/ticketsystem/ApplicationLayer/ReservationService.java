@@ -374,7 +374,7 @@ public class ReservationService {
             OrderDTO orderDTO;
 
             try {
-                orderDTO = creaOrderDTOwithBarcode(order, event,amountAfterDiscount);
+                orderDTO = creaOrderDTOwithBarcode(order, event,amountAfterDiscount, details);
             } catch (Exception barcodeException) {
                 handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, details, eventId, barcodeException,
                         "Ticket issuing failed. Payment was refunded.",
@@ -479,9 +479,9 @@ public class ReservationService {
     }
 
     //secure barcode logic
-    private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event,BigDecimal total ){
+    private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event,BigDecimal total, PaymentDetails details ){
           OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
-                        event.getOpenedBy(), event.getId(),total);
+                        event.getOpenedBy(), event.getId(),total, details.getPaymentMethodId(), details.getPayerName(), details.getBirthDate());
                 for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
                     String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(), order.getEventId(),
                             order.getOrderId());

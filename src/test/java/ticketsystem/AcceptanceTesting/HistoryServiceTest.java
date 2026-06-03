@@ -18,12 +18,14 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.ApplicationLayer.IPaymentService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.SalesReportDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -41,6 +43,7 @@ import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
@@ -56,6 +59,7 @@ public class HistoryServiceTest {
     private UserAccessService userAccessService;
     private FakeNotifier fakeNotifier;
     private ISystemLogger logger;
+    private IPaymentService paymentService;
 
     @BeforeEach
     void setUp() {
@@ -71,14 +75,15 @@ public class HistoryServiceTest {
         this.companyRepository = new CompanyRepository();
         userAccessService = new UserAccessService(userRepository);
         fakeNotifier = new FakeNotifier();
+        paymentService = new PaymentServiceProxy();
+        resetPaymentProxy();
         this.historyService = new HistoryService(
                 historyRepository,
                 tokenService,
                 new MembershipDomainService(userRepository),
                 logger,
                 userAccessService,
-                fakeNotifier
-        );
+                fakeNotifier, paymentService);
     }
 
     /**
@@ -94,6 +99,15 @@ public class HistoryServiceTest {
                 "0500000000",LocalDate.of(2001, 1, 1));
         return userService.login(guestToken, username, password);
     }
+    private void resetPaymentProxy() {
+        PaymentServiceProxy.isConnectionSuccessful = true;
+        PaymentServiceProxy.isPaymentSuccessful = true;
+        PaymentServiceProxy.isRefundSuccessful = true;
+
+        PaymentServiceProxy.wasConnectCalled = false;
+        PaymentServiceProxy.wasPayCalled = false;
+        PaymentServiceProxy.wasRefundCalled = false;
+    }
 
     /**
      * 3.5 View personal purchase history - Successful Scenario
@@ -101,13 +115,13 @@ public class HistoryServiceTest {
     @Test
     void GivenValidTokenAndExistingHistory_WhenGetHistoryForUser_ThenReturnsHistory() {
         // --- Given (Arrange) ---
-        String validToken = getValidMemberToken("reut_history_user", "Pass123!");
+        String validToken = getValidMemberToken("Yosi_history_user", "Pass123!");
         long userId = tokenService.extractUserId(validToken);
 
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
         OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId,
-                20L,new BigDecimal(100));
+                20L,new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1)));
 
         historyService.onOrderCompleted(orderDto);
 
@@ -163,7 +177,7 @@ public class HistoryServiceTest {
 
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L,new BigDecimal(100));
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L,new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1)));
 
         // --- Act ---
         historyService.onOrderCompleted(orderDto);
@@ -211,7 +225,7 @@ public class HistoryServiceTest {
                 userId,
                 companyId,
                 userId,
-                20L,new BigDecimal(100)
+                20L,new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1))
         );
     }
 
@@ -286,7 +300,7 @@ public class HistoryServiceTest {
                 buyerMemberId,
                 companyId,
                 managedByMemberId,
-                20L,new BigDecimal(100));
+                20L,new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1)));
     }
 
     private long createActiveManagerUnderFounder(long founderId, long companyId, String username) {
@@ -503,7 +517,7 @@ public class HistoryServiceTest {
                 buyerId,
                 company.getId(),
                 ownerId, // managedByMemberId - should come from the event creator in the real flow
-                20L,new BigDecimal(100));
+                20L,new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1)));
 
         // --- When (Act) ---
         historyService.onOrderCompleted(completedOrder);
@@ -681,4 +695,5 @@ public class HistoryServiceTest {
                     .anyMatch(message -> message.contains(text));
         }
     }
+    
 }

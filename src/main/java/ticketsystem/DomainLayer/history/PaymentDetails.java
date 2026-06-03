@@ -1,4 +1,4 @@
-package ticketsystem.DTO;
+package ticketsystem.DomainLayer.history;
 
 import java.time.LocalDate;
 
@@ -14,7 +14,7 @@ public class PaymentDetails {
         this.payerName = payerName;
         this.birthDate = birthDate;
     }
-    
+
     public String getPaymentMethodId() {
         return paymentMethodId;
     }

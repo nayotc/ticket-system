@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.SalesReportDTO;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -27,6 +28,8 @@ import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 
 @Service
 public class HistoryService implements OrderCompletedListener, EventUpdatesListener {
@@ -37,28 +40,35 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
     private ISystemLogger logger;
     private final UserAccessService userAccessService;
     private final INotifier notificationsService;
+    private final IPaymentService paymentService;
 
     @Autowired
-    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger, UserAccessService userAccessService, INotifier notificationsService) {
+    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger,
+         UserAccessService userAccessService, INotifier notificationsService, IPaymentService paymentService) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
         this.logger = logger;
         this.userAccessService = userAccessService;
         this.notificationsService = notificationsService;
+        this.paymentService = paymentService;
     }
 
     
-    @Override
     // This method is called when an order is completed. It takes the order details, converts them into a Purchase object, and stores it in the history repository.
+    @Override
     public void onOrderCompleted(OrderDTO order) {
-        try{
-            //we don't need to validate the token here because this method is called after the order is completed, and we assume that the order completion process has already validated the token. However, if you want to add an extra layer of security, you can validate the token here as well before processing the order details.
+        try {
             long newPurchaseId = historyRepository.generateNextId();
             order.setPurchaseId(newPurchaseId);
+            
             ObjectMapper objectMapper = new ObjectMapper();
+            
+            // --- זו השורה שפותרת את הקריסה! ---
+            objectMapper.registerModule(new JavaTimeModule());
+            
             Purchase purchase = objectMapper.convertValue(order, Purchase.class);
-            historyRepository.addPurchase(purchase);     //purchase is the object after you pay 
+            historyRepository.addPurchase(purchase);     
         } 
         catch (IllegalArgumentException e) {
             logger.logEvent(
@@ -261,6 +271,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
             for (PurchasedTicket ticket : purchase.getTickets()) {
                 ticket.setStatus(TicketStatus.CANCELED);
             }
+            paymentService.refund(purchase.getTotalPrice(), new PaymentDetails(purchase.getPaymentDetails().getPaymentMethodId(), purchase.getPaymentDetails().getPayerName(), purchase.getPaymentDetails().getBirthDate()));
         }
 
         notifyPurchasedBuyers(
