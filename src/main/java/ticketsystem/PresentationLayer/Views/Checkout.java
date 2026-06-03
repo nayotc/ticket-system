@@ -18,6 +18,8 @@ import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
@@ -40,15 +42,15 @@ import java.util.List;
 import java.util.Objects;
 
 @Route(value = UiRoutes.CHECKOUT)
-public class Checkout extends VerticalLayout {
+public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
     private final UiVisitCoordinator visitCoordinator;
     private final ReservationPresenter presenter;
 
-
     private ActiveOrderDTO activeOrder;
     private OrderEventInfo eventInfo;
     private OrderPricing pricing;
+    private Long requestedRouteEventId;
     private final ReservationTimer reservationTimer = new ReservationTimer();
 
     private int currentStep = 1;
@@ -77,7 +79,29 @@ public class Checkout extends VerticalLayout {
         configureFields();
 
         this.visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
-        loadCheckout();
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        requestedRouteEventId = parseRouteEventId(event);
+        loadCheckout(event);
+    }
+
+    private Long parseRouteEventId(BeforeEnterEvent event) {
+        return event.getRouteParameters()
+                .get("eventId")
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .map(this::parseLongOrNull)
+                .orElse(null);
+    }
+
+    private Long parseLongOrNull(String value) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private void configureFields() {
@@ -111,7 +135,7 @@ public class Checkout extends VerticalLayout {
         cvv.addClassName("checkout-field");
     }
 
-    private void loadCheckout() {
+    private void loadCheckout(BeforeEnterEvent event) {
         try {
             String token = resolveSessionToken();
 
@@ -120,6 +144,11 @@ public class Checkout extends VerticalLayout {
             if (activeOrder == null || tickets().isEmpty()) {
                 ReservationTimer.clear();
                 renderEmptyCheckout();
+                return;
+            }
+
+            if (requestedRouteEventId == null || !Objects.equals(requestedRouteEventId, activeOrder.getEventId())) {
+                event.forwardTo(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(activeOrder.getEventId())));
                 return;
             }
 
