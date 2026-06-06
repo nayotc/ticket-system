@@ -1,28 +1,27 @@
 package ticketsystem.AcceptanceTesting;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.time.LocalDate;
-import java.util.List;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import ticketsystem.ApplicationLayer.Events.UserExitListener;
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
-import ticketsystem.ApplicationLayer.Events.UserExitListener;
 import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class UserServiceTest {
@@ -33,7 +32,7 @@ public class UserServiceTest {
     private UserService userService;
     private ITokenService tokenService;
     private ITokenRepository tokenRepository;
-    private LogbackSystemLogger logger;
+    private ISystemLogger logger;
 
     @BeforeEach
     public void setup() {
@@ -1002,221 +1001,222 @@ public class UserServiceTest {
     }
 
     @Test
-void TestSignUpWithTooShortPassword_ThenThrowsException() {
-    String sessionToken = userService.visitSystem();
+    void TestSignUpWithTooShortPassword_ThenThrowsException() {
+        String sessionToken = userService.visitSystem();
 
-    assertThrows(IllegalArgumentException.class, () ->
-            userService.signUp(
-                    sessionToken,
-                    "shortPasswordUser",
-                    "1234",
-                    "Short Password User",
-                    "0500000000",
-                    LocalDate.of(2001, 1, 1)));
+        assertThrows(IllegalArgumentException.class, ()
+                -> userService.signUp(
+                        sessionToken,
+                        "shortPasswordUser",
+                        "1234",
+                        "Short Password User",
+                        "0500000000",
+                        LocalDate.of(2001, 1, 1)));
 
-    assertFalse(userRepository.isUsernameTaken("shortPasswordUser"));
-}
-@Test
-void TestGetMyAccountDTO_WhenLoggedIn_ThenReturnsMemberDetails() {
-    String guestToken = userService.visitSystem();
+        assertFalse(userRepository.isUsernameTaken("shortPasswordUser"));
+    }
 
-    userService.signUp(
-            guestToken,
-            "accountUser",
-            "password123",
-            "Account User",
-            "050-1234567",
-            LocalDate.of(2001, 1, 1));
+    @Test
+    void TestGetMyAccountDTO_WhenLoggedIn_ThenReturnsMemberDetails() {
+        String guestToken = userService.visitSystem();
 
-    String memberToken = userService.login(guestToken, "accountUser", "password123");
+        userService.signUp(
+                guestToken,
+                "accountUser",
+                "password123",
+                "Account User",
+                "050-1234567",
+                LocalDate.of(2001, 1, 1));
 
-    MyAccountDTO dto = userService.getMyAccountDTO(memberToken);
+        String memberToken = userService.login(guestToken, "accountUser", "password123");
 
-    assertNotNull(dto);
-    assertEquals("accountUser", dto.getEmail());
-    assertEquals("Account User", dto.getFullName());
-    assertEquals("0501234567", dto.getPhone());
-    assertEquals(LocalDate.of(2001, 1, 1), dto.getBirthDate());
-}
+        MyAccountDTO dto = userService.getMyAccountDTO(memberToken);
 
-@Test
-void TestGetMyAccountDTO_WithGuestToken_ThenThrowsException() {
-    String guestToken = userService.visitSystem();
+        assertNotNull(dto);
+        assertEquals("accountUser", dto.getEmail());
+        assertEquals("Account User", dto.getFullName());
+        assertEquals("0501234567", dto.getPhone());
+        assertEquals(LocalDate.of(2001, 1, 1), dto.getBirthDate());
+    }
 
-    assertThrows(IllegalArgumentException.class,
-            () -> userService.getMyAccountDTO(guestToken));
-}
+    @Test
+    void TestGetMyAccountDTO_WithGuestToken_ThenThrowsException() {
+        String guestToken = userService.visitSystem();
 
-@Test
-void TestGetMemberById_WhenMemberExists_ThenReturnsMember() {
-    String guestToken = userService.visitSystem();
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.getMyAccountDTO(guestToken));
+    }
 
-    userService.signUp(
-            guestToken,
-            "memberByIdUser",
-            "password123",
-            "Member By Id",
-            "0500000000",
-            LocalDate.of(2001, 1, 1));
+    @Test
+    void TestGetMemberById_WhenMemberExists_ThenReturnsMember() {
+        String guestToken = userService.visitSystem();
 
-    Member member = userRepository.getMemberByUsername("memberByIdUser");
+        userService.signUp(
+                guestToken,
+                "memberByIdUser",
+                "password123",
+                "Member By Id",
+                "0500000000",
+                LocalDate.of(2001, 1, 1));
 
-    Member result = userService.getMemberById(member.getId());
+        Member member = userRepository.getMemberByUsername("memberByIdUser");
 
-    assertNotNull(result);
-    assertEquals("memberByIdUser", result.getUserName());
-}
+        Member result = userService.getMemberById(member.getId());
 
-@Test
-void TestGetMemberById_WhenMemberDoesNotExist_ThenReturnsNull() {
-    Member result = userService.getMemberById(999999L);
+        assertNotNull(result);
+        assertEquals("memberByIdUser", result.getUserName());
+    }
 
-    assertNull(result);
-}
+    @Test
+    void TestGetMemberById_WhenMemberDoesNotExist_ThenReturnsNull() {
+        Member result = userService.getMemberById(999999L);
 
-@Test
-void TestGetMemberById_WhenIdIsNull_ThenThrowsException() {
-    assertThrows(IllegalArgumentException.class,
-            () -> userService.getMemberById(null));
-}
+        assertNull(result);
+    }
 
-@Test
-void TestGetAllUsers_WhenUsersExist_ThenReturnsAllMembers() {
-    String token1 = userService.visitSystem();
-    userService.signUp(token1, "userA", "password123", "User A", "0500000001", LocalDate.of(2001, 1, 1));
+    @Test
+    void TestGetMemberById_WhenIdIsNull_ThenThrowsException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.getMemberById(null));
+    }
 
-    String token2 = userService.visitSystem();
-    userService.signUp(token2, "userB", "password123", "User B", "0500000002", LocalDate.of(2001, 1, 1));
+    @Test
+    void TestGetAllUsers_WhenUsersExist_ThenReturnsAllMembers() {
+        String token1 = userService.visitSystem();
+        userService.signUp(token1, "userA", "password123", "User A", "0500000001", LocalDate.of(2001, 1, 1));
 
-    List<Member> users = userService.getAllUsers();
+        String token2 = userService.visitSystem();
+        userService.signUp(token2, "userB", "password123", "User B", "0500000002", LocalDate.of(2001, 1, 1));
 
-    assertEquals(2, users.size());
-}
+        List<Member> users = userService.getAllUsers();
 
-@Test
-void TestGuestExitWithExitListener_ThenListenerIsCalled() {
-    String guestToken = userService.visitSystem();
+        assertEquals(2, users.size());
+    }
 
-    final boolean[] wasCalled = {false};
+    @Test
+    void TestGuestExitWithExitListener_ThenListenerIsCalled() {
+        String guestToken = userService.visitSystem();
 
-    userService.addUserExitListener(token -> {
-        wasCalled[0] = true;
-        assertEquals(guestToken, token);
-    });
+        final boolean[] wasCalled = {false};
 
-    boolean result = userService.exit(guestToken);
+        userService.addUserExitListener(token -> {
+            wasCalled[0] = true;
+            assertEquals(guestToken, token);
+        });
 
-    assertTrue(result);
-    assertTrue(wasCalled[0]);
-}
+        boolean result = userService.exit(guestToken);
 
-@Test
-void TestGuestExitWithRemovedExitListener_ThenListenerIsNotCalled() {
-    String guestToken = userService.visitSystem();
+        assertTrue(result);
+        assertTrue(wasCalled[0]);
+    }
 
-    final boolean[] wasCalled = {false};
+    @Test
+    void TestGuestExitWithRemovedExitListener_ThenListenerIsNotCalled() {
+        String guestToken = userService.visitSystem();
 
-    UserExitListener listener = token -> wasCalled[0] = true;
+        final boolean[] wasCalled = {false};
 
-    userService.addUserExitListener(listener);
-    userService.removeUserExitListener(listener);
+        UserExitListener listener = token -> wasCalled[0] = true;
 
-    boolean result = userService.exit(guestToken);
+        userService.addUserExitListener(listener);
+        userService.removeUserExitListener(listener);
 
-    assertTrue(result);
-    assertFalse(wasCalled[0]);
-}
+        boolean result = userService.exit(guestToken);
 
-@Test
-void TestUpdateMemberFullName_WhenValid_ThenUpdatesFullName() {
-    String guestToken = userService.visitSystem();
+        assertTrue(result);
+        assertFalse(wasCalled[0]);
+    }
 
-    userService.signUp(
-            guestToken,
-            "fullNameUser",
-            "password123",
-            "Old Name",
-            "0500000000",
-            LocalDate.of(2001, 1, 1));
+    @Test
+    void TestUpdateMemberFullName_WhenValid_ThenUpdatesFullName() {
+        String guestToken = userService.visitSystem();
 
-    String memberToken = userService.login(guestToken, "fullNameUser", "password123");
+        userService.signUp(
+                guestToken,
+                "fullNameUser",
+                "password123",
+                "Old Name",
+                "0500000000",
+                LocalDate.of(2001, 1, 1));
 
-    boolean result = userService.updateMemberFullName(
-            memberToken,
-            "password123",
-            "fullNameUser",
-            "New Name");
+        String memberToken = userService.login(guestToken, "fullNameUser", "password123");
 
-    assertTrue(result);
-    assertEquals("New Name", userRepository.getMemberByUsername("fullNameUser").getFullName());
-}
+        boolean result = userService.updateMemberFullName(
+                memberToken,
+                "password123",
+                "fullNameUser",
+                "New Name");
 
-@Test
-void TestUpdateMemberFullName_WhenBlank_ThenThrowsException() {
-    String guestToken = userService.visitSystem();
+        assertTrue(result);
+        assertEquals("New Name", userRepository.getMemberByUsername("fullNameUser").getFullName());
+    }
 
-    userService.signUp(
-            guestToken,
-            "blankUpdateNameUser",
-            "password123",
-            "Old Name",
-            "0500000000",
-            LocalDate.of(2001, 1, 1));
+    @Test
+    void TestUpdateMemberFullName_WhenBlank_ThenThrowsException() {
+        String guestToken = userService.visitSystem();
 
-    String memberToken = userService.login(guestToken, "blankUpdateNameUser", "password123");
+        userService.signUp(
+                guestToken,
+                "blankUpdateNameUser",
+                "password123",
+                "Old Name",
+                "0500000000",
+                LocalDate.of(2001, 1, 1));
 
-    assertThrows(IllegalArgumentException.class, () ->
-            userService.updateMemberFullName(
-                    memberToken,
-                    "password123",
-                    "blankUpdateNameUser",
-                    "   "));
-}
+        String memberToken = userService.login(guestToken, "blankUpdateNameUser", "password123");
 
-@Test
-void TestUpdateMemberPhone_WhenValidFormattedPhone_ThenUpdatesNormalizedPhone() {
-    String guestToken = userService.visitSystem();
+        assertThrows(IllegalArgumentException.class, ()
+                -> userService.updateMemberFullName(
+                        memberToken,
+                        "password123",
+                        "blankUpdateNameUser",
+                        "   "));
+    }
 
-    userService.signUp(
-            guestToken,
-            "phoneUpdateUser",
-            "password123",
-            "Phone User",
-            "0500000000",
-            LocalDate.of(2001, 1, 1));
+    @Test
+    void TestUpdateMemberPhone_WhenValidFormattedPhone_ThenUpdatesNormalizedPhone() {
+        String guestToken = userService.visitSystem();
 
-    String memberToken = userService.login(guestToken, "phoneUpdateUser", "password123");
+        userService.signUp(
+                guestToken,
+                "phoneUpdateUser",
+                "password123",
+                "Phone User",
+                "0500000000",
+                LocalDate.of(2001, 1, 1));
 
-    boolean result = userService.updateMemberPhone(
-            memberToken,
-            "password123",
-            "phoneUpdateUser",
-            "052-1234567");
+        String memberToken = userService.login(guestToken, "phoneUpdateUser", "password123");
 
-    assertTrue(result);
-    assertEquals("0521234567", userRepository.getMemberByUsername("phoneUpdateUser").getPhone());
-}
+        boolean result = userService.updateMemberPhone(
+                memberToken,
+                "password123",
+                "phoneUpdateUser",
+                "052-1234567");
 
-@Test
-void TestUpdateMemberPhone_WhenInvalidPhone_ThenThrowsException() {
-    String guestToken = userService.visitSystem();
+        assertTrue(result);
+        assertEquals("0521234567", userRepository.getMemberByUsername("phoneUpdateUser").getPhone());
+    }
 
-    userService.signUp(
-            guestToken,
-            "invalidUpdatePhoneUser",
-            "password123",
-            "Phone User",
-            "0500000000",
-            LocalDate.of(2001, 1, 1));
+    @Test
+    void TestUpdateMemberPhone_WhenInvalidPhone_ThenThrowsException() {
+        String guestToken = userService.visitSystem();
 
-    String memberToken = userService.login(guestToken, "invalidUpdatePhoneUser", "password123");
+        userService.signUp(
+                guestToken,
+                "invalidUpdatePhoneUser",
+                "password123",
+                "Phone User",
+                "0500000000",
+                LocalDate.of(2001, 1, 1));
 
-    assertThrows(IllegalArgumentException.class, () ->
-            userService.updateMemberPhone(
-                    memberToken,
-                    "password123",
-                    "invalidUpdatePhoneUser",
-                    "052-abc4567"));
-}
+        String memberToken = userService.login(guestToken, "invalidUpdatePhoneUser", "password123");
+
+        assertThrows(IllegalArgumentException.class, ()
+                -> userService.updateMemberPhone(
+                        memberToken,
+                        "password123",
+                        "invalidUpdatePhoneUser",
+                        "052-abc4567"));
+    }
 
 }

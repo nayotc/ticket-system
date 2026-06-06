@@ -74,17 +74,6 @@ public class CompanyServiceTest {
         tokenService = new TokenService(
                 "default_secret_key_for_development_purposes_only_32_chars",
                 tokenRepository, testLogger);
-
-        // testLogger2 = new ISystemLogger() {
-        //     @Override
-        //     public void logEvent(String message, LogLevel level) {
-        //         // No-op logger for acceptance tests
-        //     }
-        //     @Override
-        //     public void logError(String errorMessage, Throwable exception) {
-        //         // No-op logger for acceptance tests
-        //     }
-        //};
         userService = new UserService(userRepository, tokenService, testLogger);
         membershipDomain = new MembershipDomainService(userRepository);
         userService = new UserService(userRepository, tokenService, testLogger);

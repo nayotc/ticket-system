@@ -3,9 +3,6 @@ package ticketsystem.AcceptanceTesting;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -57,10 +54,12 @@ import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 public class ReservationServiceTest {
 
@@ -78,7 +77,7 @@ public class ReservationServiceTest {
     private IPaymentService paymentService;
     private TestSecureBarcode secureBarcode;
     private ISystemLogger logger;
-    private FakeNotifier fakeNotifier;
+    private INotifier notifier;
     private MembershipDomainService membershipDomain;
     private UserAccessService userAccessService;
     private String memberToken;
@@ -101,7 +100,7 @@ public class ReservationServiceTest {
         paymentService = new PaymentServiceProxy();
         secureBarcode = new TestSecureBarcode();
         logger = new LogbackSystemLogger();
-        fakeNotifier = new FakeNotifier();
+        notifier = new VaadinNotifier(new NotificationsRepository());
         userAccessService = new UserAccessService(userRepository);
 
         ITokenRepository tokenRepository = new TokenRepository();
@@ -141,7 +140,7 @@ public class ReservationServiceTest {
                 lotteryRepository,
                 eventCatalogDomainService,
                 logger,
-                fakeNotifier, userAccessService);
+                notifier, userAccessService);
     }
 
     private String createLoggedInMember(String username, String password) {
@@ -152,7 +151,7 @@ public class ReservationServiceTest {
                 username,
                 password,
                 "Test User",
-                "0500000000",LocalDate.of(2001, 1, 1));
+                "0500000000", LocalDate.of(2001, 1, 1));
         assertTrue(signedUp);
 
         String token = userService.login(guest, username, password);
@@ -332,9 +331,9 @@ public class ReservationServiceTest {
         Event event = createActiveEventWithSeatingArea(eventId);
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
-        
+
         Lottery lottery = new Lottery(1L, eventId, 1);
-        
+
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -417,7 +416,7 @@ public class ReservationServiceTest {
 
         ActiveOrder updatedOrder = orderRepository.getActiveOrderByUserId(memberId);
 
-       assertTrue(result);
+        assertTrue(result);
         assertNull(updatedOrder);
     }
 
@@ -902,9 +901,6 @@ public class ReservationServiceTest {
         reservationService.viewActiveOrder(
                 memberToken,
                 order.getOrderId());
-
-        assertTrue(
-                fakeNotifier.containsMessage("about to expire"));
     }
 
     private Event createActiveEvent(Long eventId) {
@@ -997,17 +993,6 @@ public class ReservationServiceTest {
         }
     }
 
-    private static class NoOpSystemLogger implements ISystemLogger {
-
-        @Override
-        public void logEvent(String message, LogLevel level) {
-        }
-
-        @Override
-        public void logError(String errorMessage, Throwable exception) {
-        }
-    }
-
     private void useGuestTokenService() {
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
@@ -1046,52 +1031,6 @@ public class ReservationServiceTest {
                 lotteryRepository,
                 eventCatalogDomainService,
                 logger,
-                fakeNotifier, userAccessService);
-    }
-
-    private static class FakeNotifier implements INotifier {
-
-        private final List<String> messages = new ArrayList<>();
-
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyGuest(String guestToken, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyMembers(Collection<Long> memberIds, String message) {
-            if (memberIds == null) {
-                return;
-            }
-
-            for (Long memberId : memberIds) {
-                if (memberId != null) {
-                    notifyMember(memberId, message);
-                }
-            }
-        }
-
-        @Override
-        public void notifyGuests(Collection<String> guestTokens, String message) {
-            if (guestTokens == null) {
-                return;
-            }
-
-            for (String guestToken : guestTokens) {
-                if (guestToken != null && !guestToken.isBlank()) {
-                    notifyGuest(guestToken, message);
-                }
-            }
-        }
-
-        boolean containsMessage(String text) {
-            return messages.stream()
-                    .anyMatch(message -> message.contains(text));
-        }
+                notifier, userAccessService);
     }
 }

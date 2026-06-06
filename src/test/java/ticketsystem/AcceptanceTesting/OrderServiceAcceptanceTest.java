@@ -1,13 +1,12 @@
 package ticketsystem.AcceptanceTesting;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -20,8 +19,10 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
 import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 public class OrderServiceAcceptanceTest {
 
@@ -39,6 +40,7 @@ public class OrderServiceAcceptanceTest {
     void setUp() {
         orderRepository = new OrderRepository();
         logger = new LogbackSystemLogger();
+        notification = new VaadinNotifier(new NotificationsRepository());
 
         // use real token repository + token service
         TokenRepository tokenRepository = new TokenRepository();
@@ -49,7 +51,7 @@ public class OrderServiceAcceptanceTest {
 
         // create real user sessions
         ticketsystem.DomainLayer.user.Guest guest = new ticketsystem.DomainLayer.user.Guest();
-        ticketsystem.DomainLayer.user.Member member = new ticketsystem.DomainLayer.user.Member(userId, "user", "full", "phone",LocalDate.of(2001, 1, 1));
+        ticketsystem.DomainLayer.user.Member member = new ticketsystem.DomainLayer.user.Member(userId, "user", "full", "phone", LocalDate.of(2001, 1, 1));
 
         guestToken = tokenService.addActiveSession(guest);
         memberToken = tokenService.addActiveSession(member);
@@ -80,7 +82,7 @@ public class OrderServiceAcceptanceTest {
                 guestToken,
                 null,
                 eventId);
-        guestOrder.addTicket(new Ticket(1L, eventId, 10L,0,0,new BigDecimal(10))); // add a ticket to guest order to differentiate it from member order
+        guestOrder.addTicket(new Ticket(1L, eventId, 10L, 0, 0, new BigDecimal(10))); // add a ticket to guest order to differentiate it from member order
         orderRepository.addOrder(guestOrder);
 
         orderService.onUserLogin(guestToken, memberToken);
@@ -111,7 +113,7 @@ public class OrderServiceAcceptanceTest {
                 memberToken,
                 userId,
                 eventId);
-        memberOrder.addTicket(new Ticket(1L, eventId, areaId,0,0,new BigDecimal(10))); // add a ticket to member order to differentiate it from guest order
+        memberOrder.addTicket(new Ticket(1L, eventId, areaId, 0, 0, new BigDecimal(10))); // add a ticket to member order to differentiate it from guest order
         orderRepository.addOrder(guestOrder);
         orderRepository.addOrder(memberOrder);
 
@@ -144,8 +146,8 @@ public class OrderServiceAcceptanceTest {
                 memberToken,
                 userId,
                 memberEventId);
-        guestOrder.addTicket(new Ticket(1L, guestEventId, 10L,0,0,new BigDecimal(10))); // add a ticket to guest order to differentiate it from member order
-        memberOrder.addTicket(new Ticket(2L, memberEventId, 20L,0,0,new BigDecimal(20))); // add a ticket to member order to differentiate it from guest order
+        guestOrder.addTicket(new Ticket(1L, guestEventId, 10L, 0, 0, new BigDecimal(10))); // add a ticket to guest order to differentiate it from member order
+        memberOrder.addTicket(new Ticket(2L, memberEventId, 20L, 0, 0, new BigDecimal(20))); // add a ticket to member order to differentiate it from guest order
         orderRepository.addOrder(guestOrder);
         orderRepository.addOrder(memberOrder);
 

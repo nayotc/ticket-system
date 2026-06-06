@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.INotifier;
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
@@ -26,6 +27,8 @@ import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.SuspentionUserDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.history.Purchase;
@@ -52,15 +55,15 @@ import ticketsystem.InfrastructureLayer.VaadinNotifier;
 public class SystemAdminServiceTest {
 
     private SystemAdminService systemAdminService;
-    private SystemAdminRepository realAdminRepo;
+    private ISystemAdminRepository realAdminRepo;
     private TokenService tokenService;
-    private UserRepository userRepo = new UserRepository();
+    private IUserRepository userRepo = new UserRepository();
     private CompanyService companyService;
     private SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
     ICompanyRepository companyRepo;
     HistoryRepository historyRepo;
     OrderRepository orderRepo;
-    LogbackSystemLogger logger = new LogbackSystemLogger();
+    ISystemLogger logger = new LogbackSystemLogger();
     private MembershipDomainService membershipDomain;
     private INotifier notifier;
     private NotificationsRepository notificationRepo;

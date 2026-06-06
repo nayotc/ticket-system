@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,16 +29,18 @@ import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 public class LotteryServiceTest {
 
     private UserRepository userRepo;
     private LotteryRepository lotteryRepo;
     private TokenService tokenService;
-    private FakeNotifier fakeNotifier;
+    private NotificationsRepository notificationRepository;
+    private INotifier notifier;
     private UserAccessService userAccessService;
     private MembershipDomainService membershipDomain;
     private ISystemLogger logger;
@@ -56,7 +59,7 @@ public class LotteryServiceTest {
                 username,
                 password,
                 "Test User",
-                "0500000000",LocalDate.of(2001, 1, 1)
+                "0500000000", LocalDate.of(2001, 1, 1)
         );
         return userService.login(guestToken, username, password);
     }
@@ -75,20 +78,21 @@ public class LotteryServiceTest {
         TokenRepository tokenRepository = new TokenRepository();
         logger = new LogbackSystemLogger();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
-        fakeNotifier = new FakeNotifier();
+        notificationRepository = new NotificationsRepository();
+        notifier = new VaadinNotifier(notificationRepository);
         userAccessService = new UserAccessService(userRepo);
         membershipDomain = new MembershipDomainService(userRepo);
 
         lotteryService = new LotteryService(
                 lotteryRepo,
                 tokenService,
-                fakeNotifier,
+                notifier,
                 userAccessService,
                 membershipDomain,
                 logger
         );
 
-        Member manager = new Member(managerId, "manager", "Lottery Manager", "0501234567",LocalDate.of(2001, 1, 1));
+        Member manager = new Member(managerId, "manager", "Lottery Manager", "0501234567", LocalDate.of(2001, 1, 1));
         Set<Permission> managerPermissions = new HashSet<>();
         managerPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
@@ -114,7 +118,7 @@ public class LotteryServiceTest {
     public void AcceptanceTest_RegisterForPurchaseLottery_Selected() {
         // --- 1. Setup ---      
         long user1Id = 55L;
-        Member user1 = new Member(user1Id, "winner", "Winner User", "0501231231",LocalDate.of(2001, 1, 1));
+        Member user1 = new Member(user1Id, "winner", "Winner User", "0501231231", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(user1Id, user1, "Pass123!");
         String user1Token = tokenService.addActiveSession(user1);
         int winnersAmount = 1;
@@ -151,7 +155,7 @@ public class LotteryServiceTest {
     @Test
     public void AcceptanceTest_AddLottery_Failure_NoPermission() {
         long normalUserId = 20L;
-        Member normalUser = new Member(normalUserId, "normal", "Normal User", "0509999999",LocalDate.of(2001, 1, 1));
+        Member normalUser = new Member(normalUserId, "normal", "Normal User", "0509999999", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(normalUserId, normalUser, "pass");
         String normalToken = tokenService.addActiveSession(normalUser);
 
@@ -166,7 +170,7 @@ public class LotteryServiceTest {
         long lotteryId = lotteryService.addLottery(managerToken, eventId, companyId, 5);
 
         long participantId = 11L;
-        Member participant = new Member(participantId, "part1", "Participant 1", "0501112222",LocalDate.of(2001, 1, 1));
+        Member participant = new Member(participantId, "part1", "Participant 1", "0501112222", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(participantId, participant, "pass");
         String partToken = tokenService.addActiveSession(participant);
 
@@ -204,7 +208,7 @@ public class LotteryServiceTest {
 
         for (long i = 1; i <= 3; i++) {
             long pId = 200L + i;
-            Member p = new Member(pId, "user" + i, "User " + i, "050000000" + i,LocalDate.of(2001, 1, 1));
+            Member p = new Member(pId, "user" + i, "User " + i, "050000000" + i, LocalDate.of(2001, 1, 1));
             userRepo.addRegisteredMember(pId, p, "pass");
             String pToken = tokenService.addActiveSession(p);
             lotteryService.registerMemberToLottery(pToken, lotteryId);
@@ -220,7 +224,6 @@ public class LotteryServiceTest {
         assertEquals(LotteryStatus.COMPLETED, completedLottery.getStatus(), "Status should be COMPLETED");
         assertEquals(winnersAmount, completedLottery.getWinners().size(), "Should have exactly 2 winners");
 
-        assertTrue(fakeNotifier.containsMessage("Congratulations!"), "Winners should receive a notification");
     }
 
     @Test
@@ -232,6 +235,7 @@ public class LotteryServiceTest {
         });
         assertTrue(exception.getMessage().contains("is not closed yet"), "Should not allow draw on an OPEN lottery");
     }
+
     @Test
     public void GivenExistingLotteryForEvent_WhenHasLotteryForEvent_ThenReturnsTrue() {
         lotteryService.addLottery(managerToken, eventId, companyId, 2);

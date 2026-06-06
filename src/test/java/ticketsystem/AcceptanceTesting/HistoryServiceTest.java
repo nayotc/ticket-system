@@ -3,7 +3,6 @@ package ticketsystem.AcceptanceTesting;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,8 +40,10 @@ import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 public class HistoryServiceTest {
 
@@ -54,7 +55,8 @@ public class HistoryServiceTest {
     private HistoryService historyService;
     private ICompanyRepository companyRepository;
     private UserAccessService userAccessService;
-    private FakeNotifier fakeNotifier;
+    private INotifier notifier;
+    private NotificationsRepository notificationRepository;
     private ISystemLogger logger;
 
     @BeforeEach
@@ -69,16 +71,16 @@ public class HistoryServiceTest {
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         this.userService = new UserService(userRepository, tokenService, logger);
         this.companyRepository = new CompanyRepository();
-        userAccessService = new UserAccessService(userRepository);
-        fakeNotifier = new FakeNotifier();
+        this.userAccessService = new UserAccessService(userRepository);
+        this.notificationRepository = new NotificationsRepository();
+        this.notifier = new VaadinNotifier(notificationRepository);
         this.historyService = new HistoryService(
                 historyRepository,
                 tokenService,
                 new MembershipDomainService(userRepository),
                 logger,
                 userAccessService,
-                fakeNotifier
-        );
+                notifier);
     }
 
     /**
@@ -91,7 +93,7 @@ public class HistoryServiceTest {
                 username,
                 password,
                 "Test User",
-                "0500000000",LocalDate.of(2001, 1, 1));
+                "0500000000", LocalDate.of(2001, 1, 1));
         return userService.login(guestToken, username, password);
     }
 
@@ -107,7 +109,7 @@ public class HistoryServiceTest {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
         OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId,
-                20L,new BigDecimal(100));
+                20L, new BigDecimal(100));
 
         historyService.onOrderCompleted(orderDto);
 
@@ -163,7 +165,7 @@ public class HistoryServiceTest {
 
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L,new BigDecimal(100));
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L, new BigDecimal(100));
 
         // --- Act ---
         historyService.onOrderCompleted(orderDto);
@@ -211,7 +213,7 @@ public class HistoryServiceTest {
                 userId,
                 companyId,
                 userId,
-                20L,new BigDecimal(100)
+                20L, new BigDecimal(100)
         );
     }
 
@@ -286,7 +288,7 @@ public class HistoryServiceTest {
                 buyerMemberId,
                 companyId,
                 managedByMemberId,
-                20L,new BigDecimal(100));
+                20L, new BigDecimal(100));
     }
 
     private long createActiveManagerUnderFounder(long founderId, long companyId, String username) {
@@ -503,7 +505,7 @@ public class HistoryServiceTest {
                 buyerId,
                 company.getId(),
                 ownerId, // managedByMemberId - should come from the event creator in the real flow
-                20L,new BigDecimal(100));
+                20L, new BigDecimal(100));
 
         // --- When (Act) ---
         historyService.onOrderCompleted(completedOrder);
@@ -636,49 +638,4 @@ public class HistoryServiceTest {
         assertEquals("Insufficient permissions to generate sales report", exception.getMessage());
     }
 
-    private static class FakeNotifier implements INotifier {
-
-        private final List<String> messages = new ArrayList<>();
-
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyGuest(String guestToken, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyMembers(Collection<Long> memberIds, String message) {
-            if (memberIds == null) {
-                return;
-            }
-
-            for (Long memberId : memberIds) {
-                if (memberId != null) {
-                    notifyMember(memberId, message);
-                }
-            }
-        }
-
-        @Override
-        public void notifyGuests(Collection<String> guestTokens, String message) {
-            if (guestTokens == null) {
-                return;
-            }
-
-            for (String guestToken : guestTokens) {
-                if (guestToken != null && !guestToken.isBlank()) {
-                    notifyGuest(guestToken, message);
-                }
-            }
-        }
-
-        boolean containsMessage(String text) {
-            return messages.stream()
-                    .anyMatch(message -> message.contains(text));
-        }
-    }
 }

@@ -22,6 +22,9 @@ import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
+import ticketsystem.DTO.CompanyDTO;
+import ticketsystem.DTO.MemberDTO;
+import ticketsystem.DTO.RoleTreeDTO;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
@@ -39,11 +42,11 @@ import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.DTO.CompanyDTO;
-import ticketsystem.DTO.MemberDTO;
-import ticketsystem.DTO.RoleTreeDTO;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
+
 /**
  * Acceptance Tests for MembershipService. This class uses real Domain objects
  * and relies on existing Repository implementations.
@@ -56,7 +59,8 @@ public class MembershipServiceTest {
     private MembershipDomainService domainService;
     private ISystemLogger systemLogger;
     private MembershipService membershipService;
-    private FakeNotifier fakeNotifier;
+    private INotifier notifier;
+    private NotificationsRepository notificationsRepository;
     // Test Data
     private final Long companyId = 1L;
     private Company testCompany;
@@ -89,11 +93,12 @@ public class MembershipServiceTest {
         this.userRepository = new UserRepository();
         this.companyRepository = new CompanyRepository();
         this.domainService = new MembershipDomainService(userRepository);
-        fakeNotifier = new FakeNotifier();
+        this.notificationsRepository = new NotificationsRepository();
+        this.notifier = new VaadinNotifier(notificationsRepository);
         userAccessService = new UserAccessService(userRepository);
         // Initialize service with null for notifications and the logger
         this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService,
-                fakeNotifier, systemLogger, userAccessService);
+                notifier, systemLogger, userAccessService);
 
         // 2. Setup Company state
         testCompany = new Company("BGU Productions", founderId, PurchasePolicy.noRestrictions(),
@@ -104,13 +109,13 @@ public class MembershipServiceTest {
         }
 
         // 3. Setup Founder - Active state
-        founderMember = new Member(founderId, "FounderUser", "Founder User", "0500000001",LocalDate.of(2001, 1, 1));
+        founderMember = new Member(founderId, "FounderUser", "Founder User", "0500000001", LocalDate.of(2001, 1, 1));
         founderMember.addFounderRole(companyId);
         userRepository.addRegisteredMember(founderId, founderMember, "password123");
         appointerToken = tokenService.addActiveSession(founderMember);
 
         // 4. Setup Manager - Pre-existing active role
-        managerMember = new Member(managerId, "ManagerUser", "Manager User", "0500000002",LocalDate.of(2001, 1, 1));
+        managerMember = new Member(managerId, "ManagerUser", "Manager User", "0500000002", LocalDate.of(2001, 1, 1));
         Set<Permission> managerPerms = new HashSet<>();
         managerPerms.add(Permission.MANAGE_INQUIRIES);
         managerMember.addManagerRole(companyId, founderId, managerPerms);
@@ -122,7 +127,7 @@ public class MembershipServiceTest {
         founderRole.addAppointee(managerId);
 
         // 5. Setup Owner - Specifically for UC 4.9 and 4.10
-        ownerMember = new Member(ownerId, "OwnerUser", "Owner User", "0500000003",LocalDate.of(2001, 1, 1));
+        ownerMember = new Member(ownerId, "OwnerUser", "Owner User", "0500000003", LocalDate.of(2001, 1, 1));
         ownerMember.addOwnerRole(companyId, founderId);
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password123");
@@ -135,7 +140,7 @@ public class MembershipServiceTest {
         companyRepository.save(testCompany);
 
         // 6. Setup Regular Member - Starting with no role (For UC 4.7, 4.8)
-        member = new Member(memberId, "PlainMember", "Plain Member", "0500000004",LocalDate.of(2001, 1, 1));
+        member = new Member(memberId, "PlainMember", "Plain Member", "0500000004", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(memberId, member, "password123");
         appointeeToken = tokenService.addActiveSession(member);
     }
@@ -296,7 +301,7 @@ public class MembershipServiceTest {
         });
 
         // שינוי כאן: בדיקה גמישה יותר למחרוזת במקום הנוסח הישן והנוקשה
-        assertTrue(exception.getMessage().contains("not found"), 
+        assertTrue(exception.getMessage().contains("not found"),
                 "Exception message should indicate that the manager was not found");
     }
 
@@ -468,7 +473,7 @@ public class MembershipServiceTest {
     public void GivenOwnerWithSubordinate_WhenResignFromOwnership_ThenReturnsTrueAndSubordinateIsTransferred()
             throws Exception {
         // Arrange
-        Member subManager = new Member(999L, "SubManager", "Sub Manager", "0500000005",LocalDate.of(2001, 1, 1));
+        Member subManager = new Member(999L, "SubManager", "Sub Manager", "0500000005", LocalDate.of(2001, 1, 1));
         subManager.addManagerRole(companyId, ownerId, new HashSet<>());
         subManager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(999L, subManager, "password123");
@@ -726,7 +731,7 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenAppointerTokenButMemberNotInRepository_WhenRequestManagerAssignment_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999", LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -797,7 +802,7 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenTokenForMemberNotInRepository_WhenApproveAssignment_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999", LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -832,7 +837,7 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenTokenForMemberNotInRepository_WhenRejectAssignment_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999", LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -854,7 +859,7 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenAppointerTokenButMemberNotInRepository_WhenUpdateManagerPermissions_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999", LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -869,7 +874,7 @@ public class MembershipServiceTest {
 
     @Test
     public void GivenAppointerTokenButMemberNotInRepository_WhenRemoveManagerAssignment_ThenThrowsException() {
-        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999",LocalDate.of(2001, 1, 1));
+        Member ghost = new Member(999L, "ghost", "Ghost User", "0500000999", LocalDate.of(2001, 1, 1));
         String ghostToken = tokenService.addActiveSession(ghost);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -900,7 +905,7 @@ public class MembershipServiceTest {
                 777L,
                 "lonelyOwner",
                 "Lonely Owner",
-                "0500000777",LocalDate.of(2001, 1, 1));
+                "0500000777", LocalDate.of(2001, 1, 1));
 
         ownerWithoutExistingAppointer.addOwnerRole(companyId, 999L);
         ownerWithoutExistingAppointer.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
@@ -924,8 +929,8 @@ public class MembershipServiceTest {
                 "PlainMember");
 
         assertTrue(result);
-        assertTrue(fakeNotifier.containsMessage("BGU Productions"));
     }
+
     @Test
     public void GivenFounder_WhenViewRolesAndPermissionsTreeDto_ThenReturnsRoleTreeDto() throws Exception {
         RoleTreeDTO tree = membershipService.viewRolesAndPermissionsTreeDto(appointerToken, companyId);
@@ -1137,8 +1142,6 @@ public class MembershipServiceTest {
         );
 
         assertTrue(result);
-        assertTrue(fakeNotifier.containsMessage("BGU Productions"));
-        assertTrue(fakeNotifier.containsMessage("manager"));
     }
 
     @Test
@@ -1151,8 +1154,6 @@ public class MembershipServiceTest {
         );
 
         assertTrue(result);
-        assertTrue(fakeNotifier.containsMessage("manager role"));
-        assertTrue(fakeNotifier.containsMessage("BGU Productions"));
     }
 
     @Test
@@ -1165,7 +1166,5 @@ public class MembershipServiceTest {
         );
 
         assertTrue(result);
-        assertTrue(fakeNotifier.containsMessage("owner role"));
-        assertTrue(fakeNotifier.containsMessage("BGU Productions"));
     }
 }

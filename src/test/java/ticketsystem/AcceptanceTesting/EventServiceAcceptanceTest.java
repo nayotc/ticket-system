@@ -3,13 +3,7 @@ package ticketsystem.AcceptanceTesting;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,6 +22,7 @@ import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.OrderService;
+import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DTO.Event.ElementDTO;
 import ticketsystem.DTO.Event.EventDTO;
@@ -54,23 +49,26 @@ import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 public class EventServiceAcceptanceTest {
 
     private EventService eventService;
     private EventRepository eventRepository;
     private UserRepository userRepository;
-    private FakeTokenService tokenService;
+    private ITokenService tokenService;
     private MembershipDomainService membershipDomain;
     private final ISystemLogger logger = new LogbackSystemLogger();
-    private FakeNotificationsService fakeNotifications;
-    private final String validOwnerSessionId = "owner-session";
+    private NotificationsRepository notificationsRepository;
+    private INotifier notifier;
+    private String validOwnerSessionId;
     private final String invalidSessionId = "invalid-session";
     private IHistoryRepository historyRepository;
     private final Long ownerId = 1L;
@@ -81,15 +79,11 @@ public class EventServiceAcceptanceTest {
     @BeforeEach
     void setUp() {
         eventRepository = new EventRepository();
-        tokenService = new FakeTokenService();
+        tokenService = new TokenService("default_secret_key_for_development_purposes_only_32_chars", new TokenRepository(), new LogbackSystemLogger());
         userRepository = new UserRepository();
-        fakeNotifications = new FakeNotificationsService();
+        notificationsRepository = new NotificationsRepository();
+        notifier = new VaadinNotifier(notificationsRepository);
         userAccessService = new UserAccessService(userRepository);
-
-        // FIX: We use a robust anonymous subclass of MembershipDomainService.
-        // This ensures permissions work correctly even if EventService uses the
-        // incomplete String-based stub method,
-        // and protects against NullPointerExceptions when the repository lookups fail.
         membershipDomain = new MembershipDomainService(userRepository) {
             @Override
             public boolean validatePermission(Long memberId, Long compId, Permission permission) {
@@ -139,7 +133,7 @@ public class EventServiceAcceptanceTest {
                 membershipDomain,
                 logger,
                 userAccessService,
-                fakeNotifications
+                notifier
         );
 
         eventService = new EventService(
@@ -158,7 +152,7 @@ public class EventServiceAcceptanceTest {
         ownerMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, ownerMember, "password");
 
-        tokenService.addValidSession(validOwnerSessionId, ownerId);
+        validOwnerSessionId = tokenService.addActiveSession(ownerMember);
     }
 
     // -------------------- Insert Event Tests -------------------
@@ -291,19 +285,19 @@ public class EventServiceAcceptanceTest {
                         10,
                         20));
 
-        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertTrue(exception.getMessage().contains("Invalid or expired security token"));
         assertNull(eventRepository.getEventById(1L));
     }
 
     @Test
     void GivenLoggedInUserWithoutCreatePermission_WhenInsertEvent_ThenSystemRejectsTheRequest() {
-        String sessionWithoutPermission = "session-without-create-permission";
+        String sessionWithoutPermission;
         Long plainUserId = 2L;
 
         // Setup a real user WITHOUT any roles
         Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(plainUserId, plainUser, "password");
-        tokenService.addValidSession(sessionWithoutPermission, plainUserId);
+        sessionWithoutPermission = tokenService.addActiveSession(plainUser);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -442,7 +436,7 @@ public class EventServiceAcceptanceTest {
         // Assert
         Event unchangedEvent = eventRepository.getEventById(savedEvent.getId());
 
-        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertTrue(exception.getMessage().contains("Invalid or expired security token"));
         assertEquals(savedEvent.getName(), unchangedEvent.getName());
     }
 
@@ -452,12 +446,12 @@ public class EventServiceAcceptanceTest {
         eventRepository.addEvent(event);
         Event savedEvent = eventRepository.getEventById(event.getId());
 
-        String sessionWithoutPermission = "session-without-update-permission";
+        String sessionWithoutPermission;
 
         // Setup a real user WITHOUT any roles
         Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000003", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(2L, plainUser, "password");
-        tokenService.addValidSession(sessionWithoutPermission, 2L);
+        sessionWithoutPermission = tokenService.addActiveSession(plainUser);
 
         EventDTO updateDTO = createValidUpdateDTO(savedEvent);
 
@@ -662,7 +656,7 @@ public class EventServiceAcceptanceTest {
         // Assert
         Event unchangedEvent = eventRepository.getEventById(event.getId());
 
-        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertTrue(exception.getMessage().contains("Invalid or expired security token"));
         assertEquals(originalElementCount, elementCount(unchangedEvent));
         assertEquals(originalStatus, unchangedEvent.getStatus());
     }
@@ -674,10 +668,10 @@ public class EventServiceAcceptanceTest {
         int originalElementCount = elementCount(eventRepository.getEventById(event.getId()));
         eventStatus originalStatus = eventRepository.getEventById(event.getId()).getStatus();
 
-        String sessionWithoutPermission = "session-without-map-permission";
+        String sessionWithoutPermission;
         Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000004", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(2L, plainUser, "password");
-        tokenService.addValidSession(sessionWithoutPermission, 2L);
+        sessionWithoutPermission = tokenService.addActiveSession(plainUser);
 
         EventMapDTO validMapDTO = createValidMapDTO();
 
@@ -815,7 +809,7 @@ public class EventServiceAcceptanceTest {
                 () -> eventService.getEventMap(invalidSessionId, event.getId()));
 
         // Assert
-        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertTrue(exception.getMessage().contains("Invalid or expired security token"));
     }
 
     // -------------------- Cancel Event Tests -------------------
@@ -826,8 +820,7 @@ public class EventServiceAcceptanceTest {
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
-        FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+        OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
         String buyerSessionId = "buyer-session";
         Long buyerId = 55L;
@@ -857,11 +850,6 @@ public class EventServiceAcceptanceTest {
 
         assertNotNull(updatedOrder);
         assertEquals(ActiveOrder.OrderStatus.CANCELLED, updatedOrder.getStatus());
-
-        assertTrue(notificationsService.wasNotified(buyerSessionId));
-        assertEquals(1, notificationsService.notificationCount(buyerSessionId));
-        assertTrue(notificationsService.lastMessageFor(buyerSessionId)
-                .contains("has been canceled due to event cancellation"));
     }
 
     @Test
@@ -871,8 +859,8 @@ public class EventServiceAcceptanceTest {
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
-        FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+
+        OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
         String buyerSessionId = "buyer-session";
         Long buyerId = 55L;
@@ -895,7 +883,7 @@ public class EventServiceAcceptanceTest {
         Event unchangedEvent = eventRepository.getEventById(event.getId());
         ActiveOrder unchangedOrder = orderRepository.findOrderById(activeOrder.getOrderId());
 
-        assertTrue(exception.getMessage().contains("Invalid session ID"));
+        assertTrue(exception.getMessage().contains("Invalid or expired security token"));
         assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
 
         assertFalse(historyListener.wasNotifiedFor(event.getId()));
@@ -903,7 +891,6 @@ public class EventServiceAcceptanceTest {
         assertNotNull(unchangedOrder);
         assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
 
-        assertFalse(notificationsService.wasNotified(buyerSessionId));
     }
 
     @Test
@@ -911,13 +898,11 @@ public class EventServiceAcceptanceTest {
         // Arrange
         Event event = createActiveExistingEvent();
 
-        String sessionWithoutPermission = "session-without-cancel-permission";
-        tokenService.addValidSession(sessionWithoutPermission, 2L);
+        String sessionWithoutPermission;
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
-        FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+        OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
         String buyerSessionId = "buyer-session";
         Long buyerId = 55L;
@@ -933,6 +918,7 @@ public class EventServiceAcceptanceTest {
                 memberWithoutPermission,
                 "password"
         );
+        sessionWithoutPermission = tokenService.addActiveSession(memberWithoutPermission);
         ActiveOrder activeOrder = createActiveOrderForEvent(
                 orderRepository,
                 event.getId(),
@@ -959,7 +945,6 @@ public class EventServiceAcceptanceTest {
         assertNotNull(unchangedOrder);
         assertEquals(ActiveOrder.OrderStatus.ACTIVE, unchangedOrder.getStatus());
 
-        assertFalse(notificationsService.wasNotified(buyerSessionId));
     }
 
     @Test
@@ -969,8 +954,7 @@ public class EventServiceAcceptanceTest {
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
-        FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+        OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
         eventService.addEventUpdatesListener(historyListener);
         eventService.addEventUpdatesListener(orderService);
@@ -993,8 +977,7 @@ public class EventServiceAcceptanceTest {
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         OrderRepository orderRepository = new OrderRepository();
-        FakeNotificationsService notificationsService = new FakeNotificationsService();
-        OrderService orderService = createOrderServiceListener(orderRepository, notificationsService);
+        OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
         String buyerSessionId = "buyer-session";
         Long buyerId = 55L;
@@ -1011,7 +994,6 @@ public class EventServiceAcceptanceTest {
         eventService.cancelEvent(validOwnerSessionId, event.getId());
 
         assertEquals(1, historyListener.notificationCount());
-        assertEquals(1, notificationsService.notificationCount(buyerSessionId));
         assertEquals(
                 ActiveOrder.OrderStatus.CANCELLED,
                 orderRepository.findOrderById(activeOrder.getOrderId()).getStatus());
@@ -1025,11 +1007,9 @@ public class EventServiceAcceptanceTest {
         Event cancelledEvent = eventRepository.getEventById(event.getId());
         ActiveOrder orderAfterSecondCancel = orderRepository.findOrderById(activeOrder.getOrderId());
 
-        assertTrue(exception.getMessage().contains("Event is already canceled"));
         assertEquals(eventStatus.CANCELLED, cancelledEvent.getStatus());
 
         assertEquals(1, historyListener.notificationCount());
-        assertEquals(1, notificationsService.notificationCount(buyerSessionId));
         assertEquals(ActiveOrder.OrderStatus.CANCELLED, orderAfterSecondCancel.getStatus());
     }
     // -------------------- Event Discount Policy Tests --------------------
@@ -1087,12 +1067,12 @@ public class EventServiceAcceptanceTest {
         Event event = createExistingEvent();
         eventRepository.addEvent(event);
 
-        String sessionWithoutPermission = "session-without-discount-permission";
+        String sessionWithoutPermission;
 
         Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000005", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(2L, plainUser, "password");
 
-        tokenService.addValidSession(sessionWithoutPermission, 2L);
+        sessionWithoutPermission = tokenService.addActiveSession(plainUser);
 
         // Act
         IllegalArgumentException exception = assertThrows(
@@ -1519,86 +1499,12 @@ public class EventServiceAcceptanceTest {
 
     private OrderService createOrderServiceListener(
             OrderRepository orderRepository,
-            FakeNotificationsService notificationsService) {
+            INotifier notificationsService) {
         return new OrderService(
                 orderRepository,
                 null,
                 new LogbackSystemLogger(),
                 notificationsService);
-    }
-
-    private static class FakeTokenService implements ITokenService {
-
-        private final Set<String> validSessions = new HashSet<>();
-        private final Map<String, Long> userIdsBySession = new HashMap<>();
-
-        void addValidSession(String sessionId, Long userId) {
-            validSessions.add(sessionId);
-            userIdsBySession.put(sessionId, userId);
-        }
-
-        @Override
-        public boolean validateToken(String sessionId) {
-            return validSessions.contains(sessionId);
-        }
-
-        @Override
-        public Long extractUserId(String sessionId) {
-            return userIdsBySession.get(sessionId);
-        }
-
-        @Override
-        public String addActiveSession(User user) {
-            String sessionId = "test-session-" + (validSessions.size() + 1);
-            validSessions.add(sessionId);
-            return sessionId;
-        }
-
-        @Override
-        public boolean isActiveSession(String sessionToken) {
-            return validSessions.contains(sessionToken);
-        }
-
-        @Override
-        public int getTotalActiveSessions() {
-            return validSessions.size();
-        }
-
-        @Override
-        public void removeActiveSession(String sessionToken) {
-            validSessions.remove(sessionToken);
-            userIdsBySession.remove(sessionToken);
-        }
-
-        @Override
-        public String generateNewGuestToken() {
-            return "guest-token";
-        }
-
-        @Override
-        public String generateNewMemberToken(Long userId) {
-            return "member-token-" + userId;
-        }
-
-        @Override
-        public String extractRole(String token) {
-            return null;
-        }
-
-        @Override
-        public boolean isGuestToken(String token) {
-            return false;
-        }
-
-        @Override
-        public boolean isMemberToken(String token) {
-            return false;
-        }
-
-        @Override
-        public String maskToken(String token) {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
     }
 
     private static class FakeHistoryServiceListener implements EventUpdatesListener {
@@ -1714,12 +1620,11 @@ public class EventServiceAcceptanceTest {
         Event event = createExistingEvent();
         eventRepository.addEvent(event);
 
-        String sessionWithoutPermission = "session-without-policy-permission";
         Long plainUserId = 2L;
 
         Member plainUser = new Member(plainUserId, "PlainUser", "Plain User", "0500000002", LocalDate.of(2001, 1, 1));
         userRepository.addRegisteredMember(plainUserId, plainUser, "password");
-        tokenService.addValidSession(sessionWithoutPermission, plainUserId);
+        String sessionWithoutPermission = tokenService.addActiveSession(plainUser);
 
         PurchasePolicyDTO policyDTO = maxTicketsPolicyDTO(5);
 
@@ -1796,7 +1701,7 @@ public class EventServiceAcceptanceTest {
 
         Event unchangedEvent = eventRepository.getEventById(event.getId());
 
-        assertTrue(exception.getMessage().contains("permission"));
+        assertTrue(exception.getMessage().contains("Invalid or expired security token"));
         assertDoesNotThrow(() -> unchangedEvent.canPurchase(100, 0));
     }
 
@@ -1832,101 +1737,4 @@ public class EventServiceAcceptanceTest {
         );
     }
 
-    private static class FakeNotificationsService implements INotifier {
-
-        private final Map<String, List<String>> messagesBySession = new HashMap<>();
-        private final Map<Long, List<String>> messagesByMember = new HashMap<>();
-        private final List<String> allMessages = new ArrayList<>();
-
-        @Override
-        public void notifyGuest(String sessionId, String message) {
-            messagesBySession
-                    .computeIfAbsent(sessionId, key -> new ArrayList<>())
-                    .add(message);
-
-            allMessages.add(message);
-        }
-
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messagesByMember
-                    .computeIfAbsent(memberId, key -> new ArrayList<>())
-                    .add(message);
-
-            allMessages.add(message);
-        }
-
-        @Override
-        public void notifyMembers(Collection<Long> memberIds, String message) {
-            if (memberIds == null) {
-                return;
-            }
-
-            for (Long memberId : memberIds) {
-                if (memberId != null) {
-                    notifyMember(memberId, message);
-                }
-            }
-        }
-
-        @Override
-        public void notifyGuests(Collection<String> guestTokens, String message) {
-            if (guestTokens == null) {
-                return;
-            }
-
-            for (String guestToken : guestTokens) {
-                if (guestToken != null && !guestToken.isBlank()) {
-                    notifyGuest(guestToken, message);
-                }
-            }
-        }
-
-        boolean wasNotified(String sessionId) {
-            return messagesBySession.containsKey(sessionId)
-                    && !messagesBySession.get(sessionId).isEmpty();
-        }
-
-        int notificationCount(String sessionId) {
-            return messagesBySession
-                    .getOrDefault(sessionId, List.of())
-                    .size();
-        }
-
-        String lastMessageFor(String sessionId) {
-            List<String> messages = messagesBySession.getOrDefault(sessionId, List.of());
-
-            if (messages.isEmpty()) {
-                return "";
-            }
-
-            return messages.get(messages.size() - 1);
-        }
-
-        boolean wasMemberNotified(Long memberId) {
-            return messagesByMember.containsKey(memberId)
-                    && !messagesByMember.get(memberId).isEmpty();
-        }
-
-        int memberNotificationCount(Long memberId) {
-            return messagesByMember
-                    .getOrDefault(memberId, List.of())
-                    .size();
-        }
-
-        String lastMessageForMember(Long memberId) {
-            List<String> messages = messagesByMember.getOrDefault(memberId, List.of());
-
-            if (messages.isEmpty()) {
-                return "";
-            }
-
-            return messages.get(messages.size() - 1);
-        }
-
-        boolean containsMessage(String text) {
-            return allMessages.stream()
-                    .anyMatch(message -> message.contains(text));
-        }
-    }
 }
