@@ -11,11 +11,11 @@ import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.PresentationLayer.Views.Management.CreateEvent;
 import ticketsystem.PresentationLayer.Views.Management.EditEvent;
+import ticketsystem.PresentationLayer.Views.Management.EditEvent.DiscountConditionType;
 import ticketsystem.PresentationLayer.Views.Management.HallMapBuilder;
 
 import java.util.ArrayList;
@@ -165,21 +165,6 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         }
     }
 
-    @Override
-    public EditEvent.DiscountPolicyDraftDTO loadEventDiscountPolicy(String token, Long eventId) {
-        validateEventId(eventId);
-
-        /*
-         * EventService currently exposes add/remove/composition methods for event discounts,
-         * but the uploaded service does not expose a full getEventDiscountPolicy(...).
-         * This returns an empty draft so the editor can work and save new event discounts.
-         */
-        return new EditEvent.DiscountPolicyDraftDTO(
-                String.valueOf(eventId),
-                EditEvent.DiscountCompositionStrategy.MAXIMUM,
-                new ArrayList<>()
-        );
-    }
 
     @Override
     public void cancelEvent(String token, Long eventId) {
@@ -200,17 +185,19 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
     public void saveEventDiscountPolicy(String token, Long eventId, EditEvent.DiscountPolicyDraftDTO discountDraft) {
         try {
             validateEventId(eventId);
+
             DiscountPolicyDTO appDiscountPolicy = mapToAppDiscountPolicy(discountDraft);
+            System.out.println("UI discounts size = " +
+            (discountDraft == null || discountDraft.discounts() == null
+                            ? "null"
+                            : discountDraft.discounts().size()));
 
-            if (appDiscountPolicy.getCompositionType() != null) {
-                eventService.setEventDiscountCompositionType(token, eventId, appDiscountPolicy.getCompositionType());
-            }
+            System.out.println("APP discounts size = " +
+                    (appDiscountPolicy.getDiscounts() == null
+                            ? "null"
+                            : appDiscountPolicy.getDiscounts().size()));
+            eventService.setEventDiscountPolicy(token, eventId, appDiscountPolicy);
 
-            if (discountDraft != null && discountDraft.discounts() != null) {
-                for (EditEvent.DiscountDTO discount : discountDraft.discounts()) {
-                    addUiDiscountToEvent(token, eventId, discount);
-                }
-            }
         } catch (PresentationException exception) {
             throw exception;
         } catch (IllegalArgumentException | IllegalStateException exception) {
@@ -361,111 +348,94 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         }
 
         policyDTO.setDiscounts(appDiscounts);
+        
         return policyDTO;
     }
-
     private DiscountDTO mapToAppDiscount(EditEvent.DiscountDTO uiDiscount) {
-        if (uiDiscount == null) {
-            throw new IllegalArgumentException("Discount data cannot be null");
-        }
+    if (uiDiscount == null) {
+        throw new IllegalArgumentException("Discount data cannot be null");
+    }
 
-        DiscountDTO appDiscount = new DiscountDTO();
-        appDiscount.setName(uiDiscount.name());
-        appDiscount.setPercentage(java.math.BigDecimal.valueOf(uiDiscount.value()));
+    DiscountDTO appDiscount = new DiscountDTO();
+    appDiscount.setName(uiDiscount.name());
+    appDiscount.setPercentage(java.math.BigDecimal.valueOf(uiDiscount.value()));
 
-        switch (uiDiscount.type()) {
-            case SIMPLE -> appDiscount.setType("VISIBLE");
-            case COUPON -> {
-                appDiscount.setType("COUPON");
-                appDiscount.setCouponCode(uiDiscount.couponCode());
-                if (uiDiscount.validUntil() != null) {
-                    appDiscount.setEndTime(uiDiscount.validUntil().atTime(23, 59));
-                }
+    switch (uiDiscount.type()) {
+        case SIMPLE -> appDiscount.setType("VISIBLE");
+
+        case COUPON -> {
+            appDiscount.setType("COUPON");
+            appDiscount.setCouponCode(uiDiscount.couponCode());
+
+            if (uiDiscount.validUntil() != null) {
+                appDiscount.setEndTime(uiDiscount.validUntil().atTime(23, 59));
             }
-            case CONDITIONAL -> {
-                appDiscount.setType("CONDITIONAL");
-                appDiscount.setConditionText(toConditionName(uiDiscount.conditionType()));
-                if (uiDiscount.endTime() != null) {
-                    appDiscount.setEndTime(uiDiscount.endTime());
-                }
+        }
+
+        case CONDITIONAL -> {
+            appDiscount.setType("CONDITIONAL");
+
+            if (uiDiscount.conditions() == null || uiDiscount.conditions().isEmpty()) {
+                throw new IllegalArgumentException("Conditional discount must contain at least one condition");
             }
-            default -> throw new PresentationException("Unknown discount type selected.");
+
+            List<ticketsystem.DTO.DiscountConditionDTO> appConditions = new ArrayList<>();
+
+            for (EditEvent.DiscountConditionDTO condition : uiDiscount.conditions()) {
+                if (condition == null || condition.conditionType() == null) {
+                    throw new IllegalArgumentException("Discount condition cannot be empty");
+                }
+
+                ticketsystem.DTO.DiscountConditionDTO appCondition =
+                        new ticketsystem.DTO.DiscountConditionDTO();
+
+                switch (condition.conditionType()) {
+                    case MIN_TICKET -> {
+                        if (condition.ticketThreshold() == null) {
+                            throw new IllegalArgumentException("Minimum tickets condition requires ticket threshold");
+                        }
+
+                        appCondition.setType("MIN_TICKET");
+                        appCondition.setTicketThreshold(condition.ticketThreshold());
+                    }
+
+                    case MAX_TICKET -> {
+                        if (condition.ticketThreshold() == null) {
+                            throw new IllegalArgumentException("Maximum tickets condition requires ticket threshold");
+                        }
+
+                        appCondition.setType("MAX_TICKET");
+                        appCondition.setTicketThreshold(condition.ticketThreshold());
+                    }
+
+                    case DATE -> {
+                        if (condition.startTime() == null || condition.endTime() == null) {
+                            throw new IllegalArgumentException("Date condition requires start time and end time");
+                        }
+
+                        appCondition.setType("DATE");
+                        appCondition.setStartTime(condition.startTime());
+                        appCondition.setEndTime(condition.endTime());
+                    }
+                }
+
+                appConditions.add(appCondition);
+            }
+
+            appDiscount.setConditions(appConditions);
+            appDiscount.setConditionText(
+                    appConditions.stream()
+                            .map(ticketsystem.DTO.DiscountConditionDTO::getType)
+                            .collect(java.util.stream.Collectors.joining(" AND "))
+            );
+
         }
 
-        return appDiscount;
+        default -> throw new PresentationException("Unknown discount type selected.");
     }
 
-    private void addUiDiscountToEvent(String token, Long eventId, EditEvent.DiscountDTO discount) throws Exception {
-        if (discount == null || discount.type() == null) {
-            throw new IllegalArgumentException("Discount data cannot be null");
-        }
-
-        java.math.BigDecimal percentage = java.math.BigDecimal.valueOf(discount.value());
-
-        switch (discount.type()) {
-            case SIMPLE -> eventService.addVisibleDiscountToEvent(
-                    token,
-                    eventId,
-                    discount.name(),
-                    percentage
-            );
-            case COUPON -> eventService.addCouponDiscountToEvent(
-                    token,
-                    eventId,
-                    discount.name(),
-                    discount.couponCode(),
-                    percentage,
-                    discount.validUntil() == null ? null : discount.validUntil().atTime(23, 59)
-            );
-            case CONDITIONAL -> eventService.addConditionalDiscountToEvent(
-                    token,
-                    eventId,
-                    discount.name(),
-                    discount.startTime(),
-                    discount.endTime(),
-                    percentage,
-                    parseCondition(discount.conditionType()),
-                    discount.ticketThreshold()
-            );
-            default -> throw new IllegalArgumentException("Unsupported discount type");
-        }
-    }
-
-    private void addAppDiscountToEvent(String token, Long eventId, DiscountDTO discount) throws Exception {
-        if (discount == null || discount.getType() == null || discount.getType().isBlank()) {
-            throw new IllegalArgumentException("Discount data cannot be null");
-        }
-
-        String type = discount.getType().trim().toUpperCase();
-
-        switch (type) {
-            case "VISIBLE", "SIMPLE" -> eventService.addVisibleDiscountToEvent(
-                    token,
-                    eventId,
-                    discount.getName(),
-                    discount.getPercentage()
-            );
-            case "COUPON" -> eventService.addCouponDiscountToEvent(
-                    token,
-                    eventId,
-                    discount.getName(),
-                    discount.getCouponCode(),
-                    discount.getPercentage(),
-                    discount.getEndTime()
-            );
-            case "CONDITIONAL" -> eventService.addConditionalDiscountToEvent(
-                    token,
-                    eventId,
-                    discount.getName(),
-                    null,
-                    discount.getEndTime(),
-                    discount.getPercentage(),
-                    parseCondition(discount.getConditionText()),
-                    resolveTicketThreshold(discount.getConditionText())
-            );
-            default -> throw new IllegalArgumentException("Unsupported discount type");
-        }
-    }
+    return appDiscount;
+}
 
     private String toConditionName(EditEvent.DiscountConditionType conditionType) {
         if (conditionType == null) {
@@ -496,83 +466,83 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         }
     }
 
-    private Condition parseCondition(String conditionText) {
-        if (conditionText == null || conditionText.isBlank()) {
-            throw new IllegalArgumentException("Discount condition cannot be empty");
-        }
+    // private Condition parseCondition(String conditionText) {
+    //     if (conditionText == null || conditionText.isBlank()) {
+    //         throw new IllegalArgumentException("Discount condition cannot be empty");
+    //     }
 
-        String normalized = conditionText.trim().toUpperCase();
+    //     String normalized = conditionText.trim().toUpperCase();
 
-        if (normalized.contains("DATE") || normalized.contains("TIME") || normalized.contains("תאריך")) {
-            return firstExistingCondition(
-                    "DATE",
-                    "DATE_RANGE",
-                    "TIME_RANGE",
-                    "BETWEEN_DATES"
-            );
-        }
+    //     if (normalized.contains("DATE") || normalized.contains("TIME") || normalized.contains("תאריך")) {
+    //         return firstExistingCondition(
+    //                 "DATE",
+    //                 "DATE_RANGE",
+    //                 "TIME_RANGE",
+    //                 "BETWEEN_DATES"
+    //         );
+    //     }
 
-        if (normalized.contains("MIN") || normalized.contains("מינימום") || normalized.contains("לפחות")) {
-            return firstExistingCondition(
-                    "MIN_TICKET",
-                    "MIN_TICKETS",
-                    "MINIMUM_TICKET",
-                    "MINIMUM_TICKETS"
-            );
-        }
+    //     if (normalized.contains("MIN") || normalized.contains("מינימום") || normalized.contains("לפחות")) {
+    //         return firstExistingCondition(
+    //                 "MIN_TICKET",
+    //                 "MIN_TICKETS",
+    //                 "MINIMUM_TICKET",
+    //                 "MINIMUM_TICKETS"
+    //         );
+    //     }
 
-        if (normalized.contains("MAX") || normalized.contains("מקסימום")) {
-            return firstExistingCondition(
-                    "MAX_TICKET",
-                    "MAX_TICKETS",
-                    "MAXIMUM_TICKET",
-                    "MAXIMUM_TICKETS"
-            );
-        }
+    //     if (normalized.contains("MAX") || normalized.contains("מקסימום")) {
+    //         return firstExistingCondition(
+    //                 "MAX_TICKET",
+    //                 "MAX_TICKETS",
+    //                 "MAXIMUM_TICKET",
+    //                 "MAXIMUM_TICKETS"
+    //         );
+    //     }
 
-        throw new IllegalArgumentException("Unsupported discount condition");
-    }
+    //     throw new IllegalArgumentException("Unsupported discount condition");
+    // }
 
-    private Condition parseCondition(EditEvent.DiscountConditionType conditionType) {
-        if (conditionType == null) {
-            throw new IllegalArgumentException("Discount condition cannot be empty");
-        }
+    // private Condition parseCondition(EditEvent.DiscountConditionType conditionType) {
+    //     if (conditionType == null) {
+    //         throw new IllegalArgumentException("Discount condition cannot be empty");
+    //     }
 
-        return switch (conditionType) {
-            case MIN_TICKET -> firstExistingCondition(
-                    "MIN_TICKET",
-                    "MIN_TICKETS",
-                    "MINIMUM_TICKET",
-                    "MINIMUM_TICKETS"
-            );
+    //     return switch (conditionType) {
+    //         case MIN_TICKET -> firstExistingCondition(
+    //                 "MIN_TICKET",
+    //                 "MIN_TICKETS",
+    //                 "MINIMUM_TICKET",
+    //                 "MINIMUM_TICKETS"
+    //         );
 
-            case MAX_TICKET -> firstExistingCondition(
-                    "MAX_TICKET",
-                    "MAX_TICKETS",
-                    "MAXIMUM_TICKET",
-                    "MAXIMUM_TICKETS"
-            );
+    //         case MAX_TICKET -> firstExistingCondition(
+    //                 "MAX_TICKET",
+    //                 "MAX_TICKETS",
+    //                 "MAXIMUM_TICKET",
+    //                 "MAXIMUM_TICKETS"
+    //         );
 
-            case DATE -> firstExistingCondition(
-                    "DATE",
-                    "DATE_RANGE",
-                    "TIME_RANGE",
-                    "BETWEEN_DATES"
-            );
-        };
-    }
+    //         case DATE -> firstExistingCondition(
+    //                 "DATE",
+    //                 "DATE_RANGE",
+    //                 "TIME_RANGE",
+    //                 "BETWEEN_DATES"
+    //         );
+    //     };
+    // }
 
-    private Condition firstExistingCondition(String... candidates) {
-        for (String candidate : candidates) {
-            try {
-                return Condition.valueOf(candidate);
-            } catch (IllegalArgumentException ignored) {
-                // Try next alias
-            }
-        }
+    // private Condition firstExistingCondition(String... candidates) {
+    //     for (String candidate : candidates) {
+    //         try {
+    //             return Condition.valueOf(candidate);
+    //         } catch (IllegalArgumentException ignored) {
+    //             // Try next alias
+    //         }
+    //     }
 
-        throw new IllegalArgumentException("Unsupported discount condition");
-    }
+    //     throw new IllegalArgumentException("Unsupported discount condition");
+    // }
 
     private void validateUpdateEventRequest(EditEvent.UpdateEventRequest request) {
         if (request == null || request.event() == null) {
@@ -676,4 +646,136 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
     private PresentationException presentationException(String message) {
         return new PresentationException(translateError(message));
     }
+
+    private EditEvent.DiscountPolicyDraftDTO mapToUiDiscountPolicyDraft(
+        Long eventId,
+        DiscountPolicyDTO policyDTO) {
+
+    if (policyDTO == null) {
+        return new EditEvent.DiscountPolicyDraftDTO(
+                String.valueOf(eventId),
+                EditEvent.DiscountCompositionStrategy.MAXIMUM,
+                new ArrayList<>()
+        );
+    }
+
+    List<EditEvent.DiscountDTO> uiDiscounts = new ArrayList<>();
+
+    if (policyDTO.getDiscounts() != null) {
+        for (ticketsystem.DTO.DiscountDTO appDiscount : policyDTO.getDiscounts()) {
+            uiDiscounts.add(mapToUiDiscount(appDiscount));
+        }
+    }
+
+    return new EditEvent.DiscountPolicyDraftDTO(
+            String.valueOf(eventId),
+            policyDTO.getCompositionType() == DiscountCompositionType.SUM
+                    ? EditEvent.DiscountCompositionStrategy.SUM
+                    : EditEvent.DiscountCompositionStrategy.MAXIMUM,
+            uiDiscounts
+    );
+}
+
+private EditEvent.DiscountDTO mapToUiDiscount(ticketsystem.DTO.DiscountDTO appDiscount) {
+    if (appDiscount == null) {
+        throw new IllegalArgumentException("Discount data cannot be null");
+    }
+
+    EditEvent.DiscountType uiType = mapToUiDiscountType(appDiscount.getType());
+
+    return new EditEvent.DiscountDTO(
+            null,
+            appDiscount.getName(),
+            uiType,
+            EditEvent.DiscountValueType.PERCENTAGE,
+            appDiscount.getPercentage() == null ? 0 : appDiscount.getPercentage().doubleValue(),
+            uiType == EditEvent.DiscountType.COUPON ? safeString(appDiscount.getCouponCode()) : "",
+            uiType == EditEvent.DiscountType.COUPON && appDiscount.getEndTime() != null
+                    ? appDiscount.getEndTime().toLocalDate()
+                    : null,
+            uiType == EditEvent.DiscountType.CONDITIONAL
+                    ? mapToUiDiscountConditions(appDiscount.getConditions())
+                    : new ArrayList<>()
+    );
+}
+private EditEvent.DiscountType mapToUiDiscountType(String type) {
+    if (type == null) {
+        return EditEvent.DiscountType.SIMPLE;
+    }
+
+    return switch (type.trim().toUpperCase()) {
+        case "VISIBLE", "SIMPLE" -> EditEvent.DiscountType.SIMPLE;
+        case "COUPON" -> EditEvent.DiscountType.COUPON;
+        case "CONDITIONAL" -> EditEvent.DiscountType.CONDITIONAL;
+        default -> EditEvent.DiscountType.SIMPLE;
+    };
+}
+
+private List<EditEvent.DiscountConditionDTO> mapToUiDiscountConditions(
+        List<ticketsystem.DTO.DiscountConditionDTO> appConditions) {
+
+    List<EditEvent.DiscountConditionDTO> uiConditions = new ArrayList<>();
+
+    if (appConditions == null) {
+        return uiConditions;
+    }
+
+    for (ticketsystem.DTO.DiscountConditionDTO appCondition : appConditions) {
+        if (appCondition == null || appCondition.getType() == null) {
+            continue;
+        }
+
+        EditEvent.DiscountConditionType uiType =
+                mapToUiDiscountConditionType(appCondition.getType());
+
+        uiConditions.add(
+                new EditEvent.DiscountConditionDTO(
+                        uiType,
+                        appCondition.getTicketThreshold(),
+                        appCondition.getStartTime(),
+                        appCondition.getEndTime()
+                )
+        );
+    }
+
+    return uiConditions;
+}
+private EditEvent.DiscountConditionType mapToUiDiscountConditionType(String type) {
+    if (type == null) {
+        throw new IllegalArgumentException("Discount condition cannot be empty");
+    }
+
+    return switch (type.trim().toUpperCase()) {
+        case "MIN_TICKET", "MIN_TICKETS" -> EditEvent.DiscountConditionType.MIN_TICKET;
+        case "MAX_TICKET", "MAX_TICKETS" -> EditEvent.DiscountConditionType.MAX_TICKET;
+        case "DATE", "DATE_RANGE" -> EditEvent.DiscountConditionType.DATE;
+        default -> throw new IllegalArgumentException("Unsupported discount condition: " + type);
+    };
+}
+
+@Override
+public EditEvent.DiscountPolicyDraftDTO loadEventDiscountPolicy(String token, Long eventId) {
+    try {
+        validateEventId(eventId);
+
+        DiscountPolicyDTO policyDTO = eventService.getEventDiscountPolicy(token, eventId);
+
+        return mapToUiDiscountPolicyDraft(eventId, policyDTO);
+
+    } catch (PresentationException exception) {
+        throw exception;
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+        throw presentationException(exception.getMessage());
+    } catch (Exception exception) {
+        logger.logEvent(
+                "Unexpected error while loading discount policy for event " + eventId + ": " + exception.getMessage(),
+                LogbackSystemLogger.LogLevel.DEBUG
+        );
+        throw new PresentationException("אירעה שגיאה בעת טעינת מדיניות ההנחות. נסו שוב.");
+    }
+}
+
+private String safeString(String value) {
+    return value == null ? "" : value;
+}
 }

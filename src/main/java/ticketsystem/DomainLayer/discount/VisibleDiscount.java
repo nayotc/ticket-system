@@ -5,10 +5,10 @@ import java.time.LocalDateTime;
 public class VisibleDiscount extends DiscountTypes {
     
 
-    public VisibleDiscount(String name,Long id,
+    public VisibleDiscount(String name,
                            BigDecimal percentage
                           ) {
-        super(id,name,percentage);
+        super(name,percentage);
     }
  
     @Override

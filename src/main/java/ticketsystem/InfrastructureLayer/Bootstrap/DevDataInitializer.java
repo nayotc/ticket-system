@@ -37,7 +37,6 @@ import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
@@ -222,7 +221,7 @@ public class DevDataInitializer implements CommandLineRunner {
             // הנחת קופון (20%) לחודש הקרוב
             company.addCouponDiscountToCompany("קופון קיץ", "SUMMER26", BigDecimal.valueOf(20), LocalDateTime.now().plusMonths(1));
             // הנחה מותנית (15%) על רכישה של מינימום 4 כרטיסים
-            company.addConditionalDiscountToCompany("הנחת כמות", null, null, BigDecimal.valueOf(15), Condition.MIN_TICKET, 4);
+            //company.addConditionalDiscountToCompany("הנחת כמות", null, null, BigDecimal.valueOf(15), Condition.MIN_TICKET, 4);
         } catch (Exception e) {
             System.out.println("Failed to setup mock discount policy: " + e.getMessage());
         }

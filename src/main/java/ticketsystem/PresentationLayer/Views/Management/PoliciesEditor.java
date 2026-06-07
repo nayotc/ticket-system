@@ -5,6 +5,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
@@ -15,6 +16,9 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -27,6 +31,7 @@ import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
 import ticketsystem.PresentationLayer.Presenters.PoliciesEditorPresenter;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
 import java.time.LocalDate;
@@ -568,69 +573,151 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
     }
 
     private Component createDiscountRow(DiscountDTO discount) {
-        Div row = new Div();
-        row.addClassName("discount-row");
+    Div row = new Div();
+    row.addClassName("discount-row");
 
-        Div top = new Div();
-        top.addClassName("discount-row-top");
+    Div top = new Div();
+    top.addClassName("discount-row-top");
 
-        Span icon = new Span(discount.type().getIconText());
-        icon.addClassName("discount-row-icon");
+    Span icon = new Span(discount.type().getIconText());
+    icon.addClassName("discount-row-icon");
 
-        Div titleBlock = new Div();
-        titleBlock.addClassName("discount-row-title-block");
+    Div titleBlock = new Div();
+    titleBlock.addClassName("discount-row-title-block");
 
-        H3 title = new H3(discount.name());
-        title.addClassName("discount-row-title");
+    H3 title = new H3(discount.name());
+    title.addClassName("discount-row-title");
 
-        titleBlock.add(title, smallText(discount.type().getDescription()));
+    titleBlock.add(title, smallText(discount.type().getDescription()));
 
-        Div labels = new Div();
-        labels.addClassName("discount-row-labels");
+    Div labels = new Div();
+    labels.addClassName("discount-row-labels");
 
-        if (discount.type() == DiscountType.COUPON && !discount.couponCode().isBlank()) {
-            Span coupon = new Span(discount.couponCode());
-            coupon.addClassName("discount-coupon-badge");
-            labels.add(coupon);
+    if (discount.type() == DiscountType.COUPON
+            && discount.couponCode() != null
+            && !discount.couponCode().isBlank()) {
+        Span coupon = new Span(discount.couponCode());
+        coupon.addClassName("discount-coupon-badge");
+        labels.add(coupon);
+    }
+
+    if (discount.type() == DiscountType.CONDITIONAL
+            && discount.conditionText() != null
+            && !discount.conditionText().isBlank()) {
+        Span condition = new Span(discount.conditionText());
+        condition.addClassName("discount-condition-badge");
+        labels.add(condition);
+    }
+
+    Button edit = createIconButton("עריכה", "✎");
+    edit.addClickListener(event -> openDiscountDialog(discount));
+
+    Button delete = createDangerIconButton("מחיקה", "×");
+    delete.addClickListener(event -> {
+        discounts.remove(discount);
+        refreshDiscounts();
+    });
+
+    if (discount.type() == DiscountType.CONDITIONAL) {
+        Button addCondition = createIconButton("הוסף תנאי", "+");
+        addCondition.addClickListener(event -> openAddConditionDialog(discount));
+        labels.add(addCondition);
+    }
+
+    labels.add(edit, delete);
+
+    top.add(icon, titleBlock, labels);
+
+    Div data = new Div(
+            createDiscountDataBox("אופן חישוב", discount.valueType().getLabel()),
+            createDiscountDataBox("ערך", discount.formattedValue())
+    );
+
+    if (discount.type() == DiscountType.COUPON && discount.validUntil() != null) {
+        data.add(createDiscountDataBox("תוקף קופון", formatDate(discount.validUntil())));
+    }
+
+    if (discount.type() == DiscountType.CONDITIONAL) {
+        int conditionCount = discount.conditions() == null ? 0 : discount.conditions().size();
+
+        data.add(createDiscountDataBox("מספר תנאים", String.valueOf(conditionCount)));
+
+        if (conditionCount > 0) {
+            data.add(createDiscountDataBox("שילוב תנאים", "AND"));
+        }
+    }
+
+    data.addClassName("discount-data-grid");
+
+    row.add(top, data);
+    return row;
+}
+
+private void openAddConditionDialog(DiscountDTO discount) {
+    Dialog dialog = new Dialog();
+    dialog.setHeaderTitle("הוספת תנאי להנחה");
+
+    ComboBox<DiscountConditionType> conditionType = new ComboBox<>("סוג תנאי");
+    conditionType.setItems(DiscountConditionType.values());
+    conditionType.setItemLabelGenerator(DiscountConditionType::getLabel);
+    conditionType.setWidthFull();
+
+    IntegerField ticketThreshold = new IntegerField("מספר כרטיסים");
+    ticketThreshold.setMin(1);
+    ticketThreshold.setWidthFull();
+
+    DateTimePicker startTime = new DateTimePicker("מתאריך");
+    startTime.setWidthFull();
+
+    DateTimePicker endTime = new DateTimePicker("עד תאריך");
+    endTime.setWidthFull();
+
+    Button save = new Button("הוסף תנאי", event -> {
+        DiscountConditionType selectedType = conditionType.getValue();
+
+        if (selectedType == null) {
+            throw new PresentationException("יש לבחור סוג תנאי.");
         }
 
-        if (discount.type() == DiscountType.CONDITIONAL && !discount.conditionText().isBlank()) {
-            Span condition = new Span(discount.conditionText());
-            condition.addClassName("discount-condition-badge");
-            labels.add(condition);
-        }
-
-        Button edit = createIconButton("עריכה", "✎");
-        edit.addClickListener(event -> openDiscountDialog(discount));
-
-        Button delete = createDangerIconButton("מחיקה", "×");
-        delete.addClickListener(event -> {
-            discounts.remove(discount);
-            refreshDiscounts();
-        });
-
-        labels.add(edit, delete);
-
-        top.add(icon, titleBlock, labels);
-
-        Div data = new Div(
-                createDiscountDataBox("אופן חישוב", discount.valueType().getLabel()),
-                createDiscountDataBox("ערך", discount.formattedValue())
+        DiscountConditionDTO newCondition = new DiscountConditionDTO(
+                selectedType,
+                ticketThreshold.getValue(),
+                startTime.getValue(),
+                endTime.getValue()
         );
 
-        if (discount.type() == DiscountType.COUPON && discount.validUntil() != null) {
-            data.add(createDiscountDataBox("תוקף קופון", formatDate(discount.validUntil())));
+        List<DiscountConditionDTO> updatedConditions = new ArrayList<>();
+        if (discount.conditions() != null) {
+            updatedConditions.addAll(discount.conditions());
+        }
+        updatedConditions.add(newCondition);
+
+        DiscountDTO updated = discount.withConditions(updatedConditions);
+
+        int index = discounts.indexOf(discount);
+        if (index >= 0) {
+            discounts.set(index, updated);
         }
 
-        if (discount.type() == DiscountType.CONDITIONAL && discount.conditionType() != null) {
-            data.add(createDiscountDataBox("סוג תנאי", discount.conditionType().getLabel()));
-        }
+        dialog.close();
+        refreshDiscounts();
+    });
 
-        data.addClassName("discount-data-grid");
+    Button cancel = new Button("ביטול", event -> dialog.close());
 
-        row.add(top, data);
-        return row;
-    }
+    VerticalLayout layout = new VerticalLayout(
+            conditionType,
+            ticketThreshold,
+            startTime,
+            endTime,
+            new HorizontalLayout(save, cancel)
+    );
+
+    dialog.add(layout);
+    dialog.open();
+}
+
+
 
     private Component createDiscountDataBox(String label, String value) {
         Div box = new Div();
@@ -704,200 +791,315 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
     }
 
     private void openDiscountDialog(DiscountDTO existingDiscount) {
-        boolean editing = existingDiscount != null;
-        DiscountDTO draft = editing ? existingDiscount : DiscountDTO.defaultDiscount();
+    boolean editing = existingDiscount != null;
+    DiscountDTO draft = editing ? existingDiscount : DiscountDTO.defaultDiscount();
 
-        Dialog dialog = new Dialog();
-        dialog.addClassName("policy-editor-dialog");
-        dialog.setHeaderTitle(editing ? "עריכת הנחה" : "הוספת הנחה");
+    Dialog dialog = new Dialog();
+    dialog.addClassName("policy-editor-dialog");
+    dialog.setHeaderTitle(editing ? "עריכת הנחה" : "הוספת הנחה");
 
-        TextField name = new TextField("שם ההנחה");
-        name.setValue(draft.name());
+    TextField name = new TextField("שם ההנחה");
+    name.setValue(draft.name());
 
-        ComboBox<DiscountType> type = new ComboBox<>("סוג הנחה");
-        type.setItems(DiscountType.values());
-        type.setItemLabelGenerator(DiscountType::getLabel);
-        type.setValue(draft.type());
+    ComboBox<DiscountType> type = new ComboBox<>("סוג הנחה");
+    type.setItems(DiscountType.values());
+    type.setItemLabelGenerator(DiscountType::getLabel);
+    type.setValue(draft.type());
 
-        ComboBox<DiscountValueType> valueType = new ComboBox<>("אופן חישוב");
-        valueType.setItems(DiscountValueType.values());
-        valueType.setItemLabelGenerator(DiscountValueType::getLabel);
-        valueType.setValue(draft.valueType());
+    ComboBox<DiscountValueType> valueType = new ComboBox<>("אופן חישוב");
+    valueType.setItems(DiscountValueType.values());
+    valueType.setItemLabelGenerator(DiscountValueType::getLabel);
+    valueType.setValue(draft.valueType());
 
-        NumberField value = new NumberField("ערך");
-        value.setMin(0);
-        value.setValue(draft.value());
+    NumberField value = new NumberField("ערך");
+    value.setMin(0);
+    value.setValue(draft.value());
 
-        TextField couponCode = new TextField("קוד קופון");
-        couponCode.setValue(draft.couponCode());
-        couponCode.setPlaceholder("לדוגמה: EARLYBIRD20");
+    TextField couponCode = new TextField("קוד קופון");
+    couponCode.setValue(draft.couponCode());
+    couponCode.setPlaceholder("לדוגמה: EARLYBIRD20");
 
-        DatePicker validUntil = createPolicyDatePicker("תוקף קופון עד", draft.validUntil());
+    DatePicker validUntil = createPolicyDatePicker("תוקף קופון עד", draft.validUntil());
 
-        ComboBox<DiscountConditionType> conditionType = new ComboBox<>("תנאי להפעלה");
-        conditionType.setItems(DiscountConditionType.values());
-        conditionType.setItemLabelGenerator(DiscountConditionType::getLabel);
-        conditionType.setValue(Objects.requireNonNullElse(draft.conditionType(), DiscountConditionType.MIN_TICKET));
-
-        NumberField ticketThreshold = new NumberField("כמות כרטיסים");
-        ticketThreshold.setMin(1);
-        ticketThreshold.setStep(1);
-        if (draft.ticketThreshold() != null) {
-            ticketThreshold.setValue(draft.ticketThreshold().doubleValue());
-        }
-        ticketThreshold.setPlaceholder("לדוגמה: 2");
-
-        DatePicker startDate = createPolicyDatePicker("מתאריך", draft.startTime() != null ? draft.startTime().toLocalDate() : null);
-
-        DatePicker endDate = createPolicyDatePicker("עד תאריך", draft.endTime() != null ? draft.endTime().toLocalDate() : null);
-
-        Div form = new Div(
-                name,
-                type,
-                valueType,
-                value,
-                couponCode,
-                validUntil,
-                conditionType,
-                ticketThreshold,
-                startDate,
-                endDate
-        );
-        form.addClassName("policy-dialog-form");
-
-        applyDiscountTypeVisibility(
-                type.getValue(),
-                conditionType.getValue(),
-                couponCode,
-                validUntil,
-                conditionType,
-                ticketThreshold,
-                startDate,
-                endDate
-        );
-
-        type.addValueChangeListener(event -> {
-            if (event.getValue() == DiscountType.CONDITIONAL && conditionType.isEmpty()) {
-                conditionType.setValue(DiscountConditionType.MIN_TICKET);
-            }
-
-            applyDiscountTypeVisibility(
-                    event.getValue(),
-                    conditionType.getValue(),
-                    couponCode,
-                    validUntil,
-                    conditionType,
-                    ticketThreshold,
-                    startDate,
-                    endDate
-            );
-        });
-
-        conditionType.addValueChangeListener(event ->
-                applyDiscountTypeVisibility(
-                        type.getValue(),
-                        event.getValue(),
-                        couponCode,
-                        validUntil,
-                        conditionType,
-                        ticketThreshold,
-                        startDate,
-                        endDate
-                )
-        );
-
-        Button delete = createDangerButton("מחיקה", null);
-        delete.setVisible(editing);
-        delete.addClickListener(event -> {
-            discounts.remove(existingDiscount);
-            refreshDiscounts();
-            dialog.close();
-        });
-
-        Button cancel = createSecondaryButton("ביטול", null);
-        cancel.addClickListener(event -> dialog.close());
-
-        Button save = createPrimaryButton(editing ? "עדכן הנחה" : "הוסף הנחה", null);
-        save.addClickListener(event -> {
-            if (name.isEmpty() || type.isEmpty() || valueType.isEmpty() || value.isEmpty()) {
-                showError("יש למלא שם, סוג, אופן חישוב וערך.");
-                return;
-            }
-
-            DiscountType selectedType = type.getValue();
-            DiscountConditionType selectedCondition = selectedType == DiscountType.CONDITIONAL
-                    ? conditionType.getValue()
-                    : null;
-
-            if (selectedType == DiscountType.COUPON && safeTrim(couponCode.getValue()).isBlank()) {
-                showError("בהנחת קופון יש למלא קוד קופון.");
-                return;
-            }
-
-            Integer normalizedThreshold = null;
-            LocalDateTime normalizedStartTime = null;
-            LocalDateTime normalizedEndTime = null;
-
-            if (selectedType == DiscountType.CONDITIONAL) {
-                if (selectedCondition == null) {
-                    showError("בהנחה מותנית יש לבחור תנאי להפעלה.");
-                    return;
-                }
-
-                if (selectedCondition.requiresTicketThreshold()) {
-                    if (ticketThreshold.isEmpty() || ticketThreshold.getValue() <= 0) {
-                        showError("בתנאי לפי כמות כרטיסים יש להזין כמות חיובית.");
-                        return;
-                    }
-
-                    normalizedThreshold = ticketThreshold.getValue().intValue();
-                }
-
-                if (selectedCondition.requiresDateRange()) {
-                    if (startDate.isEmpty() || endDate.isEmpty()) {
-                        showError("בתנאי לפי תאריך יש למלא תאריך התחלה ותאריך סיום.");
-                        return;
-                    }
-
-                    if (endDate.getValue().isBefore(startDate.getValue())) {
-                        showError("תאריך הסיום לא יכול להיות לפני תאריך ההתחלה.");
-                        return;
-                    }
-
-                    normalizedStartTime = startDate.getValue().atStartOfDay();
-                    normalizedEndTime = endDate.getValue().atTime(23, 59);
-                }
-            }
-
-            DiscountDTO updated = new DiscountDTO(
-                    draft.id(),
-                    name.getValue().trim(),
-                    selectedType,
-                    valueType.getValue(),
-                    value.getValue(),
-                    selectedType == DiscountType.COUPON ? safeTrim(couponCode.getValue()) : "",
-                    selectedType == DiscountType.COUPON ? validUntil.getValue() : null,
-                    selectedCondition,
-                    normalizedThreshold,
-                    normalizedStartTime,
-                    normalizedEndTime
-            );
-
-            if (editing) {
-                int index = discounts.indexOf(existingDiscount);
-                discounts.set(index, updated);
-            } else {
-                discounts.add(updated);
-            }
-
-            refreshDiscounts();
-            dialog.close();
-        });
-
-        dialog.getFooter().add(delete, cancel, save);
-        dialog.add(form);
-        dialog.open();
+    List<DiscountConditionDTO> conditionDrafts = new ArrayList<>();
+    if (draft.conditions() != null) {
+        conditionDrafts.addAll(draft.conditions());
     }
+
+    Div conditionsContainer = new Div();
+    conditionsContainer.addClassName("discount-conditions-container");
+
+    Runnable refreshConditions = () -> {
+        conditionsContainer.removeAll();
+
+        if (conditionDrafts.isEmpty()) {
+            conditionsContainer.add(smallText("לא הוגדרו תנאים עדיין."));
+            return;
+        }
+
+        for (DiscountConditionDTO condition : new ArrayList<>(conditionDrafts)) {
+            Div conditionRow = new Div();
+            conditionRow.addClassName("discount-condition-row");
+
+            Span text = new Span(conditionText(condition));
+            text.addClassName("discount-condition-badge");
+
+            Button remove = createDangerIconButton("מחיקת תנאי", "×");
+            remove.addClickListener(e -> {
+                conditionDrafts.remove(condition);
+                conditionsContainer.removeAll();
+                // קריאה מחדש ידנית
+                for (DiscountConditionDTO c : new ArrayList<>(conditionDrafts)) {
+                    Div row = new Div();
+                    row.addClassName("discount-condition-row");
+
+                    Span t = new Span(conditionText(c));
+                    t.addClassName("discount-condition-badge");
+
+                    Button r = createDangerIconButton("מחיקת תנאי", "×");
+                    r.addClickListener(ev -> {
+                        conditionDrafts.remove(c);
+                        openDiscountDialog(new DiscountDTO(
+                                draft.id(),
+                                name.getValue().trim(),
+                                type.getValue(),
+                                valueType.getValue(),
+                                value.getValue(),
+                                couponCode.getValue(),
+                                validUntil.getValue(),
+                                conditionDrafts
+                        ));
+                        dialog.close();
+                    });
+
+                    row.add(t, r);
+                    conditionsContainer.add(row);
+                }
+
+                if (conditionDrafts.isEmpty()) {
+                    conditionsContainer.add(smallText("לא הוגדרו תנאים עדיין."));
+                }
+            });
+
+            conditionRow.add(text, remove);
+            conditionsContainer.add(conditionRow);
+        }
+    };
+
+    Button addCondition = createSecondaryButton("הוסף תנאי", null);
+    addCondition.addClickListener(event -> openAddConditionDialog(conditionDrafts, conditionsContainer));
+
+    Div conditionalBox = new Div(addCondition, conditionsContainer);
+    conditionalBox.addClassName("discount-conditional-box");
+
+    Div form = new Div(
+            name,
+            type,
+            valueType,
+            value,
+            couponCode,
+            validUntil,
+            conditionalBox
+    );
+    form.addClassName("policy-dialog-form");
+
+    Runnable applyVisibility = () -> {
+        DiscountType selectedType = type.getValue();
+
+        couponCode.setVisible(selectedType == DiscountType.COUPON);
+        validUntil.setVisible(selectedType == DiscountType.COUPON);
+
+        conditionalBox.setVisible(selectedType == DiscountType.CONDITIONAL);
+    };
+
+    refreshConditions.run();
+    applyVisibility.run();
+
+    type.addValueChangeListener(event -> applyVisibility.run());
+
+    Button delete = createDangerButton("מחיקה", null);
+    delete.setVisible(editing);
+    delete.addClickListener(event -> {
+        discounts.remove(existingDiscount);
+        refreshDiscounts();
+        dialog.close();
+    });
+
+    Button cancel = createSecondaryButton("ביטול", null);
+    cancel.addClickListener(event -> dialog.close());
+
+    Button save = createPrimaryButton(editing ? "עדכן הנחה" : "הוסף הנחה", null);
+    save.addClickListener(event -> {
+        if (name.isEmpty() || type.isEmpty() || valueType.isEmpty() || value.isEmpty()) {
+            showError("יש למלא שם, סוג, אופן חישוב וערך.");
+            return;
+        }
+
+        DiscountType selectedType = type.getValue();
+
+        if (selectedType == DiscountType.COUPON && safeTrim(couponCode.getValue()).isBlank()) {
+            showError("בהנחת קופון יש למלא קוד קופון.");
+            return;
+        }
+
+        if (selectedType == DiscountType.CONDITIONAL && conditionDrafts.isEmpty()) {
+            showError("בהנחה מותנית יש להוסיף לפחות תנאי אחד.");
+            return;
+        }
+
+        DiscountDTO updated = new DiscountDTO(
+                draft.id(),
+                name.getValue().trim(),
+                selectedType,
+                valueType.getValue(),
+                value.getValue(),
+                selectedType == DiscountType.COUPON ? safeTrim(couponCode.getValue()) : "",
+                selectedType == DiscountType.COUPON ? validUntil.getValue() : null,
+                selectedType == DiscountType.CONDITIONAL ? new ArrayList<>(conditionDrafts) : new ArrayList<>()
+        );
+
+        if (editing) {
+            int index = discounts.indexOf(existingDiscount);
+            discounts.set(index, updated);
+        } else {
+            discounts.add(updated);
+        }
+
+        refreshDiscounts();
+        dialog.close();
+    });
+
+    dialog.getFooter().add(delete, cancel, save);
+    dialog.add(form);
+    dialog.open();
+}
+
+private void openAddConditionDialog(List<DiscountConditionDTO> conditionDrafts,
+                                    Div conditionsContainer) {
+    Dialog dialog = new Dialog();
+    dialog.addClassName("policy-editor-dialog");
+    dialog.setHeaderTitle("הוספת תנאי");
+
+    ComboBox<DiscountConditionType> conditionType = new ComboBox<>("סוג תנאי");
+    conditionType.setItems(DiscountConditionType.values());
+    conditionType.setItemLabelGenerator(DiscountConditionType::getLabel);
+    conditionType.setValue(DiscountConditionType.MIN_TICKET);
+
+    NumberField ticketThreshold = new NumberField("כמות כרטיסים");
+    ticketThreshold.setMin(1);
+    ticketThreshold.setStep(1);
+    ticketThreshold.setPlaceholder("לדוגמה: 2");
+
+    DatePicker startDate = createPolicyDatePicker("מתאריך", null);
+    DatePicker endDate = createPolicyDatePicker("עד תאריך", null);
+
+    Runnable applyVisibility = () -> {
+        DiscountConditionType selected = conditionType.getValue();
+
+        boolean needsTickets = selected != null && selected.requiresTicketThreshold();
+        boolean needsDate = selected != null && selected.requiresDateRange();
+
+        ticketThreshold.setVisible(needsTickets);
+        startDate.setVisible(needsDate);
+        endDate.setVisible(needsDate);
+    };
+
+    applyVisibility.run();
+    conditionType.addValueChangeListener(event -> applyVisibility.run());
+
+    Button cancel = createSecondaryButton("ביטול", null);
+    cancel.addClickListener(event -> dialog.close());
+
+    Button save = createPrimaryButton("הוסף תנאי", null);
+    save.addClickListener(event -> {
+        DiscountConditionType selected = conditionType.getValue();
+
+        if (selected == null) {
+            showError("יש לבחור סוג תנאי.");
+            return;
+        }
+
+        Integer normalizedThreshold = null;
+        LocalDateTime normalizedStartTime = null;
+        LocalDateTime normalizedEndTime = null;
+
+        if (selected.requiresTicketThreshold()) {
+            if (ticketThreshold.isEmpty() || ticketThreshold.getValue() <= 0) {
+                showError("בתנאי לפי כמות כרטיסים יש להזין כמות חיובית.");
+                return;
+            }
+
+            normalizedThreshold = ticketThreshold.getValue().intValue();
+        }
+
+        if (selected.requiresDateRange()) {
+            if (startDate.isEmpty() || endDate.isEmpty()) {
+                showError("בתנאי לפי תאריך יש למלא תאריך התחלה ותאריך סיום.");
+                return;
+            }
+
+            if (endDate.getValue().isBefore(startDate.getValue())) {
+                showError("תאריך הסיום לא יכול להיות לפני תאריך ההתחלה.");
+                return;
+            }
+
+            normalizedStartTime = startDate.getValue().atStartOfDay();
+            normalizedEndTime = endDate.getValue().atTime(23, 59);
+        }
+
+        DiscountConditionDTO newCondition = new DiscountConditionDTO(
+                selected,
+                normalizedThreshold,
+                normalizedStartTime,
+                normalizedEndTime
+        );
+
+        conditionDrafts.add(newCondition);
+
+        conditionsContainer.removeAll();
+        for (DiscountConditionDTO condition : conditionDrafts) {
+            Span conditionLabel = new Span(conditionText(condition));
+            conditionLabel.addClassName("discount-condition-badge");
+            conditionsContainer.add(conditionLabel);
+        }
+
+        dialog.close();
+    });
+
+    Div form = new Div(conditionType, ticketThreshold, startDate, endDate);
+    form.addClassName("policy-dialog-form");
+
+    dialog.getFooter().add(cancel, save);
+    dialog.add(form);
+    dialog.open();
+}
+private String conditionText(DiscountConditionDTO condition) {
+    if (condition == null || condition.conditionType() == null) {
+        return "";
+    }
+
+    DiscountConditionType type = condition.conditionType();
+
+    if (type.requiresTicketThreshold()) {
+        if (condition.ticketThreshold() == null) {
+            return "";
+        }
+
+        return type.getDisplayPrefix() + " " + condition.ticketThreshold();
+    }
+
+    if (type.requiresDateRange()) {
+        if (condition.startTime() != null && condition.endTime() != null) {
+            return "תאריך מ-" + condition.startTime().format(DISPLAY_DATE_TIME)
+                    + " עד " + condition.endTime().format(DISPLAY_DATE_TIME);
+        }
+
+        return "";
+    }
+
+    return "";
+}
+
 
     private void applyDiscountTypeVisibility(
             DiscountType selectedType,
@@ -1038,34 +1240,6 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
 
         discounts.clear();
 
-        discounts.add(new DiscountDTO(
-                UUID.randomUUID().toString(),
-                "הנחת קופון",
-                DiscountType.COUPON,
-                DiscountValueType.PERCENTAGE,
-                20,
-                "EARLYBIRD20",
-                LocalDate.now().plusMonths(1),
-                null,
-                null,
-                null,
-                null
-        ));
-
-        discounts.add(new DiscountDTO(
-                UUID.randomUUID().toString(),
-                "הנחה מותנית",
-                DiscountType.CONDITIONAL,
-                DiscountValueType.PERCENTAGE,
-                10,
-                "",
-                null,
-                DiscountConditionType.MIN_TICKET,
-                2,
-                null,
-                null
-        ));
-
         setDiscountCompositionStrategy(DiscountCompositionStrategy.MAXIMUM);
         refreshPurchaseExpression();
         refreshDiscounts();
@@ -1092,7 +1266,7 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
         try {
             Long parsedCompanyId = Long.parseLong(companyId);
 
-            presenter.saveDiscountPolicy(
+            presenter.saveCompanyDiscountPolicy(
                     UiSession.getMemberToken(),
                     parsedCompanyId,
                     getDiscountPolicyDraft()
@@ -1505,7 +1679,19 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
             return field.name() + " " + operator.getSymbol() + " " + value;
         }
     }
+     public record DiscountConditionDTO(
 
+        DiscountConditionType conditionType,
+
+        Integer ticketThreshold,
+
+        LocalDateTime startTime,
+
+        LocalDateTime endTime
+
+) {}
+
+    
     public record DiscountDTO(
             String id,
             String name,
@@ -1514,10 +1700,7 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
             double value,
             String couponCode,
             LocalDate validUntil,
-            DiscountConditionType conditionType,
-            Integer ticketThreshold,
-            LocalDateTime startTime,
-            LocalDateTime endTime
+            List<DiscountConditionDTO> conditions
     ) {
         public static DiscountDTO defaultDiscount() {
             return new DiscountDTO(
@@ -1527,39 +1710,59 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
                     DiscountValueType.PERCENTAGE,
                     10,
                     "",
-                    null,
-                    null,
-                    null,
-                    null,
-                    null
+                    null,null
             );
         }
-
+        public DiscountDTO withConditions(List<DiscountConditionDTO> newConditions) {
+            return new DiscountDTO(
+                    id,
+                    name,
+                    type,
+                    valueType,
+                    value,
+                    couponCode,
+                    validUntil,
+                    newConditions
+            );
+        }
         public String conditionText() {
-            if (type != DiscountType.CONDITIONAL || conditionType == null) {
+            if (type != DiscountType.CONDITIONAL || conditions == null || conditions.isEmpty()) {
                 return "";
             }
 
+            return conditions.stream()
+                    .map(this::singleConditionText)
+                    .filter(text -> text != null && !text.isBlank())
+                    .collect(java.util.stream.Collectors.joining(" וגם "));
+        }
+
+        private String singleConditionText(DiscountConditionDTO condition) {
+            if (condition == null || condition.conditionType() == null) {
+                return "";
+            }
+
+            DiscountConditionType conditionType = condition.conditionType();
+
             if (conditionType.requiresTicketThreshold()) {
-                if (ticketThreshold == null) {
+                if (condition.ticketThreshold() == null) {
                     return "";
                 }
 
-                return conditionType.getDisplayPrefix() + " " + ticketThreshold;
+                return conditionType.getDisplayPrefix() + " " + condition.ticketThreshold();
             }
 
             if (conditionType.requiresDateRange()) {
-                if (startTime != null && endTime != null) {
-                    return "תאריך מ-" + startTime.format(DISPLAY_DATE_TIME)
-                            + " עד " + endTime.format(DISPLAY_DATE_TIME);
+                if (condition.startTime() != null && condition.endTime() != null) {
+                    return "תאריך מ-" + condition.startTime().format(DISPLAY_DATE_TIME)
+                            + " עד " + condition.endTime().format(DISPLAY_DATE_TIME);
                 }
 
-                if (endTime != null) {
-                    return "תאריך עד " + endTime.format(DISPLAY_DATE_TIME);
+                if (condition.endTime() != null) {
+                    return "תאריך עד " + condition.endTime().format(DISPLAY_DATE_TIME);
                 }
 
-                if (startTime != null) {
-                    return "תאריך מ-" + startTime.format(DISPLAY_DATE_TIME);
+                if (condition.startTime() != null) {
+                    return "תאריך מ-" + condition.startTime().format(DISPLAY_DATE_TIME);
                 }
 
                 return "";
@@ -1567,7 +1770,6 @@ public class PoliciesEditor extends Div implements BeforeEnterObserver {
 
             return "";
         }
-
         public String formattedValue() {
             if (valueType == DiscountValueType.PERCENTAGE) {
                 return removeTrailingZero(value) + "%";

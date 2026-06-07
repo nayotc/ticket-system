@@ -7,11 +7,11 @@ public class CouponDiscount extends DiscountTypes{
     private LocalDateTime endTime;
     
 
-    public CouponDiscount(String name,Long id,
+    public CouponDiscount(String name,
                           String couponCode,
                           BigDecimal percentage,LocalDateTime endTime
                           ) {
-        super(id,name,percentage);
+        super(name,percentage);
         validateCouponCode(couponCode);
         validateEndTime(endTime);
         this.couponCode = couponCode;

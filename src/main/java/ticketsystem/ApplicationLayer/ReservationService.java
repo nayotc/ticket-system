@@ -347,7 +347,7 @@ public class ReservationService {
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
-
+            System.out.println("discounts size A = " + event.getDiscountPolicy().getDiscounts().size());
             if (order == null || event == null) {
                 throw new IllegalStateException("No active order or event found");
             }
@@ -359,6 +359,11 @@ public class ReservationService {
             reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
             BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
+            //For debugging discount application issues
+            System.out.println("ticketCount = " +  order.getTickets().size());
+            System.out.println("couponCode = " + coupon);
+            System.out.println("discountPolicy = " + amountAfterDiscount);
+            System.out.println("discounts size = " + event.getDiscountPolicy().getDiscounts().size());
             boolean paymentResult = paymentService.pay(amountAfterDiscount, details);
 
             if (!paymentResult) {

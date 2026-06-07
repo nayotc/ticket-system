@@ -2,17 +2,23 @@ package ticketsystem.DTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DiscountDTO {
 
     private String name;
     private BigDecimal percentage;
     private String type; // Expected values: "VISIBLE", "COUPON", "CONDITIONAL"
+    //private Long discountId;
     
     // Fields for specific discount types
     private String couponCode;
     private LocalDateTime endTime;
+    private List<DiscountConditionDTO> conditions = new ArrayList<>();
+
     private String conditionText;
+
 
     public DiscountDTO() {
     }
@@ -57,11 +63,17 @@ public class DiscountDTO {
         this.endTime = endTime;
     }
 
-    public String getConditionText() {
+    public List<DiscountConditionDTO> getConditions() {
+        return conditions;
+    }
+    public void setConditions(List<DiscountConditionDTO> conditions) {
+        this.conditions = conditions;
+    }
+  
+      public String getConditionText() {
         return conditionText;
     }
-
-    public void setConditionText(String conditionText) {
+        public void setConditionText(String conditionText) {
         this.conditionText = conditionText;
     }
 }
