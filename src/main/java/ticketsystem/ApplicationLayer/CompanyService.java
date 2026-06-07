@@ -359,74 +359,7 @@ public class CompanyService {
             logger.logError(message, exception);
         }
     }
-    //add discount
-
-    // add visible discount
-    // public void addVisibleDiscountToCompany(String token, Long companyId,
-    //         String name, BigDecimal percentage) throws Exception {
-
-    //     try {
-    //         Company company = canEditDiscount(token, companyId);
-
-    //         company.addVisibleDiscountToCompany(name, percentage);
-
-    //         companyRepository.save(company);
-    //             logger.logEvent(
-    //             "Visible discount added successfully to company id: " + companyId,
-    //             ISystemLogger.LogLevel.INFO);
-
-    //     } catch (Exception e) {
-
-    //         logger.logEvent("Failed to add visible discount to company",
-    //                 ISystemLogger.LogLevel.WARN);
-
-    //         throw e;
-    //     }
-    // }
-
-    // add coupon discount
-    // public void addCouponDiscountToCompany(String token, Long companyId,
-    //         String name, String couponCode,
-    //         BigDecimal percentage,LocalDateTime endTime) throws Exception {
-
-    //     try {
-    //         Company company = canEditDiscount(token, companyId);
-
-    //         company.addCouponDiscountToCompany(name, couponCode, percentage,endTime);
-
-    //         companyRepository.save(company);
-    //                 logger.logEvent(
-    //             "Coupon discount added successfully to company id: " + companyId,
-    //             ISystemLogger.LogLevel.INFO
-    //     );
-
-    //     } catch (Exception e) {
-
-    //         logger.logEvent("Failed to add coupon discount to company",
-    //                 ISystemLogger.LogLevel.WARN);
-
-    //         throw e;
-    //     }
-    // }
-
-
-    //remove discount
-    // public void removeDiscountFromCompany(String token,Long companyId,Long discountId ) throws Exception{
-    //     try{
-    //     Company company = canEditDiscount(token,companyId);
-    //     company.removeDiscountFromCompany(discountId);
-    //     companyRepository.save(company);
-    //             logger.logEvent(
-    //             "Discount removed successfully from company id: "
-    //                     + companyId + ", discount id: " + discountId,
-    //             ISystemLogger.LogLevel.INFO
-    //     );
-    //     } catch (Exception e){
-    //           logger.logEvent( "Failed to remove discount, id:"+discountId ,ISystemLogger.LogLevel.WARN);
-    //         throw e;
-    //     }
-    // }
-
+   
     //set composition type
     public void setCompositionType(String token,Long companyId,DiscountCompositionType compositionType)
     throws Exception{

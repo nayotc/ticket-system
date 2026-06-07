@@ -234,9 +234,7 @@ public class Company {
         return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 
-    // public void removeDiscountFromCompany(Long discountId) {
-    //     discountPolicy.removeDiscount(discountId);
-    // }
+  
    
     
 }

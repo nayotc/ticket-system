@@ -459,16 +459,7 @@ public class Event {
         discountPolicy.addDiscount(discount);
     }
 
-    // public void addConditionalDiscountToEvent(String name,
-    //         LocalDateTime startTime, LocalDateTime endTime,
-    //         BigDecimal percentage, Condition condition,
-    //         Integer ticketThreshold) {
 
-    //     DiscountTypes discount = new ConditionalDiscount(
-    //             name, getNextDiscountId(), startTime, endTime,
-    //             percentage, condition, ticketThreshold);
-    //     discountPolicy.addDiscount(discount);
-    // }
 
     public void setDiscountCompositionType(DiscountCompositionType compositionType) {
         discountPolicy.setDiscountCompositionType(compositionType);
@@ -478,9 +469,6 @@ public class Event {
         return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 
-    // public void removeDiscountFromEvent(Long discountId) {
-    //     discountPolicy.removeDiscount(discountId);
-    // }
 
     public List<DiscountTypes> getDiscounts() {
         return discountPolicy.getDiscounts();
