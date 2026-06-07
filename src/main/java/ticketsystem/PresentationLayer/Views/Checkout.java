@@ -630,9 +630,19 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         if (isBlank(payerName.getValue())) {
             payerName.setValue(fullName.getValue());
         }
+        try{
+            PaymentDetails details = new PaymentDetails(
+                resolvePaymentMethodId(),
+                payerName.getValue().trim(),
+                birthDate.getValue()
+                );
+            presenter.validateOrderPolicyBeforePayment(resolveSessionToken(), activeOrder.getEventId(), details, normalizedCouponCode());
+            currentStep = 2;
+            renderCheckout();
+        }catch (Exception exception) {
+            showError(exception.getMessage());
+        }
 
-        currentStep = 2;
-        renderCheckout();
     }
 
     private void submitPayment() {
@@ -651,7 +661,8 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                     resolveSessionToken(),
                     activeOrder.getEventId(),
                     details,
-                    normalizedCouponCode()
+                    pricing.total()
+
             );
 
             if (success) {

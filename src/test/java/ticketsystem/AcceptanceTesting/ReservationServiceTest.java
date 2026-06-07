@@ -556,7 +556,7 @@ public class ReservationServiceTest {
                 memberToken,
                 eventId,
                 createPaymentDetails(),
-                null);
+                new BigDecimal("100.00"));
 
         assertTrue(checkoutResult);
 
@@ -592,7 +592,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         createPaymentDetails(),
-                        null));
+                        new BigDecimal("100.00")));
 
         assertTrue(PaymentServiceProxy.wasPayCalled);
         assertFalse(PaymentServiceProxy.wasRefundCalled);
@@ -622,7 +622,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         createPaymentDetails(),
-                        null));
+                        new BigDecimal("100.00")));
 
         assertTrue(PaymentServiceProxy.wasPayCalled);
         assertTrue(PaymentServiceProxy.wasRefundCalled);
@@ -653,7 +653,7 @@ public class ReservationServiceTest {
                 guestToken,
                 eventId,
                 createPaymentDetails(),
-                null);
+                new BigDecimal("100.00"));
 
         assertTrue(checkoutResult);
 
@@ -786,7 +786,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         null,
-                        null));
+                        new BigDecimal("100.00")));
 
         assertEquals("Payment details are incomplete", exception.getMessage());
     }
@@ -814,7 +814,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         invalidDetails,
-                        null));
+                        new BigDecimal("100.00")));
 
         assertEquals("Payment details are incomplete", exception.getMessage());
     }
@@ -843,7 +843,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         createPaymentDetails(),
-                        null));
+                        new BigDecimal("100.00")));
 
         assertEquals(
                 "Ticket issuing failed and refund failed.",
@@ -873,7 +873,7 @@ public class ReservationServiceTest {
                 memberToken,
                 eventId,
                 createPaymentDetails(),
-                null);
+                new BigDecimal("100.00"));
 
         assertTrue(result);
     }

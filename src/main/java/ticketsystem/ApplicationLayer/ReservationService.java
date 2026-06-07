@@ -337,9 +337,30 @@ public class ReservationService {
         }
     }
 
+    public BigDecimal validateActiveOrderPolicy(String token, Long eventId, PaymentDetails details, String coupon) {
+        // Implementation for validating active order policy
+        try{
+            tokenService.validateToken(token);
+            userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
+            ActiveOrder order = findActiveOrder(token, eventId);
+            Event event = eventRepository.getEventById(eventId);
+            if(details == null|| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
+                throw new IllegalArgumentException("Payment details are incomplete");
+            }
+            int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();  
+            eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(),order.getTickets().size(), buyerAge);
+            reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
+            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
+            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
+            return amountAfterDiscount;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to validate active order policy: " + e.getMessage());
+        }
+    }
+
     // 2.8 checkout
    
-        public boolean checkout(String token, Long eventId, PaymentDetails details,String coupon) {
+    public boolean checkout(String token, Long eventId, PaymentDetails details, BigDecimal amountAfterDiscount) {
         expireOldOrders();
 
         try {
@@ -354,11 +375,6 @@ public class ReservationService {
             if(details == null|| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
-            int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();  
-            eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(),order.getTickets().size(), buyerAge);
-            reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
-            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
-            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
             boolean paymentResult = paymentService.pay(amountAfterDiscount, details);
 
             if (!paymentResult) {

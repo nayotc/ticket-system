@@ -281,6 +281,30 @@ public class ReservationPresenter {
     }
 
     /**
+     *check purchase policy before checkout
+     *
+     * @param token active guest/member session token
+     * @param eventId event identifier of the active order
+     * @param paymentDetails payment details entered in the checkout view
+     */
+    public boolean validateOrderPolicyBeforePayment(String token, Long eventId, PaymentDetails paymentDetails, String couponCode) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+            reservationService.validateActiveOrderPolicy(token, eventId, paymentDetails, normalizeOptionalText(couponCode));
+            return true;
+
+        } catch (PresentationException e) {
+            throw e;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw presentationError(e.getMessage());
+        } catch (Exception e) {
+            throw presentationError("Failed to validate purchase policy. Please try again.");
+        }
+    }
+
+    /**
      * Completes checkout for the current active order.
      *
      * This method is used by the checkout view to submit the active order for
@@ -293,7 +317,7 @@ public class ReservationPresenter {
      * @param couponCode optional coupon code entered by the user
      * @return true if checkout completed successfully
      */
-    public boolean checkout(String token, Long eventId, PaymentDetails paymentDetails, String couponCode) {
+    public boolean checkout(String token, Long eventId, PaymentDetails paymentDetails, BigDecimal amountAfterDiscount) {
         try {
             if (token == null || token.isBlank()) {
                 throw presentationError("No active session found. Please refresh and try again.");
@@ -306,8 +330,8 @@ public class ReservationPresenter {
             return reservationService.checkout(
                     token,
                     eventId,
-                    paymentDetails,
-                    normalizeOptionalText(couponCode)
+                    paymentDetails, 
+                    amountAfterDiscount
             );
 
         } catch (PresentationException e) {
