@@ -187,15 +187,6 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             validateEventId(eventId);
 
             DiscountPolicyDTO appDiscountPolicy = mapToAppDiscountPolicy(discountDraft);
-            System.out.println("UI discounts size = " +
-            (discountDraft == null || discountDraft.discounts() == null
-                            ? "null"
-                            : discountDraft.discounts().size()));
-
-            System.out.println("APP discounts size = " +
-                    (appDiscountPolicy.getDiscounts() == null
-                            ? "null"
-                            : appDiscountPolicy.getDiscounts().size()));
             eventService.setEventDiscountPolicy(token, eventId, appDiscountPolicy);
 
         } catch (PresentationException exception) {

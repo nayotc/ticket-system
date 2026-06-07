@@ -80,11 +80,7 @@ public class PoliciesEditorPresenter {
         try {
 
             DiscountPolicyDTO appDiscountPolicy = mapToAppDiscountPolicy(discountDraft);
-            System.out.println("UI discounts size = " +
-            (discountDraft == null || discountDraft.discounts() == null
-                            ? "null"
-                            : discountDraft.discounts().size()));
-
+           
 
             companyService.setCompanyDiscountPolicy(token, eventId, appDiscountPolicy);
 

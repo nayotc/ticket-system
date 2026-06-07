@@ -777,13 +777,9 @@ public class EventService {
         Event event = canEditEventDiscount(token, eventId);
 
         DiscountPolicy policy = discountMapper.toDomain(policyDTO);
-        System.out.println("APP discounts size = " + policy.getDiscounts().size());
         event.setDiscountPolicy(policy);
         eventRepository.updateEvent(event);
-        Event reloaded = eventRepository.getEventById(eventId);
 
-        System.out.println("RELOADED discounts after update = "
-                + reloaded.getDiscountPolicy().getDiscounts().size());
 
     } catch (Exception e) {
         logger.logEvent(
