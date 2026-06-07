@@ -40,14 +40,6 @@ public class DiscountPolicy {
         return compositionType;
     }
 
-    // public void removeDiscount(Long discountId) {
-    //     boolean removed = discounts.removeIf(discount -> discount.getDiscountId().equals(discountId));
-
-    //     if (!removed) {
-    //         throw new IllegalArgumentException("Discount not found");
-    //     }
-    // }
-
     /**
      * Calculates the total discount amount that should be deducted
      * from the original price according to the discount composition policy.

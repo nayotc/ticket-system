@@ -15,7 +15,6 @@ class CouponDiscountTest {
     void GivenCorrectCouponCode_WhenCalculateDiscount_ThenReturnDiscountAmount() {
         CouponDiscount discount = new CouponDiscount(
                 "Coupon BGU10",
-                1L,
                 "BGU10",
                 BigDecimal.valueOf(10),
                 LocalDateTime.now().plusDays(7)
@@ -34,7 +33,7 @@ class CouponDiscountTest {
     void GivenIncorrectCouponCode_WhenCalculateDiscount_ThenReturnZero() {
         CouponDiscount discount = new CouponDiscount(
                 "Coupon BGU10",
-                1L,
+             
                 "BGU10",
                 BigDecimal.valueOf(10),
                 LocalDateTime.now().plusDays(7)
@@ -53,7 +52,7 @@ class CouponDiscountTest {
     void GivenNullCouponCode_WhenCalculateDiscount_ThenReturnZero() {
         CouponDiscount discount = new CouponDiscount(
                 "Coupon BGU10",
-                1L,
+               
                 "BGU10",
                 BigDecimal.valueOf(10),
                 LocalDateTime.now().plusDays(7)
@@ -73,7 +72,7 @@ class CouponDiscountTest {
         assertThrows(IllegalArgumentException.class, () ->
                 new CouponDiscount(
                         "Coupon BGU10",
-                        1L,
+                   
                         "BGU10",
                         BigDecimal.valueOf(10),
                         LocalDateTime.now().minusDays(1)
@@ -87,7 +86,7 @@ class CouponDiscountTest {
 
         CouponDiscount discount = new CouponDiscount(
                 "Coupon BGU10",
-                1L,
+              
                 "BGU10",
                 BigDecimal.valueOf(10),
                 endTime

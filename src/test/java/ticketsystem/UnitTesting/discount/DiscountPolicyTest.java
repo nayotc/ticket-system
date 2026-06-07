@@ -43,7 +43,7 @@ class DiscountPolicyTest {
         void GivenDiscount_WhenAddDiscount_ThenDiscountIsAdded() {
                 VisibleDiscount discount = new VisibleDiscount(
                                 "Visible Discount",
-                                1L,
+                              
                                 BigDecimal.valueOf(10)
 
                 );
@@ -58,14 +58,14 @@ class DiscountPolicyTest {
         void GivenMaxComposition_WhenCalculateDiscount_ThenReturnHighestDiscountAmount() {
                 discountPolicy.addDiscount(new VisibleDiscount(
                                 "10 Percent",
-                                1L,
+                           
                                 BigDecimal.valueOf(10)
 
                 ));
 
                 discountPolicy.addDiscount(new VisibleDiscount(
                                 "20 Percent",
-                                2L,
+                             
                                 BigDecimal.valueOf(20)
 
                 ));
@@ -84,14 +84,14 @@ class DiscountPolicyTest {
 
                 sumPolicy.addDiscount(new VisibleDiscount(
                                 "10 Percent",
-                                1L,
+                         
                                 BigDecimal.valueOf(10)
 
                 ));
 
                 sumPolicy.addDiscount(new VisibleDiscount(
                                 "20 Percent",
-                                2L,
+                            
                                 BigDecimal.valueOf(20)
 
                 ));
@@ -113,75 +113,5 @@ class DiscountPolicyTest {
                                 discountPolicy.getDiscountCompositionType());
         }
 
-        @Test
-        void GivenExistingDiscount_WhenRemoveDiscountFromCompany_ThenDiscountIsRemoved() {
-                // Arrange
-                VisibleDiscount discount = new VisibleDiscount(
-                                "Visible Discount",
-                                1L,
-                                BigDecimal.valueOf(10));
-
-                discountPolicy.addDiscount(discount);
-
-                assertEquals(1, discountPolicy.getDiscounts().size());
-
-                // Act
-                discountPolicy.removeDiscount(1L);
-
-                // Assert
-                assertTrue(discountPolicy.getDiscounts().isEmpty());
-        }
-
-        @Test
-        void GivenMultipleDiscounts_WhenRemoveOneDiscountFromCompany_ThenOnlyRequestedDiscountIsRemoved() {
-                // Arrange
-                VisibleDiscount discount1 = new VisibleDiscount(
-                                "10 Percent",
-                                1L,
-                                BigDecimal.valueOf(10));
-
-                VisibleDiscount discount2 = new VisibleDiscount(
-                                "20 Percent",
-                                2L,
-                                BigDecimal.valueOf(20));
-
-                discountPolicy.addDiscount(discount1);
-                discountPolicy.addDiscount(discount2);
-
-                assertEquals(2, discountPolicy.getDiscounts().size());
-
-                // Act
-                discountPolicy.removeDiscount(1L);
-
-                // Assert
-                assertEquals(1, discountPolicy.getDiscounts().size());
-                assertSame(discount2, discountPolicy.getDiscounts().get(0));
-        }
-
-        @Test
-        void GivenNonExistingDiscountId_WhenRemoveDiscountFromCompany_ThenThrowException() {
-                // Arrange
-                VisibleDiscount discount = new VisibleDiscount(
-                                "Visible Discount",
-                                1L,
-                                BigDecimal.valueOf(10));
-
-                discountPolicy.addDiscount(discount);
-
-                // Act + Assert
-                Exception exception = assertThrows(IllegalArgumentException.class,
-                                () -> discountPolicy.removeDiscount(999L));
-
-                assertTrue(exception.getMessage().contains("Discount not found"));
-                assertEquals(1, discountPolicy.getDiscounts().size());
-        }
-
-        @Test
-        void GivenEmptyDiscountPolicy_WhenRemoveDiscountFromCompany_ThenThrowException() {
-                // Act + Assert
-                Exception exception = assertThrows(IllegalArgumentException.class,
-                                () -> discountPolicy.removeDiscount(1L));
-
-                assertTrue(exception.getMessage().contains("Discount not found"));
-        }
+       
 }
