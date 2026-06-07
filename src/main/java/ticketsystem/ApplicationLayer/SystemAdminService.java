@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
@@ -69,6 +70,8 @@ public class SystemAdminService {
         this.membershipDomain = membershipDomain;
         this.objectMapper = new ObjectMapper();
         this.notificationsService = notificationsService;
+        this.objectMapper.registerModule(new JavaTimeModule()); 
+        
     }
 
 //Use Case: Ticket System Initialization
@@ -242,7 +245,6 @@ public class SystemAdminService {
             for (Purchase purchase : allOrders) {
                 Long buyerMemberId = purchase.getMemberId();
                 OrderDTO orderDTO = objectMapper.convertValue(purchase, OrderDTO.class);
-
                 result.computeIfAbsent(buyerMemberId, k -> new ArrayList<>())
                         .add(orderDTO);
             }

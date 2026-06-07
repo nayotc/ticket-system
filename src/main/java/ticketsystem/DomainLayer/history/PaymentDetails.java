@@ -1,9 +1,8 @@
-package ticketsystem.DTO;
+package ticketsystem.DomainLayer.history;
 
 import java.time.LocalDate;
 
 public class PaymentDetails {
-    
     
     private String paymentMethodId; // Stripe / Fake
     private String payerName;
@@ -25,15 +24,19 @@ public class PaymentDetails {
     public String getPayerName() {
         return payerName;
     }
+    
     public LocalDate getBirthDate() {
         return birthDate;
     }
+    
     public void setPaymentMethodId(String paymentMethodId) {
         this.paymentMethodId = paymentMethodId;
     }
+    
     public void setPayerName(String payerName) {
         this.payerName = payerName;
     }
+    
      public void setBirthDate(LocalDate birthDate) {
         this.birthDate = birthDate;
     }
