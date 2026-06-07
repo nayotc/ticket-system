@@ -1,6 +1,7 @@
 package ticketsystem.DomainLayer.order;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.time.ZoneId;
 
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
+import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.TicketDTO;
 
@@ -198,7 +200,7 @@ public class ActiveOrder {
         this.version++;
     }
 
-    public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId, Long eventId,BigDecimal total) {
+    public OrderDTO toDTO(String eventName,String location, Long companyId, Long managedByMemberId, Long eventId,BigDecimal total, String paymentMethodId, String payerName, LocalDate birthDate) {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
@@ -213,9 +215,9 @@ public class ActiveOrder {
         }
 
         if(userId!=null)
-            return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId, managedByMemberId, eventId,total);
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,userId,companyId, managedByMemberId, eventId,total, new PaymentDetails(paymentMethodId, payerName, birthDate));
         else
-            return new OrderDTO(0L,ticketDTOs,eventName,location ,null ,companyId, managedByMemberId, eventId,total);
+            return new OrderDTO(0L,ticketDTOs,eventName,location ,null ,companyId, managedByMemberId, eventId,total, new PaymentDetails(paymentMethodId, payerName, birthDate));
     }
 
      public ActiveOrderDTO toDTO() {
