@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.EventCatalogService;
+import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
@@ -40,7 +41,7 @@ public class EventCatalogAcceptanceTest {
     private EventRepository eventRepository;
     private CompanyRepository companyRepository;
     private TokenService tokenService;
-    private LogbackSystemLogger logger;
+    private ISystemLogger logger;
 
     private String validSessionId;
     private final String invalidSessionId = "invalid-session";
