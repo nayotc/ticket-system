@@ -3,12 +3,14 @@ package ticketsystem.ApplicationLayer;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import org.springframework.stereotype.Service;
 
 @Service
 public class WaitingQueueService {
@@ -35,6 +37,7 @@ public class WaitingQueueService {
         return eventLocks.computeIfAbsent(eventId, k -> new Object());
     }
 
+    @Transactional
     public String tryReserve(long eventId, String tokenString) {
         // Validate the token
         if (!(tokenService.validateToken(tokenString))) {
@@ -91,6 +94,7 @@ public class WaitingQueueService {
         return "ERROR: System is too busy, please try again.";
     }
 
+    @Transactional
     private void promoteOneFromWaitingQueue(long eventId) {
         Event tempEvent = eventRepository.getEventById(eventId);
         if (tempEvent == null) {
@@ -134,6 +138,7 @@ public class WaitingQueueService {
         }
     }
 
+    @Transactional
     public void releaseSpot(long eventId, String sessionId) {
         synchronized (getEventLock(eventId)) {
             int maxRetries = 3;
@@ -241,6 +246,8 @@ public class WaitingQueueService {
         notificationsService.notifyGuests(guestTokens, message);
         logger.logEvent("Notified " + memberIds.size() + " members and " + guestTokens.size() + " guests with message: " + message, LogLevel.INFO);
     }
+
+    @Transactional(readOnly = true)
     public int getQueuePosition(long eventId, String tokenString) {
         if (tokenString == null || tokenString.isBlank()) {
             throw new IllegalArgumentException("Invalid token");
@@ -266,6 +273,7 @@ public class WaitingQueueService {
         return queueRepository.getUserPosition(eventId, tokenString);
     }
 
+    @Transactional(readOnly = true)
     public String getQueueEventName(long eventId) {
         Event event = eventRepository.getEventById(eventId);
 
@@ -278,6 +286,7 @@ public class WaitingQueueService {
         return event.getName();
     }
 
+    @Transactional(readOnly = true)
     public int estimateWaitMinutes(long eventId, String tokenString) {
         int position = getQueuePosition(eventId, tokenString);
 
