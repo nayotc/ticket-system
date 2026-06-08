@@ -50,6 +50,7 @@ import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.CompanyRole;
+import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
@@ -830,7 +831,7 @@ public class EventServiceAcceptanceTest {
         OrderRepository orderRepository = new OrderRepository();
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
-        String buyerSessionId = "buyer-session";
+        String buyerSessionId = tokenService.addActiveSession(new Guest());
         Long buyerId = 55L;
 
         ActiveOrder activeOrder = createActiveOrderForEvent(
@@ -870,7 +871,7 @@ public class EventServiceAcceptanceTest {
 
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
-        String buyerSessionId = "buyer-session";
+        String buyerSessionId = tokenService.addActiveSession(new Guest());
         Long buyerId = 55L;
 
         ActiveOrder activeOrder = createActiveOrderForEvent(
@@ -912,7 +913,7 @@ public class EventServiceAcceptanceTest {
         OrderRepository orderRepository = new OrderRepository();
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
-        String buyerSessionId = "buyer-session";
+        String buyerSessionId = tokenService.addActiveSession(new Guest());
         Long buyerId = 55L;
         Member memberWithoutPermission = new Member(
                 2L,
@@ -987,7 +988,7 @@ public class EventServiceAcceptanceTest {
         OrderRepository orderRepository = new OrderRepository();
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
-        String buyerSessionId = "buyer-session";
+        String buyerSessionId = tokenService.addActiveSession(new Guest());
         Long buyerId = 55L;
 
         ActiveOrder activeOrder = createActiveOrderForEvent(
@@ -1418,7 +1419,7 @@ void GivenOwnerLoggedInEventExistsAndDiscountPolicySaved_WhenGetEventDiscountPol
             INotifier notificationsService) {
         return new OrderService(
                 orderRepository,
-                null,
+                (TokenService) tokenService,
                 new LogbackSystemLogger(),
                 notificationsService);
     }

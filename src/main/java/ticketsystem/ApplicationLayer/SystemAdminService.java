@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -70,8 +71,8 @@ public class SystemAdminService {
         this.membershipDomain = membershipDomain;
         this.objectMapper = new ObjectMapper();
         this.notificationsService = notificationsService;
-        this.objectMapper.registerModule(new JavaTimeModule()); 
-        
+        this.objectMapper.registerModule(new JavaTimeModule());
+
     }
 
 //Use Case: Ticket System Initialization
@@ -310,6 +311,9 @@ public class SystemAdminService {
                 throw new IllegalArgumentException("Member with ID " + memberId + " was not found.");
             }
             member.suspendMember(adminId, startDate, endDate, reason);
+            if (notificationsService != null) {
+                notificationsService.notifyMember(memberId, "Your account has been suspended from " + startDate + " to " + endDate + " for the following reason: " + reason);
+            }
             return userRepository.updateMember(member);
         } catch (Exception e) {
             logger.logEvent("An unexpected error occurred while suspending the member: " + e.getMessage(),
@@ -334,6 +338,9 @@ public class SystemAdminService {
                 throw new IllegalArgumentException("Member with ID " + memberId + " was not found.");
             }
             member.revokeSuspension();
+            if (notificationsService != null) {
+                notificationsService.notifyMember(memberId, "Your account suspension has been revoked. You now have access to your account.");
+            }
             return userRepository.updateMember(member);
         } catch (Exception e) {
             logger.logEvent("An unexpected error occurred while revoking the member: " + e.getMessage(),
@@ -390,6 +397,9 @@ public class SystemAdminService {
             }
             SystemAdmin newAdmin = new SystemAdmin(member.getId().toString(), member.getUserName(), Boolean.TRUE);
             adminRepository.addAdmin(newAdmin);
+            if (notificationsService != null) {
+                notificationsService.notifyMember(memberId, "Congratulations! You have been promoted to System Admin.");
+            }
             logger.logEvent("Member with ID " + memberId + " promoted to System Admin successfully.", LogbackSystemLogger.LogLevel.INFO);
         } catch (Exception e) {
             logger.logError("Failed to promote member with ID " + memberId + " to System Admin: " + e.getMessage(), e);

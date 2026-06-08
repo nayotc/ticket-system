@@ -51,7 +51,7 @@ import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.InfrastructureLayer.VaadinNotifier;
+import ticketsystem.testutil.RecordingNotifier;
 
 public class SystemAdminServiceTest {
 
@@ -66,6 +66,7 @@ public class SystemAdminServiceTest {
     OrderRepository orderRepo;
     ISystemLogger logger = new LogbackSystemLogger();
     private MembershipDomainService membershipDomain;
+    private RecordingNotifier recordingNotifier;
     private INotifier notifier;
     private NotificationsRepository notificationRepo;
 
@@ -85,7 +86,8 @@ public class SystemAdminServiceTest {
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         membershipDomain = new MembershipDomainService(userRepo);
         notificationRepo = new NotificationsRepository();
-        notifier = new VaadinNotifier(notificationRepo);
+        recordingNotifier = new RecordingNotifier();
+        notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepo);
         companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger, userAccessService, notifier);
         orderRepo = new OrderRepository();
@@ -541,6 +543,8 @@ public class SystemAdminServiceTest {
         assertEquals(start, savedMember.getSuspension().getStartDate());
         assertEquals(end, savedMember.getSuspension().getEndDate());
         assertFalse(savedMember.getSuspension().isPermanent());
+        recordingNotifier.assertNotifiedMember(memberId, "suspended");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -572,6 +576,8 @@ public class SystemAdminServiceTest {
         assertNotNull(savedMember.getSuspension());
         assertTrue(savedMember.getSuspension().isPermanent());
         assertEquals(reason, savedMember.getSuspension().getReason());
+        recordingNotifier.assertNotifiedMember(memberId, "suspended");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -604,6 +610,7 @@ public class SystemAdminServiceTest {
         assertFalse(savedMember.isSuspended());
 
         assertStateUnchanged(beforeState, afterState, "Suspend member with invalid admin");
+        recordingNotifier.assertNoNotifications();
     }
 
     @Test
@@ -628,6 +635,7 @@ public class SystemAdminServiceTest {
 
         assertTrue(exception.getMessage().contains("was not found"));
         assertStateUnchanged(beforeState, afterState, "Revoke suspension for missing member");
+        recordingNotifier.assertNoNotifications();
     }
 
     @Test
@@ -663,6 +671,7 @@ public class SystemAdminServiceTest {
         assertNotNull(savedMember);
         assertFalse(savedMember.isSuspended());
         assertStateUnchanged(beforeState, afterState, "Suspend member with invalid dates");
+        recordingNotifier.assertNoNotifications();
     }
 
     @Test
@@ -699,6 +708,7 @@ public class SystemAdminServiceTest {
         assertTrue(exception.getMessage().contains("already suspended"));
         assertTrue(savedMember.isSuspended());
         assertEquals("First reason", savedMember.getSuspension().getReason());
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -728,6 +738,8 @@ public class SystemAdminServiceTest {
         assertFalse(savedMember.isSuspended());
         assertNotNull(savedMember.getSuspension());
         assertTrue(savedMember.getSuspension().isRevoked());
+        recordingNotifier.assertNotifiedMember(memberId, "revoked");
+        recordingNotifier.assertNotificationCount(2);
     }
 
     @Test

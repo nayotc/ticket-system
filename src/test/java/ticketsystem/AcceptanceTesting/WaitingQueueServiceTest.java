@@ -25,14 +25,15 @@ import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.VaadinNotifier;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
+import ticketsystem.testutil.RecordingNotifier;
 
 public class WaitingQueueServiceTest {
 
     private EventRepository EventRepo;
     private WaitingQueueRepository realQueueRepo;
     private NotificationService Notifications;
+    private RecordingNotifier recordingNotifier;
     private INotifier notifier;
     private ITokenService tokenService;
     private ITokenRepository tokenRepository;
@@ -46,7 +47,8 @@ public class WaitingQueueServiceTest {
         realQueueRepo = new WaitingQueueRepository();
         notificationRepository = new NotificationsRepository();
         Notifications = new NotificationService(notificationRepository);
-        notifier = new VaadinNotifier(notificationRepository);
+        recordingNotifier = new RecordingNotifier();
+        notifier = recordingNotifier;
         tokenRepository = new TokenRepository();
         logger = new LogbackSystemLogger();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
@@ -90,6 +92,8 @@ public class WaitingQueueServiceTest {
         assertEquals(1, realQueueRepo.getQueueSize(2), "Queue size should be exactly 1.");
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
+        recordingNotifier.assertNotifiedGuest(validToken, "entered the waiting queue");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -115,6 +119,9 @@ public class WaitingQueueServiceTest {
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
         assertEquals(0, realQueueRepo.getQueueSize(3), "Queue should be empty after the user was dequeued.");
+        recordingNotifier.assertNotifiedGuest(validToken2, "entered the waiting queue");
+        recordingNotifier.assertNotifiedGuest(validToken2, "It's your turn!");
+        recordingNotifier.assertNotificationCount(2);
     }
 
     @Test
@@ -339,6 +346,8 @@ public class WaitingQueueServiceTest {
 
         // Assert
         assertEquals("QUEUED", result);
+        recordingNotifier.assertNotifiedMember(100L, "entered the waiting queue");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     // checking invariants before and after failure scenarios
