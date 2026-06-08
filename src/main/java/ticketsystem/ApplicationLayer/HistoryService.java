@@ -30,9 +30,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
-
 @Service
 public class HistoryService implements OrderCompletedListener, EventUpdatesListener {
+
     private final IHistoryRepository historyRepository;
     private final ITokenService tokenService;
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -44,7 +44,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
 
     @Autowired
     public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger,
-         UserAccessService userAccessService, INotifier notificationsService, IPaymentService paymentService) {
+            UserAccessService userAccessService, INotifier notificationsService, IPaymentService paymentService) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
@@ -55,18 +55,16 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         this.objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
     }
 
-    
     // This method is called when an order is completed. It takes the order details, converts them into a Purchase object, and stores it in the history repository.
     @Override
     public void onOrderCompleted(OrderDTO order) {
         try {
             long newPurchaseId = historyRepository.generateNextId();
-            order.setPurchaseId(newPurchaseId);            
-            
+            order.setPurchaseId(newPurchaseId);
+
             Purchase purchase = objectMapper.convertValue(order, Purchase.class);
-            historyRepository.addPurchase(purchase);     
-        } 
-        catch (IllegalArgumentException e) {
+            historyRepository.addPurchase(purchase);
+        } catch (IllegalArgumentException e) {
             logger.logEvent(
                     "Failed to process completed order: " + e.getMessage(),
                     ISystemLogger.LogLevel.WARN
@@ -76,66 +74,66 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
     }
 
     public List<OrderDTO> getHistoryForUser(String token) {
-        try{
+        try {
             // Validate token
             if (!tokenService.validateToken(token)) {
                 throw new IllegalArgumentException("Invalid or expired token");
             }
 
-            if(!tokenService.isMemberToken(token)){
+            if (!tokenService.isMemberToken(token)) {
                 throw new IllegalArgumentException("Only members can view personal purchase history");
             }
 
             Long memberId = tokenService.extractUserId(token);
-            if (memberId == null){
+            if (memberId == null) {
                 throw new IllegalArgumentException("Could not extract user id from token");
             }
 
             List<Purchase> purchases = historyRepository.getPurchasesByMemberId(memberId);
-            if(purchases.isEmpty()){
+            if (purchases.isEmpty()) {
             }
             List<OrderDTO> historyDtoList = objectMapper.convertValue(
-                purchases, 
-                new TypeReference<List<OrderDTO>>() {}
+                    purchases,
+                    new TypeReference<List<OrderDTO>>() {
+            }
             );
             return historyDtoList;
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             logger.logEvent("Failed to retrieve personal purchase history: " + e.getMessage(), ISystemLogger.LogLevel.WARN);
             throw e;
         }
     }
-    
+
     // This method retrieves the purchase history for a specific company. It validates the token, checks permissions, and then fetches the purchase history from the repository.
     public List<OrderDTO> getHistoryForCompany(String token, long companyId) {
-        try{
+        try {
             // Validate token
             if (!tokenService.validateToken(token)) {
                 throw new IllegalArgumentException("Invalid or expired token");
             }
 
-            if(!tokenService.isMemberToken(token)){
+            if (!tokenService.isMemberToken(token)) {
                 throw new IllegalArgumentException("Only members can view personal purchase history");
             }
 
             Long memberId = tokenService.extractUserId(token);
-            if (memberId == null){
+            if (memberId == null) {
                 throw new IllegalArgumentException("Could not extract user id from token");
             }
-            if(!membershipDomainService.validatePermission(memberId, companyId, Permission.VIEW_PURCHASE_HISTORY)) {
+            if (!membershipDomainService.validatePermission(memberId, companyId, Permission.VIEW_PURCHASE_HISTORY)) {
                 throw new IllegalArgumentException("Insufficient permissions to view company purchase history");
             }
             List<Purchase> purchases = historyRepository.getPurchasesByCompanyId(companyId);
-            if(purchases.isEmpty()){
+            if (purchases.isEmpty()) {
                 //notification
             }
             List<OrderDTO> historyDtoList = objectMapper.convertValue(
-                purchases, 
-                new TypeReference<List<OrderDTO>>() {}
+                    purchases,
+                    new TypeReference<List<OrderDTO>>() {
+            }
             );
             return historyDtoList;
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             logger.logEvent("Failed to retrieve company purchase history: " + e.getMessage(), ISystemLogger.LogLevel.WARN);
             throw e;
         }
@@ -161,21 +159,22 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
             }
             // 3. הבאת תת-העץ של המנהל (עוטפים ב-HashSet כדי שנוכל להוסיף אליו את המנהל עצמו בבטחה)
             Set<Long> allowedManagers = new java.util.HashSet<>(
-                membershipDomainService.getManagementSubTreeMemberIds(memberId, companyId)
+                    membershipDomainService.getManagementSubTreeMemberIds(memberId, companyId)
             );
             allowedManagers.add(memberId); // מוסיפים את המנהל המבקש
 
             // 4. שליפת כל העסקאות וסינון לפי מי שניהל את האירוע
             List<Purchase> allPurchases = historyRepository.getPurchasesByCompanyId(companyId);
-            
+
             List<Purchase> filteredPurchases = allPurchases.stream()
                     .filter(purchase -> allowedManagers.contains(purchase.getManagedByMemberId()))
                     .toList();
 
             // 5. המרה ל-DTO והחזרה
             return objectMapper.convertValue(
-                filteredPurchases, 
-                new TypeReference<List<OrderDTO>>() {}
+                    filteredPurchases,
+                    new TypeReference<List<OrderDTO>>() {
+            }
             );
 
         } catch (IllegalArgumentException e) {
@@ -207,11 +206,11 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
                 throw new IllegalArgumentException("Insufficient permissions to generate sales report");
             }
 
-            Set<Long> allowedManagers =
-                    membershipDomainService.getManagementSubTreeMemberIds(memberId, companyId);
+            Set<Long> allowedManagers
+                    = membershipDomainService.getManagementSubTreeMemberIds(memberId, companyId);
 
-            List<Purchase> companyPurchases =
-                    historyRepository.getPurchasesByCompanyId(companyId);
+            List<Purchase> companyPurchases
+                    = historyRepository.getPurchasesByCompanyId(companyId);
 
             int totalTicketsSold = 0;
             BigDecimal totalRevenue = BigDecimal.ZERO;
@@ -224,7 +223,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
                 List<PurchasedTicket> tickets = purchase.getTickets();
 
                 for (PurchasedTicket ticket : tickets) {
-                    if(!ticket.getStatus().equals(TicketStatus.CANCELED) ){
+                    if (!ticket.getStatus().equals(TicketStatus.CANCELED)) {
                         totalRevenue = totalRevenue.add(BigDecimal.valueOf(ticket.getPrice()));
                         totalTicketsSold++;
 
@@ -272,10 +271,10 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
 
         notifyPurchasedBuyers(
                 purchases,
-                "An event you purchased tickets for was canceled."
+                "event id " + eventId + "  that you purchased tickets for was canceled."
         );
     }
-    
+
     @Override
     public void onEventUpdated(Long eventId, LocalDateTime date, String location, String updateMessage) {
         if (eventId == null) {
