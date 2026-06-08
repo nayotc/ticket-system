@@ -1,6 +1,7 @@
 package ticketsystem.ApplicationLayer;
 
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -31,6 +32,9 @@ import java.time.Period;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.discount.PricingQuote;
+import ticketsystem.DomainLayer.discount.AppliedDiscountResult;
+import ticketsystem.DTO.AppliedDiscountDTO;
+import ticketsystem.DTO.PricingQuoteDTO;
 
 @Service
 public class ReservationService {
@@ -51,6 +55,7 @@ public class ReservationService {
     private final UserAccessService userAccessService; 
     private final Set<Long> expirationWarningSentOrderIds = ConcurrentHashMap.newKeySet();
     private final Set<Long> soldOutNotificationSentEventIds = ConcurrentHashMap.newKeySet();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ReservationService(
             IOrderRepository orderRepository,
@@ -339,24 +344,28 @@ public class ReservationService {
     }
 
     /**
-     * Calculates the pricing quote for the current active order.
+     * Calculates the pricing quote DTO for the current active order.
      *
      * This method calculates the original active-order amount, applies the
-     * company-level and event-level discount policies, and returns a full pricing
-     * quote that includes the subtotal, total discount amount, final total, and
-     * the discounts that were actually applied.
+     * company-level and event-level discount policies through the domain layer,
+     * and returns an application-layer DTO with the subtotal, total discount
+     * amount, final total, and the discounts that were actually applied.
      *
      * This method only calculates pricing. It does not complete checkout, does not
      * charge payment, and does not validate purchase-policy rules that require
      * buyer details, such as minimum age. Purchase-policy validation is still done
      * before payment.
      *
+     * The domain layer returns a PricingQuote object, but this service converts it
+     * to PricingQuoteDTO before returning it so upper layers do not receive
+     * domain-layer objects directly.
+     *
      * @param token active guest/member session token
      * @param eventId event identifier of the active order
      * @param couponCode coupon code entered by the user, if any
-     * @return full pricing quote for the active order
+     * @return full pricing DTO for the active order
      */
-    public PricingQuote calculateActiveOrderPricing(String token, Long eventId, String couponCode) {
+    public PricingQuoteDTO calculateActiveOrderPricing(String token, Long eventId, String couponCode) {
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
@@ -370,13 +379,15 @@ public class ReservationService {
 
             BigDecimal subtotal = reservationDomeinService.calculateTotalPrice(order, event);
 
-            return eventCatalogDomainService.calculatePricingQuote(
+            PricingQuote quote = eventCatalogDomainService.calculatePricingQuote(
                     event.getCompanyId(),
                     event,
                     subtotal,
                     order.getTickets().size(),
                     couponCode
             );
+
+            return objectMapper.convertValue(quote, PricingQuoteDTO.class);
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to calculate active order pricing: " + e.getMessage());
         }
