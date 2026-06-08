@@ -16,11 +16,12 @@ import ticketsystem.DTO.Event.IMapElementDTO;
 import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
+import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -42,6 +43,7 @@ public class EventService {
     private final List<EventUpdatesListener> eventUpdatesListeners = new ArrayList<>();
     private final ISystemLogger logger;
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
+    private final DiscountPolicyMapper discountMapper = new DiscountPolicyMapper();
     private final UserAccessService userAccessService;
 
     @Autowired
@@ -768,11 +770,60 @@ public class EventService {
                 + ", version=" + eventDTO.version();
     }
 
+  public void setEventDiscountPolicy(String token,
+                                   Long eventId,
+                                   DiscountPolicyDTO policyDTO) throws Exception {
+    try {
+        Event event = canEditEventDiscount(token, eventId);
+
+        DiscountPolicy policy = discountMapper.toDomain(policyDTO);
+        event.setDiscountPolicy(policy);
+        eventRepository.updateEvent(event);
+
+
+    } catch (Exception e) {
+        logger.logEvent(
+                "Failed to set discount policy for event, id: " + eventId
+                        + ", reason=" + e.getMessage(),
+                ISystemLogger.LogLevel.WARN
+        );
+        throw e;
+    }
+}
+
+public DiscountPolicyDTO getEventDiscountPolicy(String token, Long eventId) throws Exception {
+    try {
+        Event event = eventRepository.getEventById(eventId);
+        if (event == null) {
+            throw new IllegalArgumentException("Event not found");
+        }
+        tokenService.validateToken(token);
+        Long memberId = tokenService.extractUserId(token);
+        userAccessService.validateCanPerformNonViewAction(memberId);
+        if (!membershipDomain.validatePermission(memberId, event.getCompanyId(), Permission.SET_DISCOUNT_POLICY)) {
+            throw new IllegalArgumentException(
+                    "User does not have permission to view event discount policy");
+        }
+
+        DiscountPolicy policy = event.getDiscountPolicy();
+        return discountMapper.toDTO(policy);
+
+    } catch (Exception e) {
+        logger.logEvent(
+                "Failed to get discount policy for event, id: " + eventId
+                        + ", reason=" + e.getMessage(),
+                ISystemLogger.LogLevel.WARN
+        );
+        throw e;
+    }
+}
+
     public void setEventPurchasePolicy(String token, Long eventId, PurchasePolicyDTO policyDTO) throws Exception {
         try {
             Event event = canEditPurchasePolicy(token, eventId);
 
             PurchasePolicy policy = mapper.toDomain(policyDTO);
+
 
             event.setPurchasePolicy(policy);
 
@@ -804,109 +855,6 @@ public class EventService {
         return event;
     }
 
-    // add visible discount to event
-    public void addVisibleDiscountToEvent(String token, Long eventId,
-                                          String name, BigDecimal percentage) throws Exception {
-
-        try {
-            Event event = canEditEventDiscount(token, eventId);
-
-            event.addVisibleDiscountToEvent(name, percentage);
-
-            eventRepository.updateEvent(event);
-
-            logger.logEvent(
-                    "Visible discount added successfully to event id: " + eventId,
-                    ISystemLogger.LogLevel.INFO
-            );
-
-        } catch (Exception e) {
-            logger.logEvent("Failed to add visible discount to event",
-                    ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
-    }
-
-    // add coupon discount to event
-    public void addCouponDiscountToEvent(String token, Long eventId,
-                                         String name, String couponCode,
-                                         BigDecimal percentage, LocalDateTime endTime) throws Exception {
-
-        try {
-            Event event = canEditEventDiscount(token, eventId);
-
-            event.addCouponDiscountToEvent(name, couponCode, percentage, endTime);
-
-            eventRepository.updateEvent(event);
-
-            logger.logEvent(
-                    "Coupon discount added successfully to event id: " + eventId,
-                    ISystemLogger.LogLevel.INFO
-            );
-
-        } catch (Exception e) {
-            logger.logEvent("Failed to add coupon discount to event",
-                    ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
-    }
-
-    // add conditional discount to event
-    public void addConditionalDiscountToEvent(String token, Long eventId,
-                                              String name, LocalDateTime startTime,
-                                              LocalDateTime endTime, BigDecimal percentage,
-                                              Condition condition,
-                                              Integer ticketThreshold) throws Exception {
-
-        try {
-            Event event = canEditEventDiscount(token, eventId);
-
-            event.addConditionalDiscountToEvent(
-                    name,
-                    startTime,
-                    endTime,
-                    percentage,
-                    condition,
-                    ticketThreshold
-            );
-
-            eventRepository.updateEvent(event);
-
-            logger.logEvent(
-                    "Conditional discount added successfully to event id: " + eventId,
-                    ISystemLogger.LogLevel.INFO
-            );
-
-        } catch (Exception e) {
-            logger.logEvent("Failed to add conditional discount to event",
-                    ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
-    }
-
-    // remove discount from event
-    public void removeDiscountFromEvent(String token, Long eventId,
-                                        Long discountId) throws Exception {
-
-        try {
-            Event event = canEditEventDiscount(token, eventId);
-
-            event.removeDiscountFromEvent(discountId);
-
-            eventRepository.updateEvent(event);
-
-            logger.logEvent(
-                    "Discount removed successfully from event id: "
-                            + eventId + ", discount id: " + discountId,
-                    ISystemLogger.LogLevel.INFO
-            );
-
-        } catch (Exception e) {
-            logger.logEvent("Failed to remove discount from event, id: " + discountId,
-                    ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
-    }
 
     // set event discount composition type
     public void setEventDiscountCompositionType(String token, Long eventId,

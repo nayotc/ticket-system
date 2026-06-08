@@ -2,6 +2,7 @@ package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -10,7 +11,10 @@ import org.springframework.stereotype.Service;
 
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
+import ticketsystem.DomainLayer.discount.MaxTicketsCondition;
+import ticketsystem.DomainLayer.discount.MinTicketsCondition;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountCondition;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.DiscountDTO;
@@ -20,8 +24,9 @@ import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.discount.AndDiscountCondition;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.DateRangeCondition;
 
 @Service
 public class CompanyService {
@@ -31,6 +36,7 @@ public class CompanyService {
     private final ISystemLogger logger;
     private final MembershipDomainService membershipDomain;
     private final PurchasePolicyMapper mapper = new PurchasePolicyMapper();
+    private final DiscountPolicyMapper discountPolicyMapper = new DiscountPolicyMapper();
     private final INotifier notificationsService;
     private final UserAccessService userAccessService; 
     
@@ -353,106 +359,7 @@ public class CompanyService {
             logger.logError(message, exception);
         }
     }
-    //add discount
-
-    // add visible discount
-    public void addVisibleDiscountToCompany(String token, Long companyId,
-            String name, BigDecimal percentage) throws Exception {
-
-        try {
-            Company company = canEditDiscount(token, companyId);
-
-            company.addVisibleDiscountToCompany(name, percentage);
-
-            companyRepository.save(company);
-                logger.logEvent(
-                "Visible discount added successfully to company id: " + companyId,
-                ISystemLogger.LogLevel.INFO);
-
-        } catch (Exception e) {
-
-            logger.logEvent("Failed to add visible discount to company",
-                    ISystemLogger.LogLevel.WARN);
-
-            throw e;
-        }
-    }
-
-    // add coupon discount
-    public void addCouponDiscountToCompany(String token, Long companyId,
-            String name, String couponCode,
-            BigDecimal percentage,LocalDateTime endTime) throws Exception {
-
-        try {
-            Company company = canEditDiscount(token, companyId);
-
-            company.addCouponDiscountToCompany(name, couponCode, percentage,endTime);
-
-            companyRepository.save(company);
-                    logger.logEvent(
-                "Coupon discount added successfully to company id: " + companyId,
-                ISystemLogger.LogLevel.INFO
-        );
-
-        } catch (Exception e) {
-
-            logger.logEvent("Failed to add coupon discount to company",
-                    ISystemLogger.LogLevel.WARN);
-
-            throw e;
-        }
-    }
-    
-    // add conditional discount
-    public void addConditionalDiscountToCompany(String token, Long companyId,
-            String name, LocalDateTime startTime,
-            LocalDateTime endTime, BigDecimal percentage,
-            Condition condition,
-            Integer ticketThreshold) throws Exception {
-
-        try {
-            Company company = canEditDiscount(token, companyId);
-
-            company.addConditionalDiscountToCompany(
-                    name,
-                    startTime,
-                    endTime,
-                    percentage,
-                    condition,
-                    ticketThreshold
-            );
-
-            companyRepository.save(company);
-                    logger.logEvent(
-                "Conditional discount added successfully to company id: " + companyId,
-                ISystemLogger.LogLevel.INFO
-        );
-
-        } catch (Exception e) {
-
-            logger.logEvent("Failed to add conditional discount to company",
-                    ISystemLogger.LogLevel.WARN);
-
-            throw e;
-        }
-    }
-    //remove discount
-    public void removeDiscountFromCompany(String token,Long companyId,Long discountId ) throws Exception{
-        try{
-        Company company = canEditDiscount(token,companyId);
-        company.removeDiscountFromCompany(discountId);
-        companyRepository.save(company);
-                logger.logEvent(
-                "Discount removed successfully from company id: "
-                        + companyId + ", discount id: " + discountId,
-                ISystemLogger.LogLevel.INFO
-        );
-        } catch (Exception e){
-              logger.logEvent( "Failed to remove discount, id:"+discountId ,ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
-    }
-
+   
     //set composition type
     public void setCompositionType(String token,Long companyId,DiscountCompositionType compositionType)
     throws Exception{
@@ -552,17 +459,6 @@ public class CompanyService {
         }
     }
 
-/**
-     * Retrieves the discount policy of a specified company and maps it to a DTO.
-     * Validates the user's session and permissions before allowing access.
-     * Automatically maps Domain discount types (Visible, Coupon, Conditional) back to DTOs,
-     * including translating internal Enums into readable text for the UI.
-     *
-     * @param token     The authentication token of the current user.
-     * @param companyId The unique identifier of the target company.
-     * @return DiscountPolicyDTO representing the current discount policy of the company.
-     * @throws Exception If the company is not found, the user lacks permission, or a retrieval error occurs.
-     */
     public DiscountPolicyDTO getCompanyDiscountPolicy(String token, Long companyId) throws Exception {
         logEvent("getCompanyDiscountPolicy started. companyId=" + companyId,
                 ISystemLogger.LogLevel.INFO);
@@ -588,79 +484,15 @@ public class CompanyService {
                 return new DiscountPolicyDTO();
             }
 
-            DiscountPolicyDTO dto = new DiscountPolicyDTO();
-            dto.setCompositionType(domainPolicy.getDiscountCompositionType());
-
-            List<DiscountDTO> discountDTOs = new java.util.ArrayList<>();
-
-            if (domainPolicy.getDiscounts() != null) {
-                logEvent("getCompanyDiscountPolicy mapping discounts. companyId=" + companyId
-                                + ", composition=" + domainPolicy.getDiscountCompositionType()
-                                + ", domainDiscounts=" + domainPolicy.getDiscounts().size(),
-                        ISystemLogger.LogLevel.DEBUG);
-
-                for (DiscountTypes discount : domainPolicy.getDiscounts()) {
-                    DiscountDTO dDTO = new DiscountDTO();
-
-                    dDTO.setName(discount.getName());
-                    dDTO.setPercentage(discount.getPercentage());
-
-                    // בדיקת סוג ההנחה הספציפי והמרתו
-                    if (discount instanceof ticketsystem.DomainLayer.discount.CouponDiscount) {
-                        ticketsystem.DomainLayer.discount.CouponDiscount coupon =
-                                (ticketsystem.DomainLayer.discount.CouponDiscount) discount;
-
-                        dDTO.setType("COUPON");
-                        dDTO.setCouponCode(coupon.getCouponCode());
-                        dDTO.setEndTime(coupon.getEndTime());
-
-                    } else if (discount instanceof ConditionalDiscount) {
-                        ConditionalDiscount cond = (ConditionalDiscount) discount;
-
-                        dDTO.setType("CONDITIONAL");
-                        dDTO.setEndTime(cond.getEndTime());
-
-                        String threshold = cond.getTicketThreshold() != null ? cond.getTicketThreshold().toString() : "1";
-
-                        if (cond.getCondition() == ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.MAX_TICKET) {
-                            dDTO.setConditionText("מקסימום " + threshold + " כרטיסים");
-                        } else if (cond.getCondition() == ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.DATE) {
-                            dDTO.setConditionText("הנחת תאריך");
-                        } else {
-                            dDTO.setConditionText("מינימום " + threshold + " כרטיסים");
-                        }
-
-                    } else if (discount instanceof ticketsystem.DomainLayer.discount.VisibleDiscount) {
-                        dDTO.setType("VISIBLE");
-                    }
-
-                    logEvent("getCompanyDiscountPolicy mapped discount. companyId=" + companyId
-                                    + ", name=" + dDTO.getName()
-                                    + ", type=" + dDTO.getType()
-                                    + ", percentage=" + dDTO.getPercentage()
-                                    + ", conditionText=" + dDTO.getConditionText()
-                                    + ", endTime=" + dDTO.getEndTime(),
-                            ISystemLogger.LogLevel.DEBUG);
-
-                    discountDTOs.add(dDTO);
-                }
-            }
-
-            dto.setDiscounts(discountDTOs);
+           DiscountPolicyDTO dto = discountPolicyMapper.toDTO(company.getDiscountPolicy());
 
             logEvent("getCompanyDiscountPolicy completed. companyId=" + companyId
                             + ", composition=" + dto.getCompositionType()
-                            + ", dtoDiscounts=" + discountDTOs.size(),
+                            + ", dtoDiscounts=" + dto.getDiscounts().size(),
                     ISystemLogger.LogLevel.INFO);
 
             return dto;
-
         } catch (IllegalArgumentException | IllegalStateException e) {
-            logEvent("getCompanyDiscountPolicy failed. companyId=" + companyId
-                            + ", reason=" + e.getMessage(),
-                    ISystemLogger.LogLevel.WARN);
-            throw new Exception(e.getMessage());
-        } catch (Exception e) {
             logEvent("getCompanyDiscountPolicy failed. companyId=" + companyId
                             + ", reason=" + e.getMessage(),
                     ISystemLogger.LogLevel.WARN);
@@ -668,151 +500,68 @@ public class CompanyService {
         }
     }
 
-    /**
-     * Sets or updates the discount policy for a specified company based on the provided DTO.
-     * Validates user permissions to ensure only authorized personnel can modify policies.
-     * Maps different discount types (Visible, Coupon, Conditional) from the DTO to Domain entities.
-     * Note: For conditional discounts, it attempts to parse the condition type and threshold
-     * dynamically from the free-text condition string provided by the UI.
-     *
-     * @param token     The authentication token of the current user.
-     * @param companyId The unique identifier of the target company.
-     * @param policyDTO The DiscountPolicyDTO containing the new discount rules and composition type.
-     * @throws Exception If validation fails, the company is not found, or the database save operation fails.
-     */
-    public void setCompanyDiscountPolicy(String token, Long companyId, ticketsystem.DTO.DiscountPolicyDTO policyDTO) throws Exception {
-        int incomingDiscounts = policyDTO == null || policyDTO.getDiscounts() == null
-                ? 0
-                : policyDTO.getDiscounts().size();
 
-        logEvent("setCompanyDiscountPolicy started. companyId=" + companyId
-                        + ", composition=" + (policyDTO == null ? null : policyDTO.getCompositionType())
-                        + ", incomingDiscounts=" + incomingDiscounts,
+  public void setCompanyDiscountPolicy(String token,
+                                     Long companyId,
+                                     DiscountPolicyDTO policyDTO) throws Exception {
+
+    int incomingDiscounts = policyDTO == null || policyDTO.getDiscounts() == null
+            ? 0
+            : policyDTO.getDiscounts().size();
+
+    logEvent("setCompanyDiscountPolicy started. companyId=" + companyId
+                    + ", composition=" + (policyDTO == null ? null : policyDTO.getCompositionType())
+                    + ", incomingDiscounts=" + incomingDiscounts,
+            ISystemLogger.LogLevel.INFO);
+
+    try {
+        tokenService.validateToken(token);
+
+        Long memberId = tokenService.extractUserId(token);
+
+        userAccessService.validateCanPerformNonViewAction(memberId);
+
+        Company company = canEditDiscount(token, companyId);
+
+        int beforeCount = countDiscounts(company);
+
+        logEvent("setCompanyDiscountPolicy permission approved. companyId=" + companyId
+                        + ", memberId=" + memberId
+                        + ", existingDiscounts=" + beforeCount,
+                ISystemLogger.LogLevel.DEBUG);
+
+        DiscountPolicy newPolicy = discountPolicyMapper.toDomain(policyDTO);
+
+        company.setDiscountPolicy(newPolicy);
+
+        companyRepository.save(company);
+
+        int afterCount = countDiscounts(company);
+
+        logEvent("setCompanyDiscountPolicy completed. companyId=" + companyId
+                        + ", beforeDiscounts=" + beforeCount
+                        + ", incomingDiscounts=" + incomingDiscounts
+                        + ", afterDiscounts=" + afterCount,
                 ISystemLogger.LogLevel.INFO);
 
-        try {
-            tokenService.validateToken(token);
-            Long memberId = tokenService.extractUserId(token);
-            logEvent("setCompanyDiscountPolicy token validated. companyId=" + companyId
-                            + ", memberId=" + memberId,
-                    ISystemLogger.LogLevel.DEBUG);
-
-            userAccessService.validateCanPerformNonViewAction(memberId);
-
-            Company company = companyRepository.findById(companyId)
-                    .orElseThrow(() -> new Exception("Error: Company not found."));
-
-            if (!membershipDomain.validatePermission(memberId, companyId, Permission.SET_DISCOUNT_POLICY)) {
-                logEvent("setCompanyDiscountPolicy permission denied. companyId=" + companyId
-                                + ", memberId=" + memberId,
-                        ISystemLogger.LogLevel.WARN);
-                throw new IllegalArgumentException("User does not have permission to manage company discount policy");
-            }
-
-            int beforeCount = company.getDiscountPolicy() == null || company.getDiscountPolicy().getDiscounts() == null
-                    ? 0
-                    : company.getDiscountPolicy().getDiscounts().size();
-
-            logEvent("setCompanyDiscountPolicy permission approved. companyId=" + companyId
-                            + ", memberId=" + memberId
-                            + ", existingDiscounts=" + beforeCount,
-                    ISystemLogger.LogLevel.DEBUG);
-
-            if (policyDTO != null && policyDTO.getDiscounts() != null) {
-                int index = 0;
-                for (ticketsystem.DTO.DiscountDTO discountDTO : policyDTO.getDiscounts()) {
-                    index++;
-
-                    logEvent("setCompanyDiscountPolicy applying discount " + index + "/" + incomingDiscounts
-                                    + ". companyId=" + companyId
-                                    + ", type=" + discountDTO.getType()
-                                    + ", name=" + discountDTO.getName()
-                                    + ", percentage=" + discountDTO.getPercentage()
-                                    + ", couponCodePresent=" + (discountDTO.getCouponCode() != null && !discountDTO.getCouponCode().isBlank())
-                                    + ", endTime=" + discountDTO.getEndTime()
-                                    + ", conditionText=" + discountDTO.getConditionText(),
-                            ISystemLogger.LogLevel.DEBUG);
-
-                    if ("VISIBLE".equals(discountDTO.getType()) || "SIMPLE".equals(discountDTO.getType())) {
-                        company.addVisibleDiscountToCompany(
-                                discountDTO.getName(),
-                                discountDTO.getPercentage()
-                        );
-                    }
-                    else if ("COUPON".equals(discountDTO.getType())) {
-                        company.addCouponDiscountToCompany(
-                                discountDTO.getName(),
-                                discountDTO.getCouponCode(),
-                                discountDTO.getPercentage(),
-                                discountDTO.getEndTime()
-                        );
-                    }
-                    else if ("CONDITIONAL".equals(discountDTO.getType())) {
-
-                        ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition actualCondition =
-                                ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.MIN_TICKET;
-
-                        int threshold = 1;
-                        String conditionStr = discountDTO.getConditionText();
-
-                        if (conditionStr != null && !conditionStr.isBlank()) {
-                            try {
-                                if (conditionStr.contains("<") || conditionStr.toLowerCase().contains("max") || conditionStr.contains("מקסימום")) {
-                                    actualCondition = ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.MAX_TICKET;
-                                } else if (conditionStr.contains("date") || conditionStr.contains("תאריך")) {
-                                    actualCondition = ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition.DATE;
-                                }
-
-                                String numberOnly = conditionStr.replaceAll("[^0-9]", "");
-                                if (!numberOnly.isEmpty()) {
-                                    threshold = Integer.parseInt(numberOnly);
-                                }
-                            } catch (Exception e) {
-                                logEvent("setCompanyDiscountPolicy condition parse failed. companyId=" + companyId
-                                                + ", conditionText=" + conditionStr
-                                                + ", fallbackThreshold=1",
-                                        ISystemLogger.LogLevel.WARN);
-                                threshold = 1;
-                            }
-                        }
-
-                        logEvent("setCompanyDiscountPolicy parsed conditional discount. companyId=" + companyId
-                                        + ", condition=" + actualCondition
-                                        + ", threshold=" + threshold
-                                        + ", endTime=" + discountDTO.getEndTime(),
-                                ISystemLogger.LogLevel.DEBUG);
-
-                        company.addConditionalDiscountToCompany(
-                                discountDTO.getName(),
-                                java.time.LocalDateTime.now(),
-                                discountDTO.getEndTime(),
-                                discountDTO.getPercentage(),
-                                actualCondition,
-                                threshold
-                        );
-                    }
-                }
-            }
-
-            companyRepository.save(company);
-
-            int afterCount = company.getDiscountPolicy() == null || company.getDiscountPolicy().getDiscounts() == null
-                    ? 0
-                    : company.getDiscountPolicy().getDiscounts().size();
-
-            logEvent("setCompanyDiscountPolicy completed. companyId=" + companyId
-                            + ", beforeDiscounts=" + beforeCount
-                            + ", incomingDiscounts=" + incomingDiscounts
-                            + ", afterDiscounts=" + afterCount,
-                    ISystemLogger.LogLevel.INFO);
-
-        } catch (Exception e) {
-            logEvent("setCompanyDiscountPolicy failed. companyId=" + companyId
-                            + ", reason=" + e.getMessage(),
-                    ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
+    } catch (Exception e) {
+        logEvent("setCompanyDiscountPolicy failed. companyId=" + companyId
+                        + ", reason=" + e.getMessage(),
+                ISystemLogger.LogLevel.WARN);
+        throw e;
     }
+}
+
+private int countDiscounts(Company company) {
+    if (company == null
+            || company.getDiscountPolicy() == null
+            || company.getDiscountPolicy().getDiscounts() == null) {
+        return 0;
+    }
+
+    return company.getDiscountPolicy().getDiscounts().size();
+}
+
 
     public boolean hasPermission(String sessionToken, long companyId, Permission permission) throws Exception {
         long memberId = getRegisteredMemberId(sessionToken);

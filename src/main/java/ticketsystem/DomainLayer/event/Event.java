@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
@@ -212,6 +211,9 @@ public class Event {
         return discountPolicy;
     }
     public void setDiscountPolicy(DiscountPolicy discountPolicy) {
+       if (discountPolicy == null) {
+            throw new IllegalArgumentException("Discount policy cannot be null");
+        }
         this.discountPolicy = discountPolicy;
     }
     private Long getNextDiscountId() {
@@ -446,27 +448,18 @@ public class Event {
 
     // discount related methods
     public void addVisibleDiscountToEvent(String name, BigDecimal percentage) {
-        DiscountTypes discount = new VisibleDiscount(name, getNextDiscountId(), percentage);
+        DiscountTypes discount = new VisibleDiscount(name,  percentage);
         discountPolicy.addDiscount(discount);
     }
 
     public void addCouponDiscountToEvent(String name, String couponCode,
             BigDecimal percentage, LocalDateTime endTime) {
         DiscountTypes discount = new CouponDiscount(
-                name, getNextDiscountId(), couponCode, percentage, endTime);
+                name,  couponCode, percentage, endTime);
         discountPolicy.addDiscount(discount);
     }
 
-    public void addConditionalDiscountToEvent(String name,
-            LocalDateTime startTime, LocalDateTime endTime,
-            BigDecimal percentage, Condition condition,
-            Integer ticketThreshold) {
 
-        DiscountTypes discount = new ConditionalDiscount(
-                name, getNextDiscountId(), startTime, endTime,
-                percentage, condition, ticketThreshold);
-        discountPolicy.addDiscount(discount);
-    }
 
     public void setDiscountCompositionType(DiscountCompositionType compositionType) {
         discountPolicy.setDiscountCompositionType(compositionType);
@@ -476,9 +469,6 @@ public class Event {
         return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 
-    public void removeDiscountFromEvent(Long discountId) {
-        discountPolicy.removeDiscount(discountId);
-    }
 
     public List<DiscountTypes> getDiscounts() {
         return discountPolicy.getDiscounts();

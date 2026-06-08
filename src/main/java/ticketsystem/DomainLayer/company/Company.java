@@ -8,8 +8,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountCondition;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
@@ -98,9 +98,13 @@ public class Company {
         return discountPolicy;
     }
 
-    public void setDiscountPolicy(DiscountPolicy discountPolicy) {
-        this.discountPolicy = discountPolicy;
+   public void setDiscountPolicy(DiscountPolicy discountPolicy) {
+    if (discountPolicy == null) {
+        throw new IllegalArgumentException("Discount policy cannot be null");
     }
+
+    this.discountPolicy = discountPolicy;
+}
 
     public long getVersion() {
         return version;
@@ -187,7 +191,6 @@ public class Company {
 
         DiscountTypes discount = new VisibleDiscount(
                 name,
-                getNextId(),
                 percentage
         );
 
@@ -196,23 +199,17 @@ public class Company {
 
 
     // conditional discount
-    public void addConditionalDiscountToCompany(String name,
-            LocalDateTime startTime, LocalDateTime endTime,
-            BigDecimal percentage, Condition condition,
-            Integer ticketThreshold) {
+  public void addConditionalDiscountToCompany(String name,
+                                            BigDecimal percentage,
+                                            DiscountCondition condition) {
+    DiscountTypes discount = new ConditionalDiscount(
+            name,
+            percentage,
+            condition
+    );
 
-        DiscountTypes discount = new ConditionalDiscount(
-                name,
-                getNextId(),
-                startTime,
-                endTime,
-                percentage,
-                condition,
-                ticketThreshold);
-    
-        discountPolicy.addDiscount(discount);
-    }
-
+    discountPolicy.addDiscount(discount);
+}
 
 
     // coupon discount
@@ -224,7 +221,6 @@ public class Company {
 
         DiscountTypes discount = new CouponDiscount(
                 name,
-                getNextId(),
                 couponCode,
                 percentage,endTime
         );
@@ -238,9 +234,7 @@ public class Company {
         return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 
-    public void removeDiscountFromCompany(Long discountId) {
-        discountPolicy.removeDiscount(discountId);
-    }
+  
    
     
 }
