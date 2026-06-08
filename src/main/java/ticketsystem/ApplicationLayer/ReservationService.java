@@ -32,8 +32,6 @@ import java.time.Period;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.discount.PricingQuote;
-import ticketsystem.DomainLayer.discount.AppliedDiscountResult;
-import ticketsystem.DTO.AppliedDiscountDTO;
 import ticketsystem.DTO.PricingQuoteDTO;
 
 @Service
@@ -293,7 +291,6 @@ public class ReservationService {
 
     /**
      * Returns the current active order for the given UI session token.
-     *
      * This method is intended for presentation-layer flows such as the active order
      * cart, where the UI needs to display the current user's active order without
      * receiving an order id in the route.
@@ -403,11 +400,12 @@ public class ReservationService {
             if(details == null|| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
-            int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();  
+            int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();
             eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(),order.getTickets().size(), buyerAge);
             reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
             BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
+            saveAll(order, event);
             return amountAfterDiscount;
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to validate active order policy: " + e.getMessage());
@@ -514,8 +512,31 @@ public class ReservationService {
         }
       
     }
+
     //refund
-        private void handleRefundAfterCheckoutFailure(
+    /**
+     * Handles failures that happen after the payment was already approved but
+     * before the checkout flow was fully completed.
+     *
+     * At this stage, the system must refund the payment because the purchase
+     * cannot be safely completed. The method also logs the original failure cause
+     * before throwing a user-facing checkout failure exception.
+     *
+     * Logging the original exception is important because the public exception
+     * message intentionally stays general, while the internal cause may explain
+     * whether the failure came from ticket issuing, order status validation,
+     * seat status validation, persistence, or another checkout-completion step.
+     *
+     * @param order active order that failed during checkout completion
+     * @param event event related to the active order
+     * @param amount payment amount that should be refunded
+     * @param details payment details used for the original payment
+     * @param eventId event identifier used for logging
+     * @param originalException original exception that caused checkout completion to fail
+     * @param refundSuccessMessage message used when refund succeeds
+     * @param refundFailureMessage message used when refund itself fails
+     */
+    private void handleRefundAfterCheckoutFailure(
             ActiveOrder order,
             Event event,
             BigDecimal amount,
@@ -525,14 +546,27 @@ public class ReservationService {
             String refundSuccessMessage,
             String refundFailureMessage) {
 
+        logger.logError(
+                refundSuccessMessage
+                        + " Original checkout failure cause: "
+                        + originalException.getClass().getSimpleName()
+                        + " - "
+                        + originalException.getMessage()
+                        + ". orderId=" + order.getOrderId()
+                        + ", eventId=" + eventId,
+                originalException
+        );
+
         boolean refundResult = paymentService.refund(amount, details);
 
         order.paymentFailed();
         saveAll(order, event);
+
         notificationsService.notifyGuest(
-        order.getSessionToken(),
-        "The purchase was canceled because ticket issuing failed. A refund was issued."
+                order.getSessionToken(),
+                "The purchase was canceled because ticket issuing failed. A refund was issued."
         );
+
         if (refundResult) {
             logger.logEvent(
                     refundSuccessMessage + " orderId=" + order.getOrderId() + ", eventId=" + eventId,
