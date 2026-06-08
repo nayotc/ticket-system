@@ -1,6 +1,7 @@
 package ticketsystem.DomainLayer.discount;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public abstract class DiscountTypes {
     protected String name;
@@ -66,4 +67,32 @@ public abstract class DiscountTypes {
     }
 
     public abstract BigDecimal calculateDiscount(BigDecimal totalPrice,int ticketCount,String couponCode);
+
+    /**
+     * Calculates this discount and returns a detailed domain result.
+     *
+     * This method keeps the existing discount calculation logic in one place by
+     * using calculateDiscount(...), and wraps the calculated amount with the
+     * discount metadata needed for later pricing display.
+     *
+     * If the discount amount is zero or negative, the discount is considered not
+     * applied and an empty result is returned.
+     *
+     * @param totalPrice the price before this discount is applied
+     * @param ticketCount the number of tickets in the order
+     * @param couponCode the coupon code entered by the user, if any
+     * @return detailed discount calculation result for this specific discount
+     */
+    public DiscountCalculationResult calculateDiscountDetails( BigDecimal totalPrice, int ticketCount, String couponCode) {
+        BigDecimal amount = calculateDiscount(totalPrice, ticketCount, couponCode);
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return DiscountCalculationResult.none();
+        }
+
+        return new DiscountCalculationResult(
+                amount,
+                List.of(new AppliedDiscountResult(getName(), getPercentage(), amount))
+        );
+    }
 }

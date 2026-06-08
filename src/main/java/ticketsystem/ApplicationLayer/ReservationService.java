@@ -30,6 +30,7 @@ import java.time.LocalDate;
 import java.time.Period;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.discount.PricingQuote;
 
 @Service
 public class ReservationService {
@@ -334,6 +335,50 @@ public class ReservationService {
         } catch (Exception e) {
             logger.logEvent("viewCurrentActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
+        }
+    }
+
+    /**
+     * Calculates the pricing quote for the current active order.
+     *
+     * This method calculates the original active-order amount, applies the
+     * company-level and event-level discount policies, and returns a full pricing
+     * quote that includes the subtotal, total discount amount, final total, and
+     * the discounts that were actually applied.
+     *
+     * This method only calculates pricing. It does not complete checkout, does not
+     * charge payment, and does not validate purchase-policy rules that require
+     * buyer details, such as minimum age. Purchase-policy validation is still done
+     * before payment.
+     *
+     * @param token active guest/member session token
+     * @param eventId event identifier of the active order
+     * @param couponCode coupon code entered by the user, if any
+     * @return full pricing quote for the active order
+     */
+    public PricingQuote calculateActiveOrderPricing(String token, Long eventId, String couponCode) {
+        try {
+            tokenService.validateToken(token);
+            userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
+
+            ActiveOrder order = findActiveOrder(token, eventId);
+            Event event = eventRepository.getEventById(eventId);
+
+            if (order == null || event == null) {
+                throw new IllegalStateException("No active order or event found");
+            }
+
+            BigDecimal subtotal = reservationDomeinService.calculateTotalPrice(order, event);
+
+            return eventCatalogDomainService.calculatePricingQuote(
+                    event.getCompanyId(),
+                    event,
+                    subtotal,
+                    order.getTickets().size(),
+                    couponCode
+            );
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to calculate active order pricing: " + e.getMessage());
         }
     }
 

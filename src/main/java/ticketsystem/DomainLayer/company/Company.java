@@ -13,6 +13,7 @@ import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
+import ticketsystem.DomainLayer.discount.DiscountCalculationResult;
 
 public class Company {
     private static long idCounter = 1;
@@ -241,6 +242,23 @@ public class Company {
     public void removeDiscountFromCompany(Long discountId) {
         discountPolicy.removeDiscount(discountId);
     }
-   
+
+    /**
+     * Calculates the company's discount policy and returns a detailed domain result.
+     *
+     * This method is used when callers need to know not only the total discount
+     * amount, but also which company-level discounts were actually applied.
+     *
+     * The existing calculateDiscountCompany(...) method is kept unchanged for
+     * callers that only need the numeric discount amount.
+     *
+     * @param totalPrice the price before applying company-level discounts
+     * @param ticketCount the number of tickets in the order
+     * @param couponCode the coupon code entered by the user, if any
+     * @return detailed result of the company-level discount calculation
+     */
+    public DiscountCalculationResult calculateDiscountCompanyDetails(BigDecimal totalPrice, int ticketCount, String couponCode) {
+        return discountPolicy.calculateDiscountDetails(totalPrice, ticketCount, couponCode);
+    }
     
 }
