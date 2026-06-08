@@ -32,7 +32,7 @@ import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.InfrastructureLayer.VaadinNotifier;
+import ticketsystem.testutil.RecordingNotifier;
 
 public class LotteryServiceTest {
 
@@ -40,6 +40,7 @@ public class LotteryServiceTest {
     private LotteryRepository lotteryRepo;
     private TokenService tokenService;
     private NotificationsRepository notificationRepository;
+    private RecordingNotifier recordingNotifier;
     private INotifier notifier;
     private UserAccessService userAccessService;
     private MembershipDomainService membershipDomain;
@@ -79,7 +80,8 @@ public class LotteryServiceTest {
         logger = new LogbackSystemLogger();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         notificationRepository = new NotificationsRepository();
-        notifier = new VaadinNotifier(notificationRepository);
+        recordingNotifier = new RecordingNotifier();
+        notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepo);
         membershipDomain = new MembershipDomainService(userRepo);
 
@@ -142,6 +144,9 @@ public class LotteryServiceTest {
         Lottery lotteryAfterDraw = lotteryRepo.findById(lotteryId);
         assertTrue(lotteryAfterDraw.getWinners().contains(user1Id),
                 "User1 should be selected as a winner because they are the only participant");
+        recordingNotifier.assertNotifiedMember(user1Id, "registered");
+        recordingNotifier.assertNotifiedMember(user1Id, "Congratulations");
+        recordingNotifier.assertNotificationCount(2);
     }
 
     @Test
@@ -179,6 +184,8 @@ public class LotteryServiceTest {
         assertTrue(result, "Registration should succeed");
         Lottery updatedLottery = lotteryRepo.findById(lotteryId);
         assertTrue(updatedLottery.getRegisteredMemberIds().contains(participantId), "Participant should be in the registered list");
+        recordingNotifier.assertNotifiedMember(participantId, "registered");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -224,6 +231,15 @@ public class LotteryServiceTest {
         assertEquals(LotteryStatus.COMPLETED, completedLottery.getStatus(), "Status should be COMPLETED");
         assertEquals(winnersAmount, completedLottery.getWinners().size(), "Should have exactly 2 winners");
 
+        long winnerId = completedLottery.getWinners().iterator().next();
+        long loserId = List.of(201L, 202L, 203L).stream()
+                .filter(id -> !completedLottery.getWinners().contains(id))
+                .findFirst()
+                .orElseThrow();
+
+        recordingNotifier.assertNotifiedMember(winnerId, "Congratulations");
+        recordingNotifier.assertNotifiedMember(loserId, "did not win");
+        recordingNotifier.assertNotificationCount(6);
     }
 
     @Test
@@ -524,48 +540,4 @@ public class LotteryServiceTest {
         assertEquals("Lottery for event not found.", exception.getMessage());
     }
 
-    private static class FakeNotifier implements INotifier {
-
-        private final List<String> messages = new ArrayList<>();
-
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyGuest(String guestToken, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyMembers(Collection<Long> memberIds, String message) {
-            if (memberIds == null) {
-                return;
-            }
-
-            for (Long memberId : memberIds) {
-                if (memberId != null) {
-                    notifyMember(memberId, message);
-                }
-            }
-        }
-
-        @Override
-        public void notifyGuests(Collection<String> guestTokens, String message) {
-            if (guestTokens == null) {
-                return;
-            }
-
-            for (String guestToken : guestTokens) {
-                if (guestToken != null && !guestToken.isBlank()) {
-                    notifyGuest(guestToken, message);
-                }
-            }
-        }
-
-        boolean containsMessage(String text) {
-            return messages.stream().anyMatch(message -> message.contains(text));
-        }
-    }
 }
