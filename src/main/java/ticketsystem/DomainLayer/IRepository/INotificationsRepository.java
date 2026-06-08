@@ -2,14 +2,14 @@ package ticketsystem.DomainLayer.IRepository;
 
 import java.util.List;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+
 import ticketsystem.DomainLayer.notifications.Notification;
 
-public interface INotificationsRepository {
+public interface INotificationsRepository extends JpaRepository<Notification, Long> {
 
-    Notification save(Notification notification);
+    //Notification save(Notification notification);
+    List<Notification> findByTargetId(String targetId);
 
-    List<Notification> findPendingByTargetId(String targetId);
-
-    void removeById(Long notificationId);
-
+    // void removeById(Long notificationId);
 }

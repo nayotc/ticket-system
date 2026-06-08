@@ -1,24 +1,22 @@
 package ticketsystem.InfrastructureLayer;
 
-import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.springframework.stereotype.Repository;
 
-import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
 
 @Repository
-public class NotificationsRepository implements INotificationsRepository {
+public class NotificationsRepository {
 
     private final ConcurrentHashMap<String, List<Notification>> notificationsByTarget = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Notification> notificationsById = new ConcurrentHashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(0L);
 
-    @Override
     public Notification save(Notification notification) {
         if (notification.getId() == null) {
             notification.setId(idGenerator.incrementAndGet());
@@ -30,8 +28,7 @@ public class NotificationsRepository implements INotificationsRepository {
         return notification;
     }
 
-    @Override
-    public List<Notification> findPendingByTargetId(String targetId) {
+    public List<Notification> findByTargetId(String targetId) {
         List<Notification> notifications = notificationsByTarget.get(targetId);
         if (notifications == null) {
             return new ArrayList<>();
@@ -39,7 +36,6 @@ public class NotificationsRepository implements INotificationsRepository {
         return new ArrayList<>(notifications);
     }
 
-    @Override
     public void removeById(Long notificationId) {
         Notification notification = notificationsById.get(notificationId);
         if (notification == null) {
