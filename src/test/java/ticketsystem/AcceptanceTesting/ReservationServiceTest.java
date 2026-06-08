@@ -551,12 +551,12 @@ public class ReservationServiceTest {
                 null);
 
         assertTrue(selected);
-
+        BigDecimal finalPrice = reservationService.validateActiveOrderPolicy(memberToken, eventId, createPaymentDetails(), null);
         boolean checkoutResult = reservationService.checkout(
                 memberToken,
                 eventId,
                 createPaymentDetails(),
-                new BigDecimal("100.00"));
+                finalPrice);
 
         assertTrue(checkoutResult);
 
@@ -648,12 +648,12 @@ public class ReservationServiceTest {
                 null);
 
         assertTrue(selected);
-
+        BigDecimal finalPrice = reservationService.validateActiveOrderPolicy(guestToken, eventId, createPaymentDetails(), null);
         boolean checkoutResult = reservationService.checkout(
                 guestToken,
                 eventId,
                 createPaymentDetails(),
-                new BigDecimal("100.00"));
+                finalPrice);
 
         assertTrue(checkoutResult);
 
@@ -868,12 +868,12 @@ public class ReservationServiceTest {
                 areaId,
                 1,
                 null);
-
+        BigDecimal finalPrice = reservationService.validateActiveOrderPolicy(memberToken, eventId, createPaymentDetails(), null);
         boolean result = reservationService.checkout(
                 memberToken,
                 eventId,
                 createPaymentDetails(),
-                new BigDecimal("100.00"));
+                finalPrice);
 
         assertTrue(result);
     }
