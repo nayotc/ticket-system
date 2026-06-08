@@ -5,22 +5,21 @@ import java.util.List;
 
 public abstract class DiscountTypes {
     protected String name;
-    private Long discountId;
+    //private Long discountId;
     private BigDecimal percentage;
 
-    public DiscountTypes(Long discountId,String name,BigDecimal percentage) {
-        validateDiscountId(discountId);
+    public DiscountTypes(String name,BigDecimal percentage) {
         validateName(name);
         validatePercentage(percentage);
-        this.discountId=discountId;
+       // this.discountId=discountId;
         this.name = name;
         this.percentage = percentage;
 
     }
 
-    public Long getDiscountId(){
-        return discountId;
-    }
+    // public Long getDiscountId(){
+    //     return discountId;
+    // }
     public String getName() {
         return name;
     }

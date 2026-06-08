@@ -422,7 +422,6 @@ public class ReservationService {
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
-
             if (order == null || event == null) {
                 throw new IllegalStateException("No active order or event found");
             }

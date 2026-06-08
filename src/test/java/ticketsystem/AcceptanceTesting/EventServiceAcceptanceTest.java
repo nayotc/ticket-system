@@ -32,13 +32,16 @@ import ticketsystem.DTO.Event.IMapElementDTO;
 import ticketsystem.DTO.Event.PairDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
+import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
+import ticketsystem.DomainLayer.discount.ConditionalDiscount;
+import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -58,6 +61,8 @@ import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
+import ticketsystem.DTO.DiscountDTO;
+import ticketsystem.DTO.DiscountConditionDTO;
 
 public class EventServiceAcceptanceTest {
 
@@ -1015,256 +1020,164 @@ public class EventServiceAcceptanceTest {
         assertEquals(1, historyListener.notificationCount());
         assertEquals(ActiveOrder.OrderStatus.CANCELLED, orderAfterSecondCancel.getStatus());
     }
-    // -------------------- Event Discount Policy Tests --------------------
 
-    @Test
-    void GivenOwnerLoggedInAndValidVisibleDiscount_WhenAddVisibleDiscountToEvent_ThenDiscountIsAddedSuccessfully() throws Exception {
-        // Arrange
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
+//Discout
+@Test
+void GivenOwnerLoggedInEventExistsAndVisibleDiscountPolicy_WhenSetEventDiscountPolicy_ThenPolicyIsSavedOnEvent() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
 
-        // Act
-        eventService.addVisibleDiscountToEvent(
-                validOwnerSessionId,
-                event.getId(),
-                "Summer Discount",
-                BigDecimal.valueOf(15)
-        );
+    DiscountDTO visible = new DiscountDTO();
+    visible.setType("VISIBLE");
+    visible.setName("Visible Discount");
+    visible.setPercentage(BigDecimal.valueOf(10));
 
-        // Assert
-        Event updatedEvent = eventRepository.getEventById(event.getId());
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.MAX);
+    policyDTO.setDiscounts(List.of(visible));
 
-        assertNotNull(updatedEvent);
-        assertEquals(1, updatedEvent.getDiscounts().size());
-        assertEquals("Summer Discount",
-                updatedEvent.getDiscounts().get(0).getName());
-    }
+    eventService.setEventDiscountPolicy(validOwnerSessionId, event.getId(), policyDTO);
 
-    @Test
-    void GivenOwnerLoggedInAndInvalidDiscountPercentage_WhenAddVisibleDiscountToEvent_ThenSystemRejectsTheRequest() {
-        // Arrange
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
+    Event updatedEvent = eventRepository.getEventById(event.getId());
 
-        // Act
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> eventService.addVisibleDiscountToEvent(
-                        validOwnerSessionId,
-                        event.getId(),
-                        "Invalid Discount",
-                        BigDecimal.valueOf(150)
-                )
-        );
+    assertNotNull(updatedEvent.getDiscountPolicy());
+    assertEquals(1, updatedEvent.getDiscountPolicy().getDiscounts().size());
+    assertTrue(updatedEvent.getDiscountPolicy().getDiscounts().get(0) instanceof VisibleDiscount);
+}
 
-        // Assert
-        Event unchangedEvent = eventRepository.getEventById(event.getId());
+@Test
+void GivenOwnerLoggedInEventExistsAndCouponDiscountPolicy_WhenSetEventDiscountPolicy_ThenPolicyIsSavedOnEvent() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
 
-        assertTrue(exception.getMessage().contains("percentage"));
-        assertEquals(0, unchangedEvent.getDiscounts().size());
-    }
+    DiscountDTO coupon = new DiscountDTO();
+    coupon.setType("COUPON");
+    coupon.setName("Coupon Discount");
+    coupon.setCouponCode("SAVE10");
+    coupon.setPercentage(BigDecimal.valueOf(10));
+    coupon.setEndTime(LocalDateTime.now().plusDays(1));
 
-    @Test
-    void GivenUserWithoutPermission_WhenAddVisibleDiscountToEvent_ThenSystemRejectsTheRequest() {
-        // Arrange
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.MAX);
+    policyDTO.setDiscounts(List.of(coupon));
 
-        String sessionWithoutPermission;
+    eventService.setEventDiscountPolicy(validOwnerSessionId, event.getId(), policyDTO);
 
-        Member plainUser = new Member(2L, "PlainUser", "Plain User", "0500000005", LocalDate.of(2001, 1, 1));
-        userRepository.addRegisteredMember(2L, plainUser, "password");
+    Event updatedEvent = eventRepository.getEventById(event.getId());
 
-        sessionWithoutPermission = tokenService.addActiveSession(plainUser);
+    assertNotNull(updatedEvent.getDiscountPolicy());
+    assertEquals(1, updatedEvent.getDiscountPolicy().getDiscounts().size());
+    assertTrue(updatedEvent.getDiscountPolicy().getDiscounts().get(0) instanceof CouponDiscount);
+}
 
-        // Act
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> eventService.addVisibleDiscountToEvent(
-                        sessionWithoutPermission,
-                        event.getId(),
-                        "Summer Discount",
-                        BigDecimal.valueOf(10)
-                )
-        );
+@Test
+void GivenOwnerLoggedInEventExistsAndConditionalDiscountPolicy_WhenSetEventDiscountPolicy_ThenPolicyIsSavedOnEvent() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
 
-        // Assert
-        assertTrue(exception.getMessage()
-                .contains("User does not have permission to manage event discount policy"));
-    }
+    DiscountDTO conditional = new DiscountDTO();
+    conditional.setType("CONDITIONAL");
+    conditional.setName("Min Tickets Discount");
+    conditional.setPercentage(BigDecimal.valueOf(15));
+    conditional.setConditions(List.of(
+            new DiscountConditionDTO("MIN_TICKET", 3, null, null)
+    ));
 
-    @Test
-    void GivenEventDoesNotExist_WhenAddVisibleDiscountToEvent_ThenSystemRejectsTheRequest() {
-        // Act
-        Exception exception = assertThrows(
-                Exception.class,
-                () -> eventService.addVisibleDiscountToEvent(
-                        validOwnerSessionId,
-                        999L,
-                        "Summer Discount",
-                        BigDecimal.valueOf(10)
-                )
-        );
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.SUM);
+    policyDTO.setDiscounts(List.of(conditional));
 
-        // Assert
-        assertTrue(exception.getMessage().contains("Event not found"));
-    }
+    eventService.setEventDiscountPolicy(validOwnerSessionId, event.getId(), policyDTO);
 
-// -------------------- Coupon Discount Tests --------------------
-    @Test
-    void GivenOwnerLoggedInAndValidCouponDiscount_WhenAddCouponDiscountToEvent_ThenCouponDiscountIsAddedSuccessfully() throws Exception {
-        // Arrange
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
+    Event updatedEvent = eventRepository.getEventById(event.getId());
 
-        LocalDateTime endDate = LocalDateTime.now().plusDays(10);
+    assertNotNull(updatedEvent.getDiscountPolicy());
+    assertEquals(DiscountCompositionType.SUM,
+            updatedEvent.getDiscountPolicy().getDiscountCompositionType());
+    assertEquals(1, updatedEvent.getDiscountPolicy().getDiscounts().size());
+    assertTrue(updatedEvent.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
+}
 
-        // Act
-        eventService.addCouponDiscountToEvent(
-                validOwnerSessionId,
-                event.getId(),
-                "Coupon Discount",
-                "SAVE20",
-                BigDecimal.valueOf(20),
-                endDate
-        );
+@Test
+void GivenLoggedInUserWithoutPermission_WhenSetEventDiscountPolicy_ThenSystemRejectsAndPolicyIsNotChanged() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
 
-        // Assert
-        Event updatedEvent = eventRepository.getEventById(event.getId());
+    Long plainUserId = 2L;
+    Member plainUser = new Member(
+            plainUserId,
+            "PlainDiscountUser",
+            "Plain Discount User",
+            "0500000099",
+            LocalDate.of(2001, 1, 1)
+    );
 
-        assertEquals(1, updatedEvent.getDiscounts().size());
-        assertEquals("Coupon Discount",
-                updatedEvent.getDiscounts().get(0).getName());
-    }
+    userRepository.addRegisteredMember(plainUserId, plainUser, "password");
+    String sessionWithoutPermission = tokenService.addActiveSession(plainUser);
 
-    @Test
-    void GivenCouponDiscountWithPastExpirationDate_WhenAddCouponDiscountToEvent_ThenSystemRejectsTheRequest() {
-        // Arrange
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
+    DiscountDTO visible = new DiscountDTO();
+    visible.setType("VISIBLE");
+    visible.setName("Visible Discount");
+    visible.setPercentage(BigDecimal.valueOf(10));
 
-        // Act
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> eventService.addCouponDiscountToEvent(
-                        validOwnerSessionId,
-                        event.getId(),
-                        "Coupon Discount",
-                        "SAVE20",
-                        BigDecimal.valueOf(20),
-                        LocalDateTime.now().minusDays(1)
-                )
-        );
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.MAX);
+    policyDTO.setDiscounts(List.of(visible));
 
-        // Assert
-        assertTrue(exception.getMessage()
-                .contains("End time cannot be in the past"));
-    }
+    IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> eventService.setEventDiscountPolicy(
+                    sessionWithoutPermission,
+                    event.getId(),
+                    policyDTO
+            )
+    );
 
-// -------------------- Conditional Discount Tests --------------------
-    @Test
-    void GivenOwnerLoggedInAndValidConditionalDiscount_WhenAddConditionalDiscountToEvent_ThenConditionalDiscountIsAddedSuccessfully() throws Exception {
-        // Arrange
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
+    assertTrue(exception.getMessage().contains("permission"));
+}
 
-        // Act
-        eventService.addConditionalDiscountToEvent(
-                validOwnerSessionId,
-                event.getId(),
-                "Bulk Discount",
-                LocalDateTime.now(),
-                LocalDateTime.now().plusDays(5),
-                BigDecimal.valueOf(25),
-                Condition.MIN_TICKET,
-                4
-        );
+@Test
+void GivenEventDoesNotExist_WhenSetEventDiscountPolicy_ThenSystemRejectsTheRequest() {
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.MAX);
+    policyDTO.setDiscounts(List.of());
 
-        // Assert
-        Event updatedEvent = eventRepository.getEventById(event.getId());
+    Exception exception = assertThrows(
+            Exception.class,
+            () -> eventService.setEventDiscountPolicy(
+                    validOwnerSessionId,
+                    999L,
+                    policyDTO
+            )
+    );
 
-        assertEquals(1, updatedEvent.getDiscounts().size());
-        assertEquals("Bulk Discount",
-                updatedEvent.getDiscounts().get(0).getName());
-    }
+    assertTrue(exception.getMessage().contains("Event not found"));
+}
 
-    @Test
-    void GivenConditionalDiscountWithInvalidThreshold_WhenAddConditionalDiscountToEvent_ThenSystemRejectsTheRequest() {
-        // Arrange
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
+@Test
+void GivenOwnerLoggedInEventExistsAndDiscountPolicySaved_WhenGetEventDiscountPolicy_ThenReturnsSavedPolicyDTO() throws Exception {
+    Event event = createExistingEvent();
+    eventRepository.addEvent(event);
 
-        // Act
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> eventService.addConditionalDiscountToEvent(
-                        validOwnerSessionId,
-                        event.getId(),
-                        "Bulk Discount",
-                        LocalDateTime.now(),
-                        LocalDateTime.now().plusDays(5),
-                        BigDecimal.valueOf(25),
-                        Condition.MIN_TICKET,
-                        0
-                )
-        );
+    DiscountDTO visible = new DiscountDTO();
+    visible.setType("VISIBLE");
+    visible.setName("Visible Discount");
+    visible.setPercentage(BigDecimal.valueOf(10));
 
-        // Assert
-        assertTrue(exception.getMessage().contains("threshold"));
-    }
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.MAX);
+    policyDTO.setDiscounts(List.of(visible));
 
-// -------------------- Remove Discount Tests --------------------
-    @Test
-    void GivenExistingDiscount_WhenRemoveDiscountFromEvent_ThenDiscountIsRemovedSuccessfully() throws Exception {
-        // Arrange
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
+    eventService.setEventDiscountPolicy(validOwnerSessionId, event.getId(), policyDTO);
 
-        eventService.addVisibleDiscountToEvent(
-                validOwnerSessionId,
-                event.getId(),
-                "Summer Discount",
-                BigDecimal.valueOf(15)
-        );
+    DiscountPolicyDTO result =
+            eventService.getEventDiscountPolicy(validOwnerSessionId, event.getId());
 
-        Long discountId
-                = eventRepository.getEventById(event.getId())
-                        .getDiscounts()
-                        .get(0)
-                        .getDiscountId();
-
-        // Act
-        eventService.removeDiscountFromEvent(
-                validOwnerSessionId,
-                event.getId(),
-                discountId
-        );
-
-        // Assert
-        Event updatedEvent = eventRepository.getEventById(event.getId());
-
-        assertEquals(0, updatedEvent.getDiscounts().size());
-    }
-
-    @Test
-    void GivenDiscountDoesNotExist_WhenRemoveDiscountFromEvent_ThenSystemRejectsTheRequest() {
-        // Arrange
-        Event event = createExistingEvent();
-        eventRepository.addEvent(event);
-
-        // Act
-        Exception exception = assertThrows(
-                Exception.class,
-                () -> eventService.removeDiscountFromEvent(
-                        validOwnerSessionId,
-                        event.getId(),
-                        999L
-                )
-        );
-
-        // Assert
-        assertTrue(exception.getMessage().contains("Discount"));
-    }
+    assertNotNull(result);
+    assertEquals(DiscountCompositionType.MAX, result.getCompositionType());
+    assertEquals(1, result.getDiscounts().size());
+    assertEquals("VISIBLE", result.getDiscounts().get(0).getType());
+}
 
 // -------------------- Composition Type Tests --------------------
     @Test

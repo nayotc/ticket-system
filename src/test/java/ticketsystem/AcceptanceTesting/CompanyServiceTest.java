@@ -33,7 +33,6 @@ import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount.Condition;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
@@ -200,136 +199,8 @@ public class CompanyServiceTest {
         // Act + Assert
         assertThrows(Exception.class,
                 () -> companyService.reopenProductionCompany(founderToken, company.getId()));
-    }
+    }   
 
-    // UC 4.3: Add discount policy to company
-    @Test
-    void GivenFounder_WhenAddVisibleDiscountToCompany_ThenDiscountIsAddedToCompany() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        companyService.addVisibleDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                "Visible Discount",
-                new BigDecimal(10));
-
-        Company company = companyRepository.findById(companyDTO.getId())
-                .orElseThrow(() -> new Exception("Company not found in test"));
-
-        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
-        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof VisibleDiscount);
-    }
-
-    @Test
-    void GivenFounder_WhenAddConditionalDiscountToCompany_ThenDiscountIsAddedToCompany() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        companyService.addConditionalDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                "Conditional Discount",
-                LocalDateTime.now().minusDays(1),
-                LocalDateTime.now().plusDays(7),
-                new BigDecimal(15),
-                Condition.MIN_TICKET,
-                2);
-
-        Company company = companyRepository.findById(companyDTO.getId())
-                .orElseThrow(() -> new Exception("Company not found in test"));
-
-        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
-        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
-    }
-
-    @Test
-    void GivenFounder_WhenAddCouponDiscountToCompany_ThenDiscountIsAddedToCompany() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        companyService.addCouponDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                "Coupon Discount",
-                "BGU10",
-                new BigDecimal(10),
-                LocalDateTime.now().plusDays(7));
-
-        Company company = companyRepository.findById(companyDTO.getId())
-                .orElseThrow(() -> new Exception("Company not found in test"));
-
-        assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
-        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof CouponDiscount);
-    }
-
-    @Test
-    void GivenUserWithoutDiscountPermission_WhenAddVisibleDiscountToCompany_ThenThrowsException() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        assertThrows(IllegalArgumentException.class, () -> companyService.addVisibleDiscountToCompany(
-                nonFounderToken,
-                companyDTO.getId(),
-                "Visible Discount",
-                new BigDecimal(10)));
-    }
-
-    @Test
-    void GivenUserWithoutDiscountPermission_WhenRemoveDiscountFromCompany_ThenThrowsException() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        companyService.addVisibleDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                "Visible Discount",
-                new BigDecimal(10));
-
-        Company company = companyRepository.findById(companyDTO.getId())
-                .orElseThrow(() -> new Exception("Company not found in test"));
-
-        Long discountId = company.getDiscountPolicy()
-                .getDiscounts()
-                .get(0)
-                .getDiscountId();
-
-        assertThrows(IllegalArgumentException.class, () -> companyService
-                .removeDiscountFromCompany(nonFounderToken, companyDTO.getId(), discountId));
-    }
-
-    @Test
-    void GivenFounderAndNonExistingCompany_WhenAddVisibleDiscountToCompany_ThenThrowsException() {
-        assertThrows(Exception.class, () -> companyService.addVisibleDiscountToCompany(
-                founderToken,
-                999999L,
-                "Visible Discount",
-                new BigDecimal(10)));
-    }
-
-    @Test
-    void GivenFounderAndNullDiscountName_WhenAddVisibleDiscountToCompany_ThenThrowsException() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        assertThrows(Exception.class, () -> companyService.addVisibleDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                null,
-                new BigDecimal(10)));
-    }
-
-    @Test
-    void GivenFounderAndNonExistingCompany_WhenRemoveDiscountFromCompany_ThenThrowsException() {
-        // Act + Assert
-        assertThrows(Exception.class,
-                () -> companyService.removeDiscountFromCompany(founderToken, 999999L, 1L));
-    }
-
-    @Test
-    void GivenFounderAndNonExistingDiscount_WhenRemoveDiscountFromCompany_ThenThrowsException() throws Exception {
-        // Arrange
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        // Act + Assert
-        assertThrows(Exception.class, () -> companyService.removeDiscountFromCompany(founderToken,
-                companyDTO.getId(), 999999L));
-
-    }
 
     // UC 4.3: Set company purchase policy
     @Test
@@ -691,121 +562,6 @@ public class CompanyServiceTest {
         assertTrue(result.getDiscounts().isEmpty());
     }
 
-    @Test
-    void GivenCompanyWithVisibleDiscount_WhenGetCompanyDiscountPolicy_ThenMapsVisibleDiscountToDTO() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        companyService.addVisibleDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                "Visible Discount",
-                BigDecimal.valueOf(10)
-        );
-
-        DiscountPolicyDTO result = companyService.getCompanyDiscountPolicy(founderToken, companyDTO.getId());
-
-        assertNotNull(result);
-        assertEquals(1, result.getDiscounts().size());
-
-        DiscountDTO discount = result.getDiscounts().get(0);
-        assertEquals("VISIBLE", discount.getType());
-        assertEquals("Visible Discount", discount.getName());
-        assertEquals(BigDecimal.valueOf(10), discount.getPercentage());
-    }
-
-    @Test
-    void GivenCompanyWithCouponDiscount_WhenGetCompanyDiscountPolicy_ThenMapsCouponDiscountToDTO() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-        LocalDateTime endTime = LocalDateTime.now().plusDays(7);
-
-        companyService.addCouponDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                "Coupon Discount",
-                "BGU10",
-                BigDecimal.valueOf(15),
-                endTime
-        );
-
-        DiscountPolicyDTO result = companyService.getCompanyDiscountPolicy(founderToken, companyDTO.getId());
-
-        assertNotNull(result);
-        assertEquals(1, result.getDiscounts().size());
-
-        DiscountDTO discount = result.getDiscounts().get(0);
-        assertEquals("COUPON", discount.getType());
-        assertEquals("Coupon Discount", discount.getName());
-        assertEquals("BGU10", discount.getCouponCode());
-        assertEquals(BigDecimal.valueOf(15), discount.getPercentage());
-        assertEquals(endTime, discount.getEndTime());
-    }
-
-    @Test
-    void GivenCompanyWithConditionalMinTicketDiscount_WhenGetCompanyDiscountPolicy_ThenMapsConditionalDiscountToDTO() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-        LocalDateTime endTime = LocalDateTime.now().plusDays(7);
-
-        companyService.addConditionalDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                "Conditional Discount",
-                LocalDateTime.now().minusDays(1),
-                endTime,
-                BigDecimal.valueOf(20),
-                Condition.MIN_TICKET,
-                2
-        );
-
-        DiscountPolicyDTO result = companyService.getCompanyDiscountPolicy(founderToken, companyDTO.getId());
-
-        assertNotNull(result);
-        assertEquals(1, result.getDiscounts().size());
-
-        DiscountDTO discount = result.getDiscounts().get(0);
-        assertEquals("CONDITIONAL", discount.getType());
-        assertEquals("Conditional Discount", discount.getName());
-        assertEquals(BigDecimal.valueOf(20), discount.getPercentage());
-        assertEquals(endTime, discount.getEndTime());
-        assertEquals("מינימום 2 כרטיסים", discount.getConditionText());
-    }
-
-    @Test
-    void GivenFounder_WhenSetCompanyDiscountPolicyWithVisibleCouponAndConditionalDiscounts_ThenDiscountsAreAddedToCompany() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        DiscountDTO visible = new DiscountDTO();
-        visible.setType("VISIBLE");
-        visible.setName("Visible Discount");
-        visible.setPercentage(BigDecimal.valueOf(10));
-
-        DiscountDTO coupon = new DiscountDTO();
-        coupon.setType("COUPON");
-        coupon.setName("Coupon Discount");
-        coupon.setCouponCode("SAVE20");
-        coupon.setPercentage(BigDecimal.valueOf(20));
-        coupon.setEndTime(LocalDateTime.now().plusDays(5));
-
-        DiscountDTO conditional = new DiscountDTO();
-        conditional.setType("CONDITIONAL");
-        conditional.setName("Conditional Discount");
-        conditional.setPercentage(BigDecimal.valueOf(15));
-        conditional.setConditionText("מקסימום 3 כרטיסים");
-        conditional.setEndTime(LocalDateTime.now().plusDays(10));
-
-        DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
-        policyDTO.setCompositionType(DiscountCompositionType.MAX);
-        policyDTO.setDiscounts(List.of(visible, coupon, conditional));
-
-        companyService.setCompanyDiscountPolicy(founderToken, companyDTO.getId(), policyDTO);
-
-        Company company = companyRepository.findById(companyDTO.getId())
-                .orElseThrow(() -> new Exception("Company not found in test"));
-
-        assertEquals(3, company.getDiscountPolicy().getDiscounts().size());
-        assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof VisibleDiscount);
-        assertTrue(company.getDiscountPolicy().getDiscounts().get(1) instanceof CouponDiscount);
-        assertTrue(company.getDiscountPolicy().getDiscounts().get(2) instanceof ConditionalDiscount);
-    }
 
     @Test
     void GivenUserWithoutDiscountPermission_WhenSetCompanyDiscountPolicy_ThenThrowsException() throws Exception {
@@ -887,44 +643,7 @@ public class CompanyServiceTest {
         assertEquals("אין הנחות פעילות", summary);
     }
 
-    @Test
-    void GivenCompanyWithDiscountAndMaxComposition_WhenGetDiscountPolicySummary_ThenReturnsDiscountCountAndMaxText() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        companyService.addVisibleDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                "Visible Discount",
-                BigDecimal.valueOf(10)
-        );
-
-        String summary = companyService.getDiscountPolicySummary(companyDTO.getId());
-
-        assertEquals("1 הנחות מוגדרות במערכת (הנחה מקסימלית)", summary);
-    }
-
-    @Test
-    void GivenCompanyWithDiscountAndSumComposition_WhenGetDiscountPolicySummary_ThenReturnsDiscountCountAndSumText() throws Exception {
-        CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
-
-        companyService.addVisibleDiscountToCompany(
-                founderToken,
-                companyDTO.getId(),
-                "Visible Discount",
-                BigDecimal.valueOf(10)
-        );
-
-        companyService.setCompositionType(
-                founderToken,
-                companyDTO.getId(),
-                DiscountCompositionType.SUM
-        );
-
-        String summary = companyService.getDiscountPolicySummary(companyDTO.getId());
-
-        assertEquals("1 הנחות מוגדרות במערכת (כפל מבצעים)", summary);
-    }
-
+   
     @Test
     void GivenCompaniesExist_WhenGetAllCompanies_ThenReturnsAllCompanyDTOs() throws Exception {
         CompanyDTO firstCompany = companyService.createProductionCompany(founderToken, "First Company");
@@ -937,6 +656,100 @@ public class CompanyServiceTest {
         assertTrue(companies.stream().anyMatch(company -> company.getId() == secondCompany.getId()));
     }
 
+    @Test
+void GivenFounder_WhenSetCompanyDiscountPolicyWithVisibleDiscount_ThenPolicyIsSavedOnCompany() throws Exception {
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    DiscountDTO visible = new DiscountDTO();
+    visible.setType("VISIBLE");
+    visible.setName("Visible Discount");
+    visible.setPercentage(BigDecimal.valueOf(10));
+
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.MAX);
+    policyDTO.setDiscounts(List.of(visible));
+
+    companyService.setCompanyDiscountPolicy(founderToken, companyDTO.getId(), policyDTO);
+
+    Company company = companyRepository.findById(companyDTO.getId())
+            .orElseThrow(() -> new Exception("Company not found in test"));
+
+    assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+    assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof VisibleDiscount);
+}
+
+@Test
+void GivenFounder_WhenSetCompanyDiscountPolicyWithCouponDiscount_ThenPolicyIsSavedOnCompany() throws Exception {
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    DiscountDTO coupon = new DiscountDTO();
+    coupon.setType("COUPON");
+    coupon.setName("Coupon Discount");
+    coupon.setCouponCode("SAVE10");
+    coupon.setPercentage(BigDecimal.valueOf(10));
+    coupon.setEndTime(LocalDateTime.now().plusDays(1));
+
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.MAX);
+    policyDTO.setDiscounts(List.of(coupon));
+
+    companyService.setCompanyDiscountPolicy(founderToken, companyDTO.getId(), policyDTO);
+
+    Company company = companyRepository.findById(companyDTO.getId())
+            .orElseThrow(() -> new Exception("Company not found in test"));
+
+    assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+    assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof CouponDiscount);
+}
+
+@Test
+void GivenFounder_WhenSetCompanyDiscountPolicyWithConditionalDiscount_ThenPolicyIsSavedOnCompany() throws Exception {
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    DiscountDTO conditional = new DiscountDTO();
+    conditional.setType("CONDITIONAL");
+    conditional.setName("Min Tickets Discount");
+    conditional.setPercentage(BigDecimal.valueOf(15));
+    conditional.setConditions(List.of(
+            new ticketsystem.DTO.DiscountConditionDTO("MIN_TICKET", 3, null, null)
+    ));
+
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.SUM);
+    policyDTO.setDiscounts(List.of(conditional));
+
+    companyService.setCompanyDiscountPolicy(founderToken, companyDTO.getId(), policyDTO);
+
+    Company company = companyRepository.findById(companyDTO.getId())
+            .orElseThrow(() -> new Exception("Company not found in test"));
+
+    assertEquals(DiscountCompositionType.SUM,
+            company.getDiscountPolicy().getDiscountCompositionType());
+
+    assertEquals(1, company.getDiscountPolicy().getDiscounts().size());
+    assertTrue(company.getDiscountPolicy().getDiscounts().get(0) instanceof ConditionalDiscount);
+}
+
+@Test
+void GivenCompanyWithDiscounts_WhenGetDiscountPolicySummary_ThenReturnsDiscountCountAndComposition() throws Exception {
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    DiscountDTO visible = new DiscountDTO();
+    visible.setType("VISIBLE");
+    visible.setName("Visible Discount");
+    visible.setPercentage(BigDecimal.valueOf(10));
+
+    DiscountPolicyDTO policyDTO = new DiscountPolicyDTO();
+    policyDTO.setCompositionType(DiscountCompositionType.SUM);
+    policyDTO.setDiscounts(List.of(visible));
+
+    companyService.setCompanyDiscountPolicy(founderToken, companyDTO.getId(), policyDTO);
+
+    String summary = companyService.getDiscountPolicySummary(companyDTO.getId());
+
+    assertEquals("1 הנחות מוגדרות במערכת (כפל מבצעים)", summary);
+}
+    
     private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {
         return new PurchasePolicyDTO(
                 new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, maxTickets, null));

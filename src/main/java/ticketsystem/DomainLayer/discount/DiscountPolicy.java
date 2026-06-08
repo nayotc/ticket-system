@@ -41,14 +41,6 @@ public class DiscountPolicy {
         return compositionType;
     }
 
-    public void removeDiscount(Long discountId) {
-        boolean removed = discounts.removeIf(discount -> discount.getDiscountId().equals(discountId));
-
-        if (!removed) {
-            throw new IllegalArgumentException("Discount not found");
-        }
-    }
-
     /**
      * Calculates this discount policy and returns a detailed domain result.
      *
