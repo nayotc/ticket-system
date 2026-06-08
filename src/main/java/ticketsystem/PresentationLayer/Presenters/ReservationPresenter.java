@@ -29,6 +29,8 @@ import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
 import ticketsystem.PresentationLayer.DTO.OrderPricing;
+import ticketsystem.DTO.AppliedDiscountDTO;
+import ticketsystem.DTO.PricingQuoteDTO;
 
 
 
@@ -225,59 +227,121 @@ public class ReservationPresenter {
                         : event.location().replace("_", " ")
         );
     }
-
     /**
      * Calculates the pricing summary displayed in order-related views.
      *
-     * Currently this method presents the basic subtotal from the active order
-     * tickets and keeps the user informed that the final amount, including
-     * discounts and coupons, is calculated during checkout.
+     * This method asks the application service for a real pricing quote of the
+     * current active order. The returned DTO already includes domain-level discount
+     * policy calculation, including company discounts, event discounts, coupon
+     * discounts, conditional discounts, and the discount composition rule.
      *
+     * The presenter maps the application-layer pricing DTO into the
+     * presentation-layer OrderPricing DTO used by the UI. The view should only
+     * display the result and should not calculate discounts by itself.
+     *
+     * @param token active guest/member session token
      * @param activeOrder active order DTO currently displayed in the UI
      * @param couponCode optional coupon code entered by the user
-     * @return presentation DTO with the displayed pricing summary
+     * @return presentation DTO with subtotal, applied discounts, discount total, and final total
      */
-    public OrderPricing calculatePricing(ActiveOrderDTO activeOrder, String couponCode) {
-        if (activeOrder == null || activeOrder.getTickets() == null) {
-            throw presentationError("No active order found");
+    public OrderPricing calculatePricing(String token, ActiveOrderDTO activeOrder, String couponCode) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (activeOrder == null || activeOrder.getEventId() == null) {
+                throw presentationError("No active order found");
+            }
+
+            PricingQuoteDTO quote = reservationService.calculateActiveOrderPricing(
+                    token,
+                    activeOrder.getEventId(),
+                    normalizeOptionalText(couponCode)
+            );
+
+            List<AppliedDiscount> discounts = mapAppliedDiscounts(quote.appliedDiscounts());
+            List<String> messages = new ArrayList<>();
+
+            if (quote.discountTotal().compareTo(BigDecimal.ZERO) > 0) {
+                messages.add("המחיר כולל הנחות שהופעלו לפי מדיניות ההנחות.");
+            } else if (couponCode != null && !couponCode.isBlank()) {
+                messages.add("קוד הקופון לא הפעיל הנחה עבור ההזמנה הנוכחית.");
+            }
+
+            return new OrderPricing(
+                    quote.subtotal(),
+                    quote.discountTotal(),
+                    quote.total(),
+                    discounts,
+                    messages
+            );
+
+        } catch (PresentationException e) {
+            throw e;
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            throw presentationError(e.getMessage());
+        } catch (Exception e) {
+            throw presentationError("Pricing could not be calculated. Please try again.");
         }
-
-        BigDecimal subtotal = activeOrder.getTickets().stream()
-                .map(TicketDTO::getPrice)
-                .filter(price -> price != null)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<AppliedDiscount> discounts = new ArrayList<>();
-        List<String> messages = new ArrayList<>();
-
-        messages.add("המחיר הסופי מחושב לפי מדיניות הרכישה וההנחות לפני המעבר לתשלום.");
-
-        if (couponCode != null && !couponCode.isBlank()) {
-            messages.add("קוד הקופון ייבדק בעת המעבר לתשלום.");
-        }
-
-        return new OrderPricing(
-                subtotal,
-                BigDecimal.ZERO,
-                subtotal,
-                discounts,
-                messages
-        );
     }
 
     /**
      * Applies a coupon code to the pricing preview displayed in the UI.
      *
-     * At this stage the coupon is not validated as final business logic here.
-     * The final coupon validation and final amount calculation are handled by
-     * the checkout flow.
+     * This method recalculates the active order pricing with the provided coupon
+     * code. The coupon and all other discount rules are evaluated by the domain
+     * logic through the application service.
      *
+     * @param token active guest/member session token
      * @param activeOrder active order DTO currently displayed in the UI
      * @param couponCode coupon code entered by the user
      * @return presentation DTO with the updated pricing preview
      */
-    public OrderPricing applyCoupon(ActiveOrderDTO activeOrder, String couponCode) {
-        return calculatePricing(activeOrder, couponCode);
+    public OrderPricing applyCoupon(String token, ActiveOrderDTO activeOrder, String couponCode) {
+        return calculatePricing(token, activeOrder, couponCode);
+    }
+
+    /**
+     * Maps application-layer applied discount DTOs into presentation DTOs.
+     *
+     * The application DTO describes the pricing result returned by the service.
+     * The presentation DTO contains the text and amount that order-related views
+     * know how to display.
+     *
+     * @param dtoDiscounts discounts applied during application-service pricing calculation
+     * @return presentation discounts ready for UI display
+     */
+    private List<AppliedDiscount> mapAppliedDiscounts(List<AppliedDiscountDTO> dtoDiscounts) {
+        List<AppliedDiscount> discounts = new ArrayList<>();
+
+        if (dtoDiscounts == null || dtoDiscounts.isEmpty()) {
+            return discounts;
+        }
+
+        for (AppliedDiscountDTO discount : dtoDiscounts) {
+            discounts.add(new AppliedDiscount(
+                    discount.name(),
+                    formatDiscountDescription(discount.percentage()),
+                    discount.amount()
+            ));
+        }
+
+        return discounts;
+    }
+
+    /**
+     * Formats a discount percentage for display in order-related views.
+     *
+     * @param percentage discount percentage from the application pricing DTO
+     * @return human-readable discount description
+     */
+    private String formatDiscountDescription(BigDecimal percentage) {
+        if (percentage == null) {
+            return "הנחה";
+        }
+
+        return percentage.stripTrailingZeros().toPlainString() + "% הנחה";
     }
 
     /**

@@ -171,7 +171,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
             eventInfo = presenter.loadActiveOrderEventInfo(token, activeOrder.getEventId());
-            pricing = presenter.calculatePricing(activeOrder, normalizedCouponCode());
+            pricing = presenter.calculatePricing(resolveSessionToken(), activeOrder, normalizedCouponCode());
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
@@ -578,7 +578,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         }
 
         try {
-            pricing = presenter.calculatePricing(activeOrder, normalizedCouponCode());
+            pricing = presenter.calculatePricing(resolveSessionToken(), activeOrder, normalizedCouponCode());
             renderCheckout();
 
             if (isBlank(normalizedCouponCode())) {
