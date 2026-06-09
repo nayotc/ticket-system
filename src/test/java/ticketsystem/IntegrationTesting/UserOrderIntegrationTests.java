@@ -13,31 +13,33 @@ import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
+import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
 import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class UserOrderIntegrationTests {
 
-    private UserRepository userRepository;
+    private IUserRepository userRepository;
     private UserService userService;
     private TokenService tokenService;
     private ITokenRepository tokenRepository;
     private LogbackSystemLogger logger;
-    private OrderRepository orderRepository;
+    private IOrderRepository orderRepository;
     private OrderService orderService;
     private INotifier notification;
 
     @BeforeEach
     public void setup() {
         logger = new LogbackSystemLogger();
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         userService = new UserService(userRepository, tokenService, logger);

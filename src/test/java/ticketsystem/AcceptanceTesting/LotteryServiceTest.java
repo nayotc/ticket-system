@@ -31,12 +31,13 @@ import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.testutil.RecordingNotifier;
 
 public class LotteryServiceTest {
 
-    private UserRepository userRepo;
+    private IUserRepository userRepo;
     private LotteryRepository lotteryRepo;
     private TokenService tokenService;
     private NotificationsRepository notificationRepository;
@@ -74,7 +75,7 @@ public class LotteryServiceTest {
 
     @BeforeEach
     public void setUp() {
-        userRepo = new UserRepository();
+        userRepo = new InMemoryUserRepository();
         lotteryRepo = new LotteryRepository();
         TokenRepository tokenRepository = new TokenRepository();
         logger = new LogbackSystemLogger();

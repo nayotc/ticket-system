@@ -22,13 +22,14 @@ import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 
 public class UserServiceTest {
 
     private static final LocalDate VALID_BIRTH_DATE = LocalDate.of(2001, 1, 1);
 
-    private UserRepository userRepository;
+    private IUserRepository userRepository;
     private UserService userService;
     private ITokenService tokenService;
     private ITokenRepository tokenRepository;
@@ -37,7 +38,7 @@ public class UserServiceTest {
     @BeforeEach
     public void setup() {
         logger = new LogbackSystemLogger();
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         userService = new UserService(userRepository, tokenService, logger);
@@ -966,14 +967,14 @@ public class UserServiceTest {
 
     private record UserSystemSnapshot(int registeredMembersCount, int activeSessionsCount) {
 
-        static UserSystemSnapshot capture(UserRepository users, ITokenRepository tokens) {
+        static UserSystemSnapshot capture(IUserRepository users, ITokenRepository tokens) {
             return new UserSystemSnapshot(users.getAllRegisteredMembersCount(), tokens.getTotalActiveSessions());
         }
     }
 
     private record MemberSnapshot(String username, String fullName, String phone, String hashedPassword) {
 
-        static MemberSnapshot of(UserRepository repository, String username) {
+        static MemberSnapshot of(IUserRepository repository, String username) {
             Member member = repository.getMemberByUsername(username);
             if (member == null) {
                 return new MemberSnapshot(username, null, null, null);

@@ -1,26 +1,40 @@
 package ticketsystem.DomainLayer.user;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class Founder extends CompanyRole{
-    
-    private List<Long> appointeesMemberIds;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+
+@Entity
+@DiscriminatorValue("FOUNDER")
+public class Founder extends CompanyRole {
+
+    @ElementCollection
+    @CollectionTable(name = "founder_appointees", joinColumns = @JoinColumn(name = "role_id"))
+    @Column(name = "appointee_member_id")
+    private List<Long> appointeesMemberIds = new ArrayList<>();
+
+    protected Founder() {
+    }
 
     public Founder(Long companyId) {
         super(companyId);
-        this.appointeesMemberIds = new ArrayList<>();
-        this.status = RoleStatus.ACTIVE; // Founder is active immediately upon creation
+        this.status = RoleStatus.ACTIVE;
     }
 
-    // Copy Constructor for Deep Copying
     public Founder(Founder other, Long companyId) {
         super(companyId);
-        this.status = other.status; 
+        this.status = other.status;
         this.appointeesMemberIds = new ArrayList<>(other.appointeesMemberIds);
     }
 
     public List<Long> getAppointeesMemberIds() {
-        return this.appointeesMemberIds; 
+        return this.appointeesMemberIds;
     }
 
     public void addAppointee(Long memberId) {
@@ -31,8 +45,8 @@ public class Founder extends CompanyRole{
         this.appointeesMemberIds.remove(memberId);
     }
 
+    @Override
     public boolean hasPermission(Permission permission) {
-        return true; // Founder has all permissions
+        return true;
     }
-
 }

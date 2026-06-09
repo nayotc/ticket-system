@@ -55,10 +55,10 @@ import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.NotificationsRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.testutil.RecordingNotifier;
 
 public class ReservationServiceTest {
@@ -94,7 +94,7 @@ public class ReservationServiceTest {
         eventRepository = new EventRepository();
         lotteryRepository = new LotteryRepository();
         companyRepository = new CompanyRepository();
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
 
         membershipDomain = new MembershipDomainService(userRepository);
 

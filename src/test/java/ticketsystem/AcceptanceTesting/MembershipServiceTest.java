@@ -44,7 +44,7 @@ import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 /**
@@ -90,7 +90,7 @@ public class MembershipServiceTest {
         ITokenRepository tokenRepo = new TokenRepository();
         this.systemLogger = new LogbackSystemLogger();
         this.tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo, systemLogger);
-        this.userRepository = new UserRepository();
+        this.userRepository = new InMemoryUserRepository();
         this.companyRepository = new CompanyRepository();
         this.domainService = new MembershipDomainService(userRepository);
         this.notificationsRepository = new NotificationsRepository();
