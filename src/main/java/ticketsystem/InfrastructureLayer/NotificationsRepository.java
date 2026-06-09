@@ -8,15 +8,17 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.springframework.stereotype.Repository;
 
+import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
 
 @Repository
-public class NotificationsRepository {
+public class NotificationsRepository implements INotificationsRepository {
 
     private final ConcurrentHashMap<String, List<Notification>> notificationsByTarget = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Notification> notificationsById = new ConcurrentHashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(0L);
 
+    @Override
     public Notification save(Notification notification) {
         if (notification.getId() == null) {
             notification.setId(idGenerator.incrementAndGet());
@@ -28,6 +30,7 @@ public class NotificationsRepository {
         return notification;
     }
 
+    @Override
     public List<Notification> findByTargetId(String targetId) {
         List<Notification> notifications = notificationsByTarget.get(targetId);
         if (notifications == null) {
@@ -36,7 +39,8 @@ public class NotificationsRepository {
         return new ArrayList<>(notifications);
     }
 
-    public void removeById(Long notificationId) {
+    @Override
+    public void deleteById(Long notificationId) {
         Notification notification = notificationsById.get(notificationId);
         if (notification == null) {
             return;
