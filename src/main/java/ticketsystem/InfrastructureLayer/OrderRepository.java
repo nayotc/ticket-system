@@ -1,198 +1,151 @@
 package ticketsystem.InfrastructureLayer;
 
-import org.springframework.stereotype.Repository;
-
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.exception.OptimisticLockException;
 import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.InfrastructureLayer.persistence.OrderJpaRepository;
 
 @Repository
 public class OrderRepository implements IOrderRepository {
 
-    private final AtomicLong counter;
-    
-    private final ConcurrentHashMap<Long, ActiveOrder> orders;
+    private final OrderJpaRepository orderJpaRepository;
 
-    public OrderRepository() {
-        this.counter = new AtomicLong(0L);
-        this.orders = new ConcurrentHashMap<>();
+    public OrderRepository(OrderJpaRepository orderJpaRepository) {
+        this.orderJpaRepository = orderJpaRepository;
     }
 
-    public synchronized void addOrder(ActiveOrder order) {
+    @Override
+    @Transactional
+    public void addOrder(ActiveOrder order) {
         if (order == null) {
             throw new IllegalArgumentException("Order cannot be null");
         }
-
-        for (ActiveOrder existingOrder : orders.values()) {
-
-            boolean sameSession =
-                    existingOrder.getSessionToken() != null
-                            && order.getSessionToken() != null
-                            && existingOrder.getSessionToken().equals(order.getSessionToken());
-
-            boolean sameUser =
-                    existingOrder.getUserId() != null
-                            && order.getUserId() != null
-                            && existingOrder.getUserId().equals(order.getUserId());
-
-            if (sameSession || sameUser) {
-                throw new IllegalArgumentException(
-                        "An active order already exists for this user to another event"
-                );
-            }
-        }
-
-        ActiveOrder copy = order.copy();
-        ActiveOrder existing = orders.putIfAbsent(order.getOrderId(), copy);
-
-        if (existing != null) {
-            throw new IllegalArgumentException(
-                    "Order already exists with id: " + order.getOrderId()
-            );
+        validateNoConflictingActiveOrder(order);
+        ActiveOrder saved = orderJpaRepository.save(order);
+        if (order.getOrderId() == null && saved.getOrderId() != null) {
+            order.setOrderId(saved.getOrderId());
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
     public ActiveOrder findOrderById(Long orderId) {
-        ActiveOrder order = orders.get(orderId);
-
-        if (order == null) {
-            return null;
-        }
-
-        return order.copy();
-    }
-
-    public synchronized void deleteOrder(Long orderId) {
-        if (!orders.containsKey(orderId)) {
-            throw new IllegalArgumentException(
-                    "Order with ID " + orderId + " does not exist"
-            );
-        }
-
-        orders.remove(orderId);
-    }
-
-    public synchronized void deleteOrderBySessionToken(String sessionToken) {
-        orders.values().removeIf(order ->
-                order.getSessionToken() != null
-                        && order.getSessionToken().equals(sessionToken)
-        );
-    }
-
-    public List<ActiveOrder> getAll() {
-        List<ActiveOrder> activeOrders = new ArrayList<>();
-
-        for (Map.Entry<Long, ActiveOrder> entry : orders.entrySet()) {
-            activeOrders.add(entry.getValue().copy());
-        }
-
-        return activeOrders;
-    }
-
-    public ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, Long eventId) {
-        return orders.values().stream()
-                .filter(order ->
-                        order.getUserId() != null
-                                && order.getUserId().equals(userId)
-                                && order.getEventId().equals(eventId)
-                )
-                .findFirst()
+        return orderJpaRepository.findByIdWithTickets(orderId)
                 .map(ActiveOrder::copy)
                 .orElse(null);
     }
 
-    public Long getNextId() {
-        return counter.incrementAndGet();
-    }
-
     @Override
+    @Transactional
     public void updateOrder(ActiveOrder order) {
         if (order == null) {
             throw new IllegalArgumentException("Order cannot be null");
         }
-        if(order.getTickets().isEmpty()) {
+        if (order.getTickets().isEmpty()) {
             deleteOrder(order.getOrderId());
             return;
         }
-        
-        orders.compute(order.getOrderId(), (id, currentOrder) -> {
-            if (currentOrder == null) {
-                throw new IllegalArgumentException("Order not found with id: " + id);
-            }
-
-            if (currentOrder.getVersion() != order.getVersion()) {
-                throw new OptimisticLockException(
-                        "Order was modified by another request. Order id: " + id
-                );
-            }
-
-            ActiveOrder copy = order.copy();
-            copy.incrementVersion();
-
-            return copy;
-        });
-    }
-
-    public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, Long eventId) {
-        return orders.values().stream()
-                .filter(order ->
-                        order.getSessionToken() != null
-                                && order.getSessionToken().equals(sessionToken)
-                                && order.getEventId().equals(eventId)
-                )
-                .findFirst()
-                .map(ActiveOrder::copy)
-                .orElse(null);
-    }
-
-    public synchronized void deleteActiveOrdersByUserId(Long userId) {
-        orders.values().removeIf(order ->
-                order.getUserId() != null
-                        && order.getUserId().equals(userId)
-        );
-    }
-
-    public ActiveOrder getActiveOrderBySessionToken(String sessionToken) {
-        return orders.values().stream()
-                .filter(order ->
-                        order.getSessionToken() != null
-                                && order.getSessionToken().equals(sessionToken)
-                )
-                .findFirst()
-                .map(ActiveOrder::copy)
-                .orElse(null);
-    }
-
-    public ActiveOrder getActiveOrderByUserId(Long userId) {
-        return orders.values().stream()
-                .filter(order ->
-                        order.getUserId() != null
-                                && order.getUserId().equals(userId)
-                )
-                .findFirst()
-                .map(ActiveOrder::copy)
-                .orElse(null);
-    }
-
-    public List<ActiveOrder> getActiveOrdersByEventId(Long eventId) {
-        List<ActiveOrder> activeOrders = new ArrayList<>();
-
-        for (ActiveOrder order : orders.values()) {
-            if (order.getEventId() != null && order.getEventId().equals(eventId)) {
-                activeOrders.add(order.copy());
-            }
+        try {
+            orderJpaRepository.save(order.copy());
+        } catch (OptimisticLockingFailureException ex) {
+            throw new OptimisticLockException(
+                    "Order was modified by another request. Order id: " + order.getOrderId());
         }
-
-        return activeOrders;
     }
 
-    public void clear() {
-        orders.clear();
+    @Override
+    @Transactional
+    public void deleteOrder(Long orderId) {
+        if (!orderJpaRepository.existsById(orderId)) {
+            throw new IllegalArgumentException("Order with ID " + orderId + " does not exist");
+        }
+        orderJpaRepository.deleteById(orderId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ActiveOrder> getAll() {
+        return orderJpaRepository.findAllWithTickets().stream()
+                .map(ActiveOrder::copy)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, Long eventId) {
+        return orderJpaRepository.findByUserIdAndEventIdWithTickets(userId, eventId)
+                .map(ActiveOrder::copy)
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Long getNextId() {
+        return orderJpaRepository.count() + 1L;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, Long eventId) {
+        return orderJpaRepository.findBySessionTokenAndEventIdWithTickets(sessionToken, eventId)
+                .map(ActiveOrder::copy)
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public void deleteActiveOrdersByUserId(Long userId) {
+        List<ActiveOrder> orders = orderJpaRepository.findAllWithTickets().stream()
+                .filter(order -> userId.equals(order.getUserId()))
+                .toList();
+        orderJpaRepository.deleteAll(orders);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ActiveOrder getActiveOrderBySessionToken(String sessionToken) {
+        return orderJpaRepository.findBySessionTokenWithTickets(sessionToken)
+                .map(ActiveOrder::copy)
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ActiveOrder getActiveOrderByUserId(Long userId) {
+        return orderJpaRepository.findByUserIdWithTickets(userId)
+                .map(ActiveOrder::copy)
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ActiveOrder> getActiveOrdersByEventId(Long eventId) {
+        return orderJpaRepository.findByEventIdWithTickets(eventId).stream()
+                .map(ActiveOrder::copy)
+                .collect(Collectors.toList());
+    }
+
+    private void validateNoConflictingActiveOrder(ActiveOrder order) {
+        if (order.getSessionToken() != null) {
+            orderJpaRepository.findBySessionTokenWithTickets(order.getSessionToken())
+                    .ifPresent(existing -> {
+                        throw new IllegalArgumentException(
+                                "An active order already exists for this user to another event");
+                    });
+        }
+        if (order.getUserId() != null) {
+            orderJpaRepository.findByUserIdWithTickets(order.getUserId())
+                    .ifPresent(existing -> {
+                        throw new IllegalArgumentException(
+                                "An active order already exists for this user to another event");
+                    });
+        }
     }
 }

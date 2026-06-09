@@ -1,0 +1,177 @@
+package ticketsystem.InfrastructureLayer;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import ticketsystem.DomainLayer.IRepository.IOrderRepository;
+import ticketsystem.DomainLayer.exception.OptimisticLockException;
+import ticketsystem.DomainLayer.order.ActiveOrder;
+
+/**
+ * In-memory implementation used by acceptance/unit tests that construct repositories manually.
+ */
+public class InMemoryOrderRepository implements IOrderRepository {
+
+    private final AtomicLong nextGeneratedId = new AtomicLong(1L);
+    private final ConcurrentHashMap<Long, ActiveOrder> orders = new ConcurrentHashMap<>();
+
+    @Override
+    public synchronized void addOrder(ActiveOrder order) {
+        if (order == null) {
+            throw new IllegalArgumentException("Order cannot be null");
+        }
+
+        for (ActiveOrder existingOrder : orders.values()) {
+            boolean sameSession = existingOrder.getSessionToken() != null
+                    && order.getSessionToken() != null
+                    && existingOrder.getSessionToken().equals(order.getSessionToken());
+
+            boolean sameUser = existingOrder.getUserId() != null
+                    && order.getUserId() != null
+                    && existingOrder.getUserId().equals(order.getUserId());
+
+            if (sameSession || sameUser) {
+                throw new IllegalArgumentException(
+                        "An active order already exists for this user to another event");
+            }
+        }
+
+        long orderId = resolveOrderId(order);
+        ActiveOrder persisted = order.copy();
+        if (persisted.getOrderId() == null) {
+            persisted.setOrderId(orderId);
+        }
+
+        ActiveOrder existing = orders.putIfAbsent(persisted.getOrderId(), persisted);
+        if (existing != null) {
+            throw new IllegalArgumentException("Order already exists with id: " + persisted.getOrderId());
+        }
+        if (order.getOrderId() == null) {
+            order.setOrderId(persisted.getOrderId());
+        }
+    }
+
+    @Override
+    public ActiveOrder findOrderById(Long orderId) {
+        ActiveOrder order = orders.get(orderId);
+        if (order == null) {
+            return null;
+        }
+        return order.copy();
+    }
+
+    @Override
+    public synchronized void updateOrder(ActiveOrder order) {
+        if (order == null) {
+            throw new IllegalArgumentException("Order cannot be null");
+        }
+        if (order.getTickets().isEmpty()) {
+            deleteOrder(order.getOrderId());
+            return;
+        }
+
+        orders.compute(order.getOrderId(), (id, currentOrder) -> {
+            if (currentOrder == null) {
+                throw new IllegalArgumentException("Order not found with id: " + id);
+            }
+
+            if (currentOrder.getVersion() != order.getVersion()) {
+                throw new OptimisticLockException(
+                        "Order was modified by another request. Order id: " + id);
+            }
+
+            ActiveOrder copy = order.copy();
+            copy.incrementVersion();
+            return copy;
+        });
+    }
+
+    @Override
+    public synchronized void deleteOrder(Long orderId) {
+        if (!orders.containsKey(orderId)) {
+            throw new IllegalArgumentException("Order with ID " + orderId + " does not exist");
+        }
+        orders.remove(orderId);
+    }
+
+    @Override
+    public List<ActiveOrder> getAll() {
+        List<ActiveOrder> activeOrders = new ArrayList<>();
+        for (Map.Entry<Long, ActiveOrder> entry : orders.entrySet()) {
+            activeOrders.add(entry.getValue().copy());
+        }
+        return activeOrders;
+    }
+
+    @Override
+    public ActiveOrder getActiveOrderByUserIdAndEventId(Long userId, Long eventId) {
+        return orders.values().stream()
+                .filter(order -> order.getUserId() != null
+                        && order.getUserId().equals(userId)
+                        && order.getEventId().equals(eventId))
+                .findFirst()
+                .map(ActiveOrder::copy)
+                .orElse(null);
+    }
+
+    @Override
+    public Long getNextId() {
+        return nextGeneratedId.getAndIncrement();
+    }
+
+    @Override
+    public ActiveOrder getActiveOrderBySessionTokenAndEventId(String sessionToken, Long eventId) {
+        return orders.values().stream()
+                .filter(order -> order.getSessionToken() != null
+                        && order.getSessionToken().equals(sessionToken)
+                        && order.getEventId().equals(eventId))
+                .findFirst()
+                .map(ActiveOrder::copy)
+                .orElse(null);
+    }
+
+    @Override
+    public synchronized void deleteActiveOrdersByUserId(Long userId) {
+        orders.values().removeIf(order -> order.getUserId() != null && order.getUserId().equals(userId));
+    }
+
+    @Override
+    public ActiveOrder getActiveOrderBySessionToken(String sessionToken) {
+        return orders.values().stream()
+                .filter(order -> order.getSessionToken() != null
+                        && order.getSessionToken().equals(sessionToken))
+                .findFirst()
+                .map(ActiveOrder::copy)
+                .orElse(null);
+    }
+
+    @Override
+    public ActiveOrder getActiveOrderByUserId(Long userId) {
+        return orders.values().stream()
+                .filter(order -> order.getUserId() != null && order.getUserId().equals(userId))
+                .findFirst()
+                .map(ActiveOrder::copy)
+                .orElse(null);
+    }
+
+    @Override
+    public List<ActiveOrder> getActiveOrdersByEventId(Long eventId) {
+        List<ActiveOrder> activeOrders = new ArrayList<>();
+        for (ActiveOrder order : orders.values()) {
+            if (order.getEventId() != null && order.getEventId().equals(eventId)) {
+                activeOrders.add(order.copy());
+            }
+        }
+        return activeOrders;
+    }
+
+    private long resolveOrderId(ActiveOrder order) {
+        if (order.getOrderId() != null) {
+            return order.getOrderId();
+        }
+        return nextGeneratedId.getAndIncrement();
+    }
+}
