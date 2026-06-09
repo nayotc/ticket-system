@@ -39,7 +39,7 @@ import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 
 public class MembershipConcurrencyTest {
 
@@ -61,7 +61,7 @@ public class MembershipConcurrencyTest {
         ITokenRepository tokenRepo = new TokenRepository();
         ISystemLogger logger = new LogbackSystemLogger();
         ITokenService tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo, logger);
-        this.userRepository = new UserRepository();
+        this.userRepository = new InMemoryUserRepository();
         ICompanyRepository companyRepository = new CompanyRepository();
         MembershipDomainService domainService = new MembershipDomainService(userRepository);
         notifier = new FakeNotifier();

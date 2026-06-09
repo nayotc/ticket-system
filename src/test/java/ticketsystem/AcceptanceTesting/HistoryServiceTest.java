@@ -46,7 +46,7 @@ import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.testutil.RecordingNotifier;
 
 public class HistoryServiceTest {
@@ -72,7 +72,7 @@ public class HistoryServiceTest {
         this.historyRepository = hRepo;
 
         this.tokenRepository = new TokenRepository();
-        this.userRepository = new UserRepository();
+        this.userRepository = new InMemoryUserRepository();
         this.logger = new LogbackSystemLogger();
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         this.userService = new UserService(userRepository, tokenService, logger);

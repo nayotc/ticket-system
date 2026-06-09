@@ -43,7 +43,7 @@ import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 public class CompanyServiceTest {
@@ -66,7 +66,7 @@ public class CompanyServiceTest {
     @BeforeEach
     void setUp() throws Exception {
         companyRepository = new CompanyRepository();
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         ITokenRepository tokenRepository = new TokenRepository();
         testLogger = new LogbackSystemLogger();
 
