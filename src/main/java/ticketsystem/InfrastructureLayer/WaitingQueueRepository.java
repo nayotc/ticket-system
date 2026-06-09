@@ -9,9 +9,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
-
 import org.springframework.stereotype.Repository;
+
+import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 
 @Repository
 public class WaitingQueueRepository implements IWaitingQueueRepository {
@@ -85,8 +85,8 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
     public int getQueueSize(long eventId) {
         // also synchronize to avoid race conditions
         synchronized (getEventLock(eventId)) {
-            Queue<String> queue = eventQueues.get(eventId);
-            return (queue == null) ? 0 : queue.size(); // return queue size or 0 if no queue exists for the event
+            Set<String> sessionTracker = queuedSessionsTracker.get(eventId);
+            return (sessionTracker == null) ? 0 : sessionTracker.size(); // return queue size or 0 if no queue exists for the event
         }
     }
 
@@ -103,6 +103,7 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
                 if (queue.isEmpty()) {
                     eventQueues.remove(eventId);
                     queuedSessionsTracker.remove(eventId);
+                    eventLocks.remove(eventId);
                 }
             }
         }
@@ -113,6 +114,7 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
         synchronized (getEventLock(eventId)) {
             Queue<String> queue = eventQueues.remove(eventId);
             Set<String> sessionTracker = queuedSessionsTracker.remove(eventId);
+            eventLocks.remove(eventId);
 
             if (queue != null) {
                 return new ArrayList<>(queue);
@@ -120,6 +122,7 @@ public class WaitingQueueRepository implements IWaitingQueueRepository {
             return Collections.emptyList();
         }
     }
+
     @Override
     public int getUserPosition(long eventId, String token) {
         if (token == null || token.isBlank()) {
