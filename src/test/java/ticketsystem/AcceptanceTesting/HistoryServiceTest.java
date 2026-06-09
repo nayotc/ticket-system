@@ -2,6 +2,7 @@ package ticketsystem.AcceptanceTesting;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -46,7 +47,7 @@ import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.InfrastructureLayer.VaadinNotifier;
+import ticketsystem.testutil.RecordingNotifier;
 
 public class HistoryServiceTest {
 
@@ -58,6 +59,7 @@ public class HistoryServiceTest {
     private HistoryService historyService;
     private ICompanyRepository companyRepository;
     private UserAccessService userAccessService;
+    private RecordingNotifier recordingNotifier;
     private INotifier notifier;
     private NotificationsRepository notificationRepository;
     private ISystemLogger logger;
@@ -77,7 +79,8 @@ public class HistoryServiceTest {
         this.companyRepository = new CompanyRepository();
         this.userAccessService = new UserAccessService(userRepository);
         this.notificationRepository = new NotificationsRepository();
-        this.notifier = new VaadinNotifier(notificationRepository);
+        this.recordingNotifier = new RecordingNotifier();
+        this.notifier = recordingNotifier;
         paymentService = new PaymentServiceProxy();
         resetPaymentProxy();
         this.historyService = new HistoryService(
@@ -577,6 +580,31 @@ public class HistoryServiceTest {
         assertEquals(0, report.getTotalTicketsSold());
         assertEquals(0, BigDecimal.ZERO.compareTo(report.getTotalRevenue()));
         assertEquals("No sales data was found", report.getMessage());
+        recordingNotifier.assertNotifiedMember(ownerId, "was canceled");
+        recordingNotifier.assertNotificationCount(1);
+    }
+
+    @Test
+    void TestEventUpdated_ThenBuyerIsNotified() {
+        String ownerToken = getValidMemberToken("update_event_owner", "Pass123!");
+        long ownerId = tokenService.extractUserId(ownerToken);
+
+        Company company = createCompanyWithFounderRole(ownerId);
+
+        OrderDTO order = createSalesReportOrderDTO(
+                ownerId,
+                company.getId(),
+                ownerId,
+                "Updated Event",
+                new BigDecimal("100.0"));
+
+        historyService.onOrderCompleted(order);
+
+        String updateMessage = "The event has been rescheduled to next week.";
+        historyService.onEventUpdated(20L, LocalDateTime.now().plusDays(7), "New Venue", updateMessage);
+
+        recordingNotifier.assertNotifiedMember(ownerId, updateMessage);
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -601,6 +629,7 @@ public class HistoryServiceTest {
 
         assertTrue(purchase.getTickets().stream()
                 .noneMatch(ticket -> ticket.getStatus().name().equals("CANCELED")));
+        recordingNotifier.assertNoNotifications();
     }
 
     @Test

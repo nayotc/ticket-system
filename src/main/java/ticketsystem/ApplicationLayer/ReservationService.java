@@ -433,7 +433,7 @@ public class ReservationService {
             if (!paymentResult) {
                 order.paymentFailed();
                 saveAll(order, event);
-                notificationsService.notifyGuest(
+                notifyTokenHolder(
                 token,
                 "Payment failed. No purchase was completed."
                 );
@@ -457,7 +457,7 @@ public class ReservationService {
                 reservationDomeinService.completeCheckout(order, event);
                 saveAll(order, event);
 
-                notificationsService.notifyGuest(
+                notifyTokenHolder(
                         token,
                         "Your purchase was completed successfully. Your tickets are now available."
                 );
@@ -560,10 +560,9 @@ public class ReservationService {
 
         order.paymentFailed();
         saveAll(order, event);
-
-        notificationsService.notifyGuest(
-                order.getSessionToken(),
-                "The purchase was canceled because ticket issuing failed. A refund was issued."
+        notifyTokenHolder(
+        order.getSessionToken(),
+        "The purchase was canceled because ticket issuing failed. A refund was issued."
         );
 
         if (refundResult) {
@@ -662,6 +661,23 @@ public class ReservationService {
         }
     }
 
+    private void notifyTokenHolder(String token, String message) {
+        if (notificationsService == null || token == null || token.isBlank()
+                || message == null || message.isBlank()) {
+            return;
+        }
+
+        if (tokenService.isMemberToken(token)) {
+            Long memberId = tokenService.extractUserId(token);
+            if (memberId != null) {
+                notificationsService.notifyMember(memberId, message);
+                return;
+            }
+        }
+
+        notificationsService.notifyGuest(token, message);
+    }
+
    private void expireOldOrders() {
         List<ActiveOrder> allOrders = orderRepository.getAll();
 
@@ -673,7 +689,7 @@ public class ReservationService {
             }
 
             if ( reservationDomeinService.timeExpire(event, order)) {
-                notificationsService.notifyGuest(
+                notifyTokenHolder(
                         order.getSessionToken(),
                         "Your active order has expired. The reserved tickets were released back to the inventory."
                 );
@@ -693,7 +709,7 @@ public class ReservationService {
             if (reservationDomeinService.timeAboutToExpire(event, order)
                     && expirationWarningSentOrderIds.add(order.getOrderId())) {
 
-                notificationsService.notifyGuest(
+                notifyTokenHolder(
                         order.getSessionToken(),
                         "Your active order is about to expire. Please complete your purchase soon."
                 );

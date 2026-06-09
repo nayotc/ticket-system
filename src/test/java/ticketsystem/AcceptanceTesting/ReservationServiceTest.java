@@ -59,7 +59,7 @@ import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.UserRepository;
-import ticketsystem.InfrastructureLayer.VaadinNotifier;
+import ticketsystem.testutil.RecordingNotifier;
 
 public class ReservationServiceTest {
 
@@ -77,6 +77,7 @@ public class ReservationServiceTest {
     private IPaymentService paymentService;
     private TestSecureBarcode secureBarcode;
     private ISystemLogger logger;
+    private RecordingNotifier recordingNotifier;
     private INotifier notifier;
     private MembershipDomainService membershipDomain;
     private UserAccessService userAccessService;
@@ -100,7 +101,8 @@ public class ReservationServiceTest {
         paymentService = new PaymentServiceProxy();
         secureBarcode = new TestSecureBarcode();
         logger = new LogbackSystemLogger();
-        notifier = new VaadinNotifier(new NotificationsRepository());
+        recordingNotifier = new RecordingNotifier();
+        notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepository);
 
         ITokenRepository tokenRepository = new TokenRepository();
@@ -567,6 +569,8 @@ public class ReservationServiceTest {
         assertNotNull(completedOrder.get());
         assertFalse(completedOrder.get().getTickets().isEmpty());
         assertNotNull(completedOrder.get().getTickets().get(0).getSecureBarcode());
+        recordingNotifier.assertNotifiedMember(memberId, "completed successfully");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -597,6 +601,8 @@ public class ReservationServiceTest {
         assertTrue(PaymentServiceProxy.wasPayCalled);
         assertFalse(PaymentServiceProxy.wasRefundCalled);
         assertFalse(secureBarcode.wasGenerateCalled.get());
+        recordingNotifier.assertNotifiedMember(memberId, "Payment failed");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -627,6 +633,8 @@ public class ReservationServiceTest {
         assertTrue(PaymentServiceProxy.wasPayCalled);
         assertTrue(PaymentServiceProxy.wasRefundCalled);
         assertTrue(secureBarcode.wasGenerateCalled.get());
+        recordingNotifier.assertNotifiedMember(memberId, "refund was issued");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -664,6 +672,37 @@ public class ReservationServiceTest {
         assertNotNull(completedOrder.get());
         assertFalse(completedOrder.get().getTickets().isEmpty());
         assertNotNull(completedOrder.get().getTickets().get(0).getSecureBarcode());
+        recordingNotifier.assertNotifiedGuest(guestToken, "completed successfully");
+        recordingNotifier.assertNotificationCount(1);
+    }
+
+    @Test
+    void AcceptanceTest_GuestCheckout_WhenPaymentFails_ThenUserIsNotified() {
+        Long eventId = 5L;
+        Long areaId = 1L;
+
+        Event event = createActiveEvent(eventId);
+        eventRepository.addEvent(event);
+
+        reservationService.selectStandingTicket(
+                guestToken,
+                eventId,
+                areaId,
+                1,
+                null);
+
+        PaymentServiceProxy.isPaymentSuccessful = false;
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> reservationService.checkout(
+                        guestToken,
+                        eventId,
+                        createPaymentDetails(),
+                        null));
+
+        recordingNotifier.assertNotifiedGuest(guestToken, "Payment failed");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -901,6 +940,37 @@ public class ReservationServiceTest {
         reservationService.viewActiveOrder(
                 memberToken,
                 order.getOrderId());
+
+        recordingNotifier.assertNotifiedMember(memberId, "about to expire");
+        recordingNotifier.assertNotificationCount(1);
+    }
+
+    @Test
+    void TestGuestOrderAboutToExpire_ThenUserIsNotified() {
+        Long eventId = 47L;
+        Long areaId = 1L;
+
+        Event event = createActiveEvent(eventId);
+        eventRepository.addEvent(event);
+
+        reservationService.selectStandingTicket(
+                guestToken,
+                eventId,
+                areaId,
+                1,
+                null);
+
+        ActiveOrder order = orderRepository.getActiveOrderBySessionToken(guestToken);
+
+        order.setExpiresAt(LocalDateTime.now().plusMinutes(2));
+        orderRepository.updateOrder(order);
+
+        reservationService.viewActiveOrder(
+                guestToken,
+                order.getOrderId());
+
+        recordingNotifier.assertNotifiedGuest(guestToken, "about to expire");
+        recordingNotifier.assertNotificationCount(1);
     }
 
     private Event createActiveEvent(Long eventId) {
