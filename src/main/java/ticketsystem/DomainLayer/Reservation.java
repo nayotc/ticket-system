@@ -3,6 +3,7 @@ package ticketsystem.DomainLayer;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.event.Event;
@@ -38,7 +39,7 @@ public class Reservation {
   // UC 2.7
 public void removeTicketFromActiveOrder(ActiveOrder order, Event event, Long ticketId) {
     Ticket ticket = order.getTickets().stream()
-            .filter(t -> t.getTicketId().equals(ticketId))
+            .filter(t -> Objects.equals(t.getTicketId(), ticketId))
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Ticket not found in active order"));
 

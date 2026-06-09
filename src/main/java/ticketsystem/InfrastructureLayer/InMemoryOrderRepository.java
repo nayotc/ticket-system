@@ -15,7 +15,8 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
  */
 public class InMemoryOrderRepository implements IOrderRepository {
 
-    private final AtomicLong nextGeneratedId = new AtomicLong(1L);
+    private final AtomicLong nextGeneratedOrderId = new AtomicLong(1L);
+    private final AtomicLong nextGeneratedTicketId = new AtomicLong(1L);
     private final ConcurrentHashMap<Long, ActiveOrder> orders = new ConcurrentHashMap<>();
 
     @Override
@@ -44,6 +45,7 @@ public class InMemoryOrderRepository implements IOrderRepository {
         if (persisted.getOrderId() == null) {
             persisted.setOrderId(orderId);
         }
+        persisted.assignMissingTicketIds(nextGeneratedTicketId::getAndIncrement);
 
         ActiveOrder existing = orders.putIfAbsent(persisted.getOrderId(), persisted);
         if (existing != null) {
@@ -84,6 +86,7 @@ public class InMemoryOrderRepository implements IOrderRepository {
             }
 
             ActiveOrder copy = order.copy();
+            copy.assignMissingTicketIds(nextGeneratedTicketId::getAndIncrement);
             copy.incrementVersion();
             return copy;
         });
@@ -119,7 +122,7 @@ public class InMemoryOrderRepository implements IOrderRepository {
 
     @Override
     public Long getNextId() {
-        return nextGeneratedId.getAndIncrement();
+        return nextGeneratedOrderId.getAndIncrement();
     }
 
     @Override
@@ -172,6 +175,6 @@ public class InMemoryOrderRepository implements IOrderRepository {
         if (order.getOrderId() != null) {
             return order.getOrderId();
         }
-        return nextGeneratedId.getAndIncrement();
+        return nextGeneratedOrderId.getAndIncrement();
     }
 }

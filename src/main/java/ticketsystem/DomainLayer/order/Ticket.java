@@ -63,6 +63,10 @@ public class Ticket {
         return this.ticketId;
     }
 
+    public void setTicketId(Long ticketId) {
+        this.ticketId = ticketId;
+    }
+
     public Long getEventId() {
         return this.eventId;
     }

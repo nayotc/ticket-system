@@ -7,6 +7,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
 import jakarta.persistence.CascadeType;
@@ -116,6 +117,14 @@ public class ActiveOrder {
 
     public List<Ticket> getTickets() {
         return List.copyOf(tickets);
+    }
+
+    public void assignMissingTicketIds(LongSupplier ticketIdSupplier) {
+        for (Ticket ticket : tickets) {
+            if (ticket.getTicketId() == null) {
+                ticket.setTicketId(ticketIdSupplier.getAsLong());
+            }
+        }
     }
 
     public Long getOrderId() {
