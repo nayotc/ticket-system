@@ -1,28 +1,52 @@
 package ticketsystem.DomainLayer.order;
+
 import java.math.BigDecimal;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "order_tickets")
 public class Ticket {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long ticketId;
+
+    @Column(name = "event_id", nullable = false)
     private Long eventId;
+
+    @Column(name = "area_id", nullable = false)
     private Long areaId;
+
+    @Column(name = "seat_row", nullable = false)
     private int row;
+
+    @Column(name = "seat_chair", nullable = false)
     private int chair;
+
+    @Column(name = "price", nullable = false)
     private BigDecimal price;
 
-    //location 0,0 is standing
+    protected Ticket() {
+    }
 
     public Ticket(Long ticketId, Long eventId, Long areaId, int row, int chair, BigDecimal price) {
-        this.ticketId = ticketId;
+        if (ticketId != null) {
+            this.ticketId = ticketId;
+        }
         this.eventId = eventId;
         this.areaId = areaId;
         this.row = row;
         this.chair = chair;
         this.price = price;
-      
     }
-    //copy constructor
-        public Ticket(Ticket other) {
+
+    public Ticket(Ticket other) {
         this.ticketId = other.ticketId;
         this.eventId = other.eventId;
         this.areaId = other.areaId;
@@ -43,7 +67,6 @@ public class Ticket {
         return this.eventId;
     }
 
-
     public Long getAreaId() {
         return this.areaId;
     }
@@ -56,11 +79,7 @@ public class Ticket {
         return this.chair;
     }
 
-
     public BigDecimal getPrice() {
         return this.price;
-    }  
-
-
-
+    }
 }
