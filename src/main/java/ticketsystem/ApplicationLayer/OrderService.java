@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.ApplicationLayer.Events.UserExitListener;
@@ -30,6 +31,7 @@ public class OrderService implements UserLoginListener, EventUpdatesListener,Use
     }
 
     @Override
+    @Transactional
     public void onUserLogin(String guestToken, String memberToken) {
 
         try {
@@ -68,7 +70,8 @@ public class OrderService implements UserLoginListener, EventUpdatesListener,Use
         }
 
     }
-     @Override
+    @Override
+    @Transactional
     public void onUserExit(String guestToken) {
 
         try {
@@ -87,6 +90,7 @@ public class OrderService implements UserLoginListener, EventUpdatesListener,Use
     }
     
     @Override
+    @Transactional
     public void onEventCanceled(Long eventId) {
         List<ActiveOrder> affectedOrders = orderRepository.getActiveOrdersByEventId(eventId);
         for (ActiveOrder order : affectedOrders) {

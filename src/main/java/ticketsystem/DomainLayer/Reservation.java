@@ -23,14 +23,14 @@ public class Reservation {
       
         SeatPosition seatPosition = new SeatPosition(position.getRow(), position.getChair());
        event.reserveSeat(areaId, seatPosition);
-       Ticket ticket = new Ticket(generateTicketId(), event.getId(), areaId, position.getRow(), position.getChair(), event.getTicketPrice());
+       Ticket ticket = new Ticket(null, event.getId(), areaId, position.getRow(), position.getChair(), event.getTicketPrice());
         order.addTicket(ticket);
     } 
 
     public void selectStandingTicket(ActiveOrder order, Event event,Long areaId, int quantity) {
       event.reserveSpot(areaId, quantity);
         for(int i=0; i<quantity; i++) {
-            Ticket ticket = new Ticket(generateTicketId(),event.getId(), areaId, 0, 0, event.getTicketPrice());
+            Ticket ticket = new Ticket(null, event.getId(), areaId, 0, 0, event.getTicketPrice());
             order.addTicket(ticket);
       }
     }
