@@ -619,10 +619,10 @@ public void setProfile(AccountProfileViewData profile) {
     ticketsGrid.addColumn(PurchaseDTO::getTicketId)
             .setHeader("מס' כרטיס");
 
-    ticketsGrid.addColumn(PurchaseDTO::getRow)
+    ticketsGrid.addColumn(ticket -> isStandingTicket(ticket) ? "אזור עמידה" : ticket.getRow())
             .setHeader("שורה");
 
-    ticketsGrid.addColumn(PurchaseDTO::getChair)
+    ticketsGrid.addColumn(ticket -> isStandingTicket(ticket) ? "אזור עמידה" : ticket.getChair())
             .setHeader("כיסא");
 
     ticketsGrid.addColumn(ticket -> formatMoney(ticket.getPrice()))
@@ -639,6 +639,9 @@ public void setProfile(AccountProfileViewData profile) {
     return ticketsGrid;
 }
 
+private boolean isStandingTicket(PurchaseDTO ticket) {
+    return ticket.getRow() == 0 && ticket.getChair() == 0;
+}
 
     public static final class MyPurchaseRow {
         private final String purchaseId;
