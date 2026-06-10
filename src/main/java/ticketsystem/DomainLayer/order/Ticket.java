@@ -4,9 +4,12 @@ import java.math.BigDecimal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -31,6 +34,10 @@ public class Ticket {
 
     @Column(name = "price", nullable = false)
     private BigDecimal price;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "order_id", nullable = false)
+    private ActiveOrder activeOrder;
 
     protected Ticket() {
     }
@@ -85,5 +92,9 @@ public class Ticket {
 
     public BigDecimal getPrice() {
         return this.price;
+    }
+
+    void setActiveOrder(ActiveOrder activeOrder) {
+        this.activeOrder = activeOrder;
     }
 }

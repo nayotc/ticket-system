@@ -86,9 +86,9 @@ public class OrderRepository implements IOrderRepository {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Long getNextId() {
-        return orderJpaRepository.count() + 1L;
+        throw new UnsupportedOperationException(
+                "Order IDs are assigned by the database; pass null when creating ActiveOrder.");
     }
 
     @Override

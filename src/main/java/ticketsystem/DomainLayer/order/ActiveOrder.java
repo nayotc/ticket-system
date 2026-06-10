@@ -19,7 +19,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -37,7 +36,7 @@ public class ActiveOrder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long orderId;
 
-    @Column(name = "session_token")
+    @Column(name = "session_token", nullable = false, length = 512)
     private String sessionToken;
 
     @Column(name = "event_id", nullable = false)
@@ -55,10 +54,9 @@ public class ActiveOrder {
 
     @Version
     @Column(name = "version")
-    private int version;
+    private Integer version;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
+    @OneToMany(mappedBy = "activeOrder", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Ticket> tickets = new ArrayList<>();
 
     private static final long EXPIRATION_WARNING_BEFORE_MINUTES = 2;
@@ -75,7 +73,6 @@ public class ActiveOrder {
         this.eventId = eventId;
         this.status = OrderStatus.ACTIVE;
         this.expiresAt = LocalDateTime.now().plusMinutes(15);
-        this.version = 0;
     }
 
     public ActiveOrder(ActiveOrder other) {
@@ -83,9 +80,12 @@ public class ActiveOrder {
         this.sessionToken = other.sessionToken;
         this.userId = other.userId;
         this.eventId = other.eventId;
-        this.tickets = other.tickets.stream()
-                .map(Ticket::copy)
-                .collect(Collectors.toList());
+        this.tickets = new ArrayList<>();
+        for (Ticket originalTicket : other.tickets) {
+            Ticket copiedTicket = originalTicket.copy();
+            copiedTicket.setActiveOrder(this);
+            this.tickets.add(copiedTicket);
+        }
         this.status = other.status;
         this.expiresAt = other.expiresAt;
         this.version = other.version;
@@ -99,6 +99,7 @@ public class ActiveOrder {
         if (!ticket.getEventId().equals(eventId)) {
             throw new IllegalStateException("Ticket event ID does not match order event ID");
         }
+        ticket.setActiveOrder(this);
         this.tickets.add(ticket);
     }
 
@@ -233,12 +234,12 @@ public class ActiveOrder {
         this.status = OrderStatus.ACTIVE;
     }
 
-    public int getVersion() {
+    public Integer getVersion() {
         return version;
     }
 
     public void incrementVersion() {
-        this.version++;
+        this.version = (version == null ? 0 : version) + 1;
     }
 
     public OrderDTO toDTO(String eventName, String location, Long companyId, Long managedByMemberId,
