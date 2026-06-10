@@ -46,7 +46,7 @@ public class ReservationService {
     private final MembershipDomainService membershipDomain;
     private final TokenService tokenService;
     private final IPaymentService paymentService;
-    private final ISecureBarcode secureBarcode;
+    private final ITicketIssuingService secureBarcode;
     private final ILotteryRepository lotteryRepository;
     private final Reservation reservationDomeinService;
     private final EventCatalogDomainService eventCatalogDomainService;
@@ -65,7 +65,7 @@ public class ReservationService {
             MembershipDomainService membershipDomain,
             TokenService tokenService,
             IPaymentService paymentService,
-            ISecureBarcode secureBarcode,
+            ITicketIssuingService secureBarcode,
             ILotteryRepository lotteryRepository,
             EventCatalogDomainService eventCatalogDomainService,
             ISystemLogger logger,
@@ -586,15 +586,15 @@ public class ReservationService {
     }
 
     //secure barcode logic
-    private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event, BigDecimal total, PaymentDetails details) {
-        OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
-                event.getOpenedBy(), event.getId(), total, details.getPaymentMethodId(), details.getPayerName(), details.getBirthDate());
-        for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
-            String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(), order.getEventId(),
-                    order.getOrderId());
-            purchesDTO.setSecureBarcode(barcode);
-        }
-        return orderDTO;
+    private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event,BigDecimal total, PaymentDetails details ){
+          OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
+                        event.getOpenedBy(), event.getId(),total, details.getPaymentMethodId(), details.getPayerName(), details.getBirthDate());
+                for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
+                    String barcode = secureBarcode.issueTicket(purchesDTO.getTicketId(), order.getEventId(),
+                            order.getOrderId());
+                    purchesDTO.setSecureBarcode(barcode);
+                }
+         return orderDTO;       
     }
 
     // Helper methods

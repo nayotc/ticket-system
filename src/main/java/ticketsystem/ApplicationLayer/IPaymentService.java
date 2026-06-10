@@ -5,9 +5,9 @@ import ticketsystem.DTO.PaymentDetails;
 
 public interface IPaymentService {
 
-    boolean connect();
+    boolean handshake();
 
-    boolean pay(BigDecimal amount, PaymentDetails details);
-
-    boolean refund(BigDecimal amount, PaymentDetails details);
+    Integer pay(BigDecimal amount, PaymentDetails details);
+    
+    boolean refund(Integer transactionId);
 }

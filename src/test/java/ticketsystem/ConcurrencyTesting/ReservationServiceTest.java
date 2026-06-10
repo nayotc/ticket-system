@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.IPaymentService;
-import ticketsystem.ApplicationLayer.ISecureBarcode;
+import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ReservationService;
 import ticketsystem.ApplicationLayer.TokenService;
@@ -640,17 +640,17 @@ public class ReservationServiceTest {
         PaymentServiceProxy.wasRefundCalled = false;
     }
 
-    private static class TestSecureBarcode implements ISecureBarcode {
+    private static class TestSecureBarcode implements ITicketIssuingService {
 
         AtomicInteger generateCalls = new AtomicInteger(0);
 
         @Override
-        public boolean connect() {
+        public boolean handshake() {
             return true;
         }
 
         @Override
-        public String generateSecureBarcode(Long ticketId, Long eventId, Long userId) {
+        public String issueTicket(Long ticketId, Long eventId, Long userId) {
             generateCalls.incrementAndGet();
             return "SECURE_BARCODE_" + ticketId + "_" + eventId + "_" + userId;
         }

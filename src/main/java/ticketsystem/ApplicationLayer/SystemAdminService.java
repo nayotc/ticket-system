@@ -40,7 +40,7 @@ public class SystemAdminService {
 
     private final ISystemAdminRepository adminRepository;
     private final IPaymentService paymentService;
-    private final ISecureBarcode barcodeService;
+    private final ITicketIssuingService barcodeService;
     private final IOrderRepository orderRepository;
     private final IUserRepository userRepository;
     private final ICompanyRepository companyRepository;
@@ -52,7 +52,7 @@ public class SystemAdminService {
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
-            ISecureBarcode barcodeService,
+            ITicketIssuingService barcodeService,
             IUserRepository userRepository,
             IOrderRepository orderRepository,
             ITokenService tokenService,
@@ -83,14 +83,14 @@ public class SystemAdminService {
                 return false;
             }
 
-            boolean paymentConnected = paymentService.connect();
+            boolean paymentConnected = paymentService.handshake();
             if (!paymentConnected) {
                 // Alternative Flow: Connection failure
                 logger.logError("Failed to connect to payment services. Please check your configuration.", new Exception("Failed to connect to payment services."));
                 return false;
             }
 
-            boolean barcodeConnected = barcodeService.connect();
+            boolean barcodeConnected = barcodeService.handshake();
             if (!barcodeConnected) {
                 // Alternative Flow: Connection failure
                 logger.logError("Failed to connect to secure barcode services.", new Exception("Failed to connect to secure barcode services."));

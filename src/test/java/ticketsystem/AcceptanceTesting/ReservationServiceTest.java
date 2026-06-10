@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.IPaymentService;
-import ticketsystem.ApplicationLayer.ISecureBarcode;
+import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ReservationService;
 import ticketsystem.ApplicationLayer.TokenService;
@@ -1153,18 +1153,18 @@ public class ReservationServiceTest {
 
     }
 
-    private static class TestSecureBarcode implements ISecureBarcode {
+    private static class TestSecureBarcode implements ITicketIssuingService {
 
         boolean shouldGenerateSucceed = true;
         AtomicBoolean wasGenerateCalled = new AtomicBoolean(false);
 
         @Override
-        public boolean connect() {
+        public boolean handshake() {
             return true;
         }
 
         @Override
-        public String generateSecureBarcode(Long ticketId, Long eventId, Long userId) {
+        public String issueTicket(Long ticketId, Long eventId, Long userId) {
             wasGenerateCalled.set(true);
 
             if (!shouldGenerateSucceed) {
