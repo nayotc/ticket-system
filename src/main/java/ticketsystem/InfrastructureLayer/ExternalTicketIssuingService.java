@@ -1,35 +1,45 @@
 package ticketsystem.InfrastructureLayer;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+
 import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.DTO.TicketIssueRequest;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Service
+@Primary
 public class ExternalTicketIssuingService implements ITicketIssuingService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    //"${external.system.url:https://damp-lynna-wsep-1984852e.koyeb.app/}"
-   
+    private final RestTemplate restTemplate;
+
+        public ExternalTicketIssuingService() {
+            SimpleClientHttpRequestFactory factory =
+                    new SimpleClientHttpRequestFactory();
+
+            factory.setConnectTimeout(3000);
+            factory.setReadTimeout(3000);
+
+            this.restTemplate = new RestTemplate(factory);
+        }
+
     @Value("${external.system.url}")
     private String externalSystemUrl;
 
     @Override
     public boolean handshake() {
         try {
-            Map<String, String> request = Map.of(
-                    "action_type", "handshake"
-            );
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("action_type", "handshake");
 
-            String response = restTemplate.postForObject(
-                    externalSystemUrl,
-                    request,
-                    String.class
-            );
+            String response = postForm(body);
 
             return response != null && response.trim().equalsIgnoreCase("OK");
 
@@ -41,25 +51,21 @@ public class ExternalTicketIssuingService implements ITicketIssuingService {
     @Override
     public String issueTicket(TicketIssueRequest requestDto) {
         try {
-            Map<String, String> request = new HashMap<>();
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
 
-            request.put("action_type", "issue_ticket");
-            request.put("customer_id", requestDto.getCustomerId());
-            request.put("event_id", requestDto.getEventId());
-            request.put("zone", requestDto.getZoneType().name());
+            body.add("action_type", "issue_ticket");
+            body.add("customer_id", requestDto.getCustomerId());
+            body.add("event_id", requestDto.getEventId());
+            body.add("zone", requestDto.getZoneType().name());
 
             if (requestDto.isSeating()) {
-                request.put("is_seating", "true");
-                request.put("seats", requestDto.getSeatsJson());
+                body.add("is_seating", "true");
+                body.add("seats", requestDto.getSeatsJson());
             } else {
-                request.put("quantity", String.valueOf(requestDto.getQuantity()));
+                body.add("quantity", String.valueOf(requestDto.getQuantity()));
             }
 
-            String response = restTemplate.postForObject(
-                    externalSystemUrl,
-                    request,
-                    String.class
-            );
+            String response = postForm(body);
 
             if (response == null || response.trim().equals("-1")) {
                 return "-1";
@@ -75,21 +81,31 @@ public class ExternalTicketIssuingService implements ITicketIssuingService {
     @Override
     public boolean cancelTicket(String ticketId) {
         try {
-            Map<String, String> request = Map.of(
-                    "action_type", "cancel_ticket",
-                    "ticket_id", ticketId
-            );
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
 
-            String response = restTemplate.postForObject(
-                    externalSystemUrl,
-                    request,
-                    String.class
-            );
+            body.add("action_type", "cancel_ticket");
+            body.add("ticket_id", ticketId);
+
+            String response = postForm(body);
 
             return response != null && response.trim().equals("1");
 
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private String postForm(MultiValueMap<String, String> body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        HttpEntity<MultiValueMap<String, String>> request =
+                new HttpEntity<>(body, headers);
+
+        return restTemplate.postForObject(
+                externalSystemUrl,
+                request,
+                String.class
+        );
     }
 }

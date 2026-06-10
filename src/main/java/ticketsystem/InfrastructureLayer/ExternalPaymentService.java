@@ -1,37 +1,46 @@
 package ticketsystem.InfrastructureLayer;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import ticketsystem.ApplicationLayer.IPaymentService;
 import ticketsystem.DTO.PaymentDetails;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.Map;
 
 @Service
+@Primary
 public class ExternalPaymentService implements IPaymentService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
-    //("${external.system.url:https://damp-lynna-wsep-1984852e.koyeb.app/}") 
+    public ExternalPaymentService() {
+        SimpleClientHttpRequestFactory factory =
+                new SimpleClientHttpRequestFactory();
+
+        factory.setConnectTimeout(3000);
+        factory.setReadTimeout(3000);
+
+        this.restTemplate = new RestTemplate(factory);
+    }
+
     @Value("${external.system.url}")
-
     private String externalSystemUrl;
 
     @Override
     public boolean handshake() {
         try {
-            Map<String, String> request = Map.of(
-                    "action_type", "handshake"
-            );
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("action_type", "handshake");
 
-            String response = restTemplate.postForObject(
-                    externalSystemUrl,
-                    request,
-                    String.class
-            );
+            String response = postForm(body);
 
             return response != null
                     && response.trim().equalsIgnoreCase("OK");
@@ -42,36 +51,32 @@ public class ExternalPaymentService implements IPaymentService {
     }
 
     @Override
-public Integer pay(BigDecimal amount, PaymentDetails details) {
-    try {
-        Map<String, String> request = new HashMap<>();
+    public Integer pay(BigDecimal amount, PaymentDetails details) {
+        try {
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
 
-        request.put("action_type", "pay");
-        request.put("amount", amount.toPlainString());
-        request.put("currency", details.getCurrency());
-        request.put("card_number", details.getCardNumber());
-        request.put("month", String.valueOf(details.getExpirationMonth()));
-        request.put("year", String.valueOf(details.getExpirationYear()));
-        request.put("holder", details.getPayerName());
-        request.put("cvv", details.getCvv());
-        request.put("id", details.getHolderId());
+            body.add("action_type", "pay");
+            body.add("amount", amount.toPlainString());
+            body.add("currency", details.getCurrency());
+            body.add("card_number", details.getCardNumber());
+            body.add("month", String.valueOf(details.getExpirationMonth()));
+            body.add("year", String.valueOf(details.getExpirationYear()));
+            body.add("holder", details.getPayerName());
+            body.add("cvv", details.getCvv());
+            body.add("id", details.getHolderId());
 
-        String response = restTemplate.postForObject(
-                externalSystemUrl,
-                request,
-                String.class
-        );
+            String response = postForm(body);
 
-        if (response == null) {
+            if (response == null) {
+                return -1;
+            }
+
+            return Integer.parseInt(response.trim());
+
+        } catch (Exception e) {
             return -1;
         }
-
-        return Integer.parseInt(response.trim());
-
-    } catch (Exception e) {
-        return -1;
     }
-}
 
     @Override
     public boolean refund(Integer transactionId) {
@@ -80,21 +85,31 @@ public Integer pay(BigDecimal amount, PaymentDetails details) {
                 return false;
             }
 
-            Map<String, String> request = Map.of(
-                    "action_type", "refund",
-                    "transaction_id", String.valueOf(transactionId)
-            );
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
 
-            String response = restTemplate.postForObject(
-                    externalSystemUrl,
-                    request,
-                    String.class
-            );
+            body.add("action_type", "refund");
+            body.add("transaction_id", String.valueOf(transactionId));
+
+            String response = postForm(body);
 
             return response != null && response.trim().equals("1");
 
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private String postForm(MultiValueMap<String, String> body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        HttpEntity<MultiValueMap<String, String>> request =
+                new HttpEntity<>(body, headers);
+
+        return restTemplate.postForObject(
+                externalSystemUrl,
+                request,
+                String.class
+        );
     }
 }
