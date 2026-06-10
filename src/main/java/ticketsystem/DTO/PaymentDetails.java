@@ -12,9 +12,9 @@ public class PaymentDetails {
 
     private String cardNumber;
 
-    private int expirationMonth;
+    private Integer expirationMonth;
 
-    private int expirationYear;
+    private Integer expirationYear;
 
     private String cvv;
 
@@ -29,8 +29,8 @@ public class PaymentDetails {
                           String payerName,
                           LocalDate birthDate,
                           String cardNumber,
-                          int expirationMonth,
-                          int expirationYear,
+                          Integer expirationMonth,
+                          Integer expirationYear,
                           String cvv,
                           String holderId,
                           String currency) {
@@ -78,19 +78,19 @@ public class PaymentDetails {
         this.cardNumber = cardNumber;
     }
 
-    public int getExpirationMonth() {
+    public Integer getExpirationMonth() {
         return expirationMonth;
     }
 
-    public void setExpirationMonth(int expirationMonth) {
+    public void setExpirationMonth(Integer expirationMonth) {
         this.expirationMonth = expirationMonth;
     }
 
-    public int getExpirationYear() {
+    public Integer getExpirationYear() {
         return expirationYear;
     }
 
-    public void setExpirationYear(int expirationYear) {
+    public void setExpirationYear(Integer expirationYear) {
         this.expirationYear = expirationYear;
     }
 

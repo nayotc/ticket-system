@@ -560,7 +560,7 @@ public class ReservationService {
                         + ". orderId=" + order.getOrderId()
                         + ", eventId=" + eventId,
                 originalException);
-
+        reservationDomeinService.expire(event, order);
         boolean refundResult = paymentService.refund(transactionId);
 
         order.paymentFailed();
@@ -588,10 +588,13 @@ public class ReservationService {
     private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event, BigDecimal total, Integer transactionId) {
         OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
                 event.getOpenedBy(), event.getId(), total, transactionId);
-            
+
             for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
             TicketIssueRequest request = createTicketIssueRequest(purchesDTO, orderDTO);
             String barcode = secureBarcode.issueTicket(request);
+            if (barcode == null || barcode.isBlank() || barcode.equals("-1")) {
+                throw new IllegalStateException("Ticket issuing failed");
+            }
             purchesDTO.setSecureBarcode(barcode);
         }
         return orderDTO;
@@ -782,7 +785,7 @@ public class ReservationService {
             String seatsJson = seating
                     ? buildSeatsJson(purchesDTO)
                     : null;
-
+            System.out.println("Seats JSON = " + seatsJson);
             return new TicketIssueRequest(
                     String.valueOf(orderDTO.getMemberId()),
                     String.valueOf(orderDTO.getEventId()),
@@ -804,7 +807,7 @@ public class ReservationService {
 
     private String buildSeatsJson(PurchaseDTO purchaseDTO) {
         return String.format(
-                "{\"row\":%d,\"seat\":%d}",
+                "[{\"row\":%d,\"seat\":%d}]",
                 purchaseDTO.getRow(),
                 purchaseDTO.getChair());
     }

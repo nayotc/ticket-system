@@ -626,12 +626,12 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         if (!validatePersonalDetails()) {
             return;
         }
-
         try{
-             PaymentDetails details = new PaymentDetails(
+             
+            PaymentDetails details = new PaymentDetails(
                     resolvePaymentMethodId(),
                     payerId.getValue().trim(),
-                    birthDate.getValue(),cardNumber.getValue().trim(),parseExpiryDate()[0],parseExpiryDate()[1],cvv.getValue().trim(),payerId.getValue().trim(),"ILS" );
+                    birthDate.getValue(),cardNumber.getValue().trim(),null,null,cvv.getValue().trim(),payerId.getValue().trim(),"ILS" );
             presenter.validateOrderPolicyBeforePayment(resolveSessionToken(), activeOrder.getEventId(), details, normalizedCouponCode());
             currentStep = 2;
             renderCheckout();
