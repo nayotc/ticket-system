@@ -1,70 +1,96 @@
 package ticketsystem.DomainLayer.user;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
+
+@Entity
+@DiscriminatorValue("MEMBER")
 public class Member extends User {
 
-    private final Long memberId;
+    @Column(name = "user_name", nullable = false, unique = true)
     private String userName;
+
+    @Column(name = "full_name", nullable = false)
     private String fullName;
+
+    @Column(name = "phone", nullable = false)
     private String phone;
+
+    @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate;
-    private long version;
-    private ConcurrentHashMap<Long, CompanyRole> myRoles; // Key: companyId, Value: Role in that company
+
+    @Column(name = "hashed_password")
+    private String hashedPassword;
+
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<CompanyRole> companyRoles = new ArrayList<>();
+
+    @Embedded
     private Suspension suspension;
 
+    protected Member() {
+    }
 
-    public Member(Long memberId, String userName, String fullName, String phone,LocalDate birthDate) {
+    public Member(Long memberId, String userName, String fullName, String phone, LocalDate birthDate) {
         validateBirthDate(birthDate);
-        this.memberId = memberId;
+        if (memberId != null) {
+            setId(memberId);
+        }
         this.userName = userName;
         this.fullName = fullName;
         this.phone = phone;
-        this.birthDate=birthDate;
-        this.version = 0; // Initialize version
-        this.myRoles = new ConcurrentHashMap<Long, CompanyRole>();
+        this.birthDate = birthDate;
+        setVersion(0);
     }
 
-    // Copy Constructor for Deep Copying
     public Member(Member other) {
-        this.memberId = other.memberId;
+        setId(other.getId());
         this.userName = other.userName;
         this.fullName = other.fullName;
         this.phone = other.phone;
-        this.birthDate=other.birthDate;
-        this.version = other.version;
-        this.myRoles = new ConcurrentHashMap<>();
-        this.suspension = other.suspension == null
-        ? null
-        : new Suspension(other.suspension);
-        
-        // Deep copy of the roles map to prevent shared memory references between threads
-        for (java.util.Map.Entry<Long, CompanyRole> entry : other.myRoles.entrySet()) {
-            Long compId = entry.getKey();
-            CompanyRole originalRole = entry.getValue();
-            CompanyRole copiedRole = null;
-            
-            // Polymorphic copying based on the role instance
-            if (originalRole instanceof Founder) {
-                copiedRole = new Founder((Founder) originalRole, compId);
-            } else if (originalRole instanceof Owner) {
-                copiedRole = new Owner((Owner) originalRole, compId);
-            } else if (originalRole instanceof Manager) {
-                copiedRole = new Manager((Manager) originalRole, compId);
-            }
-            
+        this.birthDate = other.birthDate;
+        this.hashedPassword = other.hashedPassword;
+        setVersion(other.getVersion());
+        this.suspension = other.suspension == null ? null : new Suspension(other.suspension);
+        this.companyRoles = new ArrayList<>();
+        for (CompanyRole originalRole : other.companyRoles) {
+            CompanyRole copiedRole = copyRole(originalRole);
             if (copiedRole != null) {
-                this.myRoles.put(compId, copiedRole);
+                copiedRole.setMember(this);
+                this.companyRoles.add(copiedRole);
             }
         }
     }
 
+    private CompanyRole copyRole(CompanyRole originalRole) {
+        Long companyId = originalRole.getCompanyId();
+        if (originalRole instanceof Founder founder) {
+            return new Founder(founder, companyId);
+        }
+        if (originalRole instanceof Owner owner) {
+            return new Owner(owner, companyId);
+        }
+        if (originalRole instanceof Manager manager) {
+            return new Manager(manager, companyId);
+        }
+        return null;
+    }
+
     public Long getId() {
-        return this.memberId;
+        return super.getId();
     }
 
     public String getUserName() {
@@ -74,62 +100,89 @@ public class Member extends User {
     public void setUserName(String userName) {
         this.userName = userName;
     }
-    public LocalDate getBirthDate(){
+
+    public LocalDate getBirthDate() {
         return birthDate;
     }
 
-    public String getFullName() { return this.fullName;}
-
-    public void setFullName(String fullName) { this.fullName = fullName; }
-
-    public String getPhone() { return this.phone; }
-
-    public void setPhone(String phone) { this.phone = phone; }
-
-    public long getVersion() {
-        return this.version;
+    public String getFullName() {
+        return this.fullName;
     }
 
-    public void setVersion(long version) {
-        this.version = version;
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getPhone() {
+        return this.phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getHashedPassword() {
+        return hashedPassword;
+    }
+
+    public void setHashedPassword(String hashedPassword) {
+        this.hashedPassword = hashedPassword;
     }
 
     public List<CompanyRole> getAllRoles() {
-        return myRoles.values().stream().collect(Collectors.toList());
+        return companyRoles.stream().collect(Collectors.toList());
     }
 
     public CompanyRole getRoleInCompany(Long companyId) {
-        return myRoles.get(companyId);
+        return companyRoles.stream()
+                .filter(role -> Objects.equals(role.getCompanyId(), companyId))
+                .findFirst()
+                .orElse(null);
     }
 
     public boolean hasPermission(Long companyId, Permission permission) {
-        CompanyRole role = myRoles.get(companyId);
+        CompanyRole role = getRoleInCompany(companyId);
         return role != null && role.hasPermission(permission);
     }
 
     public boolean addManagerRole(Long companyId, Long memberId, Set<Permission> permissions) {
-        CompanyRole newRole = new Manager(companyId, memberId, permissions);
-        return myRoles.putIfAbsent(companyId, newRole) == null;
+        if (getRoleInCompany(companyId) != null) {
+            return false;
+        }
+        Manager newRole = new Manager(companyId, memberId, permissions);
+        newRole.setMember(this);
+        companyRoles.add(newRole);
+        return true;
     }
 
     public boolean addOwnerRole(Long companyId, Long memberId) {
-        CompanyRole newRole = new Owner(companyId, memberId);
-        return myRoles.putIfAbsent(companyId, newRole) == null;
+        if (getRoleInCompany(companyId) != null) {
+            return false;
+        }
+        Owner newRole = new Owner(companyId, memberId);
+        newRole.setMember(this);
+        companyRoles.add(newRole);
+        return true;
     }
 
     public boolean addFounderRole(Long companyId) {
-        CompanyRole newRole = new Founder(companyId);
-        return myRoles.putIfAbsent(companyId, newRole) == null;
+        if (getRoleInCompany(companyId) != null) {
+            return false;
+        }
+        Founder newRole = new Founder(companyId);
+        newRole.setMember(this);
+        companyRoles.add(newRole);
+        return true;
     }
 
     public boolean deleteRoleInCompany(Long companyId) {
-        return myRoles.remove(companyId) != null;
+        return companyRoles.removeIf(role -> Objects.equals(role.getCompanyId(), companyId));
     }
 
     public void updateManagerPermissions(Long companyId, Set<Permission> newPermissions) {
-        CompanyRole role = myRoles.get(companyId);
-        if (role != null && role instanceof Manager) {
-            ((Manager) role).setPermissions(newPermissions);
+        CompanyRole role = getRoleInCompany(companyId);
+        if (role instanceof Manager manager) {
+            manager.setPermissions(newPermissions);
         }
     }
 
@@ -143,38 +196,36 @@ public class Member extends User {
         }
     }
 
-    //Suspend
-     public void suspendMember(Long suspendedByAdminId,
-                      LocalDateTime startDate,
-                      LocalDateTime endDate,
-                      String reason){
-
-        if(isSuspended()){
+    public void suspendMember(Long suspendedByAdminId,
+                              LocalDateTime startDate,
+                              LocalDateTime endDate,
+                              String reason) {
+        if (isSuspended()) {
             throw new IllegalStateException("Member is already suspended");
         }
-        //validation in the constructor
-        Suspension suspension=new Suspension(suspendedByAdminId, startDate ,endDate, reason);
-      
-        this.suspension=suspension;
+        this.suspension = new Suspension(suspendedByAdminId, startDate, endDate, reason);
     }
 
-    public void revokeSuspension(){
-
+    public void revokeSuspension() {
         Suspension activeSuspension = getSuspension();
-        if(activeSuspension == null|| !suspension.isActive()){
+        if (activeSuspension == null || !activeSuspension.isActive()) {
             throw new IllegalStateException("Member is not suspended");
         }
-
         activeSuspension.revoke();
     }
 
-    public boolean isSuspended(){
-        if(suspension==null)
+    public boolean isSuspended() {
+        if (suspension == null) {
             return false;
+        }
         return suspension.isActive();
     }
 
-    public Suspension getSuspension(){
-            return suspension;
+    public Suspension getSuspension() {
+        return suspension;
+    }
+
+    List<CompanyRole> getCompanyRolesInternal() {
+        return companyRoles;
     }
 }

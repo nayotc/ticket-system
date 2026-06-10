@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
@@ -34,7 +34,7 @@ public class MembershipDomainServiceTest {
 
     @BeforeEach
     public void setUp() {
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         domainService = new MembershipDomainService(userRepository);
 
         appointingMember = new Member(100L, "AppointerUser", "Appointer User", "0500000001",LocalDate.of(2001, 1, 1));

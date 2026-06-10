@@ -3,12 +3,13 @@ package ticketsystem.ApplicationLayer;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.stereotype.Service;
+
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import org.springframework.stereotype.Service;
 
 @Service
 public class WaitingQueueService {
@@ -241,6 +242,7 @@ public class WaitingQueueService {
         notificationsService.notifyGuests(guestTokens, message);
         logger.logEvent("Notified " + memberIds.size() + " members and " + guestTokens.size() + " guests with message: " + message, LogLevel.INFO);
     }
+
     public int getQueuePosition(long eventId, String tokenString) {
         if (tokenString == null || tokenString.isBlank()) {
             throw new IllegalArgumentException("Invalid token");

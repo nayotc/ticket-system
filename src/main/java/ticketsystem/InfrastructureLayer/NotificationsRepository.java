@@ -1,58 +1,38 @@
 package ticketsystem.InfrastructureLayer;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
+import ticketsystem.InfrastructureLayer.persistence.NotificationJpaRepository;
 
 @Repository
 public class NotificationsRepository implements INotificationsRepository {
 
-    private final ConcurrentHashMap<String, List<Notification>> notificationsByTarget = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Long, Notification> notificationsById = new ConcurrentHashMap<>();
-    private final AtomicLong idGenerator = new AtomicLong(0L);
+    private final NotificationJpaRepository notificationJpaRepository;
+
+    public NotificationsRepository(NotificationJpaRepository notificationJpaRepository) {
+        this.notificationJpaRepository = notificationJpaRepository;
+    }
 
     @Override
+    @Transactional
     public Notification save(Notification notification) {
-        if (notification.getId() == null) {
-            notification.setId(idGenerator.incrementAndGet());
-        }
-        notificationsByTarget
-                .computeIfAbsent(notification.getTargetId(), ignored -> new CopyOnWriteArrayList<>())
-                .add(notification);
-        notificationsById.put(notification.getId(), notification);
-        return notification;
+        return notificationJpaRepository.save(notification);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Notification> findByTargetId(String targetId) {
-        List<Notification> notifications = notificationsByTarget.get(targetId);
-        if (notifications == null) {
-            return new ArrayList<>();
-        }
-        return new ArrayList<>(notifications);
+        return notificationJpaRepository.findByTargetId(targetId);
     }
 
     @Override
+    @Transactional
     public void deleteById(Long notificationId) {
-        Notification notification = notificationsById.get(notificationId);
-        if (notification == null) {
-            return;
-        }
-
-        List<Notification> notifications = notificationsByTarget.get(notification.getTargetId());
-        if (notifications != null) {
-            notifications.removeIf(notificationItem -> notificationId.equals(notificationItem.getId()));
-            if (notifications.isEmpty()) {
-                notificationsByTarget.remove(notification.getTargetId(), notifications);
-            }
-        }
-        notificationsById.remove(notificationId);
+        notificationJpaRepository.deleteById(notificationId);
     }
 }

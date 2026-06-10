@@ -42,9 +42,9 @@ import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
+import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 /**
@@ -60,7 +60,7 @@ public class MembershipServiceTest {
     private ISystemLogger systemLogger;
     private MembershipService membershipService;
     private INotifier notifier;
-    private NotificationsRepository notificationsRepository;
+    private InMemoryNotificationsRepository notificationsRepository;
     // Test Data
     private final Long companyId = 1L;
     private Company testCompany;
@@ -90,10 +90,10 @@ public class MembershipServiceTest {
         ITokenRepository tokenRepo = new TokenRepository();
         this.systemLogger = new LogbackSystemLogger();
         this.tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo, systemLogger);
-        this.userRepository = new UserRepository();
+        this.userRepository = new InMemoryUserRepository();
         this.companyRepository = new CompanyRepository();
         this.domainService = new MembershipDomainService(userRepository);
-        this.notificationsRepository = new NotificationsRepository();
+        this.notificationsRepository = new InMemoryNotificationsRepository();
         this.notifier = new VaadinNotifier(notificationsRepository);
         userAccessService = new UserAccessService(userRepository);
         // Initialize service with null for notifications and the logger

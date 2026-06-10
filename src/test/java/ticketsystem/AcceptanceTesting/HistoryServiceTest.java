@@ -43,10 +43,10 @@ import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
+import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.testutil.RecordingNotifier;
 
 public class HistoryServiceTest {
@@ -61,7 +61,7 @@ public class HistoryServiceTest {
     private UserAccessService userAccessService;
     private RecordingNotifier recordingNotifier;
     private INotifier notifier;
-    private NotificationsRepository notificationRepository;
+    private InMemoryNotificationsRepository notificationRepository;
     private ISystemLogger logger;
     private IPaymentService paymentService;
 
@@ -72,13 +72,13 @@ public class HistoryServiceTest {
         this.historyRepository = hRepo;
 
         this.tokenRepository = new TokenRepository();
-        this.userRepository = new UserRepository();
+        this.userRepository = new InMemoryUserRepository();
         this.logger = new LogbackSystemLogger();
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         this.userService = new UserService(userRepository, tokenService, logger);
         this.companyRepository = new CompanyRepository();
         this.userAccessService = new UserAccessService(userRepository);
-        this.notificationRepository = new NotificationsRepository();
+        this.notificationRepository = new InMemoryNotificationsRepository();
         this.recordingNotifier = new RecordingNotifier();
         this.notifier = recordingNotifier;
         paymentService = new PaymentServiceProxy();

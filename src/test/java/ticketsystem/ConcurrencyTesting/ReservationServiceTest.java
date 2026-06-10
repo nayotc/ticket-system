@@ -49,10 +49,10 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
 
 public class ReservationServiceTest {
 
@@ -89,7 +89,7 @@ public class ReservationServiceTest {
         ((LotteryRepository) lotteryRepository).clearForTests();
 
         companyRepository = new CompanyRepository();
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         membershipDomain = new MembershipDomainService(userRepository);
 
         paymentService = new PaymentServiceProxy();

@@ -345,7 +345,7 @@ public class ReservationService {
             if (!paymentResult) {
                 order.paymentFailed();
                 saveAll(order, event);
-                notificationsService.notifyGuest(
+                notifyOrderOwner(
                         token,
                         "Payment failed. No purchase was completed."
                 );
@@ -369,7 +369,7 @@ public class ReservationService {
                 reservationDomeinService.completeCheckout(order, event);
                 saveAll(order, event);
 
-                notificationsService.notifyGuest(
+                notifyOrderOwner(
                         token,
                         "Your purchase was completed successfully. Your tickets are now available."
                 );
@@ -438,7 +438,7 @@ public class ReservationService {
 
         order.paymentFailed();
         saveAll(order, event);
-        notificationsService.notifyGuest(
+        notifyOrderOwner(
                 order.getSessionToken(),
                 "The purchase was canceled because ticket issuing failed. A refund was issued."
         );
@@ -549,7 +549,7 @@ public class ReservationService {
             }
 
             if (reservationDomeinService.timeExpire(event, order)) {
-                notificationsService.notifyGuest(
+                notifyOrderOwner(
                         order.getSessionToken(),
                         "Your active order has expired. The reserved tickets were released back to the inventory."
                 );
@@ -569,7 +569,7 @@ public class ReservationService {
             if (reservationDomeinService.timeAboutToExpire(event, order)
                     && expirationWarningSentOrderIds.add(order.getOrderId())) {
 
-                notificationsService.notifyGuest(
+                notifyOrderOwner(
                         order.getSessionToken(),
                         "Your active order is about to expire. Please complete your purchase soon."
                 );
@@ -643,5 +643,19 @@ public class ReservationService {
                     LogLevel.WARN
             );
         }
+    }
+
+    private void notifyOrderOwner(String sessionToken, String message) {
+        if (sessionToken == null || message == null || message.isBlank()) {
+            return;
+        }
+        if (tokenService.isMemberToken(sessionToken)) {
+            Long memberId = tokenService.extractUserId(sessionToken);
+            if (memberId != null) {
+                notificationsService.notifyMember(memberId, message);
+                return;
+            }
+        }
+        notificationsService.notifyGuest(sessionToken, message);
     }
 }

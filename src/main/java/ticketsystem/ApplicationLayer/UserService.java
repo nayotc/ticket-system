@@ -1,11 +1,11 @@
 package ticketsystem.ApplicationLayer;
 
-import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.ApplicationLayer.Events.UserExitListener;
 import ticketsystem.ApplicationLayer.Events.UserLoginListener;
@@ -57,6 +57,7 @@ public class UserService {
 
     // 2. Sign Up: Allows a guest to sign up as a member by providing a uniqe
     // username and password.
+    @Transactional
     public boolean signUp(String sessionToken, String username, String password, String fullName, String phone,
             LocalDate birthDate) {
         try {
@@ -85,14 +86,13 @@ public class UserService {
                 logger.logEvent("Sign-up rejected: password too short", LogLevel.WARN);
                 throw new IllegalArgumentException("Password must be at least 5 characters long.");
             }
-            Long newId = new SecureRandom().nextLong();
-            while (userRepository.isIDTaken(newId)) {
-                newId = new SecureRandom().nextLong();
-            }
-
             String hashedPassword = passwordService.hashPassword(password);
-            userRepository.addRegisteredMember(newId,
-                    new Member(newId, username, normalizedFullName, normalizedPhone, birthDate), hashedPassword);
+            boolean registered = userRepository.addRegisteredMember(0L,
+                    new Member(null, username, normalizedFullName, normalizedPhone, birthDate), hashedPassword);
+            if (!registered) {
+                logger.logEvent("Sign-up rejected: registration failed, username=" + username, LogLevel.WARN);
+                throw new IllegalArgumentException("Username is already taken.");
+            }
             logger.logEvent("Sign-up succeeded: new member registered, username=" + username, LogLevel.INFO);
             return true;
 
@@ -108,6 +108,7 @@ public class UserService {
 
     // 3. Login: Allows a guest to log in as a member by providing their username
     // and password, and receive a new session token.
+    @Transactional
     public String login(String sessionToken, String username, String password) {
         logger.logEvent(
                 "Login started: username=" + username + ", guestToken=" + tokenService.maskToken(sessionToken),
@@ -273,6 +274,7 @@ public class UserService {
 
     // 6. Update Member Username: Allows a member to update their username by
     // providing their current username, password, and new username.
+    @Transactional
     public boolean updateMemberUsername(String sessionToken, String password, String username, String newUsername) {
         try {
             if (username == null || username.isBlank()) {
@@ -323,6 +325,7 @@ public class UserService {
 
     // 7. Update Member Password: Allows a member to update their password by
     // providing their current username, password, and new password.
+    @Transactional
     public boolean updateMemberPassword(String sessionToken, String password, String username, String newPassword) {
         try {
             if (username == null || username.isBlank()) {
@@ -536,6 +539,7 @@ public class UserService {
         }
     }
 
+    @Transactional
     public boolean updateMemberFullName(String sessionToken,
             String password,
             String username,
@@ -582,6 +586,7 @@ public class UserService {
         }
     }
 
+    @Transactional
     public boolean updateMemberPhone(String sessionToken,
             String password,
             String username,

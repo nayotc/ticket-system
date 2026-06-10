@@ -44,13 +44,14 @@ import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
+import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
+import ticketsystem.DomainLayer.IRepository.IOrderRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
 import ticketsystem.testutil.RecordingNotifier;
 
 public class SystemAdminServiceTest {
@@ -58,17 +59,17 @@ public class SystemAdminServiceTest {
     private SystemAdminService systemAdminService;
     private ISystemAdminRepository realAdminRepo;
     private TokenService tokenService;
-    private IUserRepository userRepo = new UserRepository();
+    private IUserRepository userRepo = new InMemoryUserRepository();
     private CompanyService companyService;
     private SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
     ICompanyRepository companyRepo;
     HistoryRepository historyRepo;
-    OrderRepository orderRepo;
+    IOrderRepository orderRepo;
     ISystemLogger logger = new LogbackSystemLogger();
     private MembershipDomainService membershipDomain;
     private RecordingNotifier recordingNotifier;
     private INotifier notifier;
-    private NotificationsRepository notificationRepo;
+    private InMemoryNotificationsRepository notificationRepo;
 
     private UserAccessService userAccessService;
 
@@ -80,12 +81,12 @@ public class SystemAdminServiceTest {
         PaymentServiceProxy.isConnectionSuccessful = true;
         PaymentServiceProxy.wasConnectCalled = false;
         SecureBarcodeProxy.isConnectionSuccessful = true;
-        userRepo = new UserRepository();
+        userRepo = new InMemoryUserRepository();
         companyRepo = new CompanyRepository();
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         membershipDomain = new MembershipDomainService(userRepo);
-        notificationRepo = new NotificationsRepository();
+        notificationRepo = new InMemoryNotificationsRepository();
         recordingNotifier = new RecordingNotifier();
         notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepo);
