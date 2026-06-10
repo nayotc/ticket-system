@@ -390,6 +390,7 @@ public class ReservationService {
         }
     }
 
+    
     public BigDecimal validateActiveOrderPolicy(String token, Long eventId, PaymentDetails details, String coupon) {
         // Implementation for validating active order policy
         try{

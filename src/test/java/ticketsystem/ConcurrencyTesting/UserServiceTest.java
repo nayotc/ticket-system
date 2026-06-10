@@ -24,12 +24,13 @@ import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.InfrastructureLayer.UserRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 
 public class UserServiceTest {
 
     private static UserService userService;
-    private static UserRepository userRepository;
+    private static IUserRepository userRepository;
     private static TokenService tokenService;
     private static ITokenRepository tokenRepository;
     private static LogbackSystemLogger logger;
@@ -37,7 +38,7 @@ public class UserServiceTest {
     @BeforeEach
     public void setup() {
         logger = new LogbackSystemLogger();
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         userService = new UserService(userRepository, tokenService, logger);
