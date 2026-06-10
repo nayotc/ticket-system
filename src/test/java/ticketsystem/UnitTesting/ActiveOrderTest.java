@@ -305,7 +305,7 @@ public class ActiveOrderTest {
     @Test
     void givenOrder_whenIncrementVersion_thenVersionIncreases() {
         // Arrange
-        int initialVersion = order.getVersion();
+        int initialVersion = order.getVersion() == null ? 0 : order.getVersion();
 
         // Act
         order.incrementVersion();

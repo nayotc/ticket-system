@@ -490,7 +490,7 @@ public class ReservationService {
                     : null;
 
             order = new ActiveOrder(
-                    orderRepository.getNextId(), token,
+                    null, token,
                     userId,
                     eventId);
 

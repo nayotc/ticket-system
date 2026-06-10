@@ -55,10 +55,17 @@ import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
-import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.testutil.RecordingNotifier;
+import java.util.HashSet;
+import java.util.Set;
+
+import ticketsystem.DomainLayer.user.Founder;
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.user.RoleStatus;
 
 public class ReservationServiceTest {
 
@@ -89,7 +96,7 @@ public class ReservationServiceTest {
 
     @BeforeEach
     void setUp() {
-        orderRepository = new OrderRepository();
+        orderRepository = new InMemoryOrderRepository();
         eventRepository = new EventRepository();
         lotteryRepository = new LotteryRepository();
         companyRepository = new CompanyRepository();
@@ -170,6 +177,39 @@ public class ReservationServiceTest {
         PaymentServiceProxy.wasPayCalled = false;
         PaymentServiceProxy.wasRefundCalled = false;
     }
+
+    @Test
+        void GivenCheckoutCompletesLastAvailableTicket_WhenEventBecomesSoldOut_ThenOwnerAndManagerAreNotified() {
+        Long eventId = 48L;
+        Long areaId = 1L;
+        Long ownerId = 2001L;
+        Long managerId = 2002L;
+
+        addActiveOwnerAndManagerUnderCompanyFounder(ownerId, managerId);
+
+        Event event = createActiveEventWithSingleStandingTicket(eventId);
+        eventRepository.addEvent(event);
+
+        reservationService.selectStandingTicket(
+                memberToken,
+                eventId,
+                areaId,
+                1,
+                null
+        );
+
+        boolean checkoutResult = reservationService.checkout(
+                memberToken,
+                eventId,
+                createPaymentDetails(),
+                null
+        );
+
+        assertTrue(checkoutResult);
+
+        recordingNotifier.assertNotifiedMember(ownerId, "sold");
+        recordingNotifier.assertNotifiedMember(managerId, "sold");
+        }
 
     @Test
     void AcceptanceTest_SelectStandingTicket_WhenEventIsRegular_ThenTicketIsSelectedWithoutLotteryCode() {
@@ -971,7 +1011,80 @@ public class ReservationServiceTest {
         recordingNotifier.assertNotifiedGuest(guestToken, "about to expire");
         recordingNotifier.assertNotificationCount(1);
     }
+        private void addActiveOwnerAndManagerUnderCompanyFounder(Long ownerId, Long managerId) {
+        Member founder = userRepository.getMemberById(COMPANY_FOUNDER_ID);
+        assertNotNull(founder, "Founder member must exist in test setup");
 
+        if (founder.getRoleInCompany(COMPANY_ID) == null) {
+                founder.addFounderRole(COMPANY_ID);
+        }
+
+        Founder founderRole = (Founder) founder.getRoleInCompany(COMPANY_ID);
+
+        Member owner = new Member(
+                ownerId,
+                "soldOutOwner",
+                "Sold Out Owner",
+                "0501111111",
+                LocalDate.of(2001, 1, 1)
+        );
+
+        owner.addOwnerRole(COMPANY_ID, COMPANY_FOUNDER_ID);
+        owner.getRoleInCompany(COMPANY_ID).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(ownerId, owner, "password123");
+
+        Set<Permission> managerPermissions = new HashSet<>();
+        managerPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
+
+        Member manager = new Member(
+                managerId,
+                "soldOutManager",
+                "Sold Out Manager",
+                "0502222222",
+                LocalDate.of(2001, 1, 1)
+        );
+
+        manager.addManagerRole(COMPANY_ID, COMPANY_FOUNDER_ID, managerPermissions);
+        manager.getRoleInCompany(COMPANY_ID).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(managerId, manager, "password123");
+
+        founderRole.addAppointee(ownerId);
+        founderRole.addAppointee(managerId);
+
+        userRepository.updateMember(founder);
+        }
+        private Event createActiveEventWithSingleStandingTicket(Long eventId) {
+    Event event = new Event(
+            eventId,
+            LocalDateTime.now().plusDays(10),
+            "Sold Out Test Event",
+            COMPANY_ID,
+            COMPANY_FOUNDER_ID,
+            EventLocation.TEL_AVIV,
+            100L,
+            EventCategory.CONCERT,
+            "Test Artist",
+            new BigDecimal("100.00"),
+            new Pair<>(10, 10)
+    );
+
+    event.setStatus(Event.eventStatus.ACTIVE);
+
+    EventMap map = new EventMap(new Pair<>(10, 10));
+
+    StandingArea standingArea = new StandingArea(
+            1L,
+            "Single Ticket Standing Area",
+            new Pair<>(0, 0),
+            new Pair<>(5, 5),
+            1
+    );
+
+    map.addElement(standingArea);
+    event.setMap(map);
+
+    return event;
+}
     private Event createActiveEvent(Long eventId) {
         Event event = new Event(
                 eventId,

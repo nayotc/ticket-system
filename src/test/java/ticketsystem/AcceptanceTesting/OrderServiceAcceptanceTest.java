@@ -18,9 +18,9 @@ import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
 import ticketsystem.DomainLayer.order.Ticket;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
-import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
@@ -38,7 +38,7 @@ public class OrderServiceAcceptanceTest {
 
     @BeforeEach
     void setUp() {
-        orderRepository = new OrderRepository();
+        orderRepository = new InMemoryOrderRepository();
         logger = new LogbackSystemLogger();
         notification = new VaadinNotifier(new InMemoryNotificationsRepository());
 

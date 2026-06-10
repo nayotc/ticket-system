@@ -20,8 +20,8 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
 import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
-import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
@@ -43,7 +43,7 @@ public class UserOrderIntegrationTests {
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         userService = new UserService(userRepository, tokenService, logger);
-        orderRepository = new OrderRepository();
+        orderRepository = new InMemoryOrderRepository();
         orderService = new OrderService(orderRepository, tokenService, logger, notification);
         userService.addUserLoginListener(orderService);
     }

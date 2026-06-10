@@ -59,7 +59,7 @@ import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
-import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
@@ -830,7 +830,7 @@ public class EventServiceAcceptanceTest {
         Event event = createActiveExistingEvent();
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
-        IOrderRepository orderRepository = new OrderRepository();
+        IOrderRepository orderRepository = new InMemoryOrderRepository();
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
         String buyerSessionId = tokenService.addActiveSession(new Guest());
@@ -869,7 +869,7 @@ public class EventServiceAcceptanceTest {
         Event event = createActiveExistingEvent();
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
-        IOrderRepository orderRepository = new OrderRepository();
+        IOrderRepository orderRepository = new InMemoryOrderRepository();
 
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
@@ -912,7 +912,7 @@ public class EventServiceAcceptanceTest {
         String sessionWithoutPermission;
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
-        IOrderRepository orderRepository = new OrderRepository();
+        IOrderRepository orderRepository = new InMemoryOrderRepository();
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
         String buyerSessionId = tokenService.addActiveSession(new Guest());
@@ -964,7 +964,7 @@ public class EventServiceAcceptanceTest {
         Long nonExistingEventId = 999L;
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
-        IOrderRepository orderRepository = new OrderRepository();
+        IOrderRepository orderRepository = new InMemoryOrderRepository();
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
         eventService.addEventUpdatesListener(historyListener);
@@ -987,7 +987,7 @@ public class EventServiceAcceptanceTest {
         Event event = createActiveExistingEvent();
 
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
-        IOrderRepository orderRepository = new OrderRepository();
+        IOrderRepository orderRepository = new InMemoryOrderRepository();
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
 
         String buyerSessionId = tokenService.addActiveSession(new Guest());
