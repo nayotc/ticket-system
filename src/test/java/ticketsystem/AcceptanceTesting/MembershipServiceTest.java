@@ -40,7 +40,7 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
@@ -92,7 +92,7 @@ public class MembershipServiceTest {
         this.systemLogger = new LogbackSystemLogger();
         this.tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo, systemLogger);
         this.userRepository = new InMemoryUserRepository();
-        this.companyRepository = new CompanyRepository();
+        this.companyRepository = new InMemoryCompanyRepository();
         this.domainService = new MembershipDomainService(userRepository);
         this.recordingNotifier = new RecordingNotifier();
         this.notifier = recordingNotifier;

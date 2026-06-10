@@ -41,8 +41,8 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
+import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
@@ -79,7 +79,7 @@ public class HistoryServiceTest {
         this.logger = new LogbackSystemLogger();
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         this.userService = new UserService(userRepository, tokenService, logger);
-        this.companyRepository = new CompanyRepository();
+        this.companyRepository = new InMemoryCompanyRepository();
         this.userAccessService = new UserAccessService(userRepository);
         this.notificationRepository = new InMemoryNotificationsRepository();
         this.recordingNotifier = new RecordingNotifier();

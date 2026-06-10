@@ -14,10 +14,12 @@ import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountKind;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.policy.PurchaseRule;
+import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 
 class CompanyTest {
 
@@ -40,13 +42,29 @@ class CompanyTest {
     }
 
     @Test
-    void GivenNewCompanies_WhenCreated_ThenIdsAreUniqueAndIncremented() {
-        Company secondCompany = new Company("Another Company", FOUNDER_ID, PurchasePolicy.noRestrictions(),
-                new DiscountPolicy(DiscountCompositionType.MAX));
+    void GivenNewCompanies_WhenSaved_ThenIdsAreUniqueAndPositive() {
+        ICompanyRepository repository = new InMemoryCompanyRepository();
 
-        assertTrue(company.getId() > 0, "Company ID should be a positive number.");
-        assertTrue(secondCompany.getId() > company.getId(), "New company should receive a higher incremented ID.");
-        assertNotEquals(company.getId(), secondCompany.getId(), "Every company should have a unique ID.");
+        Company first = new Company(
+                "Company A",
+                1L,
+                PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX)
+        );
+
+        Company second = new Company(
+                "Company B",
+                2L,
+                PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX)
+        );
+
+        repository.save(first);
+        repository.save(second);
+
+        assertTrue(first.getId() > 0, "First company ID should be a positive number.");
+        assertTrue(second.getId() > 0, "Second company ID should be a positive number.");
+        assertNotEquals(first.getId(), second.getId(), "Company IDs should be unique.");
     }
 
     // --- UC 4.13: Close/Suspend Company state ---

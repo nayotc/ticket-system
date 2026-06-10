@@ -53,6 +53,7 @@ import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
@@ -100,7 +101,7 @@ public class ReservationServiceTest {
         orderRepository = new InMemoryOrderRepository();
         eventRepository = new EventRepository();
         lotteryRepository = new LotteryRepository();
-        companyRepository = new CompanyRepository();
+        companyRepository = new InMemoryCompanyRepository();
         userRepository = new InMemoryUserRepository();
 
         membershipDomain = new MembershipDomainService(userRepository);
@@ -134,7 +135,7 @@ public class ReservationServiceTest {
         companyRepository.save(company);
 
         eventCatalogDomainService = new EventCatalogDomainService(
-                (CompanyRepository) companyRepository);
+                companyRepository);
 
         resetPaymentProxy();
 

@@ -44,7 +44,7 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
@@ -70,7 +70,7 @@ public class CompanyServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        companyRepository = new CompanyRepository();
+        companyRepository = new InMemoryCompanyRepository();
         userRepository = new InMemoryUserRepository();
         ITokenRepository tokenRepository = new TokenRepository();
         testLogger = new LogbackSystemLogger();

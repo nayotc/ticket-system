@@ -19,6 +19,7 @@ import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
@@ -29,7 +30,7 @@ import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
@@ -39,7 +40,7 @@ public class EventCatalogAcceptanceTest {
     private EventCatalogService eventCatalogService;
 
     private EventRepository eventRepository;
-    private CompanyRepository companyRepository;
+    private ICompanyRepository companyRepository;
     private TokenService tokenService;
     private ISystemLogger logger;
 
@@ -58,7 +59,7 @@ public class EventCatalogAcceptanceTest {
     @BeforeEach
     void setUp() {
         eventRepository = new EventRepository();
-        companyRepository = new CompanyRepository();
+        companyRepository = new InMemoryCompanyRepository();
         tokenService = new TokenService("default_secret_key_for_development_purposes_only_32_chars", new TokenRepository(), new LogbackSystemLogger());
         logger = new LogbackSystemLogger();
 

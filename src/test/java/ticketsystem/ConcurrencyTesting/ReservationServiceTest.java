@@ -48,6 +48,7 @@ import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
@@ -88,7 +89,7 @@ public class ReservationServiceTest {
         lotteryRepository = new LotteryRepository();
         ((LotteryRepository) lotteryRepository).clearForTests();
 
-        companyRepository = new CompanyRepository();
+        companyRepository = new InMemoryCompanyRepository();
         userRepository = new InMemoryUserRepository();
         membershipDomain = new MembershipDomainService(userRepository);
 
@@ -114,8 +115,7 @@ public class ReservationServiceTest {
         company.setId(COMPANY_ID);
         companyRepository.save(company);
 
-        eventCatalogDomainService
-                = new EventCatalogDomainService((CompanyRepository) companyRepository);
+        eventCatalogDomainService = new EventCatalogDomainService(companyRepository);
 
         resetPaymentProxy();
 

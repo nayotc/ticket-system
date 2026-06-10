@@ -43,6 +43,7 @@ import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
+import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
@@ -82,7 +83,7 @@ public class SystemAdminServiceTest {
         PaymentServiceProxy.wasConnectCalled = false;
         SecureBarcodeProxy.isConnectionSuccessful = true;
         userRepo = new InMemoryUserRepository();
-        companyRepo = new CompanyRepository();
+        companyRepo = new InMemoryCompanyRepository();
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         membershipDomain = new MembershipDomainService(userRepo);
