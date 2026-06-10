@@ -381,7 +381,7 @@ public class ReservationPresenter {
      * @param couponCode optional coupon code entered by the user
      * @return true if checkout completed successfully
      */
-    public boolean checkout(String token, Long eventId, PaymentDetails paymentDetails, BigDecimal amountAfterDiscount) {
+    public boolean checkout(String token, Long eventId, PaymentDetails paymentDetails, String couponCode) {
         try {
             if (token == null || token.isBlank()) {
                 throw presentationError("No active session found. Please refresh and try again.");
@@ -395,7 +395,7 @@ public class ReservationPresenter {
                     token,
                     eventId,
                     paymentDetails, 
-                    amountAfterDiscount
+                    normalizeOptionalText(couponCode)
             );
 
         } catch (PresentationException e) {
@@ -818,6 +818,38 @@ public class ReservationPresenter {
     private String translateReservationError(String message) {
         if (message == null || message.isBlank()) {
             return "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
+        }
+        if (message == null || message.isBlank()) {
+            return "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
+        }
+
+        // 1. טיפול דינמי בכמות כרטיסים מקסימלית
+        if (message.matches("Cannot purchase more than \\d+ tickets\\.")) {
+            String maxTickets = message.replaceAll("\\D+", "");
+            return "לא ניתן לרכוש יותר מ-" + maxTickets + " כרטיסים לאירוע זה.";
+        }
+
+        // 2. טיפול דינמי בהגבלת גיל מינימלי
+        if (message.contains("Customer does not meet the minimum age requirement of")) {
+            String minAge = message.replaceAll("\\D+", "");
+            return "הרכישה נכשלה: האירוע מוגבל מגיל " + minAge + " ומעלה בלבד.";
+        }
+
+        // 3. טיפול דינמי בכמות כרטיסים מינימלית
+        if (message.contains("Insufficient tickets purchased, minimum required:")) {
+            String minTickets = message.replaceAll("\\D+", "");
+            return "יש לרכוש לפחות " + minTickets + " כרטיסים כדי לבצע הזמנה לאירוע זה.";
+        }
+
+        // 4. טיפול בשגיאה מרוכבת (All rules failed)
+        if (message.startsWith("All rules failed:")) {
+            String reasonsPart = message.substring("All rules failed:".length()).trim();
+            String[] individualReasons = reasonsPart.split("; ");
+            List<String> translatedReasons = new ArrayList<>();
+            for (String reason : individualReasons) {
+                translatedReasons.add(translateReservationError(reason.trim())); // קריאה רקורסיבית מוגנת
+            }
+            return "הרכישה נדחתה עקב אי-עמידה בתנאי המדיניות: " + String.join(" וגם ", translatedReasons);
         }
         return switch (message) {
             case "No active session found. Please refresh and try again." ->

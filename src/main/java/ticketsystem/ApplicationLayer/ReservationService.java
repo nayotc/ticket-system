@@ -391,7 +391,7 @@ public class ReservationService {
     }
 
     
-    public BigDecimal validateActiveOrderPolicy(String token, Long eventId, PaymentDetails details, String coupon) {
+    public boolean validateActiveOrderPolicy(String token, Long eventId, PaymentDetails details, String couponCode) {
         // Implementation for validating active order policy
         try{
             tokenService.validateToken(token);
@@ -404,10 +404,10 @@ public class ReservationService {
             int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();
             eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(),order.getTickets().size(), buyerAge);
             reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
-            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
+            BigDecimal amount = reservationDomeinService.calculatePrice(order, event);
             BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
             saveAll(order, event);
-            return amountAfterDiscount;
+            return true;
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to validate active order policy: " + e.getMessage());
         }
@@ -415,7 +415,7 @@ public class ReservationService {
 
     // 2.8 checkout
    
-    public boolean checkout(String token, Long eventId, PaymentDetails details, BigDecimal amountAfterDiscount) {
+    public boolean checkout(String token, Long eventId, PaymentDetails details, String couponCode) {
         expireOldOrders();
 
         try {
@@ -429,6 +429,8 @@ public class ReservationService {
             if(details == null|| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
+            BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
+            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
             boolean paymentResult = paymentService.pay(amountAfterDiscount, details);
 
             if (!paymentResult) {
