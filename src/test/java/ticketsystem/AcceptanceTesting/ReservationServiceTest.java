@@ -56,7 +56,7 @@ import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
-import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.testutil.RecordingNotifier;
@@ -90,7 +90,7 @@ public class ReservationServiceTest {
 
     @BeforeEach
     void setUp() {
-        orderRepository = new OrderRepository();
+        orderRepository = new InMemoryOrderRepository();
         eventRepository = new EventRepository();
         lotteryRepository = new LotteryRepository();
         companyRepository = new CompanyRepository();

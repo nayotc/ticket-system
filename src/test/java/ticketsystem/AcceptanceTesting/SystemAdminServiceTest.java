@@ -46,8 +46,8 @@ import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
+import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
-import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
@@ -91,7 +91,7 @@ public class SystemAdminServiceTest {
         notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepo);
         companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger, userAccessService, notifier);
-        orderRepo = new OrderRepository();
+        orderRepo = new InMemoryOrderRepository();
         historyRepo = new HistoryRepository();
         systemAdminService = new SystemAdminService(
                 realAdminRepo,
