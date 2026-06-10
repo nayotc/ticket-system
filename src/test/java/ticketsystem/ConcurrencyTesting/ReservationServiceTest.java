@@ -207,7 +207,7 @@ public class ReservationServiceTest {
         eventRepository.addEvent(event);
 
         reservationService.selectStandingTicket(token, eventId, areaId, 1, null);
-        BigDecimal finalPrice = reservationService.validateActiveOrderPolicy(token, eventId, createPaymentDetails(), null);
+        reservationService.validateActiveOrderPolicy(token, eventId, createPaymentDetails(), null);
 
         int numberOfThreads = 10;
 
@@ -227,7 +227,7 @@ public class ReservationServiceTest {
                             token,
                             eventId,
                             createPaymentDetails(),
-                            finalPrice 
+                            null
                     );
 
                     if (result) {
@@ -414,22 +414,20 @@ public class ReservationServiceTest {
 
             executor.submit(() -> {
                 try {
-                    // === התיקון שלנו ===
-                    // כל משתמש מכין את ההזמנה שלו ומחשב את המחיר הספציפי שלו
-                    BigDecimal finalPrice = reservationService.validateActiveOrderPolicy(
+                    reservationService.validateActiveOrderPolicy(
                             tokenForUserIndex(userIndex),
                             eventId,
                             createPaymentDetails(),
                             null
                     );
 
-                    startLatch.await(); // מחכים בקו הזינוק עד שכולם יסיימו הכנה
+                    startLatch.await();
 
                     boolean result = reservationService.checkout(
                             tokenForUserIndex(userIndex),
                             eventId,
                             createPaymentDetails(),
-                            finalPrice // שולחים את המחיר המחושב
+                            null 
                     );
 
                     if (result) {

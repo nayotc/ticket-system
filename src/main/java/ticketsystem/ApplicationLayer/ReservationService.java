@@ -405,7 +405,7 @@ public class ReservationService {
             eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(),order.getTickets().size(), buyerAge);
             reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
             BigDecimal amount = reservationDomeinService.calculatePrice(order, event);
-            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
+            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),couponCode);
             saveAll(order, event);
             return true;
         } catch (Exception e) {
@@ -430,7 +430,7 @@ public class ReservationService {
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
-            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),coupon);
+            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),couponCode);
             boolean paymentResult = paymentService.pay(amountAfterDiscount, details);
 
             if (!paymentResult) {

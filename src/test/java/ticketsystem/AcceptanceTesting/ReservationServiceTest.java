@@ -553,12 +553,12 @@ public class ReservationServiceTest {
                 null);
 
         assertTrue(selected);
-        BigDecimal finalPrice = reservationService.validateActiveOrderPolicy(memberToken, eventId, createPaymentDetails(), null);
+        reservationService.validateActiveOrderPolicy(memberToken, eventId, createPaymentDetails(), null);
         boolean checkoutResult = reservationService.checkout(
                 memberToken,
                 eventId,
                 createPaymentDetails(),
-                finalPrice);
+                null);
 
         assertTrue(checkoutResult);
 
@@ -596,7 +596,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         createPaymentDetails(),
-                        new BigDecimal("100.00")));
+                        null));
 
         assertTrue(PaymentServiceProxy.wasPayCalled);
         assertFalse(PaymentServiceProxy.wasRefundCalled);
@@ -628,7 +628,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         createPaymentDetails(),
-                        new BigDecimal("100.00")));
+                        null));
 
         assertTrue(PaymentServiceProxy.wasPayCalled);
         assertTrue(PaymentServiceProxy.wasRefundCalled);
@@ -656,12 +656,12 @@ public class ReservationServiceTest {
                 null);
 
         assertTrue(selected);
-        BigDecimal finalPrice = reservationService.validateActiveOrderPolicy(guestToken, eventId, createPaymentDetails(), null);
+        reservationService.validateActiveOrderPolicy(guestToken, eventId, createPaymentDetails(), null);
         boolean checkoutResult = reservationService.checkout(
                 guestToken,
                 eventId,
                 createPaymentDetails(),
-                finalPrice);
+                null);
 
         assertTrue(checkoutResult);
 
@@ -825,7 +825,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         null,
-                        new BigDecimal("100.00")));
+                        null));
 
         assertEquals("Payment details are incomplete", exception.getMessage());
     }
@@ -853,7 +853,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         invalidDetails,
-                        new BigDecimal("100.00")));
+                        null));
 
         assertEquals("Payment details are incomplete", exception.getMessage());
     }
@@ -882,7 +882,7 @@ public class ReservationServiceTest {
                         memberToken,
                         eventId,
                         createPaymentDetails(),
-                        new BigDecimal("100.00")));
+                        null));
 
         assertEquals(
                 "Ticket issuing failed and refund failed.",
@@ -907,12 +907,12 @@ public class ReservationServiceTest {
                 areaId,
                 1,
                 null);
-        BigDecimal finalPrice = reservationService.validateActiveOrderPolicy(memberToken, eventId, createPaymentDetails(), null);
+        reservationService.validateActiveOrderPolicy(memberToken, eventId, createPaymentDetails(), null);
         boolean result = reservationService.checkout(
                 memberToken,
                 eventId,
                 createPaymentDetails(),
-                finalPrice);
+                null);
 
         assertTrue(result);
     }

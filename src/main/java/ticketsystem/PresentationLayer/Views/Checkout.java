@@ -661,7 +661,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                     resolveSessionToken(),
                     activeOrder.getEventId(),
                     details,
-                    pricing.total()
+                    normalizedCouponCode()
 
             );
 
