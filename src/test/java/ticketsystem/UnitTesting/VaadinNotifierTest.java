@@ -1,25 +1,28 @@
 package ticketsystem.UnitTesting;
-import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ticketsystem.DomainLayer.notifications.Notification;
 import ticketsystem.DomainLayer.notifications.Notification.Type;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
+import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
 public class VaadinNotifierTest {
 
-    private NotificationsRepository notificationsRepository;
+    private InMemoryNotificationsRepository notificationsRepository;
     private VaadinNotifier notifier;
 
     @BeforeEach
     void setUp() {
-        notificationsRepository = new NotificationsRepository();
+        notificationsRepository = new InMemoryNotificationsRepository();
         notifier = new VaadinNotifier(notificationsRepository);
     }
 
@@ -29,8 +32,8 @@ public class VaadinNotifierTest {
 
         notifier.notifyMember(memberId, "Test notification");
 
-        List<Notification> notifications =
-                notificationsRepository.findPendingByTargetId(memberId.toString());
+        List<Notification> notifications
+                = notificationsRepository.findByTargetId(memberId.toString());
 
         assertEquals(1, notifications.size());
 
@@ -47,8 +50,8 @@ public class VaadinNotifierTest {
     void GivenNullMember_WhenNotifyMember_ThenNoNotificationIsSaved() {
         notifier.notifyMember(null, "Test notification");
 
-        List<Notification> notifications =
-                notificationsRepository.findPendingByTargetId("null");
+        List<Notification> notifications
+                = notificationsRepository.findByTargetId("null");
 
         assertTrue(notifications.isEmpty());
     }
@@ -59,8 +62,8 @@ public class VaadinNotifierTest {
 
         notifier.notifyMember(memberId, "   ");
 
-        List<Notification> notifications =
-                notificationsRepository.findPendingByTargetId(memberId.toString());
+        List<Notification> notifications
+                = notificationsRepository.findByTargetId(memberId.toString());
 
         assertTrue(notifications.isEmpty());
     }
@@ -69,9 +72,9 @@ public class VaadinNotifierTest {
     void GivenSeveralMembers_WhenNotifyMembers_ThenNotificationIsSavedForEachMember() {
         notifier.notifyMembers(List.of(10L, 20L, 30L), "Group notification");
 
-        assertEquals(1, notificationsRepository.findPendingByTargetId("10").size());
-        assertEquals(1, notificationsRepository.findPendingByTargetId("20").size());
-        assertEquals(1, notificationsRepository.findPendingByTargetId("30").size());
+        assertEquals(1, notificationsRepository.findByTargetId("10").size());
+        assertEquals(1, notificationsRepository.findByTargetId("20").size());
+        assertEquals(1, notificationsRepository.findByTargetId("30").size());
     }
 
     @Test
@@ -83,9 +86,9 @@ public class VaadinNotifierTest {
 
         notifier.notifyMembers(memberIds, "Group notification");
 
-        assertEquals(1, notificationsRepository.findPendingByTargetId("10").size());
-        assertEquals(1, notificationsRepository.findPendingByTargetId("20").size());
-        assertTrue(notificationsRepository.findPendingByTargetId("null").isEmpty());
+        assertEquals(1, notificationsRepository.findByTargetId("10").size());
+        assertEquals(1, notificationsRepository.findByTargetId("20").size());
+        assertTrue(notificationsRepository.findByTargetId("null").isEmpty());
     }
 
     @Test
@@ -95,8 +98,8 @@ public class VaadinNotifierTest {
 
         notifier.notifyMemberAssignment(memberId, "Please approve assignment", companyId);
 
-        List<Notification> notifications =
-                notificationsRepository.findPendingByTargetId(memberId.toString());
+        List<Notification> notifications
+                = notificationsRepository.findByTargetId(memberId.toString());
 
         assertEquals(1, notifications.size());
 
@@ -114,8 +117,8 @@ public class VaadinNotifierTest {
 
         notifier.notifyMemberAssignment(memberId, "Please approve assignment", null);
 
-        List<Notification> notifications =
-                notificationsRepository.findPendingByTargetId(memberId.toString());
+        List<Notification> notifications
+                = notificationsRepository.findByTargetId(memberId.toString());
 
         assertTrue(notifications.isEmpty());
     }
