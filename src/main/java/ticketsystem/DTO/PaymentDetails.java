@@ -24,12 +24,6 @@ public class PaymentDetails {
 
     public PaymentDetails() {
     }
-   
-    public PaymentDetails(String paymentMethodId, String payerName, LocalDate birthDate) {
-        this.paymentMethodId = paymentMethodId;
-        this.payerName = payerName;
-        this.birthDate = birthDate;
-    }
 
     public PaymentDetails(String paymentMethodId,
                           String payerName,

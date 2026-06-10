@@ -605,7 +605,17 @@ public class ReservationServiceTest {
     }
 
     private PaymentDetails createPaymentDetails() {
-        return new PaymentDetails("VISA", "Yosi", LocalDate.now());
+        return new PaymentDetails(
+        "VISA",
+        "Yosi Cohen",
+        LocalDate.of(2001, 1, 1),
+        "4580458045804580",
+        12,
+        2030,
+        "123",
+        "123456789",
+        "ILS"
+);
     }
 
     private String createLoggedInMember(String username, String password) {

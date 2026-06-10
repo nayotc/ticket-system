@@ -259,26 +259,52 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         }
     }
 
-    @Override
+   @Override
     public void onEventCanceled(Long eventId) {
         if (eventId == null) {
             return;
         }
 
-        List<Purchase> purchases = historyRepository.getPurchasesByEventId(eventId);
+        List<Purchase> purchases =
+                historyRepository.getPurchasesByEventId(eventId);
 
         for (Purchase purchase : purchases) {
+
             for (PurchasedTicket ticket : purchase.getTickets()) {
                 ticket.setStatus(TicketStatus.CANCELED);
-                ticketIssuingService.cancelTicket(ticket.getSecureBarcode());
-            }
-            paymentService.refund(purchase.getTransactionId());
 
+                boolean ticketCancelled =
+                        ticketIssuingService.cancelTicket(ticket.getSecureBarcode());
+
+                if (!ticketCancelled) {
+                    logger.logEvent(
+                            "Failed to cancel issued ticket. ticketId="
+                                    + ticket.getSecureBarcode()
+                                    + ", purchaseId=" + purchase.getPurchaseId()
+                                    + ", eventId=" + eventId,
+                            ISystemLogger.LogLevel.WARN
+                    );
+                }
+            }
+
+            boolean refunded =
+                    paymentService.refund(purchase.getTransactionId());
+
+            if (!refunded) {
+                logger.logEvent(
+                        "Failed to refund purchase. transactionId="
+                                + purchase.getTransactionId()
+                                + ", purchaseId=" + purchase.getPurchaseId()
+                                + ", eventId=" + eventId,
+                        ISystemLogger.LogLevel.WARN
+                );
+            }
         }
 
         notifyPurchasedBuyers(
                 purchases,
-                "event id " + eventId + "  that you purchased tickets for was canceled."
+                "event id " + eventId
+                        + " that you purchased tickets for was canceled."
         );
     }
 
