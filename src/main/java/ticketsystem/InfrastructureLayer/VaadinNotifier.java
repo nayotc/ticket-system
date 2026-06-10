@@ -33,7 +33,6 @@ public class VaadinNotifier implements INotifier {
     }
 
     @Override
-    @Transactional
     public void notifyGuest(String sessionId, String message) {
         if (sessionId == null || sessionId.isBlank() || message == null || message.isBlank()) {
             return;
