@@ -46,6 +46,7 @@ import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
+import ticketsystem.testutil.RecordingNotifier;
 
 /**
  * Acceptance Tests for MembershipService. This class uses real Domain objects
@@ -60,6 +61,7 @@ public class MembershipServiceTest {
     private ISystemLogger systemLogger;
     private MembershipService membershipService;
     private INotifier notifier;
+    private RecordingNotifier recordingNotifier;
     private NotificationsRepository notificationsRepository;
     // Test Data
     private final Long companyId = 1L;
@@ -93,8 +95,8 @@ public class MembershipServiceTest {
         this.userRepository = new InMemoryUserRepository();
         this.companyRepository = new CompanyRepository();
         this.domainService = new MembershipDomainService(userRepository);
-        this.notificationsRepository = new NotificationsRepository();
-        this.notifier = new VaadinNotifier(notificationsRepository);
+        this.recordingNotifier = new RecordingNotifier();
+        this.notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepository);
         // Initialize service with null for notifications and the logger
         this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService,
@@ -164,6 +166,7 @@ public class MembershipServiceTest {
         assertNotNull(assignedRole, "A role should be created for the member.");
         assertTrue(assignedRole instanceof Manager, "The role must be of type Manager.");
         assertEquals(RoleStatus.PENDING, assignedRole.getStatus(), "Initial assignment must be PENDING.");
+        recordingNotifier.assertNotifiedMember(memberId, "manager");
     }
 
     @Test
@@ -272,6 +275,7 @@ public class MembershipServiceTest {
                 "Permissions should be updated in the repository.");
         assertTrue(managerRole.getPermissionKeys().contains(Permission.CONFIGURE_HALL_AND_MAP.getKey()),
                 "Permissions should be updated in the repository.");
+        recordingNotifier.assertNotifiedMember(managerId, "permission");
     }
 
     @Test
@@ -418,6 +422,7 @@ public class MembershipServiceTest {
         assertNotNull(assignedRole, "A role should be created for the member.");
         assertTrue(assignedRole instanceof Owner, "The role must be of type Owner.");
         assertEquals(RoleStatus.PENDING, assignedRole.getStatus(), "Initial assignment must be PENDING.");
+        recordingNotifier.assertNotifiedMember(memberId, "owner");
     }
 
     @Test
@@ -1154,6 +1159,7 @@ public class MembershipServiceTest {
         );
 
         assertTrue(result);
+        recordingNotifier.assertNotifiedMember(managerId, "removed");
     }
 
     @Test
@@ -1166,5 +1172,6 @@ public class MembershipServiceTest {
         );
 
         assertTrue(result);
+        recordingNotifier.assertNotifiedMember(ownerId, "removed");
     }
 }

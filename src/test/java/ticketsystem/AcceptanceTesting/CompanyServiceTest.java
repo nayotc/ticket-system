@@ -46,6 +46,12 @@ import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
+import java.util.HashSet;
+import java.util.Set;
+
+import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.testutil.RecordingNotifier;
 
 public class CompanyServiceTest {
 
@@ -54,6 +60,7 @@ public class CompanyServiceTest {
     private ITokenService tokenService;
     private ISystemLogger testLogger;
     private INotifier Notifier;
+    private RecordingNotifier recordingNotifier;
     private String founderToken;
     private String nonFounderToken;
     private IUserRepository userRepository;
@@ -77,8 +84,8 @@ public class CompanyServiceTest {
         userService = new UserService(userRepository, tokenService, testLogger);
         membershipDomain = new MembershipDomainService(userRepository);
         userService = new UserService(userRepository, tokenService, testLogger);
-        notificationRepository = new NotificationsRepository();
-        Notifier = new VaadinNotifier(notificationRepository);
+        recordingNotifier = new RecordingNotifier();
+        Notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepository);
         companyService = new CompanyService(companyRepository, tokenService, membershipDomain, testLogger,
                 userAccessService, Notifier);
@@ -98,6 +105,47 @@ public class CompanyServiceTest {
 
         return memberToken;
     }
+    private void addActiveOwnerAndManagerUnderFounder(
+                long companyId,
+                long founderId,
+                long ownerId,
+                long managerId
+        ) {
+        Member owner = new Member(
+                ownerId,
+                "companyOwner",
+                "Company Owner",
+                "0501111111",
+                LocalDate.of(2001, 1, 1)
+        );
+
+        owner.addOwnerRole(companyId, founderId);
+        owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(ownerId, owner, "password123");
+
+        Set<Permission> managerPermissions = new HashSet<>();
+        managerPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
+
+        Member manager = new Member(
+                managerId,
+                "companyManager",
+                "Company Manager",
+                "0502222222",
+                LocalDate.of(2001, 1, 1)
+        );
+
+        manager.addManagerRole(companyId, founderId, managerPermissions);
+        manager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(managerId, manager, "password123");
+
+        Member founder = userRepository.getMemberById(founderId);
+        Founder founderRole = (Founder) founder.getRoleInCompany(companyId);
+
+        founderRole.addAppointee(ownerId);
+        founderRole.addAppointee(managerId);
+
+        userRepository.updateMember(founder);
+        }
 
     // UC 3.2: Create a production company
     @Test
@@ -225,6 +273,22 @@ public class CompanyServiceTest {
 
         assertEquals("Cannot purchase more than 5 tickets.", exception.getMessage());
     }
+    @Test
+        void GivenFounderClosesCompany_WhenCompanyHasOwnerAndManager_ThenOwnerAndManagerAreNotified()
+                throws Exception {
+        CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        long founderId = tokenService.extractUserId(founderToken);
+        long ownerId = 2001L;
+        long managerId = 2002L;
+
+        addActiveOwnerAndManagerUnderFounder(company.getId(), founderId, ownerId, managerId);
+
+        companyService.closeProductionCompany(founderToken, company.getId());
+
+        recordingNotifier.assertNotifiedMember(ownerId, "closed");
+        recordingNotifier.assertNotifiedMember(managerId, "closed");
+        }
 
     @Test
     void GivenFounder_WhenSetCompanyPurchasePolicyWithMinAgeRule_ThenPolicyIsSavedOnCompany() throws Exception {
@@ -250,6 +314,23 @@ public class CompanyServiceTest {
                 "Customer does not meet the minimum age requirement of 18",
                 exception.getMessage());
     }
+    @Test
+        void GivenFounderReopensCompany_WhenCompanyHasOwnerAndManager_ThenOwnerAndManagerAreNotified()
+                throws Exception {
+        CompanyDTO company = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+        long founderId = tokenService.extractUserId(founderToken);
+        long ownerId = 3001L;
+        long managerId = 3002L;
+
+        addActiveOwnerAndManagerUnderFounder(company.getId(), founderId, ownerId, managerId);
+
+        companyService.closeProductionCompany(founderToken, company.getId());
+        companyService.reopenProductionCompany(founderToken, company.getId());
+
+        recordingNotifier.assertNotifiedMember(ownerId, "reopened");
+        recordingNotifier.assertNotifiedMember(managerId, "reopened");
+        }
 
     @Test
     void GivenFounder_WhenSetCompanyPurchasePolicyWithNestedRule_ThenNestedPolicyIsSavedOnCompany()
