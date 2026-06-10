@@ -44,7 +44,7 @@ import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
+import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
@@ -69,7 +69,7 @@ public class SystemAdminServiceTest {
     private MembershipDomainService membershipDomain;
     private RecordingNotifier recordingNotifier;
     private INotifier notifier;
-    private NotificationsRepository notificationRepo;
+    private InMemoryNotificationsRepository notificationRepo;
 
     private UserAccessService userAccessService;
 
@@ -86,7 +86,7 @@ public class SystemAdminServiceTest {
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         membershipDomain = new MembershipDomainService(userRepo);
-        notificationRepo = new NotificationsRepository();
+        notificationRepo = new InMemoryNotificationsRepository();
         recordingNotifier = new RecordingNotifier();
         notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepo);

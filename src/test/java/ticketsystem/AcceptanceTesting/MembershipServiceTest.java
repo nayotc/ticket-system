@@ -41,11 +41,10 @@ import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
-import ticketsystem.InfrastructureLayer.TokenRepository;
+import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
-import ticketsystem.InfrastructureLayer.VaadinNotifier;
+import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.testutil.RecordingNotifier;
 
 /**
@@ -62,7 +61,7 @@ public class MembershipServiceTest {
     private MembershipService membershipService;
     private INotifier notifier;
     private RecordingNotifier recordingNotifier;
-    private NotificationsRepository notificationsRepository;
+    private InMemoryNotificationsRepository notificationsRepository;
     // Test Data
     private final Long companyId = 1L;
     private Company testCompany;

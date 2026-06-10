@@ -29,7 +29,7 @@ import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
+import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
@@ -40,7 +40,7 @@ public class LotteryServiceTest {
     private IUserRepository userRepo;
     private LotteryRepository lotteryRepo;
     private TokenService tokenService;
-    private NotificationsRepository notificationRepository;
+    private InMemoryNotificationsRepository notificationRepository;
     private RecordingNotifier recordingNotifier;
     private INotifier notifier;
     private UserAccessService userAccessService;
@@ -80,7 +80,7 @@ public class LotteryServiceTest {
         TokenRepository tokenRepository = new TokenRepository();
         logger = new LogbackSystemLogger();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
-        notificationRepository = new NotificationsRepository();
+        notificationRepository = new InMemoryNotificationsRepository();
         recordingNotifier = new RecordingNotifier();
         notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepo);

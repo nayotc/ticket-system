@@ -61,7 +61,7 @@ import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
+import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 import ticketsystem.DTO.DiscountDTO;
@@ -75,7 +75,7 @@ public class EventServiceAcceptanceTest {
     private ITokenService tokenService;
     private MembershipDomainService membershipDomain;
     private final ISystemLogger logger = new LogbackSystemLogger();
-    private NotificationsRepository notificationsRepository;
+    private InMemoryNotificationsRepository notificationsRepository;
     private INotifier notifier;
     private String validOwnerSessionId;
     private final String invalidSessionId = "invalid-session";
@@ -91,7 +91,7 @@ public class EventServiceAcceptanceTest {
         eventRepository = new EventRepository();
         tokenService = new TokenService("default_secret_key_for_development_purposes_only_32_chars", new TokenRepository(), new LogbackSystemLogger());
         userRepository = new InMemoryUserRepository();
-        notificationsRepository = new NotificationsRepository();
+        notificationsRepository = new InMemoryNotificationsRepository();
         notifier = new VaadinNotifier(notificationsRepository);
         userAccessService = new UserAccessService(userRepository);
         membershipDomain = new MembershipDomainService(userRepository) {

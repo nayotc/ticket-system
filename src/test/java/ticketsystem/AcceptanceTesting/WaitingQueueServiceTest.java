@@ -23,7 +23,7 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Guest;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.NotificationsRepository;
+import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 import ticketsystem.testutil.RecordingNotifier;
@@ -45,7 +45,7 @@ public class WaitingQueueServiceTest {
     public void setUp() {
         EventRepo = new EventRepository();
         realQueueRepo = new WaitingQueueRepository();
-        notificationRepository = new NotificationsRepository();
+        notificationRepository = new InMemoryNotificationsRepository();
         Notifications = new NotificationService(notificationRepository);
         recordingNotifier = new RecordingNotifier();
         notifier = recordingNotifier;

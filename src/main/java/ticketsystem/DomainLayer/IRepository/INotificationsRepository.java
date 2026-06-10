@@ -8,8 +8,7 @@ public interface INotificationsRepository {
 
     Notification save(Notification notification);
 
-    List<Notification> findPendingByTargetId(String targetId);
+    List<Notification> findByTargetId(String targetId);
 
-    void removeById(Long notificationId);
-
+    void deleteById(Long notificationId);
 }
