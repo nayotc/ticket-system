@@ -658,7 +658,7 @@ public class ReservationServiceTest {
 		@Override
 		public boolean cancelTicket(String ticketId) {
 			// TODO Auto-generated method stub
-			throw new UnsupportedOperationException("Unimplemented method 'cancelTicket'");
+			return true;
 		}
     }
 
