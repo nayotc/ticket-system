@@ -747,7 +747,223 @@ public class CompanyServiceTest {
 
         assertEquals("1 הנחות מוגדרות במערכת (כפל מבצעים)", summary);
     }
+    // Invariant tests: failed operations must not corrupt existing company state.
 
+@Test
+void GivenGuestUser_WhenCreateProductionCompanyFails_ThenCompaniesListUnchanged() {
+    // Arrange
+    String guestToken = userService.visitSystem();
+    int companiesCountBefore = companyService.getAllCompanies().size();
+
+    // Act + Assert
+    assertThrows(Exception.class,
+            () -> companyService.createProductionCompany(guestToken, "Guest Company"));
+
+    int companiesCountAfter = companyService.getAllCompanies().size();
+    assertEquals(companiesCountBefore, companiesCountAfter,
+            "guest company creation failure should not create a company");
+}
+
+@Test
+void GivenActiveCompanyAndNonFounder_WhenCloseProductionCompanyFails_ThenCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(Exception.class,
+            () -> companyService.closeProductionCompany(nonFounderToken, companyDTO.getId()));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "non-founder close company failure");
+}
+
+@Test
+void GivenInactiveCompanyAndFounder_WhenCloseProductionCompanyAgainFails_ThenCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    companyService.closeProductionCompany(founderToken, companyDTO.getId());
+
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(Exception.class,
+            () -> companyService.closeProductionCompany(founderToken, companyDTO.getId()));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "close already inactive company failure");
+}
+
+@Test
+void GivenInactiveCompanyAndNonFounder_WhenReopenProductionCompanyFails_ThenCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    companyService.closeProductionCompany(founderToken, companyDTO.getId());
+
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(Exception.class,
+            () -> companyService.reopenProductionCompany(nonFounderToken, companyDTO.getId()));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "non-founder reopen company failure");
+}
+
+@Test
+void GivenActiveCompanyAndFounder_WhenReopenProductionCompanyFails_ThenCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(Exception.class,
+            () -> companyService.reopenProductionCompany(founderToken, companyDTO.getId()));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "reopen already active company failure");
+}
+
+@Test
+void GivenCompanyWithExistingPurchasePolicy_WhenUnauthorizedPurchasePolicyChangeFails_ThenCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    companyService.setCompanyPurchasePolicy(founderToken, companyDTO.getId(), maxTicketsPolicyDTO(4));
+
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(IllegalArgumentException.class,
+            () -> companyService.setCompanyPurchasePolicy(
+                    nonFounderToken,
+                    companyDTO.getId(),
+                    maxTicketsPolicyDTO(10)));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "unauthorized purchase policy update failure");
+}
+
+@Test
+void GivenCompanyWithExistingPurchasePolicy_WhenInvalidPurchasePolicyFails_ThenCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    companyService.setCompanyPurchasePolicy(founderToken, companyDTO.getId(), maxTicketsPolicyDTO(4));
+
+    PurchasePolicyDTO invalidPolicyDTO = new PurchasePolicyDTO(
+            new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, null, null));
+
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(IllegalArgumentException.class,
+            () -> companyService.setCompanyPurchasePolicy(
+                    founderToken,
+                    companyDTO.getId(),
+                    invalidPolicyDTO));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "invalid purchase policy update failure");
+}
+
+@Test
+void GivenExistingCompany_WhenSetPurchasePolicyForMissingCompanyFails_ThenExistingCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    companyService.setCompanyPurchasePolicy(founderToken, companyDTO.getId(), maxTicketsPolicyDTO(4));
+
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(Exception.class,
+            () -> companyService.setCompanyPurchasePolicy(
+                    founderToken,
+                    999999L,
+                    maxTicketsPolicyDTO(10)));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "set purchase policy for missing company failure");
+}
+
+@Test
+void GivenCompanyWithExistingDiscountPolicy_WhenUnauthorizedDiscountPolicyChangeFails_ThenCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    DiscountPolicyDTO originalPolicyDTO = new DiscountPolicyDTO();
+    originalPolicyDTO.setCompositionType(DiscountCompositionType.MAX);
+    originalPolicyDTO.setDiscounts(List.of(visibleDiscountDTO("Visible Discount", 10)));
+    companyService.setCompanyDiscountPolicy(founderToken, companyDTO.getId(), originalPolicyDTO);
+
+    DiscountPolicyDTO unauthorizedPolicyDTO = new DiscountPolicyDTO();
+    unauthorizedPolicyDTO.setCompositionType(DiscountCompositionType.SUM);
+    unauthorizedPolicyDTO.setDiscounts(List.of(couponDiscountDTO("Coupon Discount", "SAVE20", 20)));
+
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(IllegalArgumentException.class,
+            () -> companyService.setCompanyDiscountPolicy(
+                    nonFounderToken,
+                    companyDTO.getId(),
+                    unauthorizedPolicyDTO));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "unauthorized discount policy update failure");
+}
+
+@Test
+void GivenCompanyWithExistingDiscountPolicy_WhenSetDiscountPolicyForMissingCompanyFails_ThenExistingCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+
+    DiscountPolicyDTO originalPolicyDTO = new DiscountPolicyDTO();
+    originalPolicyDTO.setCompositionType(DiscountCompositionType.MAX);
+    originalPolicyDTO.setDiscounts(List.of(visibleDiscountDTO("Visible Discount", 10)));
+    companyService.setCompanyDiscountPolicy(founderToken, companyDTO.getId(), originalPolicyDTO);
+
+    DiscountPolicyDTO missingCompanyPolicyDTO = new DiscountPolicyDTO();
+    missingCompanyPolicyDTO.setCompositionType(DiscountCompositionType.SUM);
+    missingCompanyPolicyDTO.setDiscounts(List.of(couponDiscountDTO("Coupon Discount", "SAVE20", 20)));
+
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(Exception.class,
+            () -> companyService.setCompanyDiscountPolicy(
+                    founderToken,
+                    999999L,
+                    missingCompanyPolicyDTO));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "set discount policy for missing company failure");
+}
+
+@Test
+void GivenCompanyWithDefaultDiscountComposition_WhenUnauthorizedCompositionTypeChangeFails_ThenCompanyStateUnchanged()
+        throws Exception {
+    // Arrange
+    CompanyDTO companyDTO = companyService.createProductionCompany(founderToken, VALID_COMPANY_NAME);
+    CompanyFailureStateSnapshot before = captureCompanyFailureStateSnapshot(companyDTO.getId());
+
+    // Act + Assert
+    assertThrows(IllegalArgumentException.class,
+            () -> companyService.setCompositionType(
+                    nonFounderToken,
+                    companyDTO.getId(),
+                    DiscountCompositionType.SUM));
+
+    CompanyFailureStateSnapshot after = captureCompanyFailureStateSnapshot(companyDTO.getId());
+    assertCompanyStateUnchanged(before, after, "unauthorized discount composition update failure");
+}
     private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {
         return new PurchasePolicyDTO(
                 new PurchaseRuleDTO(PurchaseRuleType.MAX_TICKETS, maxTickets, null));
@@ -757,5 +973,151 @@ public class CompanyServiceTest {
         return new PurchasePolicyDTO(
                 new PurchaseRuleDTO(PurchaseRuleType.MIN_AGE, minAge, null));
     }
+        // checking invariants before and after failure scenarios
+        private static class CompanyFailureStateSnapshot {
 
+        final boolean companyExists;
+        final String companyName;
+        final boolean active;
+        final Long founderId;
+        final Long founderFirstManagedCompanyId;
+        final String purchasePolicySummary;
+        final PurchaseRuleType purchaseRuleType;
+        final Integer purchaseRuleValue;
+        final String discountPolicySummary;
+        final DiscountCompositionType discountCompositionType;
+        final int discountCount;
+        final String discountTypes;
+
+        CompanyFailureStateSnapshot(
+                boolean companyExists,
+                String companyName,
+                boolean active,
+                Long founderId,
+                Long founderFirstManagedCompanyId,
+                String purchasePolicySummary,
+                PurchaseRuleType purchaseRuleType,
+                Integer purchaseRuleValue,
+                String discountPolicySummary,
+                DiscountCompositionType discountCompositionType,
+                int discountCount,
+                String discountTypes) {
+                this.companyExists = companyExists;
+                this.companyName = companyName;
+                this.active = active;
+                this.founderId = founderId;
+                this.founderFirstManagedCompanyId = founderFirstManagedCompanyId;
+                this.purchasePolicySummary = purchasePolicySummary;
+                this.purchaseRuleType = purchaseRuleType;
+                this.purchaseRuleValue = purchaseRuleValue;
+                this.discountPolicySummary = discountPolicySummary;
+                this.discountCompositionType = discountCompositionType;
+                this.discountCount = discountCount;
+                this.discountTypes = discountTypes;
+        }
+        }
+
+        private CompanyFailureStateSnapshot captureCompanyFailureStateSnapshot(long companyId) throws Exception {
+        Company company = companyRepository.findById(companyId).orElse(null);
+        Long founderFirstManagedCompanyId = companyService.getFirstManagedCompanyId(founderToken);
+
+        if (company == null) {
+                return new CompanyFailureStateSnapshot(
+                        false,
+                        null,
+                        false,
+                        null,
+                        founderFirstManagedCompanyId,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        0,
+                        "");
+        }
+
+        CompanyDTO companyDetails = companyService.getCompanyDetails(founderToken, companyId);
+
+        PurchaseRuleType purchaseRuleType = null;
+        Integer purchaseRuleValue = null;
+
+        try {
+                PurchasePolicyDTO purchasePolicy = companyService.getCompanyPurchasePolicy(founderToken, companyId);
+                if (purchasePolicy != null && purchasePolicy.getRootRule() != null) {
+                purchaseRuleType = purchasePolicy.getRootRule().getType();
+                purchaseRuleValue = purchasePolicy.getRootRule().getValue();
+                }
+        } catch (Exception ignored) {
+                // In some company states policy retrieval may fail.
+                // The rest of the snapshot is still enough for invariant checks.
+        }
+
+        String discountTypes = company.getDiscountPolicy().getDiscounts().stream()
+                .map(discount -> discount.getClass().getSimpleName())
+                .sorted()
+                .collect(java.util.stream.Collectors.joining(","));
+
+        return new CompanyFailureStateSnapshot(
+                true,
+                companyDetails.getName(),
+                companyDetails.isActive(),
+                companyDetails.getFounderId(),
+                founderFirstManagedCompanyId,
+                companyService.getPurchasePolicySummary(companyId),
+                purchaseRuleType,
+                purchaseRuleValue,
+                companyService.getDiscountPolicySummary(companyId),
+                company.getDiscountPolicy().getDiscountCompositionType(),
+                company.getDiscountPolicy().getDiscounts().size(),
+                discountTypes);
+        }
+
+        private void assertCompanyStateUnchanged(
+                CompanyFailureStateSnapshot before,
+                CompanyFailureStateSnapshot after,
+                String scenario) {
+        assertEquals(before.companyExists, after.companyExists,
+                scenario + ": company existence should not change on failure");
+        assertEquals(before.companyName, after.companyName,
+                scenario + ": company name should not change on failure");
+        assertEquals(before.active, after.active,
+                scenario + ": company active status should not change on failure");
+        assertEquals(before.founderId, after.founderId,
+                scenario + ": founder id should not change on failure");
+        assertEquals(before.founderFirstManagedCompanyId, after.founderFirstManagedCompanyId,
+                scenario + ": founder managed-company mapping should not change on failure");
+        assertEquals(before.purchasePolicySummary, after.purchasePolicySummary,
+                scenario + ": purchase policy summary should not change on failure");
+        assertEquals(before.purchaseRuleType, after.purchaseRuleType,
+                scenario + ": purchase policy root type should not change on failure");
+        assertEquals(before.purchaseRuleValue, after.purchaseRuleValue,
+                scenario + ": purchase policy root value should not change on failure");
+        assertEquals(before.discountPolicySummary, after.discountPolicySummary,
+                scenario + ": discount policy summary should not change on failure");
+        assertEquals(before.discountCompositionType, after.discountCompositionType,
+                scenario + ": discount composition type should not change on failure");
+        assertEquals(before.discountCount, after.discountCount,
+                scenario + ": discount count should not change on failure");
+        assertEquals(before.discountTypes, after.discountTypes,
+                scenario + ": discount types should not change on failure");
+        }
+
+        private DiscountDTO visibleDiscountDTO(String name, int percentage) {
+        DiscountDTO visible = new DiscountDTO();
+        visible.setType("VISIBLE");
+        visible.setName(name);
+        visible.setPercentage(BigDecimal.valueOf(percentage));
+        return visible;
+        }
+
+        private DiscountDTO couponDiscountDTO(String name, String couponCode, int percentage) {
+        DiscountDTO coupon = new DiscountDTO();
+        coupon.setType("COUPON");
+        coupon.setName(name);
+        coupon.setCouponCode(couponCode);
+        coupon.setPercentage(BigDecimal.valueOf(percentage));
+        coupon.setEndTime(LocalDateTime.now().plusDays(1));
+        return coupon;
+        }
 }
