@@ -13,6 +13,9 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -611,37 +614,90 @@ public void setProfile(AccountProfileViewData profile) {
             String newPassword
     ) {
     }
+
     private Component createTicketsDetails(MyPurchaseRow row) {
-    Grid<PurchaseDTO> ticketsGrid = new Grid<>(PurchaseDTO.class, false);
-    ticketsGrid.setWidthFull();
-    ticketsGrid.setAllRowsVisible(true);
+    VerticalLayout wrapper = new VerticalLayout();
+    wrapper.addClassName("tickets-details-wrapper");
+    wrapper.setPadding(false);
+    wrapper.setSpacing(true);
+    wrapper.setWidthFull();
 
-    ticketsGrid.addColumn(PurchaseDTO::getTicketId)
-            .setHeader("מס' כרטיס");
+    for (PurchaseDTO ticket : row.getTickets()) {
+        HorizontalLayout card = new HorizontalLayout();
+        card.addClassName("ticket-detail-card");
+        card.setWidthFull();
+        card.setAlignItems(FlexComponent.Alignment.CENTER);
+        card.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
-    ticketsGrid.addColumn(ticket -> isStandingTicket(ticket) ? "אזור עמידה" : ticket.getRow())
-            .setHeader("שורה");
+        Span title = new Span("כרטיס #" + ticket.getTicketId());
+        title.addClassName("ticket-detail-title");
 
-    ticketsGrid.addColumn(ticket -> isStandingTicket(ticket) ? "אזור עמידה" : ticket.getChair())
-            .setHeader("כיסא");
+        Span location = new Span(formatTicketLocation(ticket));
+        location.addClassName("ticket-detail-location");
 
-    ticketsGrid.addColumn(ticket -> formatMoney(ticket.getPrice()))
-            .setHeader("מחיר");
+        Span price = new Span(formatMoney(ticket.getPrice()));
+        price.addClassName("ticket-detail-price");
 
-    ticketsGrid.addColumn(PurchaseDTO::getStatus)
-            .setHeader("סטטוס");
+        Span status = new Span(ticket.getStatus());
+        status.addClassName("ticket-detail-status");
 
-    ticketsGrid.addColumn(PurchaseDTO::getSecureBarcode)
-            .setHeader("ברקוד");
+        Span barcode = new Span("ברקוד: " + shortBarcode(ticket.getSecureBarcode()));
+        barcode.addClassName("ticket-detail-barcode");
 
-    ticketsGrid.setItems(row.getTickets());
+        card.add(title, location, price, status, barcode);
+        wrapper.add(card);
+    }
 
-    return ticketsGrid;
+    return wrapper;
 }
 
-private boolean isStandingTicket(PurchaseDTO ticket) {
-    return ticket.getRow() == 0 && ticket.getChair() == 0;
+private String formatTicketLocation(PurchaseDTO ticket) {
+    if (ticket.getRow() == 0 && ticket.getChair() == 0) {
+        return "עמידה · אזור כללי";
+    }
+    return "שורה " + ticket.getRow() + " · כיסא " + ticket.getChair();
 }
+
+private String shortBarcode(String barcode) {
+    if (barcode == null || barcode.isBlank()) {
+        return "לא זמין";
+    }
+    return barcode.length() > 14
+            ? "..." + barcode.substring(barcode.length() - 14)
+            : barcode;
+}
+
+//     private Component createTicketsDetails(MyPurchaseRow row) {
+//     Grid<PurchaseDTO> ticketsGrid = new Grid<>(PurchaseDTO.class, false);
+//     ticketsGrid.setWidthFull();
+//     ticketsGrid.setAllRowsVisible(true);
+
+//     ticketsGrid.addColumn(PurchaseDTO::getTicketId)
+//             .setHeader("מס' כרטיס");
+
+//     ticketsGrid.addColumn(ticket -> isStandingTicket(ticket) ? "אזור עמידה" : ticket.getRow())
+//             .setHeader("שורה");
+
+//     ticketsGrid.addColumn(ticket -> isStandingTicket(ticket) ? "אזור" : ticket.getChair())
+//             .setHeader("כיסא");
+
+//     ticketsGrid.addColumn(ticket -> formatMoney(ticket.getPrice()))
+//             .setHeader("מחיר");
+
+//     ticketsGrid.addColumn(PurchaseDTO::getStatus)
+//             .setHeader("סטטוס");
+
+//     ticketsGrid.addColumn(PurchaseDTO::getSecureBarcode)
+//             .setHeader("ברקוד");
+
+//     ticketsGrid.setItems(row.getTickets());
+
+//     return ticketsGrid;
+// }
+
+// private boolean isStandingTicket(PurchaseDTO ticket) {
+//     return ticket.getRow() == 0 && ticket.getChair() == 0;
+// }
 
     public static final class MyPurchaseRow {
         private final String purchaseId;
