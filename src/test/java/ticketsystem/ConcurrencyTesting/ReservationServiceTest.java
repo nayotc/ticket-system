@@ -50,7 +50,7 @@ import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
-import ticketsystem.InfrastructureLayer.OrderRepository;
+import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
@@ -82,7 +82,7 @@ public class ReservationServiceTest {
 
     @BeforeEach
     void setUp() {
-        orderRepository = new OrderRepository();
+        orderRepository = new InMemoryOrderRepository();
         eventRepository = new EventRepository();
 
         lotteryRepository = new LotteryRepository();

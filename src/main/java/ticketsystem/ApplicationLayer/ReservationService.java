@@ -4,11 +4,16 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.springframework.stereotype.Service;
+
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DTO.ActiveOrderDTO;
@@ -17,19 +22,17 @@ import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
-import ticketsystem.DomainLayer.MembershipDomainService;
-import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.Reservation;
+import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
-import java.time.LocalDate;
-import java.time.Period;
-import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.discount.PricingQuote;
 import ticketsystem.DTO.PricingQuoteDTO;
@@ -50,7 +53,7 @@ public class ReservationService {
     private final ISystemLogger logger;
     private final List<OrderCompletedListener> listeners = new ArrayList<>();
     private final INotifier notificationsService;
-    private final UserAccessService userAccessService; 
+    private final UserAccessService userAccessService;
     private final Set<Long> expirationWarningSentOrderIds = ConcurrentHashMap.newKeySet();
     private final Set<Long> soldOutNotificationSentEventIds = ConcurrentHashMap.newKeySet();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -66,7 +69,7 @@ public class ReservationService {
             ILotteryRepository lotteryRepository,
             EventCatalogDomainService eventCatalogDomainService,
             ISystemLogger logger,
-            INotifier notifier,UserAccessService userAccessService) {
+            INotifier notifier, UserAccessService userAccessService) {
 
         this.orderRepository = orderRepository;
         this.eventRepository = eventRepository;
@@ -80,7 +83,7 @@ public class ReservationService {
         this.logger = logger;
         this.reservationDomeinService = new Reservation();
         this.notificationsService = notifier;
-        this.userAccessService=userAccessService;
+        this.userAccessService = userAccessService;
     }
 
     // UC 2.5,2.4
@@ -105,7 +108,6 @@ public class ReservationService {
                 throw new IllegalStateException("No active order found for this event");
             }
 
-            
             reservationDomeinService.selectSeatTicket(order, event, areaId, position);
 
             saveAll(order, event);
@@ -123,7 +125,7 @@ public class ReservationService {
         expireOldOrders();
         try {
             tokenService.validateToken(token);
-            Long memberId=tokenService.extractUserId(token);
+            Long memberId = tokenService.extractUserId(token);
             userAccessService.validateCanPerformNonViewAction(memberId);
             if (eventRepository.getEventById(eventId) == null) {
                 throw new IllegalArgumentException("Event not found");
@@ -143,7 +145,7 @@ public class ReservationService {
             if (quantity <= 0) {
                 throw new IllegalArgumentException("Quantity must be greater than zero");
             }
-            
+
             reservationDomeinService.selectStandingTicket(order, event, areaId, quantity);
             saveAll(order, event);
             logger.logEvent("Standing ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId
@@ -178,7 +180,6 @@ public class ReservationService {
             throw e;
         }
     }
-
 
     public boolean removeSeatTicketFromActiveOrder(String token, Long eventId, Long areaId, seatPositionDTO position) {
         expireOldOrders();
@@ -217,10 +218,10 @@ public class ReservationService {
 
             logger.logEvent(
                     "Seat ticket removed from active order: orderId=" + order.getOrderId()
-                            + ", eventId=" + eventId
-                            + ", areaId=" + areaId
-                            + ", row=" + position.getRow()
-                            + ", chair=" + position.getChair(),
+                    + ", eventId=" + eventId
+                    + ", areaId=" + areaId
+                    + ", row=" + position.getRow()
+                    + ", chair=" + position.getChair(),
                     LogLevel.INFO
             );
 
@@ -277,7 +278,7 @@ public class ReservationService {
 
             logger.logEvent(
                     "Active order viewed: orderId=" + order.getOrderId()
-                            + ", eventId=" + order.getEventId(),
+                    + ", eventId=" + order.getEventId(),
                     LogLevel.INFO
             );
 
@@ -328,7 +329,7 @@ public class ReservationService {
 
             logger.logEvent(
                     "Current active order viewed: orderId=" + order.getOrderId()
-                            + ", eventId=" + order.getEventId(),
+                    + ", eventId=" + order.getEventId(),
                     LogLevel.INFO
             );
 
@@ -426,7 +427,7 @@ public class ReservationService {
             if (order == null || event == null) {
                 throw new IllegalStateException("No active order or event found");
             }
-            if(details == null|| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
+            if (details == null || details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null) {
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
@@ -436,9 +437,9 @@ public class ReservationService {
             if (!paymentResult) {
                 order.paymentFailed();
                 saveAll(order, event);
-                notifyTokenHolder(
-                token,
-                "Payment failed. No purchase was completed."
+                notifyOrderOwner(
+                        token,
+                        "Payment failed. No purchase was completed."
                 );
                 throw new IllegalStateException("Payment failed");
             }
@@ -446,7 +447,7 @@ public class ReservationService {
             OrderDTO orderDTO;
 
             try {
-                orderDTO = creaOrderDTOwithBarcode(order, event,amountAfterDiscount, details);
+                orderDTO = creaOrderDTOwithBarcode(order, event, amountAfterDiscount, details);
             } catch (Exception barcodeException) {
                 handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, details, eventId, barcodeException,
                         "Ticket issuing failed. Payment was refunded.",
@@ -460,7 +461,7 @@ public class ReservationService {
                 reservationDomeinService.completeCheckout(order, event);
                 saveAll(order, event);
 
-                notifyTokenHolder(
+                notifyOrderOwner(
                         token,
                         "Your purchase was completed successfully. Your tickets are now available."
                 );
@@ -478,14 +479,14 @@ public class ReservationService {
             if (!listenersNotified) {
                 logger.logEvent(
                         "Order completed but notifying listeners failed: orderId="
-                                + order.getOrderId() + ", eventId=" + eventId,
+                        + order.getOrderId() + ", eventId=" + eventId,
                         LogLevel.WARN
                 );
             }
 
             logger.logEvent(
                     "Checkout completed successfully: orderId="
-                            + order.getOrderId() + ", eventId=" + eventId,
+                    + order.getOrderId() + ", eventId=" + eventId,
                     LogLevel.INFO
             );
 
@@ -503,16 +504,15 @@ public class ReservationService {
     }
 
     private boolean notifyListeners(OrderDTO order) {
-        try{
-              for (OrderCompletedListener listener : listeners) {
-            listener.onOrderCompleted(order);
-        }
-        return true;
-        }
-        catch(Exception e){
+        try {
+            for (OrderCompletedListener listener : listeners) {
+                listener.onOrderCompleted(order);
+            }
+            return true;
+        } catch (Exception e) {
             return false;
         }
-      
+
     }
 
     //refund
@@ -563,9 +563,9 @@ public class ReservationService {
 
         order.paymentFailed();
         saveAll(order, event);
-        notifyTokenHolder(
-        order.getSessionToken(),
-        "The purchase was canceled because ticket issuing failed. A refund was issued."
+        notifyOrderOwner(
+                order.getSessionToken(),
+                "The purchase was canceled because ticket issuing failed. A refund was issued."
         );
 
         if (refundResult) {
@@ -586,26 +586,26 @@ public class ReservationService {
     }
 
     //secure barcode logic
-    private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event,BigDecimal total, PaymentDetails details ){
-          OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
-                        event.getOpenedBy(), event.getId(),total, details.getPaymentMethodId(), details.getPayerName(), details.getBirthDate());
-                for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
-                    String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(), order.getEventId(),
-                            order.getOrderId());
-                    purchesDTO.setSecureBarcode(barcode);
-                }
-         return orderDTO;       
+    private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event, BigDecimal total, PaymentDetails details) {
+        OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
+                event.getOpenedBy(), event.getId(), total, details.getPaymentMethodId(), details.getPayerName(), details.getBirthDate());
+        for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
+            String barcode = secureBarcode.generateSecureBarcode(purchesDTO.getTicketId(), order.getEventId(),
+                    order.getOrderId());
+            purchesDTO.setSecureBarcode(barcode);
+        }
+        return orderDTO;
     }
 
     // Helper methods
     private boolean isOrderOwnedByToken(ActiveOrder order, String token) {
-    if (tokenService.isGuestToken(token)) {
-        return order.getSessionToken().equals(token);
-    }
+        if (tokenService.isGuestToken(token)) {
+            return order.getSessionToken().equals(token);
+        }
 
-    Long userId = tokenService.extractUserId(token);
-    return order.getUserId() != null && order.getUserId().equals(userId);
-}
+        Long userId = tokenService.extractUserId(token);
+        return order.getUserId() != null && order.getUserId().equals(userId);
+    }
 
     private ActiveOrder getOrCreateOrder(String token, Long eventId) {
         ActiveOrder order = findActiveOrder(token, eventId);
@@ -616,14 +616,14 @@ public class ReservationService {
                     : null;
 
             order = new ActiveOrder(
-                    orderRepository.getNextId(), token,
+                    null, token,
                     userId,
                     eventId);
 
             orderRepository.addOrder(order);
             logger.logEvent(
                     "Active order created: orderId=" + order.getOrderId()
-                            + ", eventId=" + eventId,
+                    + ", eventId=" + eventId,
                     LogLevel.INFO
             );
         }
@@ -650,7 +650,7 @@ public class ReservationService {
         return order;
     }
 
-   private void saveAll(ActiveOrder order, Event event) {
+    private void saveAll(ActiveOrder order, Event event) {
         if (order.getStatus() == ActiveOrder.OrderStatus.COMPLETED) {
             expirationWarningSentOrderIds.remove(order.getOrderId());
             orderRepository.deleteOrder(order.getOrderId());
@@ -664,24 +664,7 @@ public class ReservationService {
         }
     }
 
-    private void notifyTokenHolder(String token, String message) {
-        if (notificationsService == null || token == null || token.isBlank()
-                || message == null || message.isBlank()) {
-            return;
-        }
-
-        if (tokenService.isMemberToken(token)) {
-            Long memberId = tokenService.extractUserId(token);
-            if (memberId != null) {
-                notificationsService.notifyMember(memberId, message);
-                return;
-            }
-        }
-
-        notificationsService.notifyGuest(token, message);
-    }
-
-   private void expireOldOrders() {
+    private void expireOldOrders() {
         List<ActiveOrder> allOrders = orderRepository.getAll();
 
         for (ActiveOrder order : allOrders) {
@@ -691,8 +674,8 @@ public class ReservationService {
                 continue;
             }
 
-            if ( reservationDomeinService.timeExpire(event, order)) {
-                notifyTokenHolder(
+            if (reservationDomeinService.timeExpire(event, order)) {
+                notifyOrderOwner(
                         order.getSessionToken(),
                         "Your active order has expired. The reserved tickets were released back to the inventory."
                 );
@@ -712,7 +695,7 @@ public class ReservationService {
             if (reservationDomeinService.timeAboutToExpire(event, order)
                     && expirationWarningSentOrderIds.add(order.getOrderId())) {
 
-                notifyTokenHolder(
+                notifyOrderOwner(
                         order.getSessionToken(),
                         "Your active order is about to expire. Please complete your purchase soon."
                 );
@@ -723,67 +706,82 @@ public class ReservationService {
                 );
             }
         }
-}
-private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutBefore) {
-    if (event == null || notificationsService == null || companyRepository == null || membershipDomain == null) {
-        return;
     }
 
-    if (wasSoldOutBefore || !event.isSoldOut()) {
-        return;
-    }
-
-    if (!soldOutNotificationSentEventIds.add(event.getId())) {
-        return;
-    }
-
-    try {
-        Company company = companyRepository.findById(event.getCompanyId()).orElse(null);
-        if (company == null) {
+    private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutBefore) {
+        if (event == null || notificationsService == null || companyRepository == null || membershipDomain == null) {
             return;
         }
 
-        Set<Long> staffMemberIds = membershipDomain.getManagementSubTreeMemberIds(
-                company.getFounderId(),
-                company.getId()
-        );
-
-        if (staffMemberIds == null || staffMemberIds.isEmpty()) {
+        if (wasSoldOutBefore || !event.isSoldOut()) {
             return;
         }
 
-        Set<Long> recipients = new HashSet<>();
+        if (!soldOutNotificationSentEventIds.add(event.getId())) {
+            return;
+        }
 
-        for (Long memberId : staffMemberIds) {
-            if (memberId != null
-                    && membershipDomain.validatePermission(
-                            memberId,
-                            company.getId(),
-                            Permission.MANAGE_EVENT_INVENTORY
-                    )) {
-                recipients.add(memberId);
+        try {
+            Company company = companyRepository.findById(event.getCompanyId()).orElse(null);
+            if (company == null) {
+                return;
+            }
+
+            Set<Long> staffMemberIds = membershipDomain.getManagementSubTreeMemberIds(
+                    company.getFounderId(),
+                    company.getId()
+            );
+
+            if (staffMemberIds == null || staffMemberIds.isEmpty()) {
+                return;
+            }
+
+            Set<Long> recipients = new HashSet<>();
+
+            for (Long memberId : staffMemberIds) {
+                if (memberId != null
+                        && membershipDomain.validatePermission(
+                                memberId,
+                                company.getId(),
+                                Permission.MANAGE_EVENT_INVENTORY
+                        )) {
+                    recipients.add(memberId);
+                }
+            }
+
+            notificationsService.notifyMembers(
+                    recipients,
+                    "The event \"" + event.getName() + "\" is now sold out."
+            );
+
+            logger.logEvent(
+                    "Sold out notification sent for eventId=" + event.getId()
+                    + ", companyId=" + event.getCompanyId(),
+                    LogLevel.INFO
+            );
+
+        } catch (Exception e) {
+            soldOutNotificationSentEventIds.remove(event.getId());
+
+            logger.logEvent(
+                    "Failed to send sold out notification for eventId="
+                    + event.getId() + ". reason=" + e.getMessage(),
+                    LogLevel.WARN
+            );
+        }
+    }
+
+    private void notifyOrderOwner(String sessionToken, String message) {
+        if (sessionToken == null || message == null || message.isBlank()) {
+            return;
+        }
+        if (tokenService.isMemberToken(sessionToken)) {
+            Long memberId = tokenService.extractUserId(sessionToken);
+            if (memberId != null) {
+                notificationsService.notifyMember(memberId, message);
+                return;
             }
         }
-
-        notificationsService.notifyMembers(
-                recipients,
-                "The event \"" + event.getName() + "\" is now sold out."
-        );
-
-        logger.logEvent(
-                "Sold out notification sent for eventId=" + event.getId()
-                        + ", companyId=" + event.getCompanyId(),
-                LogLevel.INFO
-        );
-
-    } catch (Exception e) {
-        soldOutNotificationSentEventIds.remove(event.getId());
-
-        logger.logEvent(
-                "Failed to send sold out notification for eventId="
-                        + event.getId() + ". reason=" + e.getMessage(),
-                LogLevel.WARN
-        );
+        notificationsService.notifyGuest(sessionToken, message);
     }
-}
 }

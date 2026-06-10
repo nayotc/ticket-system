@@ -3,6 +3,8 @@ package ticketsystem.ApplicationLayer;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
 
@@ -15,11 +17,13 @@ public class NotificationService {
         this.notificationRepository = notificationRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<Notification> getPendingNotifications(String targetId) {
-        return notificationRepository.findPendingByTargetId(targetId);
+        return notificationRepository.findByTargetId(targetId);
     }
 
+    @Transactional
     public void markAsDelivered(Long notificationId) {
-        notificationRepository.removeById(notificationId);
+        notificationRepository.deleteById(notificationId);
     }
 }

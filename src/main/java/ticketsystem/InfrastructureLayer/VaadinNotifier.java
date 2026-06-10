@@ -1,9 +1,9 @@
 package ticketsystem.InfrastructureLayer;
 
-
 import java.util.Collection;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
@@ -20,6 +20,7 @@ public class VaadinNotifier implements INotifier {
     }
 
     @Override
+    @Transactional
     public void notifyMember(Long memberId, String message) {
         if (memberId == null || message == null || message.isBlank()) {
             return;
@@ -68,7 +69,9 @@ public class VaadinNotifier implements INotifier {
         }
 
     }
+
     @Override
+    @Transactional
     public void notifyMemberAssignment(Long memberId, String message, Long companyId) {
         if (memberId == null || message == null || message.isBlank() || companyId == null) {
             return;

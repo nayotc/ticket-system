@@ -1,17 +1,37 @@
 package ticketsystem.DomainLayer.notifications;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
+@Entity
+@Table(name = "notifications")
 public class Notification {
 
     public enum Type {
         INFO,
         ACTION
     }
-
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "target_id", nullable = false)
     private String targetId;
+
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String message;
+
+    @Column(name = "company_id")
     private Long companyId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Type type;
 
     public Notification() {
@@ -23,6 +43,7 @@ public class Notification {
         this.companyId = companyId;
         this.type = type;
     }
+
     public Notification(String targetId, String message, Type type) {
         this.targetId = targetId;
         this.message = message;
@@ -53,12 +74,15 @@ public class Notification {
     public void setMessage(String message) {
         this.message = message;
     }
+
     public Long getCompanyId() {
         return companyId;
     }
+
     public void setCompanyId(Long companyId) {
         this.companyId = companyId;
     }
+
     public Type getType() {
         return type;
     }

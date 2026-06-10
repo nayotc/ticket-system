@@ -3,6 +3,7 @@ package ticketsystem.DomainLayer;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.event.Event;
@@ -23,14 +24,14 @@ public class Reservation {
       
         SeatPosition seatPosition = new SeatPosition(position.getRow(), position.getChair());
        event.reserveSeat(areaId, seatPosition);
-       Ticket ticket = new Ticket(generateTicketId(), event.getId(), areaId, position.getRow(), position.getChair(), event.getTicketPrice());
+       Ticket ticket = new Ticket(null, event.getId(), areaId, position.getRow(), position.getChair(), event.getTicketPrice());
         order.addTicket(ticket);
     } 
 
     public void selectStandingTicket(ActiveOrder order, Event event,Long areaId, int quantity) {
       event.reserveSpot(areaId, quantity);
         for(int i=0; i<quantity; i++) {
-            Ticket ticket = new Ticket(generateTicketId(),event.getId(), areaId, 0, 0, event.getTicketPrice());
+            Ticket ticket = new Ticket(null, event.getId(), areaId, 0, 0, event.getTicketPrice());
             order.addTicket(ticket);
       }
     }
@@ -38,7 +39,7 @@ public class Reservation {
   // UC 2.7
 public void removeTicketFromActiveOrder(ActiveOrder order, Event event, Long ticketId) {
     Ticket ticket = order.getTickets().stream()
-            .filter(t -> t.getTicketId().equals(ticketId))
+            .filter(t -> Objects.equals(t.getTicketId(), ticketId))
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Ticket not found in active order"));
 
