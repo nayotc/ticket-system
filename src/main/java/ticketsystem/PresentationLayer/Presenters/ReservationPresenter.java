@@ -31,7 +31,7 @@ import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
 import ticketsystem.PresentationLayer.DTO.OrderPricing;
 import ticketsystem.DTO.AppliedDiscountDTO;
 import ticketsystem.DTO.PricingQuoteDTO;
-
+import ticketsystem.ApplicationLayer.WaitingQueueService;
 
 
 import java.math.BigDecimal;
@@ -44,11 +44,13 @@ public class ReservationPresenter {
     private final ReservationService reservationService;
     private final EventService eventService;
     private final UserService userService;
+    private final WaitingQueueService waitingQueueService;
 
-    public ReservationPresenter(ReservationService reservationService, EventService eventService, UserService userService) {
+    public ReservationPresenter(ReservationService reservationService, EventService eventService, UserService userService, WaitingQueueService waitingQueueService) {
         this.reservationService = reservationService;
         this.eventService = eventService;
         this.userService = userService;
+        this.waitingQueueService=waitingQueueService;
     }
 
     /**
@@ -904,10 +906,10 @@ public class ReservationPresenter {
 
             case "Ticket removal failed. Please try again." ->
                     "הסרת הכרטיסים נכשלה. יש לנסות שוב.";
-            
+
             case "Lottery code is required for this event" ->
                 "נדרש קוד זכייה בהגרלה כדי לבחור כרטיסים לאירוע הזה.";
-            
+
             case "Invalid lottery code",
                 "Invalid winner code",
                 "Lottery code is invalid" ->
@@ -1000,4 +1002,20 @@ public class ReservationPresenter {
                     "הרכישה לא הושלמה. יש לנסות שוב.";
         };
     }
+    public void releaseQueueAccess(String token, Long eventId) {
+    try {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+
+        if (eventId == null || eventId <= 0) {
+            return;
+        }
+
+        waitingQueueService.releaseSpot(eventId, token);
+
+    } catch (Exception ignored) {
+        // Leaving the ticket-selection page should not fail because queue cleanup failed.
+    }
+}
 }

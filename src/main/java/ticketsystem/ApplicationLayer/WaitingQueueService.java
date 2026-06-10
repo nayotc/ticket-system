@@ -10,6 +10,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import java.util.Set;
 
 @Service
 public class WaitingQueueService {
@@ -19,6 +20,7 @@ public class WaitingQueueService {
     private final INotifier notificationsService;
     private final ITokenService tokenService;
     private final ConcurrentHashMap<Long, Object> eventLocks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Set<String>> activeReservationSessions = new ConcurrentHashMap<>();
     private final ISystemLogger logger;
 
     public WaitingQueueService(IEventRepository eventRepository,
@@ -62,17 +64,36 @@ public class WaitingQueueService {
                         return "ERROR: Sold Out";
                     }
 
-                    if (!event.isOverloaded()) {
-                        event.incrementActiveReservations();
-                        eventRepository.updateEvent(event);
+                   if (hasActiveSpot(eventId, tokenString)) {
                         logger.logEvent(
-                                "User with session id" + tokenString + " APPROVED to enter checkout for Event "
-                                + eventId,
-                                LogLevel.INFO);
+                                "User with session id " + tokenString + " already has active access for Event " + eventId,
+                                LogLevel.INFO
+                        );
                         return "APPROVED";
                     }
+
+                    int existingPosition = queueRepository.getUserPosition(eventId, tokenString);
+                    if (existingPosition > 0) {
+                        logger.logEvent(
+                                "User with session id " + tokenString + " is already in queue for Event "
+                                        + eventId + ". Position: " + existingPosition,
+                                LogLevel.INFO
+                        );
+                        return "QUEUED";
+                    }
+
+                    if (hasAvailableSpot(event)) {
+                        approveSession(eventId, event, tokenString);
+                        logger.logEvent(
+                                "User with session id " + tokenString + " APPROVED to enter ticket selection for Event "
+                                        + eventId,
+                                LogLevel.INFO
+                        );
+                        return "APPROVED";
+                    }
+
                     queueRepository.enqueueUser(eventId, tokenString);
-                    int position = queueRepository.getQueueSize(eventId);
+                    int position = queueRepository.getUserPosition(eventId, tokenString);
                     logger.logEvent("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position,
                             LogLevel.INFO);
                     notifyTokenHolder(
@@ -93,85 +114,136 @@ public class WaitingQueueService {
     }
 
     private void promoteOneFromWaitingQueue(long eventId) {
-        Event tempEvent = eventRepository.getEventById(eventId);
-        if (tempEvent == null) {
-            logger.logEvent("Failed to promote user from waiting queue. Event not found. Event ID: " + eventId, LogLevel.INFO);
+        Event event = eventRepository.getEventById(eventId);
+
+        if (event == null) {
+            logger.logEvent(
+                    "Failed to promote user from waiting queue. Event not found. Event ID: " + eventId,
+                    LogLevel.INFO
+            );
             return;
         }
-        long slack = tempEvent.getTrafficThreshold() - tempEvent.getActiveReservationsCount();
-        if (slack <= 0) {
-            logger.logEvent("Failed to promote user from waiting queue. No available spots. Event ID: " + eventId, LogLevel.INFO);
+
+        if (!hasAvailableSpot(event)) {
+            logger.logEvent(
+                    "Failed to promote user from waiting queue. No available spots. Event ID: " + eventId,
+                    LogLevel.INFO
+            );
             return;
         }
 
         List<String> approvedUsers = queueRepository.dequeueBatch(eventId, 1);
+
         if (approvedUsers.isEmpty()) {
-            logger.logEvent("Failed to promote user from waiting queue. No users in queue. Event ID: " + eventId, LogLevel.INFO);
+            logger.logEvent(
+                    "Failed to promote user from waiting queue. No users in queue. Event ID: " + eventId,
+                    LogLevel.INFO
+            );
+            cleanupActiveSessionsIfPossible(eventId);
             return;
         }
 
-        int maxRetries = 3;
-        for (int i = 0; i < maxRetries; i++) {
-            try {
-                Event eventToUpdate = eventRepository.getEventById(eventId);
-                if (eventToUpdate == null) {
-                    return;
-                }
+        String sessionId = approvedUsers.get(0);
+        approveSession(eventId, event, sessionId);
 
-                eventToUpdate.incrementActiveReservations();
-                eventRepository.updateEvent(eventToUpdate);
+        notifyTokenHolder(
+                sessionId,
+                "It's your turn! You can now purchase tickets for Event " + eventId
+        );
 
-                String sessionId = approvedUsers.get(0);
-                notifyTokenHolder(sessionId,
-                        "It's your turn! You can now purchase tickets for Event " + eventId);
-                logger.logEvent("Processed waiting queue for Event " + eventId + ". Approved users: 1",
-                        LogLevel.INFO);
-                return;
-
-            } catch (Exception e) {
-
-                continue;
-            }
-        }
+        logger.logEvent(
+                "Processed waiting queue for Event " + eventId + ". Approved user: " + sessionId,
+                LogLevel.INFO
+        );
     }
 
     public void releaseSpot(long eventId, String sessionId) {
         synchronized (getEventLock(eventId)) {
-            int maxRetries = 3;
-            boolean updateSuccessful = false;
-            for (int i = 0; i < maxRetries; i++) {
-                try {
-                    Event event = eventRepository.getEventById(eventId);
-                    if (event == null) {
-                        break;
-                    }
-                    event.decrementActiveReservations();
-                    eventRepository.updateEvent(event);
-                    updateSuccessful = true;
+            if (sessionId == null || sessionId.isBlank()) {
+                return;
+            }
 
-                    break;
-                } catch (Exception e) {
-                    continue;
-                }
+            if (isQueued(eventId, sessionId)) {
+                queueRepository.removeUserFromQueue(eventId, sessionId);
+                cleanupActiveSessionsIfPossible(eventId);
+
+                logger.logEvent(
+                        "User with session id " + sessionId + " was removed from queue for Event " + eventId,
+                        LogLevel.INFO
+                );
+                return;
             }
-            if (updateSuccessful) {
-                promoteOneFromWaitingQueue(eventId);
-                logger.logEvent("User with session id " + sessionId + " released their spot for Event " + eventId,
-                        LogLevel.INFO);
+
+            Event event = eventRepository.getEventById(eventId);
+
+            if (event == null) {
+                logger.logEvent(
+                        "Failed to release spot. Event not found. Event ID: " + eventId,
+                        LogLevel.INFO
+                );
+                return;
             }
+
+            Set<String> activeSessions = activeReservationSessions.get(eventId);
+
+            boolean hadTrackedActiveSpot = activeSessions != null && activeSessions.remove(sessionId);
+            int trackedActiveCountAfterRemoval = activeSessions == null ? 0 : activeSessions.size();
+
+            /*
+            * Fallback for legacy/test state:
+            * Some tests increment activeReservationsCount directly,
+            * without registering the active tokens in activeReservationSessions.
+            *
+            * If the event counter is higher than the tracked active sessions,
+            * there is still an untracked active spot that can be released.
+            */
+            boolean hasUntrackedActiveSpot =
+                    event.getActiveReservationsCount() > trackedActiveCountAfterRemoval;
+
+            if (!hadTrackedActiveSpot && !hasUntrackedActiveSpot) {
+                logger.logEvent(
+                        "No active queue access to release for session id "
+                                + sessionId + " and Event " + eventId,
+                        LogLevel.INFO
+                );
+                cleanupActiveSessionsIfPossible(eventId);
+                return;
+            }
+
+            event.decrementActiveReservations();
+            eventRepository.updateEvent(event);
+
+            promoteOneFromWaitingQueue(eventId);
+            cleanupActiveSessionsIfPossible(eventId);
+
+            logger.logEvent(
+                    "User with session id " + sessionId + " released their spot for Event " + eventId,
+                    LogLevel.INFO
+            );
         }
     }
 
     public void leaveQueue(long eventId, String sessionId) {
-        queueRepository.removeUserFromQueue(eventId, sessionId);
-        logger.logEvent("User left the waiting queue for Event " + eventId,
-                LogLevel.INFO);
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new IllegalArgumentException("Invalid token");
+        }
+
+        if (!tokenService.validateToken(sessionId)) {
+            throw new IllegalArgumentException("Invalid token");
+        }
+
+        releaseSpot(eventId, sessionId);
+
+        logger.logEvent(
+                "User left the waiting queue or released active queue access for Event " + eventId,
+                LogLevel.INFO
+        );
+
         notifyTokenHolder(
                 sessionId,
                 "You have left the waiting queue for Event " + eventId + "."
         );
     }
-
     public void expireUserSession(long eventId, String sessionId) {
         releaseSpot(eventId, sessionId);
         logger.logEvent("User session expired for Event " + eventId,
@@ -264,6 +336,13 @@ public class WaitingQueueService {
         if (event.isSoldOut()) {
             throw new IllegalStateException("Sold Out");
         }
+        if (event.isSoldOut()) {
+            throw new IllegalStateException("Sold Out");
+        }
+
+        if (hasActiveSpot(eventId, tokenString)) {
+            return 0;
+        }
 
         return queueRepository.getUserPosition(eventId, tokenString);
     }
@@ -289,5 +368,41 @@ public class WaitingQueueService {
 
         return Math.max(1, (position + 4) / 5);
     }
+    private Set<String> getActiveSessions(long eventId) {
+        return activeReservationSessions.computeIfAbsent(eventId, k -> ConcurrentHashMap.newKeySet());
+    }
 
+    private boolean hasActiveSpot(long eventId, String token) {
+        return token != null
+                && !token.isBlank()
+                && activeReservationSessions.containsKey(eventId)
+                && activeReservationSessions.get(eventId).contains(token);
+    }
+
+    private boolean hasAvailableSpot(Event event) {
+        if (event == null || event.getTrafficThreshold() == null || event.getTrafficThreshold() <= 0) {
+            return false;
+        }
+
+        return event.getActiveReservationsCount() < event.getTrafficThreshold();
+    }
+
+    private void approveSession(long eventId, Event event, String token) {
+        if (getActiveSessions(eventId).add(token)) {
+            event.incrementActiveReservations();
+            eventRepository.updateEvent(event);
+        }
+    }
+
+    private void cleanupActiveSessionsIfPossible(long eventId) {
+        Set<String> activeSessions = activeReservationSessions.get(eventId);
+        if (activeSessions != null && activeSessions.isEmpty() && queueRepository.getQueueSize(eventId) == 0) {
+            activeReservationSessions.remove(eventId);
+        }
+    }
+    private boolean isQueued(long eventId, String token) {
+        return token != null
+                && !token.isBlank()
+                && queueRepository.getUserPosition(eventId, token) > 0;
+    }
 }

@@ -74,25 +74,30 @@ public class WaitingQueueServiceTest {
         assertEquals(0, realQueueRepo.getQueueSize(1), "Queue should be completely empty.");
     }
 
-    @Test
+   @Test
     public void givenEventIsFull_whenTryReserve_thenUserIsQueued() {
         // Arrange
         Event event = new Event(2L, LocalDateTime.now().plusDays(1), "Art Expo", 1L, 1L, EventLocation.NEW_YORK, 1L,
                 EventCategory.EXHIBITION, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
         EventRepo.addEvent(event);
-        String validToken = tokenService.addActiveSession(new Guest());
 
-        waitingQueueService.tryReserve(2, validToken);
+        String firstToken = tokenService.addActiveSession(new Guest());
+        String secondToken = tokenService.addActiveSession(new Guest());
+
+        String firstResult = waitingQueueService.tryReserve(2, firstToken);
+        assertEquals("APPROVED", firstResult, "First user should be approved.");
 
         // Act
-        String result = waitingQueueService.tryReserve(2, validToken);
+        String result = waitingQueueService.tryReserve(2, secondToken);
 
         // Assert
-        assertEquals("QUEUED", result, "User should be queued because event is full.");
+        assertEquals("QUEUED", result, "Second user should be queued because event is full.");
         assertEquals(1, realQueueRepo.getQueueSize(2), "Queue size should be exactly 1.");
+
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
-        recordingNotifier.assertNotifiedGuest(validToken, "entered the waiting queue");
+
+        recordingNotifier.assertNotifiedGuest(secondToken, "entered the waiting queue");
         recordingNotifier.assertNotificationCount(1);
     }
 

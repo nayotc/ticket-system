@@ -22,6 +22,9 @@ import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Presenters.WaitingQueueSnapshot;
 import ticketsystem.PresentationLayer.Presenters.WaitingQueueStatus;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.shared.Registration;
 
 @Route(UiRoutes.WAITING_QUEUE)
 public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver {
@@ -39,6 +42,7 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
     private final Div progressRing = new Div();
     private final Button enterSelectionButton = new Button("כניסה לבחירת כרטיסים", VaadinIcon.TICKET.create());
     private final Button leaveQueueButton = new Button("יציאה מהתור", VaadinIcon.CLOSE_SMALL.create());
+    private Registration pollRegistration;
 
     /*
      * Later, when a real presenter exists as a Spring bean, annotate this constructor
@@ -248,5 +252,24 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
 
         void leaveQueue(long eventId, String sessionToken) throws Exception;
     }
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
 
+        UI ui = attachEvent.getUI();
+        ui.setPollInterval(3000);
+
+        pollRegistration = ui.addPollListener(event -> loadQueueState());
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        if (pollRegistration != null) {
+            pollRegistration.remove();
+            pollRegistration = null;
+        }
+
+        detachEvent.getUI().setPollInterval(-1);
+        super.onDetach(detachEvent);
+    }
 }
