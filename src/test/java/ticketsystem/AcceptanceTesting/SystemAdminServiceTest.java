@@ -219,8 +219,9 @@ public class SystemAdminServiceTest {
         assertTrue(deletedUser == null, "Member should be removed from UserRepository.");
     }
 
-    @Test
-    void GivenActiveSystemAdminAndActiveCompany_WhenCloseProductionCompanyByAdmin_ThenCompanyIsClosedAndRolesAreCancelled() throws Exception {
+   @Test
+        void GivenActiveSystemAdminAndActiveCompany_WhenCloseProductionCompanyByAdmin_ThenCompanyIsClosedAndRolesAreCancelled()
+                throws Exception {
         // Arrange
         long adminId = 1L;
         long founderId = 2L;
@@ -229,14 +230,30 @@ public class SystemAdminServiceTest {
 
         realAdminRepo.addAdmin(new SystemAdmin(String.valueOf(adminId), "admin", true));
 
-        Member founder = new Member(founderId, "founder", "Founder User", "0500000002", LocalDate.of(2001, 1, 1));
+        Member founder = new Member(
+                founderId,
+                "founder",
+                "Founder User",
+                "0500000002",
+                LocalDate.of(2001, 1, 1)
+        );
         userRepo.addRegisteredMember(founderId, founder, "password123");
+
         String founderSessionId = tokenService.addActiveSession(founder);
 
-        CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
+        CompanyDTO createdCompany = companyService.createProductionCompany(
+                founderSessionId,
+                "Test Company"
+        );
         long companyId = createdCompany.getId();
 
-        Member owner = new Member(ownerId, "owner", "Owner User", "0500000003", LocalDate.of(2001, 1, 1));
+        Member owner = new Member(
+                ownerId,
+                "owner",
+                "Owner User",
+                "0500000003",
+                LocalDate.of(2001, 1, 1)
+        );
         owner.addOwnerRole(companyId, founderId);
         owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepo.addRegisteredMember(ownerId, owner, "password123");
@@ -244,15 +261,33 @@ public class SystemAdminServiceTest {
         Set<Permission> managerPermissions = new HashSet<>();
         managerPermissions.add(Permission.MANAGE_EVENT_INVENTORY);
 
-        Member manager = new Member(managerId, "manager", "Manager User", "0500000004", LocalDate.of(2001, 1, 1));
+        Member manager = new Member(
+                managerId,
+                "manager",
+                "Manager User",
+                "0500000004",
+                LocalDate.of(2001, 1, 1)
+        );
         manager.addManagerRole(companyId, founderId, managerPermissions);
         manager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepo.addRegisteredMember(managerId, manager, "password123");
 
-        Founder founderRole = (Founder) userRepo.getMemberById(founderId).getRoleInCompany(companyId);
+        Member savedFounder = userRepo.getMemberById(founderId);
+        Founder founderRole = (Founder) savedFounder.getRoleInCompany(companyId);
+
         founderRole.addAppointee(ownerId);
         founderRole.addAppointee(managerId);
-        userRepo.updateMember(userRepo.getMemberById(founderId));
+
+        userRepo.updateMember(savedFounder);
+
+        assertTrue(
+                membershipDomain.getManagementSubTreeMemberIds(founderId, companyId).contains(ownerId),
+                "Owner should be part of the founder management subtree before admin closure."
+        );
+        assertTrue(
+                membershipDomain.getManagementSubTreeMemberIds(founderId, companyId).contains(managerId),
+                "Manager should be part of the founder management subtree before admin closure."
+        );
 
         // Act
         CompanyDTO closedCompany = systemAdminService.closeProductionCompanyByAdmin(adminId, companyId);
@@ -269,10 +304,25 @@ public class SystemAdminServiceTest {
         CompanyRole savedOwnerRole = userRepo.getMemberById(ownerId).getRoleInCompany(companyId);
         CompanyRole savedManagerRole = userRepo.getMemberById(managerId).getRoleInCompany(companyId);
 
-        assertEquals(RoleStatus.CANCELLED, savedFounderRole.getStatus(), "Founder role should be cancelled by admin company closure.");
-        assertEquals(RoleStatus.CANCELLED, savedOwnerRole.getStatus(), "Owner role should be cancelled by admin company closure.");
-        assertEquals(RoleStatus.CANCELLED, savedManagerRole.getStatus(), "Manager role should be cancelled by admin company closure.");
-    }
+        assertEquals(
+                RoleStatus.CANCELLED,
+                savedFounderRole.getStatus(),
+                "Founder role should be cancelled by admin company closure."
+        );
+        assertEquals(
+                RoleStatus.CANCELLED,
+                savedOwnerRole.getStatus(),
+                "Owner role should be cancelled by admin company closure."
+        );
+        assertEquals(
+                RoleStatus.CANCELLED,
+                savedManagerRole.getStatus(),
+                "Manager role should be cancelled by admin company closure."
+        );
+
+        recordingNotifier.assertNotifiedMember(ownerId, "closed");
+        recordingNotifier.assertNotifiedMember(managerId, "closed");
+        }
 
     @Test
     void GivenNonAdminMember_WhenCloseProductionCompanyByAdmin_ThenThrowsExceptionAndCompanyRemainsActive() throws Exception {
