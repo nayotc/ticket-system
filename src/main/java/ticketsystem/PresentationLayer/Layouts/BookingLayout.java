@@ -12,12 +12,19 @@ import com.vaadin.flow.router.RouterLayout;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import com.vaadin.flow.component.UI;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
+import org.springframework.beans.factory.annotation.Autowired;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
 public class BookingLayout extends VerticalLayout implements RouterLayout {
 
     private final Div content = new Div();
+    private final UiVisitCoordinator visitCoordinator;
 
-    public BookingLayout() {
+    @Autowired
+    public BookingLayout(UiVisitCoordinator visitCoordinator) {
+        this.visitCoordinator = visitCoordinator;
         getElement().setAttribute("dir", "rtl");
 
         setSizeFull();
@@ -64,5 +71,22 @@ public class BookingLayout extends VerticalLayout implements RouterLayout {
         if (routerContent != null) {
             content.getElement().appendChild(routerContent.getElement());
         }
+    }
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
+
+        if (visitCoordinator != null) {
+            visitCoordinator.ensureVisitAndNotifications(event.getUI());
+        }
+    }
+
+    @Override
+    protected void onDetach(DetachEvent event) {
+        if (visitCoordinator != null) {
+            visitCoordinator.disconnect();
+        }
+
+        super.onDetach(event);
     }
 }

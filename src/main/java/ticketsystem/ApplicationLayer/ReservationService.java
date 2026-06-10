@@ -419,7 +419,6 @@ public class ReservationService {
     }
 
     // 2.8 checkout
-
     public boolean checkout(String token, Long eventId, PaymentDetails details, String couponCode) {
         expireOldOrders();
 
@@ -447,6 +446,7 @@ public class ReservationService {
                     || details.getPaymentMethodId() == null) {
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
+
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
             BigDecimal amountAfterDiscount = eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event,
                     amount, order.getTickets().size(), couponCode);
@@ -516,6 +516,10 @@ public class ReservationService {
     // listener
     public void addOrderListener(OrderCompletedListener listener) {
         listeners.add(listener);
+    }
+
+    public void sweepExpiredAndExpiringOrders() {
+        expireOldOrders();
     }
 
     private boolean notifyListeners(OrderDTO order) {
