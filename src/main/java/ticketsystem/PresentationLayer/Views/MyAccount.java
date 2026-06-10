@@ -667,38 +667,6 @@ private String shortBarcode(String barcode) {
             : barcode;
 }
 
-//     private Component createTicketsDetails(MyPurchaseRow row) {
-//     Grid<PurchaseDTO> ticketsGrid = new Grid<>(PurchaseDTO.class, false);
-//     ticketsGrid.setWidthFull();
-//     ticketsGrid.setAllRowsVisible(true);
-
-//     ticketsGrid.addColumn(PurchaseDTO::getTicketId)
-//             .setHeader("מס' כרטיס");
-
-//     ticketsGrid.addColumn(ticket -> isStandingTicket(ticket) ? "אזור עמידה" : ticket.getRow())
-//             .setHeader("שורה");
-
-//     ticketsGrid.addColumn(ticket -> isStandingTicket(ticket) ? "אזור" : ticket.getChair())
-//             .setHeader("כיסא");
-
-//     ticketsGrid.addColumn(ticket -> formatMoney(ticket.getPrice()))
-//             .setHeader("מחיר");
-
-//     ticketsGrid.addColumn(PurchaseDTO::getStatus)
-//             .setHeader("סטטוס");
-
-//     ticketsGrid.addColumn(PurchaseDTO::getSecureBarcode)
-//             .setHeader("ברקוד");
-
-//     ticketsGrid.setItems(row.getTickets());
-
-//     return ticketsGrid;
-// }
-
-// private boolean isStandingTicket(PurchaseDTO ticket) {
-//     return ticket.getRow() == 0 && ticket.getChair() == 0;
-// }
-
     public static final class MyPurchaseRow {
         private final String purchaseId;
         private final String eventName;
