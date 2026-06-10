@@ -27,6 +27,7 @@ import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
+import ticketsystem.DTO.TicketIssueRequest;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -1164,14 +1165,20 @@ public class ReservationServiceTest {
         }
 
         @Override
-        public String issueTicket(Long ticketId, Long eventId, Long userId) {
+        public String issueTicket(TicketIssueRequest request) {
             wasGenerateCalled.set(true);
 
             if (!shouldGenerateSucceed) {
                 throw new IllegalStateException("Ticket issuing failed");
             }
 
-            return "SECURE_BARCODE_" + ticketId + "_" + eventId;
+            return "SECURE_BARCODE_" + request.getCustomerId()+ "_" + request.getEventId();
+        }
+
+        @Override
+        public boolean cancelTicket(String ticketId) {
+			// TODO Auto-generated method stub
+			throw new UnsupportedOperationException("Unimplemented method 'cancelTicket'");
         }
     }
 

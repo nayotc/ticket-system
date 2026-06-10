@@ -21,6 +21,7 @@ import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.IPaymentService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.ApplicationLayer.TokenService;
@@ -85,6 +86,7 @@ public class EventServiceAcceptanceTest {
     private UserAccessService userAccessService;
     private HistoryService historyService;
     private IPaymentService paymentService;
+    private ITicketIssuingService ticketIssuingService;
 
     @BeforeEach
     void setUp() {
@@ -144,7 +146,7 @@ public class EventServiceAcceptanceTest {
                 logger,
                 userAccessService,
                 notifier,
-                paymentService
+                paymentService,ticketIssuingService
         );
 
         eventService = new EventService(

@@ -17,7 +17,7 @@ public class Purchase {
     private Long managedByMemberId;
     private Long eventId;
     private BigDecimal totalPrice;
-    private PaymentDetails paymentDetails;
+    private Integer transactionId;
 
     public Purchase() {
     }
@@ -28,7 +28,7 @@ public class Purchase {
     }
 
     public Purchase(Long purchaseId, List<PurchasedTicket> tickets, String eventName, String location, Long memberId, Long companyId,
-            Long managedByMemberId, Long eventId, BigDecimal totalPrice, PaymentDetails paymentDetails) {
+            Long managedByMemberId, Long eventId, BigDecimal totalPrice, Integer transactionId) {
         this.purchaseId = purchaseId;
         this.tickets = new ArrayList<>(tickets);
         this.eventName = eventName;
@@ -38,7 +38,7 @@ public class Purchase {
         this.managedByMemberId = managedByMemberId;
         this.eventId = eventId;
         this.totalPrice = totalPrice;
-        this.paymentDetails = paymentDetails;
+        this.transactionId = transactionId;
     }
 
     public Long getPurchaseId() {
@@ -49,8 +49,8 @@ public class Purchase {
         this.purchaseId = purchaseId;
     }
 
-    public PaymentDetails getPaymentDetails() {
-        return paymentDetails;
+    public Integer getTransactionId() {
+        return transactionId;
     }
 
     public Long getMemberId() {

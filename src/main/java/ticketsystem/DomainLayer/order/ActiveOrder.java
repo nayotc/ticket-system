@@ -243,8 +243,7 @@ public class ActiveOrder {
     }
 
     public OrderDTO toDTO(String eventName, String location, Long companyId, Long managedByMemberId,
-                          Long eventId, BigDecimal total, String paymentMethodId, String payerName,
-                          LocalDate birthDate) {
+                          Long eventId, BigDecimal total, Integer transactionId) {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         for (Ticket ticket : tickets) {
             ticketDTOs.add(new PurchaseDTO(
@@ -258,12 +257,10 @@ public class ActiveOrder {
         }
         if (getUserId() != null) {
             return new OrderDTO(0L, ticketDTOs, eventName, location, getUserId(), companyId,
-                    managedByMemberId, eventId, total,
-                    new PaymentDetails(paymentMethodId, payerName, birthDate));
+                    managedByMemberId, eventId, total,transactionId);
         }
         return new OrderDTO(0L, ticketDTOs, eventName, location, null, companyId,
-                managedByMemberId, eventId, total,
-                new PaymentDetails(paymentMethodId, payerName, birthDate));
+                managedByMemberId, eventId, total, transactionId);
     }
 
     public ActiveOrderDTO toDTO() {

@@ -11,6 +11,14 @@ public class TicketIssueRequest {
     private boolean seating;
     private String seatsJson;
 
+    public TicketIssueRequest(String customerId, String eventId, TicketZoneType zone, Integer quantity, boolean seating, String seatsJson) {
+        this.customerId = customerId;
+        this.eventId = eventId;
+        this.zone = zone;
+        this.quantity = quantity;
+        this.seating = seating;
+        this.seatsJson = seatsJson;
+    }
     public TicketIssueRequest() {
     }
 

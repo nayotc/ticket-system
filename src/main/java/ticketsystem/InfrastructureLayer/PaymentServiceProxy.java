@@ -23,42 +23,35 @@ public class PaymentServiceProxy implements IPaymentService {
         return isConnectionSuccessful;
     }
 
+    @Override
+    public Integer pay(BigDecimal amount, PaymentDetails details) {
+        wasPayCalled = true;
 
-    // public boolean pay(BigDecimal amount, PaymentDetails details) {
-    //     wasPayCalled = true;
+        if (!isPaymentSuccessful) {
+            return -1;
+        }
 
-    //     if (!isConnectionSuccessful) {
-    //         return false;
-    //     }
+        return 1;
+    }
 
-    //     return isPaymentSuccessful;
-    // }
-
-    
-    public boolean refund(BigDecimal amount, PaymentDetails details) {
+    @Override
+    public boolean refund(Integer transactionId) {
         wasRefundCalled = true;
 
-        if (!isConnectionSuccessful) {
+        if (transactionId == null || transactionId == -1) {
             return false;
         }
 
         return isRefundSuccessful;
     }
 
-	@Override
-	public boolean refund(Integer transactionId) {
-		// TODO Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'refund'");
-	}
+    public static void reset() {
+        isConnectionSuccessful = true;
+        isPaymentSuccessful = true;
+        isRefundSuccessful = true;
 
-    @Override
-      public Integer pay(BigDecimal amount, PaymentDetails details) {
-        wasPayCalled = true;
-
-        if (!isConnectionSuccessful) {
-            return -1;
-        }
-
-        return 1;
+        wasConnectCalled = false;
+        wasPayCalled = false;
+        wasRefundCalled = false;
     }
 }

@@ -1,12 +1,15 @@
 package ticketsystem.ApplicationLayer;
 
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,6 +23,7 @@ import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
+import ticketsystem.DTO.TicketIssueRequest;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -33,6 +37,7 @@ import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.discount.PricingQuote;
 import ticketsystem.DTO.PricingQuoteDTO;
@@ -218,12 +223,11 @@ public class ReservationService {
 
             logger.logEvent(
                     "Seat ticket removed from active order: orderId=" + order.getOrderId()
-                    + ", eventId=" + eventId
-                    + ", areaId=" + areaId
-                    + ", row=" + position.getRow()
-                    + ", chair=" + position.getChair(),
-                    LogLevel.INFO
-            );
+                            + ", eventId=" + eventId
+                            + ", areaId=" + areaId
+                            + ", row=" + position.getRow()
+                            + ", chair=" + position.getChair(),
+                    LogLevel.INFO);
 
             return true;
 
@@ -278,9 +282,8 @@ public class ReservationService {
 
             logger.logEvent(
                     "Active order viewed: orderId=" + order.getOrderId()
-                    + ", eventId=" + order.getEventId(),
-                    LogLevel.INFO
-            );
+                            + ", eventId=" + order.getEventId(),
+                    LogLevel.INFO);
 
             return activeOrderDTO;
 
@@ -329,9 +332,8 @@ public class ReservationService {
 
             logger.logEvent(
                     "Current active order viewed: orderId=" + order.getOrderId()
-                    + ", eventId=" + order.getEventId(),
-                    LogLevel.INFO
-            );
+                            + ", eventId=" + order.getEventId(),
+                    LogLevel.INFO);
 
             return activeOrderDTO;
 
@@ -358,8 +360,8 @@ public class ReservationService {
      * to PricingQuoteDTO before returning it so upper layers do not receive
      * domain-layer objects directly.
      *
-     * @param token active guest/member session token
-     * @param eventId event identifier of the active order
+     * @param token      active guest/member session token
+     * @param eventId    event identifier of the active order
      * @param couponCode coupon code entered by the user, if any
      * @return full pricing DTO for the active order
      */
@@ -382,8 +384,7 @@ public class ReservationService {
                     event,
                     subtotal,
                     order.getTickets().size(),
-                    couponCode
-            );
+                    couponCode);
 
             return objectMapper.convertValue(quote, PricingQuoteDTO.class);
         } catch (Exception e) {
@@ -391,22 +392,24 @@ public class ReservationService {
         }
     }
 
-    
     public boolean validateActiveOrderPolicy(String token, Long eventId, PaymentDetails details, String couponCode) {
         // Implementation for validating active order policy
-        try{
+        try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
-            if(details == null|| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
+            if (details == null || details.getBirthDate() == null || details.getPayerName() == null
+                    || details.getPaymentMethodId() == null) {
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
             int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();
-            eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(),order.getTickets().size(), buyerAge);
+            eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(), order.getTickets().size(),
+                    buyerAge);
             reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
             BigDecimal amount = reservationDomeinService.calculatePrice(order, event);
-            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),couponCode);
+            BigDecimal amountAfterDiscount = eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event,
+                    amount, order.getTickets().size(), couponCode);
             saveAll(order, event);
             return true;
         } catch (Exception e) {
@@ -415,7 +418,7 @@ public class ReservationService {
     }
 
     // 2.8 checkout
-   
+
     public boolean checkout(String token, Long eventId, PaymentDetails details, String couponCode) {
         expireOldOrders();
 
@@ -427,29 +430,30 @@ public class ReservationService {
             if (order == null || event == null) {
                 throw new IllegalStateException("No active order or event found");
             }
-            if (details == null || details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null) {
+            if (details == null || details.getBirthDate() == null || details.getPayerName() == null
+                    || details.getPaymentMethodId() == null) {
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
-            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),couponCode);
-            boolean paymentResult = paymentService.pay(amountAfterDiscount, details);
+            BigDecimal amountAfterDiscount = eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event,
+                    amount, order.getTickets().size(), couponCode);
+            Integer transactionId = paymentService.pay(amountAfterDiscount, details);
 
-            if (!paymentResult) {
+            if (transactionId == -1) {
                 order.paymentFailed();
                 saveAll(order, event);
                 notifyOrderOwner(
                         token,
-                        "Payment failed. No purchase was completed."
-                );
+                        "Payment failed. No purchase was completed.");
                 throw new IllegalStateException("Payment failed");
             }
 
             OrderDTO orderDTO;
 
             try {
-                orderDTO = creaOrderDTOwithBarcode(order, event, amountAfterDiscount, details);
+                orderDTO = creaOrderDTOwithBarcode(order, event, amountAfterDiscount, transactionId);
             } catch (Exception barcodeException) {
-                handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, details, eventId, barcodeException,
+                handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, transactionId, barcodeException,
                         "Ticket issuing failed. Payment was refunded.",
                         "Ticket issuing failed and refund failed.");
                 return false; // unreachable
@@ -463,13 +467,13 @@ public class ReservationService {
 
                 notifyOrderOwner(
                         token,
-                        "Your purchase was completed successfully. Your tickets are now available."
-                );
+                        "Your purchase was completed successfully. Your tickets are now available.");
 
                 notifyEventManagersIfBecameSoldOut(event, wasSoldOutBeforeCheckout);
 
             } catch (Exception completeCheckoutException) {
-                handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, details, eventId, completeCheckoutException,
+                handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, transactionId,
+                        completeCheckoutException,
                         "Complete checkout failed. Payment was refunded.",
                         "Complete checkout failed and refund failed.");
                 return false; // unreachable
@@ -479,16 +483,14 @@ public class ReservationService {
             if (!listenersNotified) {
                 logger.logEvent(
                         "Order completed but notifying listeners failed: orderId="
-                        + order.getOrderId() + ", eventId=" + eventId,
-                        LogLevel.WARN
-                );
+                                + order.getOrderId() + ", eventId=" + eventId,
+                        LogLevel.WARN);
             }
 
             logger.logEvent(
                     "Checkout completed successfully: orderId="
-                    + order.getOrderId() + ", eventId=" + eventId,
-                    LogLevel.INFO
-            );
+                            + order.getOrderId() + ", eventId=" + eventId,
+                    LogLevel.INFO);
 
             return true;
 
@@ -515,7 +517,7 @@ public class ReservationService {
 
     }
 
-    //refund
+    // refund
     /**
      * Handles failures that happen after the payment was already approved but
      * before the checkout flow was fully completed.
@@ -529,12 +531,14 @@ public class ReservationService {
      * whether the failure came from ticket issuing, order status validation,
      * seat status validation, persistence, or another checkout-completion step.
      *
-     * @param order active order that failed during checkout completion
-     * @param event event related to the active order
-     * @param amount payment amount that should be refunded
-     * @param details payment details used for the original payment
-     * @param eventId event identifier used for logging
-     * @param originalException original exception that caused checkout completion to fail
+     * @param order                active order that failed during checkout
+     *                             completion
+     * @param event                event related to the active order
+     * @param amount               payment amount that should be refunded
+     * @param details              payment details used for the original payment
+     * @param eventId              event identifier used for logging
+     * @param originalException    original exception that caused checkout
+     *                             completion to fail
      * @param refundSuccessMessage message used when refund succeeds
      * @param refundFailureMessage message used when refund itself fails
      */
@@ -542,12 +546,11 @@ public class ReservationService {
             ActiveOrder order,
             Event event,
             BigDecimal amount,
-            PaymentDetails details,
-            Long eventId,
+            Integer transactionId,
             Exception originalException,
-            String refundSuccessMessage,
-            String refundFailureMessage) {
+            String refundSuccessMessage, String refundFailureMessage) {
 
+        Long eventId = event.getId();
         logger.logError(
                 refundSuccessMessage
                         + " Original checkout failure cause: "
@@ -556,45 +559,42 @@ public class ReservationService {
                         + originalException.getMessage()
                         + ". orderId=" + order.getOrderId()
                         + ", eventId=" + eventId,
-                originalException
-        );
+                originalException);
 
-        boolean refundResult = paymentService.refund(amount, details);
+        boolean refundResult = paymentService.refund(transactionId);
 
         order.paymentFailed();
         saveAll(order, event);
         notifyOrderOwner(
                 order.getSessionToken(),
-                "The purchase was canceled because ticket issuing failed. A refund was issued."
-        );
+                "The purchase was canceled because ticket issuing failed. A refund was issued.");
 
         if (refundResult) {
             logger.logEvent(
                     refundSuccessMessage + " orderId=" + order.getOrderId() + ", eventId=" + eventId,
-                    LogLevel.INFO
-            );
+                    LogLevel.INFO);
 
             throw new IllegalStateException(refundSuccessMessage, originalException);
         }
 
         logger.logError(
                 refundFailureMessage + " orderId=" + order.getOrderId() + ", eventId=" + eventId,
-                originalException
-        );
+                originalException);
 
         throw new IllegalStateException(refundFailureMessage, originalException);
     }
 
-    //secure barcode logic
-    private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event,BigDecimal total, PaymentDetails details ){
-          OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
-                        event.getOpenedBy(), event.getId(),total, details.getPaymentMethodId(), details.getPayerName(), details.getBirthDate());
-                for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
-                    String barcode = secureBarcode.issueTicket(purchesDTO.getTicketId(), order.getEventId(),
-                            order.getOrderId());
-                    purchesDTO.setSecureBarcode(barcode);
-                }
-         return orderDTO;       
+    // secure barcode logic
+    private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event, BigDecimal total, Integer transactionId) {
+        OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
+                event.getOpenedBy(), event.getId(), total, transactionId);
+            
+            for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
+            TicketIssueRequest request = createTicketIssueRequest(purchesDTO, orderDTO);
+            String barcode = secureBarcode.issueTicket(request);
+            purchesDTO.setSecureBarcode(barcode);
+        }
+        return orderDTO;
     }
 
     // Helper methods
@@ -623,9 +623,8 @@ public class ReservationService {
             orderRepository.addOrder(order);
             logger.logEvent(
                     "Active order created: orderId=" + order.getOrderId()
-                    + ", eventId=" + eventId,
-                    LogLevel.INFO
-            );
+                            + ", eventId=" + eventId,
+                    LogLevel.INFO);
         }
 
         return order;
@@ -677,8 +676,7 @@ public class ReservationService {
             if (reservationDomeinService.timeExpire(event, order)) {
                 notifyOrderOwner(
                         order.getSessionToken(),
-                        "Your active order has expired. The reserved tickets were released back to the inventory."
-                );
+                        "Your active order has expired. The reserved tickets were released back to the inventory.");
 
                 expirationWarningSentOrderIds.remove(order.getOrderId());
                 eventRepository.updateEvent(event);
@@ -686,8 +684,7 @@ public class ReservationService {
 
                 logger.logEvent(
                         "Expired order cancelled: " + order.getOrderId(),
-                        LogLevel.WARN
-                );
+                        LogLevel.WARN);
 
                 continue;
             }
@@ -697,13 +694,11 @@ public class ReservationService {
 
                 notifyOrderOwner(
                         order.getSessionToken(),
-                        "Your active order is about to expire. Please complete your purchase soon."
-                );
+                        "Your active order is about to expire. Please complete your purchase soon.");
 
                 logger.logEvent(
                         "Active order expiration warning sent: " + order.getOrderId(),
-                        LogLevel.INFO
-                );
+                        LogLevel.INFO);
             }
         }
     }
@@ -729,8 +724,7 @@ public class ReservationService {
 
             Set<Long> staffMemberIds = membershipDomain.getManagementSubTreeMemberIds(
                     company.getFounderId(),
-                    company.getId()
-            );
+                    company.getId());
 
             if (staffMemberIds == null || staffMemberIds.isEmpty()) {
                 return;
@@ -743,31 +737,27 @@ public class ReservationService {
                         && membershipDomain.validatePermission(
                                 memberId,
                                 company.getId(),
-                                Permission.MANAGE_EVENT_INVENTORY
-                        )) {
+                                Permission.MANAGE_EVENT_INVENTORY)) {
                     recipients.add(memberId);
                 }
             }
 
             notificationsService.notifyMembers(
                     recipients,
-                    "The event \"" + event.getName() + "\" is now sold out."
-            );
+                    "The event \"" + event.getName() + "\" is now sold out.");
 
             logger.logEvent(
                     "Sold out notification sent for eventId=" + event.getId()
-                    + ", companyId=" + event.getCompanyId(),
-                    LogLevel.INFO
-            );
+                            + ", companyId=" + event.getCompanyId(),
+                    LogLevel.INFO);
 
         } catch (Exception e) {
             soldOutNotificationSentEventIds.remove(event.getId());
 
             logger.logEvent(
                     "Failed to send sold out notification for eventId="
-                    + event.getId() + ". reason=" + e.getMessage(),
-                    LogLevel.WARN
-            );
+                            + event.getId() + ". reason=" + e.getMessage(),
+                    LogLevel.WARN);
         }
     }
 
@@ -783,5 +773,39 @@ public class ReservationService {
             }
         }
         notificationsService.notifyGuest(sessionToken, message);
+    }
+
+    private TicketIssueRequest createTicketIssueRequest(PurchaseDTO purchesDTO, OrderDTO orderDTO) {
+        {
+
+            boolean seating = isSeating(purchesDTO);
+            String seatsJson = seating
+                    ? buildSeatsJson(purchesDTO)
+                    : null;
+
+            return new TicketIssueRequest(
+                    String.valueOf(orderDTO.getMemberId()),
+                    String.valueOf(orderDTO.getEventId()),
+                    seating
+                            ? TicketIssueRequest.TicketZoneType.SEATING
+                            : TicketIssueRequest.TicketZoneType.STANDING,
+                    seating ? null : 1,
+                    seating,
+                    seatsJson);
+        }
+    }
+
+    private boolean isSeating(PurchaseDTO purchesDTO) {
+        if (purchesDTO.getRow() != 0 && purchesDTO.getChair() != 0) {
+            return true;
+        }
+        return false;
+    }
+
+    private String buildSeatsJson(PurchaseDTO purchaseDTO) {
+        return String.format(
+                "{\"row\":%d,\"seat\":%d}",
+                purchaseDTO.getRow(),
+                purchaseDTO.getChair());
     }
 }

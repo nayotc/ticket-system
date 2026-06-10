@@ -650,10 +650,16 @@ public class ReservationServiceTest {
         }
 
         @Override
-        public String issueTicket(Long ticketId, Long eventId, Long userId) {
+        public String issueTicket(ticketsystem.DTO.TicketIssueRequest request) {
             generateCalls.incrementAndGet();
-            return "SECURE_BARCODE_" + ticketId + "_" + eventId + "_" + userId;
+            return "SECURE_BARCODE_"  + request.getEventId() + "_" + request.getCustomerId();
         }
+
+		@Override
+		public boolean cancelTicket(String ticketId) {
+			// TODO Auto-generated method stub
+			throw new UnsupportedOperationException("Unimplemented method 'cancelTicket'");
+		}
     }
 
     private static class NoOpSystemLogger implements ISystemLogger {

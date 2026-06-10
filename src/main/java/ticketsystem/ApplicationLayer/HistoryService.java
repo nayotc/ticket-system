@@ -3,6 +3,9 @@ package ticketsystem.ApplicationLayer;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
+
+import javax.swing.text.html.HTMLDocument.HTMLReader.IsindexAction;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -41,10 +44,11 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
     private final UserAccessService userAccessService;
     private final INotifier notificationsService;
     private final IPaymentService paymentService;
+    private final ITicketIssuingService ticketIssuingService;
 
     @Autowired
     public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger,
-            UserAccessService userAccessService, INotifier notificationsService, IPaymentService paymentService) {
+            UserAccessService userAccessService, INotifier notificationsService, IPaymentService paymentService, ITicketIssuingService ticketIssuingService) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
@@ -52,6 +56,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         this.userAccessService = userAccessService;
         this.notificationsService = notificationsService;
         this.paymentService = paymentService;
+        this.ticketIssuingService = ticketIssuingService;
         this.objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
     }
 
@@ -265,8 +270,10 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         for (Purchase purchase : purchases) {
             for (PurchasedTicket ticket : purchase.getTickets()) {
                 ticket.setStatus(TicketStatus.CANCELED);
+                ticketIssuingService.cancelTicket(ticket.getSecureBarcode());
             }
-            paymentService.refund(purchase.getTotalPrice(), new PaymentDetails(purchase.getPaymentDetails().getPaymentMethodId(), purchase.getPaymentDetails().getPayerName(), purchase.getPaymentDetails().getBirthDate()));
+            paymentService.refund(purchase.getTransactionId());
+
         }
 
         notifyPurchasedBuyers(
