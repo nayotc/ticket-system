@@ -592,7 +592,7 @@ public class ReservationServiceTest {
                 null);
 
         assertTrue(selected);
-
+        reservationService.validateActiveOrderPolicy(memberToken, eventId, createPaymentDetails(), null);
         boolean checkoutResult = reservationService.checkout(
                 memberToken,
                 eventId,
@@ -695,7 +695,7 @@ public class ReservationServiceTest {
                 null);
 
         assertTrue(selected);
-
+        reservationService.validateActiveOrderPolicy(guestToken, eventId, createPaymentDetails(), null);
         boolean checkoutResult = reservationService.checkout(
                 guestToken,
                 eventId,
@@ -946,7 +946,7 @@ public class ReservationServiceTest {
                 areaId,
                 1,
                 null);
-
+        reservationService.validateActiveOrderPolicy(memberToken, eventId, createPaymentDetails(), null);
         boolean result = reservationService.checkout(
                 memberToken,
                 eventId,

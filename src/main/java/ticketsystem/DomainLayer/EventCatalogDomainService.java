@@ -5,6 +5,11 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+
+import ticketsystem.DomainLayer.discount.AppliedDiscountResult;
+import ticketsystem.DomainLayer.discount.DiscountCalculationResult;
+import ticketsystem.DomainLayer.discount.PricingQuote;
 
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
@@ -111,6 +116,83 @@ public class EventCatalogDomainService {
         }
 
         return finalPrice;
+    }
+
+    /**
+     * Calculates a full pricing quote after applying company-level and event-level
+     * discount policies.
+     *
+     * This method keeps the original subtotal, calculates the discounts that were
+     * actually applied, and returns the final total after discounts.
+     *
+     * Company discounts are applied first. Event discounts are then calculated on
+     * the price after company discounts, matching the existing calculateFinalPrice
+     * flow.
+     *
+     * This method does not replace calculateFinalPrice(...). It provides a richer
+     * domain result for callers that need pricing details for display or checkout
+     * validation.
+     *
+     * @param companyId the production company id
+     * @param event the event being purchased
+     * @param totalPrice the original order price before discounts
+     * @param ticketCount the number of tickets in the order
+     * @param couponCode the coupon code entered by the user, if any
+     * @return full pricing quote with subtotal, discounts, final total, and applied discounts
+     */
+    public PricingQuote calculatePricingQuote(Long companyId, Event event, BigDecimal totalPrice, int ticketCount, String couponCode) {
+        if (companyId == null) {
+            throw new IllegalArgumentException("Company id cannot be null");
+        }
+
+        if (event == null) {
+            throw new IllegalArgumentException("Event cannot be null");
+        }
+
+        validateEventNotCancelled(event);
+
+        if (totalPrice == null) {
+            throw new IllegalArgumentException("Total price cannot be null");
+        }
+
+        if (totalPrice.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Total price cannot be negative");
+        }
+
+        if (ticketCount < 0) {
+            throw new IllegalArgumentException("Ticket count cannot be negative");
+        }
+
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        DiscountCalculationResult companyDiscount =
+                company.calculateDiscountCompanyDetails(totalPrice, ticketCount, couponCode);
+
+        BigDecimal priceAfterCompanyDiscount =
+                totalPrice.subtract(companyDiscount.discountTotal());
+
+        if (priceAfterCompanyDiscount.compareTo(BigDecimal.ZERO) < 0) {
+            priceAfterCompanyDiscount = BigDecimal.ZERO;
+        }
+
+        DiscountCalculationResult eventDiscount =
+                event.calculateDiscountEventDetails(priceAfterCompanyDiscount, ticketCount, couponCode);
+
+        BigDecimal finalPrice =
+                priceAfterCompanyDiscount.subtract(eventDiscount.discountTotal());
+
+        if (finalPrice.compareTo(BigDecimal.ZERO) < 0) {
+            finalPrice = BigDecimal.ZERO;
+        }
+
+        List<AppliedDiscountResult> appliedDiscounts = new ArrayList<>();
+        appliedDiscounts.addAll(companyDiscount.appliedDiscounts());
+        appliedDiscounts.addAll(eventDiscount.appliedDiscounts());
+
+        BigDecimal discountTotal = totalPrice.subtract(finalPrice);
+
+        return new PricingQuote(totalPrice, discountTotal, finalPrice, appliedDiscounts);
     }
 
     public void canPurchaseByCompanyPolicy(long companyId, int ticketCount, int buyerAge) {

@@ -171,7 +171,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
             eventInfo = presenter.loadActiveOrderEventInfo(token, activeOrder.getEventId());
-            pricing = presenter.calculatePricing(activeOrder, normalizedCouponCode());
+            pricing = presenter.calculatePricing(resolveSessionToken(), activeOrder, normalizedCouponCode());
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
@@ -578,7 +578,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         }
 
         try {
-            pricing = presenter.calculatePricing(activeOrder, normalizedCouponCode());
+            pricing = presenter.calculatePricing(resolveSessionToken(), activeOrder, normalizedCouponCode());
             renderCheckout();
 
             if (isBlank(normalizedCouponCode())) {
@@ -630,9 +630,19 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         if (isBlank(payerName.getValue())) {
             payerName.setValue(fullName.getValue());
         }
+        try{
+            PaymentDetails details = new PaymentDetails(
+                resolvePaymentMethodId(),
+                payerName.getValue().trim(),
+                birthDate.getValue()
+                );
+            presenter.validateOrderPolicyBeforePayment(resolveSessionToken(), activeOrder.getEventId(), details, normalizedCouponCode());
+            currentStep = 2;
+            renderCheckout();
+        }catch (Exception exception) {
+            showError(exception.getMessage());
+        }
 
-        currentStep = 2;
-        renderCheckout();
     }
 
     private void submitPayment() {
@@ -652,6 +662,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                     activeOrder.getEventId(),
                     details,
                     normalizedCouponCode()
+
             );
 
             if (success) {

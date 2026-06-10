@@ -207,6 +207,7 @@ public class ReservationServiceTest {
         eventRepository.addEvent(event);
 
         reservationService.selectStandingTicket(token, eventId, areaId, 1, null);
+        reservationService.validateActiveOrderPolicy(token, eventId, createPaymentDetails(), null);
 
         int numberOfThreads = 10;
 
@@ -216,7 +217,7 @@ public class ReservationServiceTest {
 
         AtomicInteger successCount = new AtomicInteger(0);
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
-
+        
         for (int i = 0; i < numberOfThreads; i++) {
             executor.submit(() -> {
                 try {
@@ -248,7 +249,6 @@ public class ReservationServiceTest {
         assertTrue(completed, "Test timed out");
         assertEquals(1, successCount.get(), "Only one checkout should complete the same order");
     }
-
     @Test
     void ConcurrencyTest_SelectStandingTickets_WhenManyUsersSelectTickets_ThenSystemStaysConsistent()
             throws InterruptedException {
@@ -414,13 +414,20 @@ public class ReservationServiceTest {
 
             executor.submit(() -> {
                 try {
+                    reservationService.validateActiveOrderPolicy(
+                            tokenForUserIndex(userIndex),
+                            eventId,
+                            createPaymentDetails(),
+                            null
+                    );
+
                     startLatch.await();
 
                     boolean result = reservationService.checkout(
                             tokenForUserIndex(userIndex),
                             eventId,
                             createPaymentDetails(),
-                            null
+                            null 
                     );
 
                     if (result) {
@@ -453,7 +460,6 @@ public class ReservationServiceTest {
         assertTrue(orderRepository.getAll().size() <= numberOfUsers,
                 "Repository should remain in a consistent state");
     }
-
     @Test
     void ConcurrencyTest_ManyUsersSelectStandingTickets_OverCapacity_ThenOnlyCapacityUsersSucceed()
             throws InterruptedException {

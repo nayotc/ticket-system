@@ -15,6 +15,7 @@ import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
+import ticketsystem.DomainLayer.discount.DiscountCalculationResult;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
@@ -469,6 +470,24 @@ public class Event {
         return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
     }
 
+
+    /**
+     * Calculates the event's discount policy and returns a detailed domain result.
+     *
+     * This method is used when callers need to know not only the total discount
+     * amount, but also which event-level discounts were actually applied.
+     *
+     * The existing calculateDiscountEvent(...) method is kept unchanged for callers
+     * that only need the numeric discount amount.
+     *
+     * @param totalPrice the price before applying event-level discounts
+     * @param ticketCount the number of tickets in the order
+     * @param couponCode the coupon code entered by the user, if any
+     * @return detailed result of the event-level discount calculation
+     */
+    public DiscountCalculationResult calculateDiscountEventDetails(BigDecimal totalPrice, int ticketCount, String couponCode) {
+        return discountPolicy.calculateDiscountDetails(totalPrice, ticketCount, couponCode);
+    }
 
     public List<DiscountTypes> getDiscounts() {
         return discountPolicy.getDiscounts();

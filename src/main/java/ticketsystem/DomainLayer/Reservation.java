@@ -95,8 +95,11 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
         order.validateCanBeSubmittedBy();
         order.submitForCheckout();
         return calculateTotalPrice(order, event);
-        }
+    }
 
+    public BigDecimal calculatePrice(ActiveOrder order, Event event){
+        return calculateTotalPrice(order, event);
+    }
     //in the service layer, after payment is successful, call order.completeCheckout(order,event) to finalize the order and mark tickets as sold in the event
     
      public void completeCheckout(ActiveOrder order, Event event) {

@@ -1,5 +1,8 @@
 package ticketsystem.ApplicationLayer;
 
+import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Period;
@@ -31,6 +34,8 @@ import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.user.Permission;
+import ticketsystem.DomainLayer.discount.PricingQuote;
+import ticketsystem.DTO.PricingQuoteDTO;
 
 @Service
 public class ReservationService {
@@ -51,6 +56,7 @@ public class ReservationService {
     private final UserAccessService userAccessService;
     private final Set<Long> expirationWarningSentOrderIds = ConcurrentHashMap.newKeySet();
     private final Set<Long> soldOutNotificationSentEventIds = ConcurrentHashMap.newKeySet();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ReservationService(
             IOrderRepository orderRepository,
@@ -284,6 +290,22 @@ public class ReservationService {
         }
     }
 
+    /**
+     * Returns the current active order for the given UI session token.
+     * This method is intended for presentation-layer flows such as the active order
+     * cart, where the UI needs to display the current user's active order without
+     * receiving an order id in the route.
+     *
+     * The lookup is based on the token type:
+     * - guest token: finds the active order by session token
+     * - member token: extracts the member id and finds the active order by user id
+     *
+     * If no active order exists, or if the found order is no longer ACTIVE, this
+     * method returns null so the UI can render an empty cart state.
+     *
+     * @param token active guest/member session token
+     * @return active order DTO for the current session, or null if none exists
+     */
     public ActiveOrderDTO viewCurrentActiveOrder(String token) {
         expireOldOrders();
 
@@ -319,8 +341,82 @@ public class ReservationService {
         }
     }
 
+    /**
+     * Calculates the pricing quote DTO for the current active order.
+     *
+     * This method calculates the original active-order amount, applies the
+     * company-level and event-level discount policies through the domain layer,
+     * and returns an application-layer DTO with the subtotal, total discount
+     * amount, final total, and the discounts that were actually applied.
+     *
+     * This method only calculates pricing. It does not complete checkout, does not
+     * charge payment, and does not validate purchase-policy rules that require
+     * buyer details, such as minimum age. Purchase-policy validation is still done
+     * before payment.
+     *
+     * The domain layer returns a PricingQuote object, but this service converts it
+     * to PricingQuoteDTO before returning it so upper layers do not receive
+     * domain-layer objects directly.
+     *
+     * @param token active guest/member session token
+     * @param eventId event identifier of the active order
+     * @param couponCode coupon code entered by the user, if any
+     * @return full pricing DTO for the active order
+     */
+    public PricingQuoteDTO calculateActiveOrderPricing(String token, Long eventId, String couponCode) {
+        try {
+            tokenService.validateToken(token);
+            userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
+
+            ActiveOrder order = findActiveOrder(token, eventId);
+            Event event = eventRepository.getEventById(eventId);
+
+            if (order == null || event == null) {
+                throw new IllegalStateException("No active order or event found");
+            }
+
+            BigDecimal subtotal = reservationDomeinService.calculateTotalPrice(order, event);
+
+            PricingQuote quote = eventCatalogDomainService.calculatePricingQuote(
+                    event.getCompanyId(),
+                    event,
+                    subtotal,
+                    order.getTickets().size(),
+                    couponCode
+            );
+
+            return objectMapper.convertValue(quote, PricingQuoteDTO.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to calculate active order pricing: " + e.getMessage());
+        }
+    }
+
+    
+    public boolean validateActiveOrderPolicy(String token, Long eventId, PaymentDetails details, String couponCode) {
+        // Implementation for validating active order policy
+        try{
+            tokenService.validateToken(token);
+            userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
+            ActiveOrder order = findActiveOrder(token, eventId);
+            Event event = eventRepository.getEventById(eventId);
+            if(details == null|| details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null){
+                throw new IllegalArgumentException("Payment details are incomplete");
+            }
+            int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();
+            eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(),order.getTickets().size(), buyerAge);
+            reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
+            BigDecimal amount = reservationDomeinService.calculatePrice(order, event);
+            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),couponCode);
+            saveAll(order, event);
+            return true;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to validate active order policy: " + e.getMessage());
+        }
+    }
+
     // 2.8 checkout
-    public boolean checkout(String token, Long eventId, PaymentDetails details, String coupon) {
+   
+    public boolean checkout(String token, Long eventId, PaymentDetails details, String couponCode) {
         expireOldOrders();
 
         try {
@@ -334,12 +430,8 @@ public class ReservationService {
             if (details == null || details.getBirthDate() == null || details.getPayerName() == null || details.getPaymentMethodId() == null) {
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
-            int buyerAge = Period.between(details.getBirthDate(), LocalDate.now()).getYears();
-            eventCatalogDomainService.canPurchaseByCompanyPolicy(event.getCompanyId(), order.getTickets().size(), buyerAge);
-            reservationDomeinService.canPurchaseByEventPolicy(event, order.getTickets().size(), buyerAge);
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
-            BigDecimal amountAfterDiscount = eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(), coupon);
-            //For debugging discount application issues
+            BigDecimal amountAfterDiscount= eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event, amount, order.getTickets().size(),couponCode);
             boolean paymentResult = paymentService.pay(amountAfterDiscount, details);
 
             if (!paymentResult) {
@@ -424,6 +516,28 @@ public class ReservationService {
     }
 
     //refund
+    /**
+     * Handles failures that happen after the payment was already approved but
+     * before the checkout flow was fully completed.
+     *
+     * At this stage, the system must refund the payment because the purchase
+     * cannot be safely completed. The method also logs the original failure cause
+     * before throwing a user-facing checkout failure exception.
+     *
+     * Logging the original exception is important because the public exception
+     * message intentionally stays general, while the internal cause may explain
+     * whether the failure came from ticket issuing, order status validation,
+     * seat status validation, persistence, or another checkout-completion step.
+     *
+     * @param order active order that failed during checkout completion
+     * @param event event related to the active order
+     * @param amount payment amount that should be refunded
+     * @param details payment details used for the original payment
+     * @param eventId event identifier used for logging
+     * @param originalException original exception that caused checkout completion to fail
+     * @param refundSuccessMessage message used when refund succeeds
+     * @param refundFailureMessage message used when refund itself fails
+     */
     private void handleRefundAfterCheckoutFailure(
             ActiveOrder order,
             Event event,
@@ -434,6 +548,17 @@ public class ReservationService {
             String refundSuccessMessage,
             String refundFailureMessage) {
 
+        logger.logError(
+                refundSuccessMessage
+                        + " Original checkout failure cause: "
+                        + originalException.getClass().getSimpleName()
+                        + " - "
+                        + originalException.getMessage()
+                        + ". orderId=" + order.getOrderId()
+                        + ", eventId=" + eventId,
+                originalException
+        );
+
         boolean refundResult = paymentService.refund(amount, details);
 
         order.paymentFailed();
@@ -442,6 +567,7 @@ public class ReservationService {
                 order.getSessionToken(),
                 "The purchase was canceled because ticket issuing failed. A refund was issued."
         );
+
         if (refundResult) {
             logger.logEvent(
                     refundSuccessMessage + " orderId=" + order.getOrderId() + ", eventId=" + eventId,

@@ -73,7 +73,7 @@ public class ActiveOrderCart extends VerticalLayout {
             }
 
             eventInfo = loadEventInfo(activeOrder.getEventId());
-            pricing = presenter.calculatePricing(activeOrder, currentCouponCode);
+            pricing = presenter.calculatePricing(resolveSessionToken(), activeOrder, currentCouponCode);
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
             renderCart();
@@ -300,7 +300,7 @@ public class ActiveOrderCart extends VerticalLayout {
         }
 
         try {
-            pricing = presenter.applyCoupon(activeOrder, currentCouponCode);
+            pricing = presenter.applyCoupon(resolveSessionToken(), activeOrder, currentCouponCode);
             renderCart();
         } catch (Exception exception) {
             showError(exception.getMessage());
