@@ -916,6 +916,11 @@ public class ReservationPresenter {
                 "Lottery code is invalid" ->
                     "קוד ההגרלה אינו תקין.";
 
+            case "Payment service is unavailable" ->
+                    "שירות התשלום אינו זמין כרגע. יש לנסות שוב מאוחר יותר.";
+            case "Ticket issuing service is unavailable" ->
+                    "שירות הנפקת הכרטיסים אינו זמין כרגע. יש לנסות שוב מאוחר יותר.";
+
             default ->
                     "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
         };
