@@ -20,8 +20,8 @@ public class ActiveOrderExpirationScheduler {
     }
 
     @Scheduled(
-            fixedDelayString = "${ticketsystem.orders.expiration-sweep-ms:10000}",
-            initialDelayString = "${ticketsystem.orders.expiration-sweep-initial-delay-ms:10000}"
+            fixedDelayString = "${ticketsystem.orders.expiration-sweep-ms:30000}",
+            initialDelayString = "${ticketsystem.orders.expiration-sweep-initial-delay-ms:30000}"
     )
     public void sweepExpiredAndExpiringOrders() {
         try {

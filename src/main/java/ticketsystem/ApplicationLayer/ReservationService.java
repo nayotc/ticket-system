@@ -420,12 +420,9 @@ public class ReservationService {
 
     // 2.8 checkout
     public boolean checkout(String token, Long eventId, PaymentDetails details, String couponCode) {
-        expireOldOrders();
-
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
-
 
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
@@ -433,14 +430,14 @@ public class ReservationService {
                 throw new IllegalStateException("No active order or event found");
             }
 
+            if (reservationDomeinService.timeExpire(event, order)) {
+                expireCurrentOrder(token, order, event);
+                throw new IllegalStateException("Active order has expired");
+            }
+
             if (!paymentService.handshake()) {
                 throw new IllegalStateException("Payment service is unavailable");
             }
-
-            if (!ticketIssuingService.handshake()) {
-                throw new IllegalStateException("Ticket issuing service is unavailable");
-            }
-
 
             if (details == null || details.getBirthDate() == null || details.getPayerName() == null
                     || details.getPaymentMethodId() == null) {
@@ -511,6 +508,22 @@ public class ReservationService {
             logger.logEvent("checkout failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
+    }
+    private void expireCurrentOrder(String token, ActiveOrder order, Event event) {
+        notifyOrderOwner(
+                token,
+                "Your active order has expired. Please select tickets again."
+        );
+
+        expirationWarningSentOrderIds.remove(order.getOrderId());
+        eventRepository.updateEvent(event);
+        orderRepository.deleteOrder(order.getOrderId());
+
+        logger.logEvent(
+                "Active order expired during checkout: orderId="
+                        + order.getOrderId() + ", eventId=" + event.getId(),
+                LogLevel.INFO
+        );
     }
 
     // listener

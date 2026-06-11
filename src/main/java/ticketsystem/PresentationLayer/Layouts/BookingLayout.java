@@ -13,7 +13,6 @@ import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import com.vaadin.flow.component.UI;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import com.vaadin.flow.component.AttachEvent;
-import com.vaadin.flow.component.DetachEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
@@ -81,12 +80,4 @@ public class BookingLayout extends VerticalLayout implements RouterLayout {
         }
     }
 
-    @Override
-    protected void onDetach(DetachEvent event) {
-        if (visitCoordinator != null) {
-            visitCoordinator.disconnect();
-        }
-
-        super.onDetach(event);
-    }
 }
