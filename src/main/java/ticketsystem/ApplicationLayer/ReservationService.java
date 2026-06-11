@@ -414,6 +414,7 @@ public class ReservationService {
             return true;
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to validate active order policy: " + e.getMessage());
+           
         }
     }
 

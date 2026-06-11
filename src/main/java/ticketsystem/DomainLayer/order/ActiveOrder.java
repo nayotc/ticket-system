@@ -168,16 +168,9 @@ public class ActiveOrder {
         return status == OrderStatus.PENDING_CHECKOUT;
     }
 
-    public void validateTicketLimit() {
-        int maxTickets = 10;
-        if (tickets.size() > maxTickets) {
-            throw new IllegalStateException("Ticket quantity exceeds limit");
-        }
-    }
 
     public void validateCanBeSubmittedBy() {
         validateHasTickets();
-        validateTicketLimit();
         if (status != OrderStatus.ACTIVE && status != OrderStatus.PAYMENT_FAILED) {
             throw new IllegalStateException("Order is not active");
         }
