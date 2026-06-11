@@ -91,7 +91,10 @@ public final class MessageTranslator {
         if (eventName != null && message.endsWith("\" is now sold out.")) {
             return "האירוע \"" + eventName + "\" אזל מהמלאי.";
         }
-
+        
+        if (eventName != null && message.endsWith("\" that you purchased tickets for was canceled.")) {
+            return "האירוע \"" + eventName + "\" אליו רכשת כרטיסים, בוטל על ידי המארגנים.";
+        }
         return null;
     }
 

@@ -1,6 +1,7 @@
 package ticketsystem.PresentationLayer.Views.Management;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -32,6 +33,7 @@ import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.SaleStatus;
+import ticketsystem.InfrastructureLayer.VaadinNotifier;
 import ticketsystem.PresentationLayer.Components.AppCard;
 import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.PageContainer;
@@ -94,6 +96,9 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
 
     private final Button maximumDiscountButton = new Button("מקסימום");
     private final Button sumDiscountButton = new Button("סכום");
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private ticketsystem.PresentationLayer.Session.UiVisitCoordinator visitCoordinator;
 
     public EditEvent() {
         this(null);
@@ -1877,16 +1882,19 @@ private String conditionText(DiscountConditionDTO condition) {
     }
 
     private void confirmCancelEvent() {
-        confirmOwnerAction(
-                "ביטול אירוע",
-                "האירוע יבוטל לאחר אישור הפעולה.",
-                () -> {
-                    presenter.cancelEvent(UiSession.getMemberToken(), eventId);
-                    Notifications.success("אירוע בוטל בהצלחה.");
-                    loadEventDetails();
-                }
-        );
-    }
+            confirmOwnerAction(
+                    "ביטול אירוע",
+                    "האירוע יבוטל לאחר אישור הפעולה.",
+                    () -> {
+                        presenter.cancelEvent(UiSession.getMemberToken(), eventId);
+                        if (visitCoordinator != null) {
+                            visitCoordinator.forceShowPendingNotifications(com.vaadin.flow.component.UI.getCurrent());
+                        }
+                        Notifications.success("אירוע בוטל בהצלחה.");
+                        loadEventDetails();
+                    } 
+            ); 
+        } 
 
     private void confirmOwnerAction(String title, String text, Runnable action) {
         ConfirmDialog dialog = new ConfirmDialog();
