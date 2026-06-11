@@ -162,25 +162,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
     }
 }
     
-    // private void reloadTicketSelectionEventDataKeepingSelection() {
-    //     String token = currentToken();
-
-    //     try {
-    //         this.eventDTO = reservationPresenter.loadEvent(token, eventId);
-    //         this.mapDTO = reservationPresenter.loadEventMap(token, eventId);
-
-    //         standingQuantityFields.clear();
-    //         renderMap();
-    //         refreshSummary();
-
-    //     } catch (PresentationException e) {
-    //         Notifications.error(e.getMessage());
-
-    //     } catch (Exception e) {
-    //         Notifications.error("לא ניתן לרענן את מפת האירוע. יש לנסות שוב");
-    //     }
-    // }
-
     public void setEventData(EventDTO eventDTO, EventMapDTO mapDTO) {
         this.eventDTO = eventDTO;
         this.mapDTO = mapDTO;
