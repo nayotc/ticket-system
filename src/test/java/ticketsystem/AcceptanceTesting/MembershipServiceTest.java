@@ -365,6 +365,11 @@ public class MembershipServiceTest {
     // =========================================================================================
     @Test
     public void GivenValidDetails_WhenRemoveOwnerAssignment_ThenReturnsTrueAndUpdatesDB() throws Exception {
+        // Arrange
+        Member secondOwner = new Member(888L, "SecondOwner", "Second Owner", "0500000008", LocalDate.of(2001, 1, 1));
+        secondOwner.addOwnerRole(companyId, founderId);
+        secondOwner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(888L, secondOwner, "password123");
         // Act
         boolean result = membershipService.removeOwnerAssignment(appointerToken, companyId, ownerId);
 
@@ -395,7 +400,13 @@ public class MembershipServiceTest {
     @Test
     public void GivenNotTheAppointer_WhenRemoveOwnerAssignment_ThenThrowsException() throws Exception {
         // Arrange
+        Member secondOwner = new Member(104L, "SecondOwner", "Second Owner", "0500000008", LocalDate.of(2001, 1, 1));
+        secondOwner.addOwnerRole(companyId, founderId);
+        secondOwner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(104L, secondOwner, "password123");
+        
         member.addOwnerRole(companyId, 888L);
+        member.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE); 
         userRepository.updateMember(member);
 
         // Act & Assert (Domain Error -> RuntimeException)
@@ -592,52 +603,6 @@ public class MembershipServiceTest {
         assertTrue(exception.getMessage().contains("Only Owners or Founder can perform this action.")
                 || exception.getMessage().contains("Only Owners"),
                 "Manager should not be allowed to view the roles tree.");
-    }
-
-    private static class FakeNotifier implements INotifier {
-
-        private final List<String> messages = new ArrayList<>();
-
-        @Override
-        public void notifyMember(Long memberId, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyGuest(String guestToken, String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void notifyMembers(Collection<Long> memberIds, String message) {
-            if (memberIds == null) {
-                return;
-            }
-
-            for (Long memberId : memberIds) {
-                if (memberId != null) {
-                    notifyMember(memberId, message);
-                }
-            }
-        }
-
-        @Override
-        public void notifyGuests(Collection<String> guestTokens, String message) {
-            if (guestTokens == null) {
-                return;
-            }
-
-            for (String guestToken : guestTokens) {
-                if (guestToken != null && !guestToken.isBlank()) {
-                    notifyGuest(guestToken, message);
-                }
-            }
-        }
-
-        boolean containsMessage(String text) {
-            return messages.stream()
-                    .anyMatch(message -> message.contains(text));
-        }
     }
 
     // add tests
@@ -1164,6 +1129,10 @@ public class MembershipServiceTest {
     @Test
     public void GivenSuccessfulRemoveOwnerAssignment_WhenNotificationSent_ThenNotifierContainsRemovalMessage()
             throws Exception {
+                Member secondOwner = new Member(888L, "SecondOwner", "Second Owner", "0500000008", LocalDate.of(2001, 1, 1));
+        secondOwner.addOwnerRole(companyId, founderId); 
+        secondOwner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(888L, secondOwner, "password123");
         boolean result = membershipService.removeOwnerAssignment(
                 appointerToken,
                 companyId,
