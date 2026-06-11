@@ -375,7 +375,7 @@ public class MembershipDomainService {
             throw new Exception("You do not have a role in this company.");
         }
         if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
-            throw new Exception("Your role is not active yet. You cannot update others permissions.");
+            throw new Exception("Your role is not active yet. You cannot remove owner assignment.");
         }
         if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
             throw new Exception("Only Owners and Founders can remove owner assignment.");
@@ -386,13 +386,30 @@ public class MembershipDomainService {
         if (!(removedRole instanceof Owner)) {
             throw new Exception("The target user is not an Owner.");
         }
+        if (removedRole.getStatus() != RoleStatus.ACTIVE) {
+            throw new Exception("The target user's role is not active yet. You cannot remove it.");
+        }
         if (!java.util.Objects.equals(getAppointerId(appointee, companyId), appointer.getId())) {
             throw new Exception("You are not the appointer of the specified user");
         }
-        
+        if (ownerCountInCompany(companyId) <= 1) {
+            throw new Exception("Cannot remove this owner assignment because is the only active owner in the company.");
+        }
+
         transferAppointees(appointee, appointer, companyId);
         deleteAppointeeFromAppointer(appointerRole, appointee.getId());
         return appointee.deleteRoleInCompany(companyId);       
+    }
+
+    private int ownerCountInCompany(Long companyId) {
+        int count = 0;
+        for (Member member : userRepository.getAllMembers()) {
+            CompanyRole role = member.getRoleInCompany(companyId);
+            if (role instanceof Owner && role.getStatus() == RoleStatus.ACTIVE) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public boolean validateRemoveManagerAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
@@ -403,7 +420,7 @@ public class MembershipDomainService {
             throw new Exception("You do not have a role in this company.");
         }
         if (appointerRole.getStatus() != RoleStatus.ACTIVE) {
-            throw new Exception("Your role is not active yet. You cannot update others permissions.");
+            throw new Exception("Your role is not active yet. You cannot remove manager assignment.");
         }
         if (!(appointerRole instanceof Owner) && !(appointerRole instanceof Founder)) {
             throw new Exception("Only Owners and Founders can remove manager assignment.");

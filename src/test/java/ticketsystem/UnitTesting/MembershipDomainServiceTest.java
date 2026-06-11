@@ -23,7 +23,6 @@ public class MembershipDomainServiceTest {
     private MembershipDomainService domainService;
     private IUserRepository userRepository;
 
-    // Using REAL Domain Objects!
     private Member appointingMember;
     private Member targetMember;
     private Company company;
@@ -182,7 +181,6 @@ public class MembershipDomainServiceTest {
         targetMember.addManagerRole(companyId, 100L, new HashSet<>());
         userRepository.updateMember(targetMember);
 
-        // שליפת האובייקטים הטריים לאחר ההכנות
         Member freshAppointer = userRepository.getMemberById(100L);
         Member freshTarget = userRepository.getMemberById(200L);
 
@@ -222,7 +220,6 @@ public class MembershipDomainServiceTest {
         targetMember.addManagerRole(companyId, 100L, new HashSet<>());
         userRepository.updateMember(targetMember);
 
-        // שליפת האובייקטים הטריים לאחר ההכנות
         Member freshAppointer = userRepository.getMemberById(100L);
         Member freshTarget = userRepository.getMemberById(200L);
 
@@ -254,7 +251,6 @@ public class MembershipDomainServiceTest {
         Set<Permission> newPerms = new HashSet<>();
         newPerms.add(Permission.MANAGE_EVENT_INVENTORY);
 
-        // שליפת האובייקטים הטריים לפני שינוי ההרשאות
         Member freshAppointer = userRepository.getMemberById(100L);
         Member freshTarget = userRepository.getMemberById(200L);
 
@@ -457,7 +453,6 @@ public class MembershipDomainServiceTest {
         Member intermediateTarget = userRepository.getMemberById(200L);
         assertEquals(RoleStatus.PENDING, intermediateTarget.getRoleInCompany(companyId).getStatus());
 
-        // שליפה מחדש כי אנחנו עומדים לשנות אותו שוב ב-approve
         Member freshAppointer2 = userRepository.getMemberById(100L);
 
         domainService.approveAssignment(freshAppointer2, intermediateTarget, company);
@@ -515,7 +510,11 @@ public class MembershipDomainServiceTest {
         founderRole.addAppointee(existingOwnerId);
         userRepository.updateMember(appointingMember);
 
-        // שליפת האובייקטים הטריים לאחר ההכנות
+        Member secondOwner = new Member(888L, "SecondOwner", "Second Owner", "0500000008", LocalDate.of(2001, 1, 1));
+        secondOwner.addOwnerRole(companyId, appointingMember.getId());
+        secondOwner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
+        userRepository.addRegisteredMember(888L, secondOwner, "password123");
+
         Member freshAppointer = userRepository.getMemberById(100L);
         Member freshExistingOwner = userRepository.getMemberById(existingOwnerId);
 
@@ -584,6 +583,57 @@ public class MembershipDomainServiceTest {
         assertEquals("You are not the appointer of the specified user", ex.getMessage());
     }
 
+    @Test
+    public void GivenAppointerNotActive_WhenValidateRemoveOwnerAssignment_ThenThrowsException() {
+        appointingMember.addFounderRole(companyId);
+        CompanyRole founderRole = appointingMember.getRoleInCompany(companyId);
+        founderRole.setStatus(RoleStatus.PENDING);
+        userRepository.updateMember(appointingMember);
+
+        Exception ex = assertThrows(Exception.class, () -> {
+            domainService.validateRemoveOwnerAssignment(appointingMember, existingOwner, company);
+        });
+        assertEquals("Your role is not active yet. You cannot remove owner assignment.", ex.getMessage());
+    }
+
+    @Test
+    public void GivenTargetRoleNotActive_WhenValidateRemoveOwnerAssignment_ThenThrowsException() {
+        appointingMember.addFounderRole(companyId);
+        userRepository.updateMember(appointingMember);
+
+        CompanyRole ownerRole = existingOwner.getRoleInCompany(companyId);
+        if (ownerRole == null) {
+            existingOwner.addOwnerRole(companyId, appointingMember.getId());
+            ownerRole = existingOwner.getRoleInCompany(companyId);
+        }
+        ownerRole.setStatus(RoleStatus.PENDING);
+        userRepository.updateMember(existingOwner);
+
+        Exception ex = assertThrows(Exception.class, () -> {
+            domainService.validateRemoveOwnerAssignment(appointingMember, existingOwner, company);
+        });
+        assertEquals("The target user's role is not active yet. You cannot remove it.", ex.getMessage());
+    }
+
+    @Test
+    public void GivenOnlyOneActiveOwner_WhenValidateRemoveOwnerAssignment_ThenThrowsException() {
+        appointingMember.addFounderRole(companyId);
+        userRepository.updateMember(appointingMember);
+
+        CompanyRole ownerRole = existingOwner.getRoleInCompany(companyId);
+        if (ownerRole == null) {
+            existingOwner.addOwnerRole(companyId, appointingMember.getId());
+            ownerRole = existingOwner.getRoleInCompany(companyId);
+        }
+        ownerRole.setStatus(RoleStatus.ACTIVE);
+        userRepository.updateMember(existingOwner);
+
+        Exception ex = assertThrows(Exception.class, () -> {
+            domainService.validateRemoveOwnerAssignment(appointingMember, existingOwner, company);
+        });
+        assertEquals("Cannot remove this owner assignment because is the only active owner in the company.", ex.getMessage());
+    }
+
     // --- Remove Manager Assignment ---
 
     @Test
@@ -598,7 +648,6 @@ public class MembershipDomainServiceTest {
         targetMember.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.updateMember(targetMember);
 
-        // שליפת האובייקטים הטריים לאחר ההכנות
         Member freshAppointer = userRepository.getMemberById(100L);
         Member freshTarget = userRepository.getMemberById(200L);
 
