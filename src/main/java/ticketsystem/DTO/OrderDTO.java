@@ -17,7 +17,7 @@ public class OrderDTO {
     private Long managedByMemberId;
     private Long eventId;
     private BigDecimal totalPrice;
-    private PaymentDetails paymentDetails;
+    private Integer transactionId ;
 
 
     //for json 
@@ -25,7 +25,7 @@ public class OrderDTO {
     }
 
     public OrderDTO(Long purchaseId, List<PurchaseDTO> tickets, String eventName, 
-                    String location, Long memberId, Long companyId, Long managedByMemberId, Long eventId,BigDecimal total, PaymentDetails paymentDetails) {
+                    String location, Long memberId, Long companyId, Long managedByMemberId, Long eventId,BigDecimal total, Integer transactionId) {
         this.purchaseId = purchaseId;
         this.tickets = tickets;
         this.eventName = eventName;
@@ -35,7 +35,7 @@ public class OrderDTO {
         this.managedByMemberId = managedByMemberId;
         this.eventId = eventId;
         this.totalPrice=total;
-        this.paymentDetails = paymentDetails;
+        this.transactionId = transactionId;
     }
 
     public Long getPurchaseId() {
@@ -102,11 +102,11 @@ public class OrderDTO {
     public void setTotalPrice(BigDecimal totalPrice){
         this.totalPrice=totalPrice;
     }
-    public PaymentDetails getPaymentDetails() {
-        return paymentDetails;
+    public Integer getTransactionId() {
+        return transactionId;
     }
-    public void setPaymentDetails(PaymentDetails paymentDetails) {
-        this.paymentDetails = paymentDetails;
+    public void setPaymentDetails(Integer transactionId) {
+        this.transactionId = transactionId;
     }
 
 }

@@ -362,10 +362,10 @@ public class ReservationPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationError(e.getMessage());
-        } catch (Exception e) {
-            throw presentationError("Failed to validate purchase policy. Please try again.");
-        }
+            throw presentationError(e.getMessage());}
+        // } catch (Exception e) {
+        //     throw presentationError("Failed to validate purchase policy. Please try again.");
+        // }
     }
 
     /**
@@ -819,12 +819,9 @@ public class ReservationPresenter {
         if (message == null || message.isBlank()) {
             return "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
         }
-        if (message == null || message.isBlank()) {
-            return "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
-        }
 
         // 1. טיפול דינמי בכמות כרטיסים מקסימלית
-        if (message.matches("Cannot purchase more than \\d+ tickets\\.")) {
+        if (message.matches("Failed to validate active order policy: Cannot purchase more than \\d+ tickets\\.")) {
             String maxTickets = message.replaceAll("\\D+", "");
             return "לא ניתן לרכוש יותר מ-" + maxTickets + " כרטיסים לאירוע זה.";
         }
@@ -916,8 +913,13 @@ public class ReservationPresenter {
                 "Lottery code is invalid" ->
                     "קוד ההגרלה אינו תקין.";
 
+            case "Payment service is unavailable" ->
+                    "שירות התשלום אינו זמין כרגע. יש לנסות שוב מאוחר יותר.";
+            case "Ticket issuing service is unavailable" ->
+                    "שירות הנפקת הכרטיסים אינו זמין כרגע. יש לנסות שוב מאוחר יותר.";
+
             default ->
-                    "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
+                    "בחירת הכרטיסים נכשלה!!. יש לנסות שוב.";
         };
     }
 

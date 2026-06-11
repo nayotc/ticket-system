@@ -64,10 +64,11 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
     private final DatePicker birthDate = new DatePicker("תאריך לידה *");
     private final TextField couponCode = new TextField("קוד קופון");
 
-    private final TextField payerName = new TextField("שם בעל הכרטיס *");
+    private final TextField payerId = new TextField("תעודת זהות בעל הכרטיס *");
     private final TextField cardNumber = new TextField("מספר כרטיס *");
     private final TextField expiry = new TextField("תוקף *");
     private final PasswordField cvv = new PasswordField("CVV *");
+    private static final String DEFAULT_CURRENCY = "ILS";
 
     public Checkout(ReservationPresenter presenter, UiVisitCoordinator visitCoordinator) {
         this.presenter = presenter;
@@ -132,8 +133,8 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         couponCode.setWidthFull();
         couponCode.addClassName("checkout-field");
 
-        payerName.setPlaceholder("ישראל ישראלי");
-        payerName.addClassName("checkout-field");
+        payerId.setPlaceholder("123456789");
+        payerId.addClassName("checkout-field");
 
         cardNumber.setPlaceholder("0000 0000 0000 0000");
         cardNumber.getElement().setAttribute("dir", "ltr");
@@ -468,12 +469,12 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         grid.addClassName("checkout-two-columns");
         grid.add(expiry, cvv);
 
-        Div payerRow = new Div(payerName);
+        Div payerRow = new Div(payerId);
         payerRow.addClassName("checkout-field-row");
 
-        if (isBlank(payerName.getValue()) && !isBlank(fullName.getValue())) {
-            payerName.setValue(fullName.getValue());
-        }
+        // if (isBlank(payerId.getValue()) && !isBlank(fullName.getValue())) {
+        //     payerId.setValue(fullName.getValue());
+        // }
 
         wrapper.add(separator, cardNumberRow, grid, payerRow);
         return wrapper;
@@ -626,22 +627,19 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         if (!validatePersonalDetails()) {
             return;
         }
-
-        if (isBlank(payerName.getValue())) {
-            payerName.setValue(fullName.getValue());
-        }
         try{
+             
             PaymentDetails details = new PaymentDetails(
-                resolvePaymentMethodId(),
-                payerName.getValue().trim(),
-                birthDate.getValue()
-                );
+                    resolvePaymentMethodId(),
+                    payerId.getValue().trim(),
+                    birthDate.getValue(),cardNumber.getValue().trim(),null,null,cvv.getValue().trim(),payerId.getValue().trim(),DEFAULT_CURRENCY );
             presenter.validateOrderPolicyBeforePayment(resolveSessionToken(), activeOrder.getEventId(), details, normalizedCouponCode());
             currentStep = 2;
             renderCheckout();
         }catch (Exception exception) {
             showError(exception.getMessage());
         }
+       
 
     }
 
@@ -653,9 +651,8 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         try {
             PaymentDetails details = new PaymentDetails(
                     resolvePaymentMethodId(),
-                    payerName.getValue().trim(),
-                    birthDate.getValue()
-            );
+                    payerId.getValue().trim(),
+                    birthDate.getValue(),cardNumber.getValue().trim(),parseExpiryDate()[0],parseExpiryDate()[1],cvv.getValue().trim(),payerId.getValue().trim(),"ILS" );
 
             boolean success = presenter.checkout(
                     resolveSessionToken(),
@@ -752,9 +749,14 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             valid = false;
         }
 
-        if (isBlank(payerName.getValue())) {
-            payerName.setInvalid(true);
-            payerName.setErrorMessage("יש להזין שם בעל הכרטיס");
+        if (isBlank(payerId.getValue())
+                || !payerId.getValue().trim().matches("\\d{9,}")) {
+
+            payerId.setInvalid(true);
+            payerId.setErrorMessage(
+                    "תעודת זהות חייבת להכיל לפחות 9 ספרות בלבד"
+            );
+
             valid = false;
         }
 
@@ -776,7 +778,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         cardNumber.setInvalid(false);
         expiry.setInvalid(false);
         cvv.setInvalid(false);
-        payerName.setInvalid(false);
+        payerId.setInvalid(false);
     }
 
     private String resolvePaymentMethodId() {
@@ -789,6 +791,26 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
         return "fake-credit-card-" + lastFour;
     }
+    private int[] parseExpiryDate() {
+
+        String value = expiry.getValue().trim();
+
+        if (!value.matches("\\d{2}/\\d{2}")) {
+            throw new IllegalArgumentException("תוקף חייב להיות בפורמט MM/YY");
+        }
+
+        String[] parts = value.split("/");
+
+        int month = Integer.parseInt(parts[0]);
+        int year = 2000 + Integer.parseInt(parts[1]);
+
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("חודש לא תקין");
+        }
+
+        return new int[]{month, year};
+    }
+
 
     private void renderEmptyCheckout() {
         removeAll();

@@ -168,16 +168,9 @@ public class ActiveOrder {
         return status == OrderStatus.PENDING_CHECKOUT;
     }
 
-    public void validateTicketLimit() {
-        int maxTickets = 10;
-        if (tickets.size() > maxTickets) {
-            throw new IllegalStateException("Ticket quantity exceeds limit");
-        }
-    }
 
     public void validateCanBeSubmittedBy() {
         validateHasTickets();
-        validateTicketLimit();
         if (status != OrderStatus.ACTIVE && status != OrderStatus.PAYMENT_FAILED) {
             throw new IllegalStateException("Order is not active");
         }
@@ -243,8 +236,7 @@ public class ActiveOrder {
     }
 
     public OrderDTO toDTO(String eventName, String location, Long companyId, Long managedByMemberId,
-                          Long eventId, BigDecimal total, String paymentMethodId, String payerName,
-                          LocalDate birthDate) {
+                          Long eventId, BigDecimal total, Integer transactionId) {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         for (Ticket ticket : tickets) {
             ticketDTOs.add(new PurchaseDTO(
@@ -258,12 +250,10 @@ public class ActiveOrder {
         }
         if (getUserId() != null) {
             return new OrderDTO(0L, ticketDTOs, eventName, location, getUserId(), companyId,
-                    managedByMemberId, eventId, total,
-                    new PaymentDetails(paymentMethodId, payerName, birthDate));
+                    managedByMemberId, eventId, total,transactionId);
         }
         return new OrderDTO(0L, ticketDTOs, eventName, location, null, companyId,
-                managedByMemberId, eventId, total,
-                new PaymentDetails(paymentMethodId, payerName, birthDate));
+                managedByMemberId, eventId, total, transactionId);
     }
 
     public ActiveOrderDTO toDTO() {

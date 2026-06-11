@@ -5553,6 +5553,72 @@ vaadin-date-picker-month-calendar {
     max-width: 420px;
 }
 
+.tickets-details-wrapper {
+    padding: 14px 18px;
+    background: rgba(15, 23, 42, 0.55);
+    border-radius: 0 0 18px 18px;
+}
+
+.ticket-detail-card {
+    padding: 12px 16px;
+    border: 1px solid rgba(77, 224, 210, 0.22);
+    border-radius: 14px;
+    background: rgba(30, 41, 59, 0.92);
+}
+
+.ticket-detail-title {
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.ticket-detail-location {
+    color: #cbd5e1;
+}
+
+.ticket-detail-price {
+    color: #4de0d2;
+    font-weight: 700;
+}
+
+.ticket-detail-status {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(77, 224, 210, 0.14);
+    color: #4de0d2;
+    font-weight: 700;
+}
+
+.ticket-detail-barcode {
+    direction: ltr;
+    color: #c4b5fd;
+    font-size: 0.85rem;
+}
+
+.ticket-detail-barcode-button {
+    background: transparent;
+    border: none;
+    color: #b8a7ff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ticket-detail-barcode-button:hover {
+    text-decoration: underline;
+}
+
+.barcode-image {
+    width: 420px;
+    max-width: 100%;
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+}
+
+.barcode-full-code {
+    font-weight: 700;
+    color: var(--lumo-secondary-text-color);
+}
+
 @media (max-width: 1000px) {
     .my-account-content {
         grid-template-columns: 1fr;
@@ -9183,4 +9249,5 @@ vaadin-button.edit-event-lottery-sale-button.tn-disabled-action-button[disabled]
 .event-management-row-cancelled .event-management-meta {
     color: rgba(203, 195, 215, 0.46);
 }
+
 

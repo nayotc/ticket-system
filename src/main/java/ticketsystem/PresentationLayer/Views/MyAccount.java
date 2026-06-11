@@ -1,5 +1,9 @@
 package ticketsystem.PresentationLayer.Views;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -8,11 +12,15 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -34,6 +42,7 @@ import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Presenters.MyAccountPresenter;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -43,6 +52,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.Image;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
+
+import javax.imageio.ImageIO;
 
 @Route(value = UiRoutes.MY_ACCOUNT, layout = MainLayout.class)
 public class MyAccount extends PageContainer implements BeforeEnterObserver {
@@ -611,34 +635,111 @@ public void setProfile(AccountProfileViewData profile) {
             String newPassword
     ) {
     }
+
     private Component createTicketsDetails(MyPurchaseRow row) {
-    Grid<PurchaseDTO> ticketsGrid = new Grid<>(PurchaseDTO.class, false);
-    ticketsGrid.setWidthFull();
-    ticketsGrid.setAllRowsVisible(true);
+    VerticalLayout wrapper = new VerticalLayout();
+    wrapper.addClassName("tickets-details-wrapper");
+    wrapper.setPadding(false);
+    wrapper.setSpacing(true);
+    wrapper.setWidthFull();
+    
+    
+    for (PurchaseDTO ticket : row.getTickets()) {
+        HorizontalLayout card = new HorizontalLayout();
+        card.addClassName("ticket-detail-card");
+        card.setWidthFull();
+        card.setAlignItems(FlexComponent.Alignment.CENTER);
+        card.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
-    ticketsGrid.addColumn(PurchaseDTO::getTicketId)
-            .setHeader("מס' כרטיס");
+        Span title = new Span("כרטיס #" + ticket.getTicketId());
+        title.addClassName("ticket-detail-title");
 
-    ticketsGrid.addColumn(PurchaseDTO::getRow)
-            .setHeader("שורה");
+        Span location = new Span(formatTicketLocation(ticket));
+        location.addClassName("ticket-detail-location");
 
-    ticketsGrid.addColumn(PurchaseDTO::getChair)
-            .setHeader("כיסא");
+        Span price = new Span(formatMoney(ticket.getPrice()));
+        price.addClassName("ticket-detail-price");
 
-    ticketsGrid.addColumn(ticket -> formatMoney(ticket.getPrice()))
-            .setHeader("מחיר");
+        Span status = new Span(ticket.getStatus());
+        status.addClassName("ticket-detail-status");
 
-    ticketsGrid.addColumn(PurchaseDTO::getStatus)
-            .setHeader("סטטוס");
+        Button barcode = new Button(shortBarcode(ticket.getSecureBarcode()));
+        barcode.addClassName("ticket-detail-barcode-button");
+        barcode.addClickListener(e -> openBarcodeDialog(ticket.getSecureBarcode()));
 
-    ticketsGrid.addColumn(PurchaseDTO::getSecureBarcode)
-            .setHeader("ברקוד");
+        // Span barcode = new Span(shortBarcode(ticket.getSecureBarcode()));
+        // barcode.setTitle(ticket.getSecureBarcode());
+        // barcode.addClassName("ticket-detail-barcode");
 
-    ticketsGrid.setItems(row.getTickets());
+        card.add(title, location, price, status, barcode);
+        wrapper.add(card);
+    }
 
-    return ticketsGrid;
+    return wrapper;
 }
 
+private void openBarcodeDialog(String barcodeValue) {
+    Dialog dialog = new Dialog();
+    dialog.addClassName("barcode-dialog");
+
+    VerticalLayout layout = new VerticalLayout();
+    layout.setAlignItems(FlexComponent.Alignment.CENTER);
+    layout.setSpacing(true);
+
+    Span title = new Span("סריקת כרטיס");
+    title.addClassName("barcode-dialog-title");
+
+    Image barcodeImage = new Image(generateQrCodeDataUrl(barcodeValue), "QR code");
+    barcodeImage.addClassName("barcode-image");
+
+    Span code = new Span(barcodeValue);
+    code.addClassName("barcode-full-code");
+
+    Button close = new Button("סגור", e -> dialog.close());
+
+    layout.add(title, barcodeImage, code, close);
+    dialog.add(layout);
+    dialog.open();
+}
+
+private String generateQrCodeDataUrl(String value) {
+    try {
+        int width = 420;
+        int height = 140;
+
+        BitMatrix bitMatrix = new MultiFormatWriter()
+                .encode(value, BarcodeFormat.QR_CODE, width, height);
+
+        BufferedImage image = MatrixToImageWriter.toBufferedImage(bitMatrix);
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", outputStream);
+
+        String base64 = Base64.getEncoder().encodeToString(outputStream.toByteArray());
+        return "data:image/png;base64," + base64;
+
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to generate barcode", e);
+    }
+}
+
+
+private String formatTicketLocation(PurchaseDTO ticket) {
+    if (ticket.getRow() == 0 && ticket.getChair() == 0) {
+        return "עמידה · אזור כללי";
+    }
+    return "שורה " + ticket.getRow() + " · כיסא " + ticket.getChair();
+}
+
+private String shortBarcode(String barcode) {
+    if (barcode == null || barcode.isBlank()) {
+        return "ברקוד לא זמין";
+    }
+
+    return barcode.length() > 18
+            ? barcode.substring(0, 8) + "..." + barcode.substring(barcode.length() - 6)
+            : barcode;
+}
 
     public static final class MyPurchaseRow {
         private final String purchaseId;

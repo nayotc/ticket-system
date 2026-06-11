@@ -3,6 +3,9 @@ package ticketsystem.ApplicationLayer;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
+
+import javax.swing.text.html.HTMLDocument.HTMLReader.IsindexAction;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -41,10 +44,11 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
     private final UserAccessService userAccessService;
     private final INotifier notificationsService;
     private final IPaymentService paymentService;
+    private final ITicketIssuingService ticketIssuingService;
 
     @Autowired
     public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger,
-            UserAccessService userAccessService, INotifier notificationsService, IPaymentService paymentService) {
+            UserAccessService userAccessService, INotifier notificationsService, IPaymentService paymentService, ITicketIssuingService ticketIssuingService) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
@@ -52,6 +56,7 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         this.userAccessService = userAccessService;
         this.notificationsService = notificationsService;
         this.paymentService = paymentService;
+        this.ticketIssuingService = ticketIssuingService;
         this.objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
     }
 
@@ -254,24 +259,61 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         }
     }
 
-    @Override
+   @Override
     public void onEventCanceled(Long eventId) {
         if (eventId == null) {
             return;
         }
+        
+        if (!paymentService.handshake()) {
+            throw new IllegalStateException("Payment service is unavailable");
+        }
 
-        List<Purchase> purchases = historyRepository.getPurchasesByEventId(eventId);
+        if (!ticketIssuingService.handshake()) {
+            throw new IllegalStateException("Ticket issuing service is unavailable");
+        }
+
+
+        List<Purchase> purchases =
+                historyRepository.getPurchasesByEventId(eventId);
 
         for (Purchase purchase : purchases) {
+
             for (PurchasedTicket ticket : purchase.getTickets()) {
                 ticket.setStatus(TicketStatus.CANCELED);
+
+                boolean ticketCancelled =
+                        ticketIssuingService.cancelTicket(ticket.getSecureBarcode());
+
+                if (!ticketCancelled) {
+                    logger.logEvent(
+                            "Failed to cancel issued ticket. ticketId="
+                                    + ticket.getSecureBarcode()
+                                    + ", purchaseId=" + purchase.getPurchaseId()
+                                    + ", eventId=" + eventId,
+                            ISystemLogger.LogLevel.WARN
+                    );
+                }
             }
-            paymentService.refund(purchase.getTotalPrice(), new PaymentDetails(purchase.getPaymentDetails().getPaymentMethodId(), purchase.getPaymentDetails().getPayerName(), purchase.getPaymentDetails().getBirthDate()));
+
+            boolean refunded =
+                    paymentService.refund(purchase.getTransactionId());
+
+            if (!refunded) {
+                logger.logEvent(
+                        "Failed to refund purchase. transactionId="
+                                + purchase.getTransactionId()
+                                + ", purchaseId=" + purchase.getPurchaseId()
+                                + ", eventId=" + eventId,
+                        ISystemLogger.LogLevel.WARN
+                );
+            }
         }
 
         notifyPurchasedBuyers(
                 purchases,
-                "event id " + eventId + "  that you purchased tickets for was canceled."
+                "event id " + eventId
+                        + " that you purchased tickets for was canceled."
         );
     }
 

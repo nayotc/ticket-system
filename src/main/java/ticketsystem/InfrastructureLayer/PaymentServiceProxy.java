@@ -18,30 +18,40 @@ public class PaymentServiceProxy implements IPaymentService {
     public static boolean wasRefundCalled = false;
 
     @Override
-    public boolean connect() {
+    public boolean handshake() {
         wasConnectCalled = true;
         return isConnectionSuccessful;
     }
 
     @Override
-    public boolean pay(BigDecimal amount, PaymentDetails details) {
+    public Integer pay(BigDecimal amount, PaymentDetails details) {
         wasPayCalled = true;
 
-        if (!isConnectionSuccessful) {
-            return false;
+        if (!isPaymentSuccessful) {
+            return -1;
         }
 
-        return isPaymentSuccessful;
+        return 1;
     }
 
     @Override
-    public boolean refund(BigDecimal amount, PaymentDetails details) {
+    public boolean refund(Integer transactionId) {
         wasRefundCalled = true;
 
-        if (!isConnectionSuccessful) {
+        if (transactionId == null || transactionId == -1) {
             return false;
         }
 
         return isRefundSuccessful;
+    }
+
+    public static void reset() {
+        isConnectionSuccessful = true;
+        isPaymentSuccessful = true;
+        isRefundSuccessful = true;
+
+        wasConnectCalled = false;
+        wasPayCalled = false;
+        wasRefundCalled = false;
     }
 }

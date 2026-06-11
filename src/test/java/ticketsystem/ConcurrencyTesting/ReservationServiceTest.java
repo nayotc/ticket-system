@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.IPaymentService;
-import ticketsystem.ApplicationLayer.ISecureBarcode;
+import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ReservationService;
 import ticketsystem.ApplicationLayer.TokenService;
@@ -605,7 +605,17 @@ public class ReservationServiceTest {
     }
 
     private PaymentDetails createPaymentDetails() {
-        return new PaymentDetails("VISA", "Yosi", LocalDate.now());
+        return new PaymentDetails(
+        "VISA",
+        "Yosi Cohen",
+        LocalDate.of(2001, 1, 1),
+        "4580458045804580",
+        12,
+        2030,
+        "123",
+        "123456789",
+        "ILS"
+);
     }
 
     private String createLoggedInMember(String username, String password) {
@@ -640,20 +650,26 @@ public class ReservationServiceTest {
         PaymentServiceProxy.wasRefundCalled = false;
     }
 
-    private static class TestSecureBarcode implements ISecureBarcode {
+    private static class TestSecureBarcode implements ITicketIssuingService {
 
         AtomicInteger generateCalls = new AtomicInteger(0);
 
         @Override
-        public boolean connect() {
+        public boolean handshake() {
             return true;
         }
 
         @Override
-        public String generateSecureBarcode(Long ticketId, Long eventId, Long userId) {
+        public String issueTicket(ticketsystem.DTO.TicketIssueRequest request) {
             generateCalls.incrementAndGet();
-            return "SECURE_BARCODE_" + ticketId + "_" + eventId + "_" + userId;
+            return "SECURE_BARCODE_"  + request.getEventId() + "_" + request.getCustomerId();
         }
+
+		@Override
+		public boolean cancelTicket(String ticketId) {
+			// TODO Auto-generated method stub
+			return true;
+		}
     }
 
     private static class NoOpSystemLogger implements ISystemLogger {

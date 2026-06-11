@@ -369,7 +369,7 @@ public class SystemAdminServiceTest {
                 "Jazz Festival",
                 "Shuni",
                 buyer1_Id,
-                50L, 4L, 60L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1))
+                50L, 4L, 60L, new BigDecimal(100), 111111
         );
 
         Purchase purchase2 = new Purchase(
@@ -378,7 +378,7 @@ public class SystemAdminServiceTest {
                 "Jazz Festival",
                 "Shuni",
                 buyer1_Id,
-                50L, 4L, 60L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1))
+                50L, 4L, 60L, new BigDecimal(100), 111111
         );
 
         Purchase purchase3 = new Purchase(
@@ -387,7 +387,7 @@ public class SystemAdminServiceTest {
                 "Rock Concert",
                 "Barby",
                 buyer2_Id,
-                50L, 4L, 61L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1))
+                50L, 4L, 61L, new BigDecimal(100), 111111
         );
 
         historyRepo.addPurchase(purchase1);
@@ -475,7 +475,7 @@ public class SystemAdminServiceTest {
                 "Expo TLV",
                 666L,
                 companyId, 4L,
-                52L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1))
+                52L, new BigDecimal(100), 111111
         );
         Purchase purchase2 = new Purchase(
                 5L,
@@ -484,7 +484,7 @@ public class SystemAdminServiceTest {
                 "Expo TLV",
                 777L,
                 companyId, 4L,
-                52L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1))
+                52L, new BigDecimal(100), 111111
         );
         //one purchase for a different event but same company, to check the grouping by event name as well
         Purchase purchase3 = new Purchase(
@@ -493,7 +493,7 @@ public class SystemAdminServiceTest {
                 event2_Name,
                 "Expo TLV",
                 888L,
-                companyId, 4L, 53L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1))
+                companyId, 4L, 53L, new BigDecimal(100), 111111
         );
 
         historyRepo.addPurchase(purchase1);

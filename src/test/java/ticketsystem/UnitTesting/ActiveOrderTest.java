@@ -131,25 +131,7 @@ public class ActiveOrderTest {
         assertEquals(1, order.getTickets().size());
     }
 
-    @Test
-    void givenOrderWithMoreThanTenTickets_whenValidateTicketLimit_thenThrowException() {
-        for (long i = 1; i <= 11; i++) {
-            order.addTicket(createMockTicket(i, new BigDecimal(50)));
-        }
 
-        assertThrows(IllegalStateException.class, () -> order.validateTicketLimit());
-    }
-
-    @Test
-    void givenOrderWithTenTickets_whenValidateTicketLimit_thenDoesNotThrowException() {
-        for (long i = 1; i <= 10; i++) {
-            order.addTicket(createMockTicket(i, new BigDecimal(50)));
-        }
-
-        order.validateTicketLimit();
-
-        assertEquals(10, order.getTickets().size());
-    }
 
     @Test
     void givenOrderWithoutTickets_whenValidateCanBeSubmittedBy_thenThrowException() {

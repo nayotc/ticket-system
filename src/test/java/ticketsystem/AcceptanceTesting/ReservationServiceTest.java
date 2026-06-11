@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.IPaymentService;
-import ticketsystem.ApplicationLayer.ISecureBarcode;
+import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ReservationService;
 import ticketsystem.ApplicationLayer.TokenService;
@@ -27,6 +27,7 @@ import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
+import ticketsystem.DTO.TicketIssueRequest;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -884,7 +885,17 @@ public class ReservationServiceTest {
                 1,
                 null);
 
-        PaymentDetails invalidDetails = new PaymentDetails("VISA", "Yosi", null);
+        PaymentDetails invalidDetails = new PaymentDetails(
+        "VISA",
+        "Yosi Cohen",
+        null,
+        null,
+        12,
+        2030,
+        null,
+        "123456789",
+        "ILS"
+);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -1149,29 +1160,44 @@ public class ReservationServiceTest {
     }
 
     private PaymentDetails createPaymentDetails() {
-        return new PaymentDetails("VISA", "Yosi", LocalDate.now());
+        return new PaymentDetails(
+        "VISA",
+        "Yosi Cohen",
+        LocalDate.of(2001, 1, 1),
+        "4580458045804580",
+        12,
+        2030,
+        "123",
+        "123456789",
+        "ILS"
+);
 
     }
 
-    private static class TestSecureBarcode implements ISecureBarcode {
+    private static class TestSecureBarcode implements ITicketIssuingService {
 
         boolean shouldGenerateSucceed = true;
         AtomicBoolean wasGenerateCalled = new AtomicBoolean(false);
 
         @Override
-        public boolean connect() {
+        public boolean handshake() {
             return true;
         }
 
         @Override
-        public String generateSecureBarcode(Long ticketId, Long eventId, Long userId) {
+        public String issueTicket(TicketIssueRequest request) {
             wasGenerateCalled.set(true);
 
             if (!shouldGenerateSucceed) {
                 throw new IllegalStateException("Ticket issuing failed");
             }
 
-            return "SECURE_BARCODE_" + ticketId + "_" + eventId;
+            return "SECURE_BARCODE_" + request.getCustomerId()+ "_" + request.getEventId();
+        }
+
+        @Override
+        public boolean cancelTicket(String ticketId) {
+			return true;
         }
     }
 

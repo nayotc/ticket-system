@@ -20,6 +20,7 @@ import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.IPaymentService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
@@ -45,6 +46,7 @@ import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
+import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.testutil.RecordingNotifier;
@@ -64,6 +66,7 @@ public class HistoryServiceTest {
     private InMemoryNotificationsRepository notificationRepository;
     private ISystemLogger logger;
     private IPaymentService paymentService;
+    private  ITicketIssuingService ticketIssuingService;
 
     @BeforeEach
     void setUp() {
@@ -82,6 +85,7 @@ public class HistoryServiceTest {
         this.recordingNotifier = new RecordingNotifier();
         this.notifier = recordingNotifier;
         paymentService = new PaymentServiceProxy();
+        this.ticketIssuingService=new SecureBarcodeProxy();
         resetPaymentProxy();
         this.historyService = new HistoryService(
                 historyRepository,
@@ -89,7 +93,7 @@ public class HistoryServiceTest {
                 new MembershipDomainService(userRepository),
                 logger,
                 userAccessService,
-                notifier, paymentService);
+                notifier, paymentService,ticketIssuingService);
     }
 
     /**
@@ -128,7 +132,7 @@ public class HistoryServiceTest {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
         OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId,
-                20L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1)));
+                20L, new BigDecimal(100), 111111);
 
         historyService.onOrderCompleted(orderDto);
 
@@ -184,7 +188,7 @@ public class HistoryServiceTest {
 
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1)));
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L, new BigDecimal(100), 111111);
 
         // --- Act ---
         historyService.onOrderCompleted(orderDto);
@@ -232,7 +236,7 @@ public class HistoryServiceTest {
                 userId,
                 companyId,
                 userId,
-                20L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1))
+                20L, new BigDecimal(100), 111111
         );
     }
 
@@ -307,7 +311,7 @@ public class HistoryServiceTest {
                 buyerMemberId,
                 companyId,
                 managedByMemberId,
-                20L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1)));
+                20L, new BigDecimal(100), 111111);
     }
 
     private long createActiveManagerUnderFounder(long founderId, long companyId, String username) {
@@ -524,7 +528,7 @@ public class HistoryServiceTest {
                 buyerId,
                 company.getId(),
                 ownerId, // managedByMemberId - should come from the event creator in the real flow
-                20L, new BigDecimal(100), new PaymentDetails("Fake", "Yosi", LocalDate.of(2001, 1, 1)));
+                20L, new BigDecimal(100), 111111);
 
         // --- When (Act) ---
         historyService.onOrderCompleted(completedOrder);
