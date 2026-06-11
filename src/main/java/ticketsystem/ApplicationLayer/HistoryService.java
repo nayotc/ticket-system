@@ -264,6 +264,15 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         if (eventId == null) {
             return;
         }
+        
+        if (!paymentService.handshake()) {
+            throw new IllegalStateException("Payment service is unavailable");
+        }
+
+        if (!ticketIssuingService.handshake()) {
+            throw new IllegalStateException("Ticket issuing service is unavailable");
+        }
+
 
         List<Purchase> purchases =
                 historyRepository.getPurchasesByEventId(eventId);

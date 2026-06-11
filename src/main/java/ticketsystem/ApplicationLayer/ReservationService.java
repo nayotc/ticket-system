@@ -51,7 +51,7 @@ public class ReservationService {
     private final MembershipDomainService membershipDomain;
     private final TokenService tokenService;
     private final IPaymentService paymentService;
-    private final ITicketIssuingService secureBarcode;
+    private final ITicketIssuingService ticketIssuingService;
     private final ILotteryRepository lotteryRepository;
     private final Reservation reservationDomeinService;
     private final EventCatalogDomainService eventCatalogDomainService;
@@ -82,7 +82,7 @@ public class ReservationService {
         this.membershipDomain = membershipDomain;
         this.tokenService = tokenService;
         this.paymentService = paymentService;
-        this.secureBarcode = secureBarcode;
+        this.ticketIssuingService = secureBarcode;
         this.lotteryRepository = lotteryRepository;
         this.eventCatalogDomainService = eventCatalogDomainService;
         this.logger = logger;
@@ -425,11 +425,23 @@ public class ReservationService {
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
+
+
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
             if (order == null || event == null) {
                 throw new IllegalStateException("No active order or event found");
             }
+
+            if (!paymentService.handshake()) {
+                throw new IllegalStateException("Payment service is unavailable");
+            }
+
+            if (!ticketIssuingService.handshake()) {
+                throw new IllegalStateException("Ticket issuing service is unavailable");
+            }
+
+
             if (details == null || details.getBirthDate() == null || details.getPayerName() == null
                     || details.getPaymentMethodId() == null) {
                 throw new IllegalArgumentException("Payment details are incomplete");
@@ -589,9 +601,9 @@ public class ReservationService {
         OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
                 event.getOpenedBy(), event.getId(), total, transactionId);
 
-            for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
+        for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
             TicketIssueRequest request = createTicketIssueRequest(purchesDTO, orderDTO);
-            String barcode = secureBarcode.issueTicket(request);
+            String barcode = ticketIssuingService.issueTicket(request);
             if (barcode == null || barcode.isBlank() || barcode.equals("-1")) {
                 throw new IllegalStateException("Ticket issuing failed");
             }
