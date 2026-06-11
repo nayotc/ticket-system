@@ -423,19 +423,6 @@ public class DevDataInitializer implements CommandLineRunner {
         PurchaseDTO ticket3 = new PurchaseDTO(102L, 2, 5, BigDecimal.valueOf(120), "ACTIVE", "BARCODE-125");
         OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, TEST_COMPANY_ID, founderId, 92L, new BigDecimal(100), 222222);
         historyService.onOrderCompleted(order2);
-
-        // ==========================================
-        //        ADDITIONAL: FOUNDER BUYS A TICKET FOR HIMSELF
-        // ==========================================
-        
-    PurchaseDTO founderTicket = new PurchaseDTO(107L, 1, 1, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-FOUNDER-001");
-        
-        // מזהה האירוע הוא 91L, מזהה החברה הוא 1L
-        OrderDTO founderOrder = new OrderDTO(8496L, List.of(founderTicket), "פסטיבל אורות הלילה", "תל אביב", founderId, TEST_COMPANY_ID, founderId, 91L, new BigDecimal(180), 444444);
-        
-        historyService.onOrderCompleted(founderOrder);
-        
-
         // ==========================================
         //          TRANSACTIONS FOR OWNER
         // ==========================================
