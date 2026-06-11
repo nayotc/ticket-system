@@ -5593,6 +5593,32 @@ vaadin-date-picker-month-calendar {
     color: #c4b5fd;
     font-size: 0.85rem;
 }
+
+.ticket-detail-barcode-button {
+    background: transparent;
+    border: none;
+    color: #b8a7ff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ticket-detail-barcode-button:hover {
+    text-decoration: underline;
+}
+
+.barcode-image {
+    width: 420px;
+    max-width: 100%;
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+}
+
+.barcode-full-code {
+    font-weight: 700;
+    color: var(--lumo-secondary-text-color);
+}
+
 @media (max-width: 1000px) {
     .my-account-content {
         grid-template-columns: 1fr;
