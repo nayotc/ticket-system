@@ -621,7 +621,8 @@ public void setProfile(AccountProfileViewData profile) {
     wrapper.setPadding(false);
     wrapper.setSpacing(true);
     wrapper.setWidthFull();
-
+    
+    
     for (PurchaseDTO ticket : row.getTickets()) {
         HorizontalLayout card = new HorizontalLayout();
         card.addClassName("ticket-detail-card");
@@ -641,7 +642,8 @@ public void setProfile(AccountProfileViewData profile) {
         Span status = new Span(ticket.getStatus());
         status.addClassName("ticket-detail-status");
 
-        Span barcode = new Span("ברקוד: " + shortBarcode(ticket.getSecureBarcode()));
+        Span barcode = new Span(shortBarcode(ticket.getSecureBarcode()));
+        barcode.setTitle(ticket.getSecureBarcode());
         barcode.addClassName("ticket-detail-barcode");
 
         card.add(title, location, price, status, barcode);
@@ -660,10 +662,11 @@ private String formatTicketLocation(PurchaseDTO ticket) {
 
 private String shortBarcode(String barcode) {
     if (barcode == null || barcode.isBlank()) {
-        return "לא זמין";
+        return "ברקוד לא זמין";
     }
-    return barcode.length() > 14
-            ? "..." + barcode.substring(barcode.length() - 14)
+
+    return barcode.length() > 18
+            ? barcode.substring(0, 8) + "..." + barcode.substring(barcode.length() - 6)
             : barcode;
 }
 
