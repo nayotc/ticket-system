@@ -1,6 +1,8 @@
 package ticketsystem.InfrastructureLayer;
 
 import org.springframework.stereotype.Component;
+
+import kotlin.random.Random;
 import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.DTO.TicketIssueRequest;
 
@@ -17,12 +19,18 @@ public class SecureBarcodeProxy implements ITicketIssuingService {
 
 	@Override
 	public String issueTicket(TicketIssueRequest request) {
-		return "FAKE "+ request.getCustomerId() + "_" + request.getEventId();
-	}
+		return "FAKE_" +
+       request.getCustomerId() +
+       "_" +
+       Random.Default.nextInt(1000000) +
+       "_" +
+       request.getEventId();}
 
 	@Override
 	public boolean cancelTicket(String ticketId) {
-		return true;
+		if(ticketId!= "-1")
+			return true;
+		else return false;
 	}
 
     

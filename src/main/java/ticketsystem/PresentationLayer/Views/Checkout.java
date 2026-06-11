@@ -68,6 +68,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
     private final TextField cardNumber = new TextField("מספר כרטיס *");
     private final TextField expiry = new TextField("תוקף *");
     private final PasswordField cvv = new PasswordField("CVV *");
+    private static final String DEFAULT_CURRENCY = "ILS";
 
     public Checkout(ReservationPresenter presenter, UiVisitCoordinator visitCoordinator) {
         this.presenter = presenter;
@@ -631,7 +632,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             PaymentDetails details = new PaymentDetails(
                     resolvePaymentMethodId(),
                     payerId.getValue().trim(),
-                    birthDate.getValue(),cardNumber.getValue().trim(),null,null,cvv.getValue().trim(),payerId.getValue().trim(),"ILS" );
+                    birthDate.getValue(),cardNumber.getValue().trim(),null,null,cvv.getValue().trim(),payerId.getValue().trim(),DEFAULT_CURRENCY );
             presenter.validateOrderPolicyBeforePayment(resolveSessionToken(), activeOrder.getEventId(), details, normalizedCouponCode());
             currentStep = 2;
             renderCheckout();

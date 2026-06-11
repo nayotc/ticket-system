@@ -165,7 +165,7 @@ public class ExternalSystemsIntegrationTest {
                 2028,
                 "262",
                 "20444444",
-                "USD"
+                "ILS"
         );
     }
 
