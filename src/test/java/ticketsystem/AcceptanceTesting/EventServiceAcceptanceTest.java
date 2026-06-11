@@ -12,6 +12,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -138,6 +142,14 @@ public class EventServiceAcceptanceTest {
         };
 
         historyRepository = new HistoryRepository();
+        paymentService = mock(IPaymentService.class);
+        ticketIssuingService = mock(ITicketIssuingService.class);
+
+        when(paymentService.handshake()).thenReturn(true);
+        when(paymentService.refund(any())).thenReturn(true);
+
+        when(ticketIssuingService.handshake()).thenReturn(true);
+        when(ticketIssuingService.cancelTicket(any())).thenReturn(true);
 
         historyService = new HistoryService(
                 historyRepository,
@@ -991,6 +1003,7 @@ public class EventServiceAcceptanceTest {
         FakeHistoryServiceListener historyListener = new FakeHistoryServiceListener();
         IOrderRepository orderRepository = new InMemoryOrderRepository();
         OrderService orderService = createOrderServiceListener(orderRepository, notifier);
+       
 
         String buyerSessionId = tokenService.addActiveSession(new Guest());
         Long buyerId = 55L;

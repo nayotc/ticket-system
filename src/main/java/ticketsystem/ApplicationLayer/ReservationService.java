@@ -797,7 +797,7 @@ public class ReservationService {
             String seatsJson = seating
                     ? buildSeatsJson(purchesDTO)
                     : null;
-            System.out.println("Seats JSON = " + seatsJson);
+           
             return new TicketIssueRequest(
                     String.valueOf(orderDTO.getMemberId()),
                     String.valueOf(orderDTO.getEventId()),
