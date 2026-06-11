@@ -312,8 +312,8 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
 
         notifyPurchasedBuyers(
                 purchases,
-                "event id " + eventId
-                        + " that you purchased tickets for was canceled."
+                "The event \"" + purchases.get(0).getEventName()
+                        + "\" that you purchased tickets for was canceled."
         );
     }
 

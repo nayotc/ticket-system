@@ -75,4 +75,10 @@ public class UiVisitCoordinator {
             notificationCenter.connect(ui, targetId);
         }
     }
+    
+    public void forceShowPendingNotifications(UI ui) {
+        if (ui != null) {
+            notificationCenter.showPending(ui, UiSession.getNotificationTargetId());
+        }
+    }
 }

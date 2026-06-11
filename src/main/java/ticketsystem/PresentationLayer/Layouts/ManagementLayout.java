@@ -114,4 +114,8 @@ public class ManagementLayout extends Div implements RouterLayout, BeforeEnterOb
             content.getElement().appendChild(routerContent.getElement());
         }
     }
+
+    public UiVisitCoordinator getVisitCoordinator() {
+        return this.visitCoordinator;
+    }
 }
