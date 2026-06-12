@@ -8,6 +8,8 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import jakarta.persistence.*;
+
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
@@ -20,37 +22,93 @@ import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
-
-
+@Entity
+@Table(name = "events")
 public class Event {
 
     public enum eventStatus {
         DRAFT, ACTIVE, INACTIVE, CANCELLED
-    };
+    }
 
-    private final Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "name", nullable = false)
     private String name;
-    private final Long companyId;
+
+    @Column(name = "company_id", nullable = false)
+    private Long companyId;
+
+    @Column(name = "opened_by")
     private Long openedBy; // userId of the creator
+
+    @Column(name = "event_date")
     private LocalDateTime Date;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "location")
     private EventLocation location;
+
+    @Column(name = "traffic_threshold")
     private Long trafficThreshold;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private eventStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category")
     private EventCategory category;
+
+    @Column(name = "artist_name")
     private String artistName;
+
+    @Transient
+    // TODO : change to Embedded
+    // @Embedded
     private EventMap map;
+
+    @Column(name = "ticket_price", precision = 12, scale = 2)
     private BigDecimal TicketPrice;
+
+    @Column(name = "rate")
     private Double rate = 0.0; // for search and filtering
+
+    @Column(name = "total_rating")
     private Double totalRating = 0.0; // for calculating average rating
+
+    @Column(name = "rating_count")
     private Integer ratingCount = 0; // for calculating average rating
+
+    @Transient  // TODO : change to one to one
+//    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+//    @JoinColumn(name = "purchase_policy_id")
     private PurchasePolicy purchasePolicy;
+
+    @Transient  // TODO : change to one to one
+//    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+//    @JoinColumn(name = "discount_policy_id")
     private DiscountPolicy discountPolicy;
+
+    @Transient
     private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
+
+    @Version
+    @Column(name = "version")
     private int version;
-    private AtomicLong discountId=new AtomicLong(0L);
-    // waiting queue
+
+    @Transient
+    private AtomicLong discountId = new AtomicLong(0L);
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sale_status")
     private SaleStatus saleStatus = SaleStatus.NOT_STARTED;
 
+    protected Event() {}
+
+    @Deprecated
     public Event(Long id, LocalDateTime date, String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
         this.id = id;
         this.name = name;
@@ -81,7 +139,7 @@ public class Event {
         this.category = other.category;
         this.artistName = other.artistName;
         this.TicketPrice = other.TicketPrice;
-        this.map = new EventMap(other.map); // Deep copy of the map
+        this.map = other.map == null ? null : new EventMap(other.map); // Deep copy of the map
         this.status = other.status;
         this.saleStatus = other.saleStatus;
         this.rate = other.rate;
@@ -89,10 +147,9 @@ public class Event {
         this.ratingCount = other.ratingCount;
         this.purchasePolicy = other.purchasePolicy;
         this.discountPolicy = other.discountPolicy;
-        this.activeReservationsCount = new AtomicInteger(other.activeReservationsCount.get());
+        this.activeReservationsCount = new AtomicInteger(other.getActiveReservationsCount());
         this.version = other.version;
-        this.discountId = new AtomicLong(other.discountId.get());
-        
+        this.discountId = new AtomicLong(other.getDiscountIdCounter());
     }
 
     public Event copy() {
@@ -211,12 +268,14 @@ public class Event {
     public DiscountPolicy getDiscountPolicy() {
         return discountPolicy;
     }
+
     public void setDiscountPolicy(DiscountPolicy discountPolicy) {
        if (discountPolicy == null) {
             throw new IllegalArgumentException("Discount policy cannot be null");
         }
         this.discountPolicy = discountPolicy;
     }
+
     private Long getNextDiscountId() {
         return discountId.incrementAndGet();
     }
@@ -229,7 +288,7 @@ public class Event {
         return saleStatus;
     }
 
-    public  void setSaleStatus(SaleStatus saleStatus) {
+    public void setSaleStatus(SaleStatus saleStatus) {
         this.saleStatus = saleStatus;
     }
 
@@ -287,7 +346,27 @@ public class Event {
         return activeReservationsCount.get();
     }
 
-    // use case: search and filtering 
+    @Access(AccessType.PROPERTY)
+    @Column(name = "active_reservations_count")
+    protected int getActiveReservationsCountValue() {
+        return activeReservationsCount == null ? 0 : activeReservationsCount.get();
+    }
+
+    protected void setActiveReservationsCountValue(int value) {
+        this.activeReservationsCount = new AtomicInteger(value);
+    }
+
+    @Access(AccessType.PROPERTY)
+    @Column(name = "discount_id_counter")
+    protected long getDiscountIdCounter() {
+        return discountId == null ? 0L : discountId.get();
+    }
+
+    protected void setDiscountIdCounter(long value) {
+        this.discountId = new AtomicLong(value);
+    }
+
+    // use case: search and filtering
     public boolean matchesSearchCriteria(SearchCriteria criteria) {
         if (criteria == null) {
             throw new IllegalArgumentException("Search criteria cannot be null");
@@ -493,22 +572,23 @@ public class Event {
         return discountPolicy.getDiscounts();
     }
 
+    @Override
     public String toString() {
-        return "Event{" +
-                "id=" + id.toString() +
-                ", name='" + name + '\'' +
-                ", companyId=" + companyId.toString() +
-                ", openedBy=" + openedBy.toString() +
-                ", Date=" + Date.toString() +
-                ", location=" + location.toString() +
-                ", trafficThreshold=" + trafficThreshold.toString() +
-                ", status=" + status.toString() +
-                ", category=" + category.toString() +
-                ", artistName='" + artistName + '\'' +
-                ", TicketPrice=" + TicketPrice.toString() +
-                ", rate=" + rate.toString() +
-                ", activeReservationsCount=" + activeReservationsCount.toString() +
-                '}';
+        return "Event{"
+                + "id=" + id
+                + ", name='" + name + '\''
+                + ", companyId=" + companyId
+                + ", openedBy=" + openedBy
+                + ", Date=" + Date
+                + ", location=" + location
+                + ", trafficThreshold=" + trafficThreshold
+                + ", status=" + status
+                + ", category=" + category
+                + ", artistName='" + artistName + '\''
+                + ", TicketPrice=" + TicketPrice
+                + ", rate=" + rate
+                + ", activeReservationsCount=" + activeReservationsCount
+                + '}';
     }
 }
 
