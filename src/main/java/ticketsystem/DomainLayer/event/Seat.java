@@ -1,10 +1,38 @@
 package ticketsystem.DomainLayer.event;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
+@Entity
+@Table(name = "event_seats")
 public class Seat {
-    private final SeatPosition position;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Embedded
+    private SeatPosition position;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private SeatStatus status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seating_area_id")
+    private SeatingArea seatingArea;
+
+    protected Seat() {}
 
     public Seat(SeatPosition position) {
         this.position = position;
@@ -12,6 +40,7 @@ public class Seat {
     }
 
     public Seat(Seat other) {
+        this.id = other.id;
         this.position = new SeatPosition(other.position.row(), other.position.number());
         this.status = other.status;
     }
@@ -36,6 +65,10 @@ public class Seat {
     AVAILABLE,
     RESERVED,
     SOLD
+    }
+
+    public void setSeatingArea(SeatingArea seatingArea) {
+        this.seatingArea = seatingArea;
     }
 
     public void reserve() {

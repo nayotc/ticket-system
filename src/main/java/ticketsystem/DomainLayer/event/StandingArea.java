@@ -1,5 +1,10 @@
 package ticketsystem.DomainLayer.event;
 
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+
+@Entity
+@DiscriminatorValue("STANDING")
 public class StandingArea extends Area {
     private long capacity;
     private long reserved;

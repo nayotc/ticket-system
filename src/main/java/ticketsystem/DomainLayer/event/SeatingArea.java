@@ -4,12 +4,24 @@ import java.util.HashMap;
 import java.util.Map;
 
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.MapKey;
+import jakarta.persistence.OneToMany;
 
+@Entity
+@DiscriminatorValue("SEATING")
 public class SeatingArea extends Area {
+
+    @OneToMany(mappedBy = "seatingArea", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @MapKey(name = "position")
     private final Map<SeatPosition, Seat> seats = new HashMap<>();
     private int rows;
     private int columns;
 
+    protected SeatingArea() {}
 
     public SeatingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, int rows, int columns) {
         super(id, name, location, size);
@@ -18,7 +30,9 @@ public class SeatingArea extends Area {
         for (int row = 1; row <= rows; row++) {
             for (int col = 1; col <= columns; col++) {
                 SeatPosition position = new SeatPosition(row, col);
-                seats.put(position, new Seat(position));
+                Seat seat = new Seat(position);
+                seat.setSeatingArea(this);
+                seats.put(position, seat);
             }
         }
     }

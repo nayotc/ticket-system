@@ -65,9 +65,7 @@ public class Event {
     @Column(name = "artist_name")
     private String artistName;
 
-    @Transient
-    // TODO : change to Embedded
-    // @Embedded
+    @Embedded
     private EventMap map;
 
     @Column(name = "ticket_price", precision = 12, scale = 2)
