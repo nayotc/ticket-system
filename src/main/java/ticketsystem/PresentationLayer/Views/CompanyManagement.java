@@ -323,7 +323,8 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         }
 
         String normalized = status.trim().toUpperCase();
-        return normalized.equals("CANCELLED") || normalized.equals("מבוטל");
+        return normalized.equals("CANCELLED")
+                || normalized.equals("CANCELLATION_PENDING");
     }
 
     private Component createTeamManagementCard() {
@@ -570,9 +571,10 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 "האירוע " + eventItem.title() + " יבוטל לאחר אישור הפעולה.",
                 () -> runPresenterAction(
                         () -> membershipPresenter.cancelEvent(UiSession.getMemberToken(), state.selectedCompany().id(), eventItem.eventId()),
-                        "בקשת ביטול האירוע נשלחה"
+                        "האירוע בוטל בהצלחה"
                 )
         );
+        
     }
 
     private String readEmailInput(TextField field, String label) {
@@ -649,25 +651,52 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         return value;
     }
 
+    // private void runPresenterAction(ThrowingRunnable action, String successMessage) {
+    //     try {
+    //         if (membershipPresenter == null || companyPresenter == null) {
+    //             showWarning("הפעולה מוכנה לחיבור Presenter. כרגע מוצג מידע דמו בלבד.");
+    //             return;
+    //         }
+    //         action.run();
+    //         showSuccess(successMessage);
+            
+    //         // ניקוי הטפסים כדי להשלים את חוויית הריפרש בממשק
+    //         managerNameInput.clear();
+    //         managerPermissions.deselectAll();
+    //         ownerNameInput.clear();
+            
+    //         loadState(state.selectedCompany().id());
+    //     } catch (Exception e) {
+    //         showError(e.getMessage());
+    //     }
+    // }
     private void runPresenterAction(ThrowingRunnable action, String successMessage) {
-        try {
-            if (membershipPresenter == null || companyPresenter == null) {
-                showWarning("הפעולה מוכנה לחיבור Presenter. כרגע מוצג מידע דמו בלבד.");
-                return;
-            }
-            action.run();
-            showSuccess(successMessage);
-            
-            // ניקוי הטפסים כדי להשלים את חוויית הריפרש בממשק
-            managerNameInput.clear();
-            managerPermissions.deselectAll();
-            ownerNameInput.clear();
-            
-            loadState(state.selectedCompany().id());
-        } catch (Exception e) {
-            showError(e.getMessage());
+    Long currentCompanyId = state == null || state.selectedCompany() == null
+            ? null
+            : state.selectedCompany().id();
+
+    try {
+        if (membershipPresenter == null || companyPresenter == null) {
+            showWarning("הפעולה מוכנה לחיבור Presenter. כרגע מוצג מידע דמו בלבד.");
+            return;
+        }
+
+        action.run();
+        showSuccess(successMessage);
+
+        managerNameInput.clear();
+        managerPermissions.deselectAll();
+        ownerNameInput.clear();
+
+    } catch (Exception e) {
+        showError(e.getMessage());
+
+    } finally {
+        if (currentCompanyId != null) {
+            loadState(currentCompanyId);
         }
     }
+}
 
     private void confirmOwnerAction(String title, String text, Runnable action) {
         ConfirmDialog dialog = new ConfirmDialog();

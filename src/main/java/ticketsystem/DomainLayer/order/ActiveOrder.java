@@ -250,10 +250,10 @@ public class ActiveOrder {
         }
         if (getUserId() != null) {
             return new OrderDTO(0L, ticketDTOs, eventName, location, getUserId(), companyId,
-                    managedByMemberId, eventId, total,transactionId);
+                    managedByMemberId, eventId, total,transactionId,false);
         }
         return new OrderDTO(0L, ticketDTOs, eventName, location, null, companyId,
-                managedByMemberId, eventId, total, transactionId);
+                managedByMemberId, eventId, total, transactionId,false);
     }
 
     public ActiveOrderDTO toDTO() {

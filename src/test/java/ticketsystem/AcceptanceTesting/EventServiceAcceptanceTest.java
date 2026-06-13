@@ -1463,6 +1463,11 @@ void GivenOwnerLoggedInEventExistsAndDiscountPolicySaved_WhenGetEventDiscountPol
         int notificationCount() {
             return canceledEventIds.size();
         }
+
+        @Override
+        public boolean onEventCancellationRequested(Long eventId) {
+               return true;
+        }
     }
 
 // -------------------- Set Event Purchase Policy Tests -------------------

@@ -181,6 +181,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         }
     }
 
+
+
     @Override
     public void saveEventDiscountPolicy(String token, Long eventId, EditEvent.DiscountPolicyDraftDTO discountDraft) {
         try {
@@ -554,6 +556,10 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
         if (message.startsWith("Map elements cannot overlap")) {
             return "לא ניתן לשמור את מפת האולם כי קיימים אלמנטים שחופפים במיקום. הזז את האלמנטים כך שלא יכסו אחד את השני.";
         }
+        if (message.contains("Cancellation failed")
+            || message.contains("Some refunds were not completed")) {
+        return "ביטול האירוע נכשל. חלק מההחזרים לא הושלמו. ניתן לנסות שוב מאוחר יותר.";
+    }
 
         return switch (message) {
             case "Invalid token.", "Invalid session ID" -> "אנא התחבר מחדש";
@@ -591,6 +597,7 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
             case "Event map must contain at least one seating area or standing area" -> "מפת האירוע חייבת להכיל לפחות אזור ישיבה או אזור עמידה אחד.";
             case "Event is already canceled" -> "האירוע כבר מבוטל.";
             case "Event Event does not exist" -> "האירוע לא קיים.";
+            case "Event cancellation failed. Please try again later to complete the cancellation process." -> "ביטול אירוע נכשל, נסה שוב מאוחר יותר. ";
             default -> message;
         };
     }

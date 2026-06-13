@@ -67,6 +67,11 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
     private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern(DATE_PICKER_DISPLAY_FORMAT);
     private static final DateTimeFormatter DISPLAY_DATE_TIME = DateTimeFormatter.ofPattern("dd/MM/yy HH:mm");
 
+    private static final String CANCELLED_STATUS = "CANCELLED";
+    private static final String CANCELLATION_PENDING_STATUS = "CANCELLATION_PENDING";
+    private static final String CANCELLATION_FAILED_STATUS = "CANCELLATION_FAILED";
+
+
     private final EditEventPresenter presenter;
 
     private Long companyId;
@@ -485,21 +490,6 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
                 quickActions.add(openRegularSale);
             }
 
-//            if (showCloseSaleButton) {
-//                Button closeSale = createDangerButton("סגור מכירה", "⏹");
-//                closeSale.addClassName("edit-event-sale-status-main-button");
-//                closeSale.addClassName("edit-event-sale-status-close-button");
-//
-//                closeSale.addClickListener(event -> updateSaleStatus(SaleStatus.ENDED));
-//
-//                applyDisabledState(
-//                        closeSale,
-//                        canCloseSale(),
-//                        "לא ניתן לסגור מכירה במצב האירוע הנוכחי"
-//                );
-//
-//                quickActions.add(closeSale);
-//            }
         }
 
         Button cancelEvent = createDangerButton("בטל אירוע", "×");
@@ -508,8 +498,8 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
 
         applyDisabledState(
                 cancelEvent,
-                !isCancelledEvent(),
-                "האירוע כבר מבוטל"
+                !isCancellationBlockedEvent(),
+                cancellationBlockedReason()
         );
 
         cancelEvent.addClickListener(event -> confirmCancelEvent());
@@ -518,6 +508,19 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
         wrapper.add(quickActions);
         return wrapper;
     }
+
+    private String cancellationBlockedReason() {
+    if (isCancelledEvent()) {
+        return "האירוע כבר מבוטל";
+    }
+
+    if (isCancellationPendingEvent()) {
+        return "ביטול האירוע נמצא בתהליך";
+    }
+
+    return "לא ניתן לבטל את האירוע במצב הנוכחי";
+}
+
 
     private void applyDisabledState(Button button, boolean enabled, String disabledTitle) {
         button.setEnabled(enabled);
@@ -534,9 +537,27 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
         button.getElement().setAttribute("aria-label", disabledTitle);
     }
 
-    private boolean isCancelledEvent() {
-        return loadedEvent != null && "CANCELLED".equalsIgnoreCase(loadedEvent.status());
-    }
+   private boolean isCancelledEvent() {
+    return hasStatus(CANCELLED_STATUS);
+}
+
+private boolean isCancellationPendingEvent() {
+    return hasStatus(CANCELLATION_PENDING_STATUS);
+}
+
+private boolean isCancellationFailedEvent() {
+    return hasStatus(CANCELLATION_FAILED_STATUS);
+}
+
+private boolean isCancellationBlockedEvent() {
+    return isCancelledEvent()
+            || isCancellationPendingEvent();
+}
+
+private boolean hasStatus(String status) {
+    return loadedEvent != null
+            && status.equalsIgnoreCase(loadedEvent.status());
+}
 
     private boolean canMoveToPreSale() {
         if (isCancelledEvent()) {
@@ -1880,20 +1901,73 @@ private String conditionText(DiscountConditionDTO condition) {
         );
     }
 
-    private void confirmCancelEvent() {
-            confirmOwnerAction(
-                    "ביטול אירוע",
-                    "האירוע יבוטל לאחר אישור הפעולה.",
-                    () -> {
-                        presenter.cancelEvent(UiSession.getMemberToken(), eventId);
-                        if (visitCoordinator != null) {
-                            visitCoordinator.forceShowPendingNotifications(com.vaadin.flow.component.UI.getCurrent());
-                        }
-                        Notifications.success("אירוע בוטל בהצלחה.");
-                        loadEventDetails();
-                    } 
-            ); 
-        } 
+//       private void confirmCancelEvent() {
+//     String title = isCancellationFailedEvent()
+//             ? "ניסיון חוזר לביטול אירוע"
+//             : "ביטול אירוע";
+
+//     String text = isCancellationFailedEvent()
+//             ? "הביטול הקודם נכשל חלקית.יש להשלים את פעולת הביטול בהמשך."
+//             : "האירוע בוטל בהצלחה.";
+
+//     confirmOwnerAction(
+//             title,
+//             text,
+//             () -> {
+//                 try {
+//                     presenter.cancelEvent(UiSession.getMemberToken(), eventId);
+
+//                     if (visitCoordinator != null) {
+//                         visitCoordinator.forceShowPendingNotifications(UI.getCurrent());
+//                     }
+
+//                     Notifications.success("אירוע בוטל בהצלחה.");
+//                     // loadEventDetails();
+
+//                 } catch (Exception exception) {
+//                     Notifications.error("ביטול האירוע נכשל: " + exception.getMessage());
+                   
+//                  } finally {
+//                     loadEventDetails();
+//             }
+//         }
+//     );
+// }
+private void confirmCancelEvent() {
+    String title = isCancellationFailedEvent()
+            ? "ניסיון חוזר לביטול אירוע"
+            : "ביטול אירוע";
+
+    String text = isCancellationFailedEvent()
+            ? "הביטול הקודם נכשל חלקית. המערכת תנסה להשלים את פעולת הביטול."
+            : "האירוע יבוטל לאחר אישור הפעולה.";
+
+    confirmOwnerAction(
+            title,
+            text,
+            () -> {
+                try {
+                    presenter.cancelEvent(UiSession.getMemberToken(), eventId);
+
+                    if (visitCoordinator != null) {
+                        visitCoordinator.forceShowPendingNotifications(UI.getCurrent());
+                    }
+
+                    Notifications.success("אירוע בוטל בהצלחה.");
+
+                } catch (PresentationException exception) {
+                    Notifications.error(exception.getMessage());
+
+                } catch (Exception exception) {
+                    Notifications.error("אירעה שגיאה בעת ביטול האירוע. נסו שוב.");
+
+                } finally {
+                    loadEventDetails();
+                }
+            }
+    );
+}
+
 
     private void confirmOwnerAction(String title, String text, Runnable action) {
         ConfirmDialog dialog = new ConfirmDialog();
@@ -1987,32 +2061,37 @@ private String conditionText(DiscountConditionDTO condition) {
     }
 
     private String translateStatus(String status) {
-        if (status == null || status.isBlank()) {
-            return "לא הוגדר";
-        }
-
-        return switch (status.toUpperCase(Locale.ROOT)) {
-            case "ACTIVE" -> "פעיל";
-            case "DRAFT" -> "טיוטה";
-            case "INACTIVE" -> "לא פעיל";
-            case "CANCELLED" -> "מבוטל";
-            default -> status;
-        };
+    if (status == null || status.isBlank()) {
+        return "לא הוגדר";
     }
+
+    return switch (status.toUpperCase(Locale.ROOT)) {
+        case "ACTIVE" -> "פעיל";
+        case "DRAFT" -> "טיוטה";
+        case "INACTIVE" -> "לא פעיל";
+        case "CANCELLED" -> "מבוטל";
+        case "CANCELLATION_PENDING" -> "ביטול בתהליך";
+        case "CANCELLATION_FAILED" -> "ביטול נכשל";
+        default -> status;
+    };
+}
 
     private StatusBadge.Type statusType(String status) {
-        if (status == null) {
-            return StatusBadge.Type.NEUTRAL;
-        }
-
-        return switch (status.toUpperCase(Locale.ROOT)) {
-            case "ACTIVE" -> StatusBadge.Type.SUCCESS;
-            case "DRAFT" -> StatusBadge.Type.INFO;
-            case "CANCELLED" -> StatusBadge.Type.ERROR;
-            case "INACTIVE" -> StatusBadge.Type.WARNING;
-            default -> StatusBadge.Type.NEUTRAL;
-        };
+    if (status == null) {
+        return StatusBadge.Type.NEUTRAL;
     }
+
+    return switch (status.toUpperCase(Locale.ROOT)) {
+        case "ACTIVE" -> StatusBadge.Type.SUCCESS;
+        case "DRAFT" -> StatusBadge.Type.INFO;
+        case "CANCELLED" -> StatusBadge.Type.ERROR;
+        case "CANCELLATION_PENDING" -> StatusBadge.Type.WARNING;
+        case "CANCELLATION_FAILED" -> StatusBadge.Type.ERROR;
+        case "INACTIVE" -> StatusBadge.Type.WARNING;
+        default -> StatusBadge.Type.NEUTRAL;
+    };
+}
+
 
     private String translateSaleStatus(SaleStatus status) {
         if (status == null) {
