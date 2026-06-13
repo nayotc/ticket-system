@@ -1,6 +1,5 @@
 package ticketsystem.ApplicationLayer;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
 
@@ -26,7 +25,6 @@ public class EventMapper {
         }
 
         Event event = new Event(
-                dto.id(),
                 dto.date(),
                 dto.name(),
                 dto.companyId(),
@@ -38,6 +36,15 @@ public class EventMapper {
                 dto.ticketPrice(),
                 dto.mapSize() != null ? toDomain(dto.mapSize()) : null
         );
+
+        if (dto.map() != null) {
+            event.setMap(toDomain(dto.map()));
+        } else if (eventMapSupplier != null) {
+            EventMap suppliedMap = eventMapSupplier.get();
+            if (suppliedMap != null) {
+                event.setMap(suppliedMap);
+            }
+        }
 
         return event;
     }
@@ -81,7 +88,6 @@ public class EventMapper {
         }
 
         return new Element(
-                dto.id(),
                 dto.name(),
                 toDomain(dto.location()),
                 toDomain(dto.size())
@@ -102,7 +108,6 @@ public class EventMapper {
         }
 
         SeatingArea seatingArea = new SeatingArea(
-                dto.id(),
                 dto.name(),
                 toDomain(dto.location()),
                 toDomain(dto.size()),
@@ -134,7 +139,6 @@ public class EventMapper {
         }
 
         StandingArea standingArea = new StandingArea(
-                dto.id(),
                 dto.name(),
                 toDomain(dto.location()),
                 toDomain(dto.size()),

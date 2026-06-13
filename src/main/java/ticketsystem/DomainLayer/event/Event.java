@@ -106,9 +106,7 @@ public class Event {
 
     protected Event() {}
 
-    @Deprecated
-    public Event(Long id, LocalDateTime date, String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
-        this.id = id;
+    public Event(LocalDateTime date, String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
         this.name = name;
         this.Date = date;
         this.companyId = companyId;

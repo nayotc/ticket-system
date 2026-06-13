@@ -23,8 +23,8 @@ public class SeatingArea extends Area {
 
     protected SeatingArea() {}
 
-    public SeatingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, int rows, int columns) {
-        super(id, name, location, size);
+    public SeatingArea(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, int rows, int columns) {
+        super(name, location, size);
         this.rows = rows;
         this.columns = columns;
         for (int row = 1; row <= rows; row++) {

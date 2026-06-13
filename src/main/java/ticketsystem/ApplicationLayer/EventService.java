@@ -94,13 +94,12 @@ public class EventService {
                 throw new IllegalArgumentException("Map size must be positive");
             }
             // main scenario: create and add event
-            Long eventId = eventRepository.getNextId();
 
-            Event event = new Event(eventId, date, eventName, companyId, userId, location, trafficThreshold, category,
+            Event event = new Event(date, eventName, companyId, userId, location, trafficThreshold, category,
                     artist, price, new Pair<>(mapHigh, mapWidth));
             eventRepository.addEvent(event);
-            logger.logEvent("Completed - insertEvent. eventId=" + eventId + ", companyId=" + companyId + ", " + event.toString(), LogLevel.INFO);
-            return eventId;
+            logger.logEvent("Completed - insertEvent. eventId=" + event.getId() + ", companyId=" + companyId + ", " + event.toString(), LogLevel.INFO);
+            return event.getId();
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - insertEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
@@ -145,7 +144,11 @@ public class EventService {
             }
             logger.logEvent("Checked permissions - updateEvent. userId=" + userId + ", companyId=" + eventDTO.companyId() + "permission=" + Permission.MANAGE_EVENT_INVENTORY, LogLevel.DEBUG);
             // precondition: event exists
-            Event existingEvent = eventRepository.getEventById(eventDTO.id());
+            Long eventId = eventDTO.id();
+            if (eventId == null) {
+                throw new IllegalArgumentException("Event ID cannot be null");
+            }
+            Event existingEvent = eventRepository.getEventById(eventId);
             if (existingEvent == null) {
                 throw new IllegalArgumentException("Event not found");
             }
