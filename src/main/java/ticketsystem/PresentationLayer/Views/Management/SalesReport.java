@@ -234,6 +234,10 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             bindSalesReport(report, transactions);
             
         } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
             showError(e.getMessage());
             event.forwardTo(UiRoutes.HOME);
         }
@@ -274,7 +278,12 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
             bindSalesReport(report, transactions);
             Notifications.success("הנתונים רעננו בהצלחה");
+        
         } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
             showError(e.getMessage());
             UI.getCurrent().navigate(UiRoutes.HOME);
         }

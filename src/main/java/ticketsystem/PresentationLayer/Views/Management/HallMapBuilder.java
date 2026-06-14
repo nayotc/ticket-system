@@ -379,6 +379,15 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
             nextElementId = calculateNextElementId();
             selectedIndex = elements.isEmpty() ? -1 : 0;
             renderAll();
+            
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(messageOrDefault(e, "לא ניתן לטעון את פרטי האירוע"));
+            renderAll();
+            
         } catch (Exception exception) {
             showError(messageOrDefault(exception, "לא ניתן לטעון את פרטי האירוע"));
             renderAll();
@@ -934,6 +943,15 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
             if (companyId != null) {
                 UI.getCurrent().navigate(UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(companyId)));
             }
+            
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            // תפיסת פקיעת הסשן וניתוב המנהל לדף ה-Login
+            if (e.isSessionTimeout()) {
+                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(messageOrDefault(e, "שמירת המפה נכשלה"));
+            
         } catch (Exception exception) {
             showError(messageOrDefault(exception, "שמירת המפה נכשלה"));
         }

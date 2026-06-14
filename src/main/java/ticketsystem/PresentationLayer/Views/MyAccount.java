@@ -333,7 +333,15 @@ private void openPasswordConfirmationDialog() {
             showSuccess("הפרטים עודכנו בהצלחה.");
             dialog.close();
             loadDataFromPresenter();
-
+        
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                dialog.close(); // סוגרים את חלונית האימות לפני הניתוב
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
+        
         } catch (RuntimeException ex) {
             showError(ex.getMessage() == null ? "שמירת הפרטים נכשלה." : ex.getMessage());
         }
@@ -370,6 +378,13 @@ private void openPasswordConfirmationDialog() {
             List<OrderDTO> orders = presenter.loadPurchaseHistory(UiSession.getMemberToken());
            
             setPurchaseHistory(orders);
+        
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
 
         } catch (RuntimeException ex) {
             showError(ex.getMessage() == null ? "טעינת האזור האישי נכשלה." : ex.getMessage());

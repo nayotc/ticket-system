@@ -33,19 +33,14 @@ import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.SaleStatus;
-import ticketsystem.InfrastructureLayer.VaadinNotifier;
 import ticketsystem.PresentationLayer.Components.AppCard;
 import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.StatusBadge;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
-import ticketsystem.PresentationLayer.Presenters.CompanyManagementState;
-import ticketsystem.PresentationLayer.Presenters.ManageEventPresenter;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
-import ticketsystem.PresentationLayer.Views.Management.EditEvent.EditEventPresenter;
-import ticketsystem.PresentationLayer.Views.Management.EditEvent.UpdateEventRequest;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -240,6 +235,13 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             loadPolicyDrafts();
             refreshTabs();
 
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            Notifications.error(e.getMessage());
+            
         } catch (Exception exception) {
             Notifications.error("שגיאה בטעינת פרטי האירוע: " + exception.getMessage());
         }
@@ -271,6 +273,13 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
                     eventId
             );
             applyPurchasePolicyDraft(purchaseDraft);
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            purchasePolicyRoot = PurchaseExpressionNode.group(LogicalOperator.AND);
+            refreshPurchaseExpression();
         } catch (Exception exception) {
             purchasePolicyRoot = PurchaseExpressionNode.group(LogicalOperator.AND);
             refreshPurchaseExpression();
@@ -282,6 +291,14 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
                     eventId
             );
             applyDiscountPolicyDraft(discountDraft);
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            discounts.clear();
+            setDiscountCompositionStrategy(DiscountCompositionStrategy.MAXIMUM);
+            refreshDiscounts();
         } catch (Exception exception) {
             discounts.clear();
             setDiscountCompositionStrategy(DiscountCompositionStrategy.MAXIMUM);
@@ -412,8 +429,18 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             summary.add(paragraph("האירוע עדיין לא נטען."));
             return summary;
         }
-         int sold = presenter.getSoldTicketsCount(UiSession.getMemberToken(), eventId);
-        int capacity = presenter.getEventCapacity(UiSession.getMemberToken(), eventId);
+        
+        int sold = 0;
+        int capacity = 0;
+        try {
+            sold = presenter.getSoldTicketsCount(UiSession.getMemberToken(), eventId);
+            capacity = presenter.getEventCapacity(UiSession.getMemberToken(), eventId);
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return summary;
+            }
+        } catch (Exception ignored) {}
 
         summary.add(
                 statusRow("סטטוס אירוע", new StatusBadge(translateStatus(loadedEvent.status()), statusType(loadedEvent.status()))),
@@ -444,13 +471,21 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
         quickActions.addClassName("edit-event-sale-status-actions");
 
         if ("ACTIVE".equalsIgnoreCase(loadedEvent.status())) {
-            boolean hasLottery = presenter.hasLottery(UiSession.getMemberToken(), eventId);
+            boolean hasLottery = false;
+            try {
+                hasLottery = presenter.hasLottery(UiSession.getMemberToken(), eventId);
+            } catch (PresentationException e) {
+                if (e.isSessionTimeout()) {
+                    UiSession.handleTimeoutRedirect();
+                    return wrapper;
+                }
+            } catch (Exception ignored) {}
+            
             SaleStatus currentStatus = currentSaleStatus();
 
             boolean notStarted = currentStatus == null || currentStatus == SaleStatus.NOT_STARTED;
             boolean preSale = currentStatus == SaleStatus.PRE_SALE;
             boolean ongoing = currentStatus == SaleStatus.ONGOING;
-
             boolean showPreSaleButton = hasLottery && notStarted;
 
             boolean showRegularSaleButton =
@@ -595,6 +630,12 @@ private boolean hasStatus(String status) {
             presenter.updateEventSaleStatus(UiSession.getMemberToken(), eventId, targetStatus);
             Notifications.success("מצב המכירה עודכן בהצלחה.");
             loadEventDetails();
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            Notifications.error(e.getMessage());
         } catch (Exception exception) {
             Notifications.error("שגיאה בעדכון מצב המכירה: " + exception.getMessage());
         }
@@ -606,6 +647,12 @@ private boolean hasStatus(String status) {
             presenter.updateEventSaleStatus(UiSession.getMemberToken(), eventId, SaleStatus.PRE_SALE);
             Notifications.success("הגרלה בוצעה בהצלחה, מכירה מוקדמת נפתחה.");
             loadEventDetails();
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            Notifications.error(e.getMessage()); 
         } catch (Exception exception) {
             Notifications.error("שגיאה בביצוע הגרלה: " + exception.getMessage());
         }
@@ -637,6 +684,12 @@ private boolean hasStatus(String status) {
             presenter.updateEvent(new UpdateEventRequest(UiSession.getMemberToken(), updateDTO));
             Notifications.success("פרטי האירוע נשמרו בהצלחה.");
             loadEventDetails();
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            Notifications.error(e.getMessage());
         } catch (Exception exception) {
             Notifications.error("שגיאה בשמירת פרטי האירוע: " + exception.getMessage());
         }
@@ -1866,6 +1919,12 @@ private String conditionText(DiscountConditionDTO condition) {
 
             showSuccess("מדיניות הרכישה נשמרה והתעדכנה בהצלחה באירוע.");
 
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
         } catch (Exception e) {
             showError("שגיאה בשמירת מדיניות הרכישה: " + translatePermissionError(e.getMessage()));
         }
@@ -1878,9 +1937,14 @@ private String conditionText(DiscountConditionDTO condition) {
                     eventId,
                     getDiscountPolicyDraft()
             );
-
             showSuccess("מדיניות ההנחות נשמרה והתעדכנה בהצלחה באירוע.");
 
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
         } catch (Exception e) {
             showError("שגיאה בשמירת מדיניות ההנחות: " + translatePermissionError(e.getMessage()));
         }
@@ -1924,6 +1988,10 @@ private void confirmCancelEvent() {
                     Notifications.success("אירוע בוטל בהצלחה.");
 
                 } catch (PresentationException exception) {
+                    if (exception.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                        return;
+                    }
                     Notifications.error(exception.getMessage());
 
                 } catch (Exception exception) {

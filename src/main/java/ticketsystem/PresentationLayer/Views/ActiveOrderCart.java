@@ -19,6 +19,7 @@ import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Components.EmptyState;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.PublicLayout;
@@ -77,13 +78,21 @@ public class ActiveOrderCart extends VerticalLayout {
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
             renderCart();
+        
         } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
             if (e.isSessionTimeout()) {
-                UiSession.handleTimeoutRedirect();
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("זמן החיבור של עגלת הקניות פג, אנא בחרו כרטיסים מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
                 return;
             }
             showError(e.getMessage());
             renderEmptyCart();
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
             renderEmptyCart();
@@ -309,12 +318,20 @@ public class ActiveOrderCart extends VerticalLayout {
         try {
             pricing = presenter.applyCoupon(resolveSessionToken(), activeOrder, currentCouponCode);
             renderCart();
+        
         } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
             if (e.isSessionTimeout()) {
-                UiSession.handleTimeoutRedirect();
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("זמן החיבור של עגלת הקניות פג, אנא בחרו כרטיסים מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
                 return;
             }
             showError(e.getMessage());
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
@@ -329,12 +346,20 @@ public class ActiveOrderCart extends VerticalLayout {
             presenter.removeTicketFromActiveOrder(resolveSessionToken(), activeOrder.getEventId(), ticket.getTicketId());
             loadCart();
             refreshHeader();
+        
         } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
             if (e.isSessionTimeout()) {
-                UiSession.handleTimeoutRedirect();
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("זמן החיבור של עגלת הקניות פג, אנא בחרו כרטיסים מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
                 return;
             }
             showError(e.getMessage());
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
         }

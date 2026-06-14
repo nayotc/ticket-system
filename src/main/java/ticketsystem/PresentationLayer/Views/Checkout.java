@@ -26,6 +26,7 @@ import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Components.EmptyState;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
@@ -176,7 +177,21 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
-
+        
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            renderEmptyCheckout();
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
             renderEmptyCheckout();
@@ -588,6 +603,20 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             } else {
                  showError("קוד הקופון שגוי או שאינו בתוקף");
             }
+        
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
@@ -635,11 +664,23 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             presenter.validateOrderPolicyBeforePayment(resolveSessionToken(), activeOrder.getEventId(), details, normalizedCouponCode());
             currentStep = 2;
             renderCheckout();
-        }catch (Exception exception) {
+        
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            
+        } catch (Exception exception) {
             showError(exception.getMessage());
         }
-       
-
     }
 
    /**
@@ -700,7 +741,20 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             } else {
                 UI.getCurrent().navigate(UiRoutes.HOME);
             }
-
+        
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
         }

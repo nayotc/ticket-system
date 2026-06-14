@@ -639,9 +639,9 @@ public class SystemAdminDashboard extends Div {
                 presenter.suspendMember(UiSession.getMemberToken(), user.id(), LocalDateTime.now(), endDate, reason);
             }
             showSuccess("המשתמש הושעה בהצלחה");
-            refreshUsersGrid(); // ריענון הטבלה כדי להראות את הסטטוס החדש
-        } catch (PresentationException e) {
-            showError(e.getMessage());
+            refreshUsersGrid();
+        } catch (Exception e) {
+            handleAdminActionError(e);
         }
     }
 
@@ -652,8 +652,8 @@ public class SystemAdminDashboard extends Div {
             }
             showSuccess("המשתמש הוחזר לפעילות בהצלחה");
             refreshUsersGrid();
-        } catch (PresentationException e) {
-            showError(e.getMessage());
+        } catch (Exception e) {
+            handleAdminActionError(e);
         }
     }
 
@@ -665,11 +665,13 @@ public class SystemAdminDashboard extends Div {
             showSuccess("המשתמש הוסר מכל החברות");
             refreshUsersGrid();
         } catch (Exception e) {
-            String errorMessage = e.getMessage();
-            if (errorMessage != null && errorMessage.contains("Failed to remove user")) {
-                errorMessage = "שגיאה: לא ניתן להסיר את המשתמש. ייתכן שיש לו תפקיד ניהולי שלא ניתן לביטול כרגע.";
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            // בדיקה ייעודית למקרה הספציפי שבו אי אפשר להסיר את המשתמש
+            if (msg.contains("Failed to remove user")) {
+                showError("שגיאה: לא ניתן להסיר את המשתמש. ייתכן שיש לו תפקיד ניהולי שלא ניתן לביטול כרגע.");
+            } else {
+                handleAdminActionError(e);
             }
-            showError(errorMessage);
         }
     }
 
@@ -680,8 +682,8 @@ public class SystemAdminDashboard extends Div {
             }
             showSuccess("המשתמש נמחק מהמערכת בהצלחה");
             refreshUsersGrid();
-        } catch (PresentationException e) {
-            showError(e.getMessage());
+        } catch (Exception e) {
+            handleAdminActionError(e);
         }
     }
 
@@ -694,8 +696,8 @@ public class SystemAdminDashboard extends Div {
             companiesGrid.setItems(allCompanies);
             showSuccess("החברה נסגרה בהצלחה");
             refreshCompaniesGrid();
-        } catch (PresentationException e) {
-            showError(e.getMessage());
+        } catch (Exception e) {
+            handleAdminActionError(e);
         }
     }
 
@@ -999,6 +1001,25 @@ public class SystemAdminDashboard extends Div {
                 Notification.Position.TOP_CENTER
         );
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+    }
+
+    private void handleAdminActionError(Exception e) {
+        String msg = e.getMessage() != null ? e.getMessage() : "";
+
+        // בדיקה 1: האם זו שגיאת ניתוק סטנדרטית מה-Presenter
+        if (e instanceof ticketsystem.PresentationLayer.Presenters.PresentationException pe && pe.isSessionTimeout()) {
+            UiSession.handleTimeoutRedirect();
+            return;
+        }
+
+        // בדיקה 2: האם זו שגיאת הרשאות אדמין שנזרקה ישירות מה-Service בבקאנד
+        if (msg.contains("Unauthorized") || msg.contains("Invalid admin credentials") || msg.contains("ERROR: Unauthorized")) {
+            UiSession.handleTimeoutRedirect();
+            return;
+        }
+
+        // אם זו שגיאה רגילה (למשל חברה לא קיימת), נציג אותה כרגיל
+        showError(msg.isBlank() ? "הפעולה נכשלה" : msg);
     }
 
     // public interface SystemAdminPresenter {

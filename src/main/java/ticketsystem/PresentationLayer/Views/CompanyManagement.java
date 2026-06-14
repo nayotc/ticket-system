@@ -112,6 +112,14 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 state = membershipPresenter.loadCompanyManagement(UiSession.getMemberToken(), requestedCompanyId);
             }
             render();
+        
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            renderLoadError(e.getMessage());
+        
         } catch (Exception e) {
             renderLoadError(e.getMessage());
         }
@@ -671,32 +679,32 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
     //     }
     // }
     private void runPresenterAction(ThrowingRunnable action, String successMessage) {
-    Long currentCompanyId = state == null || state.selectedCompany() == null
-            ? null
-            : state.selectedCompany().id();
+        Long currentCompanyId = state == null || state.selectedCompany() == null
+                ? null
+                : state.selectedCompany().id();
 
-    try {
-        if (membershipPresenter == null || companyPresenter == null) {
-            showWarning("הפעולה מוכנה לחיבור Presenter. כרגע מוצג מידע דמו בלבד.");
-            return;
-        }
+        try {
+            if (membershipPresenter == null || companyPresenter == null) {
+                showWarning("הפעולה מוכנה לחיבור Presenter. כרגע מוצג מידע דמו בלבד.");
+                return;
+            }
 
-        action.run();
-        showSuccess(successMessage);
+            action.run();
+            showSuccess(successMessage);
 
-        managerNameInput.clear();
-        managerPermissions.deselectAll();
-        ownerNameInput.clear();
+            managerNameInput.clear();
+            managerPermissions.deselectAll();
+            ownerNameInput.clear();
 
-    } catch (Exception e) {
-        showError(e.getMessage());
+        } catch (Exception e) {
+            showError(e.getMessage());
 
-    } finally {
-        if (currentCompanyId != null) {
-            loadState(currentCompanyId);
+        } finally {
+            if (currentCompanyId != null) {
+                loadState(currentCompanyId);
+            }
         }
     }
-}
 
     private void confirmOwnerAction(String title, String text, Runnable action) {
         ConfirmDialog dialog = new ConfirmDialog();

@@ -226,9 +226,8 @@ public class ManagementSideNav extends Div {
             UI.getCurrent().navigate(routeForCompany(company.getId()));
             
         } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            // הגישה האחידה: בדיקת ניתוק מול הפונקציה הגלובלית
             if (e.isSessionTimeout()) {
-                dialog.close(); // חשוב לסגור את המודל לפני הניתוב
+                dialog.close();
                 UiSession.handleTimeoutRedirect();
                 return; 
             }
@@ -238,28 +237,6 @@ public class ManagementSideNav extends Div {
             showError(e.getMessage());
         }
     }
-
-    // private void closeDialogAndNavigateToLogin(Dialog dialog) {
-    //     dialog.close();
-    //     showWarning("כדי ליצור חברת הפקה יש להתחבר כמנוי");
-    //     UI.getCurrent().navigate(UiRoutes.LOGIN);
-    // }
-
-    // private boolean isAuthenticationError(Exception exception) {
-    //     String message = exception == null || exception.getMessage() == null
-    //             ? ""
-    //             : exception.getMessage().toLowerCase();
-
-    //     return message.contains("login")
-    //             || message.contains("logged")
-    //             || message.contains("session")
-    //             || message.contains("token")
-    //             || message.contains("guest")
-    //             || message.contains("member must be logged")
-    //             || message.contains("להתחבר")
-    //             || message.contains("מחובר")
-    //             || message.contains("מנוי");
-    // }
 
     private String routeForCompany(long newCompanyId) {
         return UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(newCompanyId));
