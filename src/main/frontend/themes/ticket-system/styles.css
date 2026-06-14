@@ -2122,9 +2122,10 @@ vaadin-button.message-popup-secondary-button:hover {
 
 .ticket-selection-shell {
     width: 100%;
-    min-height: calc(100vh - 72px);
+    height: calc(100vh - 72px);
     display: grid;
     grid-template-columns: minmax(0, 1fr) 360px;
+    overflow: hidden;
 }
 
 .ticket-map-section {
