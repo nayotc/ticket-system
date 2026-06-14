@@ -51,32 +51,42 @@ public class ExternalPaymentService implements IPaymentService {
     }
 
     @Override
-    public Integer pay(BigDecimal amount, PaymentDetails details) {
-        try {
-            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+public Integer pay(BigDecimal amount, PaymentDetails details) {
+    try {
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
 
-            body.add("action_type", "pay");
-            body.add("amount", amount.toPlainString());
-            body.add("currency", details.getCurrency());
-            body.add("card_number", details.getCardNumber());
-            body.add("month", String.valueOf(details.getExpirationMonth()));
-            body.add("year", String.valueOf(details.getExpirationYear()));
-            body.add("holder", details.getPayerName());
-            body.add("cvv", details.getCvv());
-            body.add("id", details.getHolderId());
+        body.add("action_type", "pay");
+        body.add("amount", amount.toPlainString());
+        body.add("currency", details.getCurrency());
+        body.add("card_number", details.getCardNumber());
+        body.add("month", String.valueOf(details.getExpirationMonth()));
+        body.add("year", String.valueOf(details.getExpirationYear()));
+        body.add("holder", details.getPayerName());
+        body.add("cvv", details.getCvv());
+        body.add("id", details.getHolderId());
 
-            String response = postForm(body);
+        String response = postForm(body);
 
-            if (response == null) {
-                return -1;
-            }
-
-            return Integer.parseInt(response.trim());
-
-        } catch (Exception e) {
+        if (response == null || response.isBlank()) {
             return -1;
         }
+
+        int transactionId = Integer.parseInt(response.trim());
+
+        if (transactionId == -1) {
+            return -1;
+        }
+
+        if (transactionId < 10000 || transactionId > 100000) {
+            return -1;
+        }
+
+        return transactionId;
+
+    } catch (Exception e) {
+        return -1;
     }
+}
 
     @Override
     public boolean refund(Integer transactionId) {
