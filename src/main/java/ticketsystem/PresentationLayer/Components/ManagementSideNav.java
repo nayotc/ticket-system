@@ -128,7 +128,16 @@ public class ManagementSideNav extends Div {
                     companyId,
                     permission
             );
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            // 1. בודקים מפורשות אם זה ניתוק
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect(); // מנתבים החוצה
+            }
+            // 2. מחזירים false גם במקרה של ניתוק וגם במקרה של חוסר הרשאה רגיל
+            return false; 
+            
         } catch (Exception e) {
+            // כל שגיאה טכנית אחרת (כמו שרת למטה) תחזיר false
             return false;
         }
     }
@@ -195,7 +204,9 @@ public class ManagementSideNav extends Div {
         }
 
         if (!UiSession.isLoggedIn()) {
-            closeDialogAndNavigateToLogin(dialog);
+            dialog.close();
+            showWarning("כדי ליצור חברת הפקה יש להתחבר כמנוי");
+            UI.getCurrent().navigate(UiRoutes.LOGIN);
             return;
         }
 
@@ -213,37 +224,42 @@ public class ManagementSideNav extends Div {
 
             dialog.close();
             UI.getCurrent().navigate(routeForCompany(company.getId()));
-        } catch (Exception e) {
-            if (isAuthenticationError(e)) {
-                closeDialogAndNavigateToLogin(dialog);
-                return;
+            
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            // הגישה האחידה: בדיקת ניתוק מול הפונקציה הגלובלית
+            if (e.isSessionTimeout()) {
+                dialog.close(); // חשוב לסגור את המודל לפני הניתוב
+                UiSession.handleTimeoutRedirect();
+                return; 
             }
-
+            showError(e.getMessage());
+            
+        } catch (Exception e) {
             showError(e.getMessage());
         }
     }
 
-    private void closeDialogAndNavigateToLogin(Dialog dialog) {
-        dialog.close();
-        showWarning("כדי ליצור חברת הפקה יש להתחבר כמנוי");
-        UI.getCurrent().navigate(UiRoutes.LOGIN);
-    }
+    // private void closeDialogAndNavigateToLogin(Dialog dialog) {
+    //     dialog.close();
+    //     showWarning("כדי ליצור חברת הפקה יש להתחבר כמנוי");
+    //     UI.getCurrent().navigate(UiRoutes.LOGIN);
+    // }
 
-    private boolean isAuthenticationError(Exception exception) {
-        String message = exception == null || exception.getMessage() == null
-                ? ""
-                : exception.getMessage().toLowerCase();
+    // private boolean isAuthenticationError(Exception exception) {
+    //     String message = exception == null || exception.getMessage() == null
+    //             ? ""
+    //             : exception.getMessage().toLowerCase();
 
-        return message.contains("login")
-                || message.contains("logged")
-                || message.contains("session")
-                || message.contains("token")
-                || message.contains("guest")
-                || message.contains("member must be logged")
-                || message.contains("להתחבר")
-                || message.contains("מחובר")
-                || message.contains("מנוי");
-    }
+    //     return message.contains("login")
+    //             || message.contains("logged")
+    //             || message.contains("session")
+    //             || message.contains("token")
+    //             || message.contains("guest")
+    //             || message.contains("member must be logged")
+    //             || message.contains("להתחבר")
+    //             || message.contains("מחובר")
+    //             || message.contains("מנוי");
+    // }
 
     private String routeForCompany(long newCompanyId) {
         return UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(newCompanyId));

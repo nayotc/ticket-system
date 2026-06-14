@@ -252,4 +252,20 @@ public final class UiSession {
 
         session.setAttribute(LOTTERY_CODE_PREFIX + eventId, null);
     }
+
+    public static void handleTimeoutRedirect() {
+        com.vaadin.flow.component.UI ui = com.vaadin.flow.component.UI.getCurrent();
+        if (ui != null) {
+            ui.access(() -> {
+                boolean wasLoggedIn = isLoggedIn();
+                exit();
+                
+                if (wasLoggedIn) {
+                    ui.getPage().setLocation("/" + ticketsystem.PresentationLayer.Constants.UiRoutes.LOGIN + "?timeout=true");
+                } else {
+                    ui.getPage().reload();
+                }
+            });
+        }
+    }
 }

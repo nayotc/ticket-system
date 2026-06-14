@@ -77,6 +77,13 @@ public class ActiveOrderCart extends VerticalLayout {
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
             renderCart();
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
+            renderEmptyCart();
         } catch (Exception exception) {
             showError(exception.getMessage());
             renderEmptyCart();
@@ -302,6 +309,12 @@ public class ActiveOrderCart extends VerticalLayout {
         try {
             pricing = presenter.applyCoupon(resolveSessionToken(), activeOrder, currentCouponCode);
             renderCart();
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
@@ -316,6 +329,12 @@ public class ActiveOrderCart extends VerticalLayout {
             presenter.removeTicketFromActiveOrder(resolveSessionToken(), activeOrder.getEventId(), ticket.getTicketId());
             loadCart();
             refreshHeader();
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
