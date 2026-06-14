@@ -1901,38 +1901,6 @@ private String conditionText(DiscountConditionDTO condition) {
         );
     }
 
-//       private void confirmCancelEvent() {
-//     String title = isCancellationFailedEvent()
-//             ? "ניסיון חוזר לביטול אירוע"
-//             : "ביטול אירוע";
-
-//     String text = isCancellationFailedEvent()
-//             ? "הביטול הקודם נכשל חלקית.יש להשלים את פעולת הביטול בהמשך."
-//             : "האירוע בוטל בהצלחה.";
-
-//     confirmOwnerAction(
-//             title,
-//             text,
-//             () -> {
-//                 try {
-//                     presenter.cancelEvent(UiSession.getMemberToken(), eventId);
-
-//                     if (visitCoordinator != null) {
-//                         visitCoordinator.forceShowPendingNotifications(UI.getCurrent());
-//                     }
-
-//                     Notifications.success("אירוע בוטל בהצלחה.");
-//                     // loadEventDetails();
-
-//                 } catch (Exception exception) {
-//                     Notifications.error("ביטול האירוע נכשל: " + exception.getMessage());
-                   
-//                  } finally {
-//                     loadEventDetails();
-//             }
-//         }
-//     );
-// }
 private void confirmCancelEvent() {
     String title = isCancellationFailedEvent()
             ? "ניסיון חוזר לביטול אירוע"
