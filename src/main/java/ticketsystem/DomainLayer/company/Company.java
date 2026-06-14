@@ -27,7 +27,7 @@ public class Company {
     private Double rate = 0.0; // for search and filtering
     private Double totalRating = 0.0; // for calculating average rating
     private Integer ratingCount = 0; // for calculating average rating
-    private AtomicLong discountId=new AtomicLong(0L);
+   
 
     // Version field for Optimistic Locking
     private long version;
@@ -56,7 +56,7 @@ public class Company {
         this.ratingCount = other.ratingCount;
         this.purchasePolicy = other.purchasePolicy;
         this.discountPolicy = other.discountPolicy;
-        this.discountId = new AtomicLong(other.discountId.get());
+       
     }
     // --- Getters & Setters ---
 
@@ -183,9 +183,6 @@ public class Company {
 
     }
 
-    public Long getNextId() {
-        return discountId.incrementAndGet();
-    }
     
 // visible discount
     public void addVisibleDiscountToCompany(String name, BigDecimal percentage) {

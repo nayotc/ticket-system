@@ -5,21 +5,18 @@ import java.util.List;
 
 public abstract class DiscountTypes {
     protected String name;
-    //private Long discountId;
+   
     private BigDecimal percentage;
 
     public DiscountTypes(String name,BigDecimal percentage) {
         validateName(name);
         validatePercentage(percentage);
-       // this.discountId=discountId;
+       
         this.name = name;
         this.percentage = percentage;
 
     }
 
-    // public Long getDiscountId(){
-    //     return discountId;
-    // }
     public String getName() {
         return name;
     }
@@ -40,13 +37,6 @@ public abstract class DiscountTypes {
         }
     }
 
-    protected void validateDiscountId(Long discountId) {
-
-        if (discountId == null ) {
-            throw new IllegalArgumentException(
-                    "Discount id must be positive");
-        }
-    }
     protected void validatePercentage(BigDecimal percentage) {
 
         if (percentage == null) {

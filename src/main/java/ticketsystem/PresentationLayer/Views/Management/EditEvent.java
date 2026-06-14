@@ -407,16 +407,15 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             summary.add(paragraph("האירוע עדיין לא נטען."));
             return summary;
         }
+         int sold = presenter.getSoldTicketsCount(UiSession.getMemberToken(), eventId);
+        int capacity = presenter.getEventCapacity(UiSession.getMemberToken(), eventId);
 
         summary.add(
                 statusRow("סטטוס אירוע", new StatusBadge(translateStatus(loadedEvent.status()), statusType(loadedEvent.status()))),
                 statusRow("מצב מכירה", new StatusBadge(translateSaleStatus(parseEnum(SaleStatus.class, loadedEvent.saleStatus())), saleStatusBadgeType(loadedEvent.saleStatus()))),
-                statusTextRow("כרטיסים שנמכרו", "0 / 0")
+                statusTextRow("כרטיסים שנמכרו", sold+ "/"+ capacity)
         );
-
-        Paragraph placeholder = new Paragraph("ספירת הכרטיסים שנמכרו מתוך הסך הכול עדיין לא מחוברת ללוגיקה. כרגע זה מקום שמור לתצוגה בלבד.");
-        placeholder.addClassName("edit-event-status-note");
-        summary.add(placeholder);
+       
 
         if (isActiveEvent()) {
             Paragraph note = new Paragraph("אירוע פעיל מאפשר שינוי תאריך, מיקום, קטגוריה, אמן ורף עומס בלבד");
@@ -2530,6 +2529,10 @@ private String conditionText(DiscountConditionDTO condition) {
         boolean hasLottery(String token, Long eventId);
 
         void conductLottery(String token, Long eventId, Long companyId);
+        
+        int getEventCapacity(String sessionId, Long eventId);
+
+        int getSoldTicketsCount(String sessionId, Long eventId);
     }
 
     public record UpdateEventRequest(String sessionId, EventDTO event) {

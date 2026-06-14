@@ -47,7 +47,7 @@ public class Event {
     private DiscountPolicy discountPolicy;
     private AtomicInteger activeReservationsCount = new AtomicInteger(0); // for load management and virtual queue
     private int version;
-    private AtomicLong discountId=new AtomicLong(0L);
+   
     // waiting queue
     private SaleStatus saleStatus = SaleStatus.NOT_STARTED;
 
@@ -91,7 +91,7 @@ public class Event {
         this.discountPolicy = other.discountPolicy;
         this.activeReservationsCount = new AtomicInteger(other.activeReservationsCount.get());
         this.version = other.version;
-        this.discountId = new AtomicLong(other.discountId.get());
+        
         
     }
 
@@ -217,9 +217,7 @@ public class Event {
         }
         this.discountPolicy = discountPolicy;
     }
-    private Long getNextDiscountId() {
-        return discountId.incrementAndGet();
-    }
+  
 
     public boolean isSoldOut() {
         return map.isSoldOut();
@@ -460,6 +458,40 @@ public class Event {
         discountPolicy.addDiscount(discount);
     }
 
+    public int getSoldTicketsCount() {
+        AtomicInteger sold = new AtomicInteger(0);
+
+        map.getElements().forEach(element -> {
+            if (element instanceof StandingArea standingArea) {
+                sold.addAndGet((int) standingArea.getSold());
+            }
+
+            if (element instanceof SeatingArea seatingArea) {
+                sold.addAndGet((int) seatingArea.getSeats()
+                        .values()
+                        .stream()
+                        .filter(seat -> seat.getStatus() == SeatStatus.SOLD)
+                        .count());
+            }
+        });
+
+        return sold.get();
+    }
+    public int getCapacity() {
+        AtomicInteger capacity = new AtomicInteger(0);
+
+        map.getElements().forEach(element -> {
+            if (element instanceof StandingArea standingArea) {
+                capacity.addAndGet((int) standingArea.getCapacity());
+            }
+
+            if (element instanceof SeatingArea seatingArea) {
+                capacity.addAndGet(seatingArea.getSeats().size());
+            }
+        });
+
+        return capacity.get();
+    }
 
 
     public void setDiscountCompositionType(DiscountCompositionType compositionType) {

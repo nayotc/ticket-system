@@ -501,6 +501,91 @@ public class EventService {
         eventUpdatesListeners.add(listener);
         logger.logEvent("Added event updates listener. Listener class: " + listener.getClass().getName(), LogLevel.DEBUG);
     }
+    public int getEventCapacity(String sessionId, Long eventId) {
+    String context = "eventId=" + eventId;
+    logger.logEvent("Started - getEventCapacity. " + context, LogLevel.INFO);
+
+    try {
+        if (!tokenService.validateToken(sessionId)) {
+            throw new IllegalArgumentException("Invalid session ID");
+        }
+
+        Event event = eventRepository.getEventById(eventId);
+        if (event == null) {
+            throw new IllegalArgumentException("Event not found");
+        }
+
+        int capacity = 0;
+
+        for (IMapElementDTO element : EventMapDTO.from(event.getMap()).elements()) {
+            if (element instanceof SeatingAreaDTO seatingArea) {
+                capacity += seatingArea.seats().size();
+            }
+
+            if (element instanceof StandingAreaDTO standingArea) {
+                capacity += (int) standingArea.capacity();
+            }
+        }
+
+        logger.logEvent(
+                "Completed - getEventCapacity. eventId=" + eventId + ", capacity=" + capacity,
+                LogLevel.DEBUG
+        );
+
+        return capacity;
+
+    } catch (IllegalArgumentException e) {
+        logger.logEvent(
+                "Failed - getEventCapacity. " + context + ". Error: " + e.getMessage(),
+                LogLevel.WARN
+        );
+        throw e;
+    } catch (Exception e) {
+        logger.logError(
+                "Failed - getEventCapacity. " + context + ". Unexpected error: " + e.getMessage(),
+                e
+        );
+        throw e;
+    }
+}
+
+public int getSoldTicketsCount(String sessionId, Long eventId) {
+    String context = "eventId=" + eventId;
+    logger.logEvent("Started - getSoldTicketsCount. " + context, LogLevel.INFO);
+
+    try {
+        if (!tokenService.validateToken(sessionId)) {
+            throw new IllegalArgumentException("Invalid session ID");
+        }
+
+        Event event = eventRepository.getEventById(eventId);
+        if (event == null) {
+            throw new IllegalArgumentException("Event not found");
+        }
+
+       int sold=event.getSoldTicketsCount();
+
+        logger.logEvent(
+                "Completed - getSoldTicketsCount. eventId=" + eventId + ", sold=" + sold,
+                LogLevel.DEBUG
+        );
+
+        return sold;
+
+    } catch (IllegalArgumentException e) {
+        logger.logEvent(
+                "Failed - getSoldTicketsCount. " + context + ". Error: " + e.getMessage(),
+                LogLevel.WARN
+        );
+        throw e;
+    } catch (Exception e) {
+        logger.logError(
+                "Failed - getSoldTicketsCount. " + context + ". Unexpected error: " + e.getMessage(),
+                e
+        );
+        throw e;
+    }
+}
 
     private void notifyEventCanceledListeners(Long eventId) {
         for (EventUpdatesListener listener : eventUpdatesListeners) {
@@ -516,6 +601,7 @@ public class EventService {
         }
     }
 
+    
     private void validateEventDetails(
             String eventName,
             LocalDateTime date,
