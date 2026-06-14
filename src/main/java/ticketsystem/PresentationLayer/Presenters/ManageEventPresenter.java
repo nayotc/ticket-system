@@ -249,6 +249,45 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             throw new PresentationException("אירעה שגיאה בעת ביצוע ההגרלה. נסו שוב.");
         }
     }
+    @Override
+public int getEventCapacity(String sessionId, Long eventId) {
+    try {
+        validateEventId(eventId);
+        return eventService.getEventCapacity(sessionId, eventId);
+
+    } catch (PresentationException exception) {
+        throw exception;
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+        throw presentationException(exception.getMessage());
+    } catch (Exception exception) {
+        logger.logEvent(
+                "Unexpected error while loading event capacity for event "
+                        + eventId + ": " + exception.getMessage(),
+                LogbackSystemLogger.LogLevel.DEBUG
+        );
+        throw new PresentationException("אירעה שגיאה בעת טעינת קיבולת האירוע. נסו שוב.");
+    }
+}
+@Override
+public int getSoldTicketsCount(String sessionId, Long eventId) {
+    try {
+        validateEventId(eventId);
+        return eventService.getSoldTicketsCount(sessionId, eventId);
+
+    } catch (PresentationException exception) {
+        throw exception;
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+        throw presentationException(exception.getMessage());
+    } catch (Exception exception) {
+        logger.logEvent(
+                "Unexpected error while loading sold tickets count for event "
+                        + eventId + ": " + exception.getMessage(),
+                LogbackSystemLogger.LogLevel.DEBUG
+        );
+        throw new PresentationException("אירעה שגיאה בעת טעינת נתוני המכירות. נסו שוב.");
+    }
+}
+
 
 
     private PurchasePolicyDTO mapToAppPurchasePolicyExpression(EditEvent.PurchasePolicyExpressionDraftDTO draft) {
@@ -456,84 +495,6 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             return null;
         }
     }
-
-    // private Condition parseCondition(String conditionText) {
-    //     if (conditionText == null || conditionText.isBlank()) {
-    //         throw new IllegalArgumentException("Discount condition cannot be empty");
-    //     }
-
-    //     String normalized = conditionText.trim().toUpperCase();
-
-    //     if (normalized.contains("DATE") || normalized.contains("TIME") || normalized.contains("תאריך")) {
-    //         return firstExistingCondition(
-    //                 "DATE",
-    //                 "DATE_RANGE",
-    //                 "TIME_RANGE",
-    //                 "BETWEEN_DATES"
-    //         );
-    //     }
-
-    //     if (normalized.contains("MIN") || normalized.contains("מינימום") || normalized.contains("לפחות")) {
-    //         return firstExistingCondition(
-    //                 "MIN_TICKET",
-    //                 "MIN_TICKETS",
-    //                 "MINIMUM_TICKET",
-    //                 "MINIMUM_TICKETS"
-    //         );
-    //     }
-
-    //     if (normalized.contains("MAX") || normalized.contains("מקסימום")) {
-    //         return firstExistingCondition(
-    //                 "MAX_TICKET",
-    //                 "MAX_TICKETS",
-    //                 "MAXIMUM_TICKET",
-    //                 "MAXIMUM_TICKETS"
-    //         );
-    //     }
-
-    //     throw new IllegalArgumentException("Unsupported discount condition");
-    // }
-
-    // private Condition parseCondition(EditEvent.DiscountConditionType conditionType) {
-    //     if (conditionType == null) {
-    //         throw new IllegalArgumentException("Discount condition cannot be empty");
-    //     }
-
-    //     return switch (conditionType) {
-    //         case MIN_TICKET -> firstExistingCondition(
-    //                 "MIN_TICKET",
-    //                 "MIN_TICKETS",
-    //                 "MINIMUM_TICKET",
-    //                 "MINIMUM_TICKETS"
-    //         );
-
-    //         case MAX_TICKET -> firstExistingCondition(
-    //                 "MAX_TICKET",
-    //                 "MAX_TICKETS",
-    //                 "MAXIMUM_TICKET",
-    //                 "MAXIMUM_TICKETS"
-    //         );
-
-    //         case DATE -> firstExistingCondition(
-    //                 "DATE",
-    //                 "DATE_RANGE",
-    //                 "TIME_RANGE",
-    //                 "BETWEEN_DATES"
-    //         );
-    //     };
-    // }
-
-    // private Condition firstExistingCondition(String... candidates) {
-    //     for (String candidate : candidates) {
-    //         try {
-    //             return Condition.valueOf(candidate);
-    //         } catch (IllegalArgumentException ignored) {
-    //             // Try next alias
-    //         }
-    //     }
-
-    //     throw new IllegalArgumentException("Unsupported discount condition");
-    // }
 
     private void validateUpdateEventRequest(EditEvent.UpdateEventRequest request) {
         if (request == null || request.event() == null) {

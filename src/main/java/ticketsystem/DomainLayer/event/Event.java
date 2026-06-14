@@ -460,6 +460,40 @@ public class Event {
         discountPolicy.addDiscount(discount);
     }
 
+    public int getSoldTicketsCount() {
+        AtomicInteger sold = new AtomicInteger(0);
+
+        map.getElements().forEach(element -> {
+            if (element instanceof StandingArea standingArea) {
+                sold.addAndGet((int) standingArea.getSold());
+            }
+
+            if (element instanceof SeatingArea seatingArea) {
+                sold.addAndGet((int) seatingArea.getSeats()
+                        .values()
+                        .stream()
+                        .filter(seat -> seat.getStatus() == SeatStatus.SOLD)
+                        .count());
+            }
+        });
+
+        return sold.get();
+    }
+public int getCapacity() {
+    AtomicInteger capacity = new AtomicInteger(0);
+
+    map.getElements().forEach(element -> {
+        if (element instanceof StandingArea standingArea) {
+            capacity.addAndGet((int) standingArea.getCapacity());
+        }
+
+        if (element instanceof SeatingArea seatingArea) {
+            capacity.addAndGet(seatingArea.getSeats().size());
+        }
+    });
+
+    return capacity.get();
+}
 
 
     public void setDiscountCompositionType(DiscountCompositionType compositionType) {
