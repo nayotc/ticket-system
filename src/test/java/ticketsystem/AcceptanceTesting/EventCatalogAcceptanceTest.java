@@ -13,11 +13,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 import ticketsystem.ApplicationLayer.EventCatalogService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.DTO.Event.EventSearchResultDTO;
-import ticketsystem.DomainLayer.EventCatalogDomainService;
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
@@ -29,19 +33,23 @@ import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
-import ticketsystem.InfrastructureLayer.EventRepository;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import ticketsystem.InfrastructureLayer.TokenRepository;
 
+
+@SpringBootTest
+@Transactional
 public class EventCatalogAcceptanceTest {
 
+    @Autowired
     private EventCatalogService eventCatalogService;
 
-    private EventRepository eventRepository;
-    private CompanyRepository companyRepository;
+    @Autowired
+    private IEventRepository eventRepository;
+
+    @Autowired
+    private ICompanyRepository companyRepository;
+
+    @Autowired
     private TokenService tokenService;
-    private ISystemLogger logger;
 
     private String validSessionId;
     private final String invalidSessionId = "invalid-session";
@@ -57,22 +65,14 @@ public class EventCatalogAcceptanceTest {
 
     @BeforeEach
     void setUp() {
-        eventRepository = new EventRepository();
-        companyRepository = new CompanyRepository();
-        tokenService = new TokenService("default_secret_key_for_development_purposes_only_32_chars", new TokenRepository(), new LogbackSystemLogger());
-        logger = new LogbackSystemLogger();
-
-        EventCatalogDomainService domainService = new EventCatalogDomainService(companyRepository);
-
-        eventCatalogService = new EventCatalogService(
-                domainService,
-                eventRepository,
-                companyRepository,
-                tokenService,
-                logger
+        Member member = new Member(
+                1L,
+                "testuser",
+                "Test User",
+                "0501234567",
+                LocalDate.of(2000, 1, 1)
         );
 
-        Member member = new Member(1L, "testuser", "Test User", "0501234567", LocalDate.of(2000, 1, 1));
         validSessionId = tokenService.addActiveSession(member);
 
         Company company1 = createCompany("Live Nation", 1L, 4.8);
@@ -88,9 +88,10 @@ public class EventCatalogAcceptanceTest {
         company2Id = company2.getId();
         inactiveCompanyId = inactiveCompany3.getId();
 
+        LocalDateTime now = LocalDateTime.now();
+
         rockConcert = new Event(
-                1L,
-                LocalDateTime.now().plusDays(10),
+                now.plusDays(10),
                 "Rock Concert",
                 company1Id,
                 1L,
@@ -103,8 +104,7 @@ public class EventCatalogAcceptanceTest {
         );
 
         theaterShow = new Event(
-                2L,
-                LocalDateTime.now().plusDays(20),
+                now.plusDays(20),
                 "Theater Show",
                 company2Id,
                 1L,
@@ -117,8 +117,7 @@ public class EventCatalogAcceptanceTest {
         );
 
         jazzFestival = new Event(
-                3L,
-                LocalDateTime.now().plusDays(30),
+                now.plusDays(30),
                 "Jazz Festival",
                 company1Id,
                 1L,
@@ -131,8 +130,7 @@ public class EventCatalogAcceptanceTest {
         );
 
         Event inactiveCompanyEvent = new Event(
-                4L,
-                LocalDateTime.now().plusDays(40),
+                now.plusDays(40),
                 "Closed Company Event",
                 inactiveCompanyId,
                 1L,
@@ -145,8 +143,7 @@ public class EventCatalogAcceptanceTest {
         );
 
         cancelledRockConcert = new Event(
-                5L,
-                LocalDateTime.now().plusDays(15),
+                now.plusDays(15),
                 "Cancelled Rock Concert",
                 company1Id,
                 1L,

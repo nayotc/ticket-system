@@ -143,12 +143,12 @@ public class ReservationService {
                 reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
             }
 
+            if (quantity <= 0) {
+                throw new IllegalArgumentException("Quantity must be greater than zero");
+            }
             ActiveOrder order = getOrCreateOrder(token, eventId);
             if (order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
-            }
-            if (quantity <= 0) {
-                throw new IllegalArgumentException("Quantity must be greater than zero");
             }
 
             reservationDomeinService.selectStandingTicket(order, event, areaId, quantity);
