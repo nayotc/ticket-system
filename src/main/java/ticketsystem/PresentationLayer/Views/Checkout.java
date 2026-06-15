@@ -533,7 +533,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             for (AppliedDiscount discount : pricing.appliedDiscounts()) {
                 Div row = new Div();
                 row.addClassName("checkout-discount-row");
-                row.add(new Span(discount.name() + " · " + discount.description()), new Span("-" + formatMoney(discount.amount())));
+                row.add(new Span(discount.name() + " · " + discount.description()), new Span(formatMoney(discount.amount().negate())));
                 discounts.add(row);
             }
 
@@ -866,12 +866,16 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         }
 
         BigDecimal normalized = amount.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros();
+        boolean negative = normalized.signum() < 0;
+        BigDecimal absolute = normalized.abs();
 
-        if (normalized.scale() <= 0) {
-            return "₪" + normalized.toPlainString();
+        String value = absolute.toPlainString();
+
+        if (negative) {
+            return "\u200E- ₪" + value;
         }
 
-        return "₪" + normalized.toPlainString();
+        return "₪" + value;
     }
 
     private String onlyDigits(String value) {

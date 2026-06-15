@@ -193,12 +193,16 @@ public class ActiveOrderCart extends VerticalLayout {
 
         rows.add(priceRow("סכום ביניים (" + tickets().size() + " כרטיסים)", pricing.subtotal()));
 
-        if (pricing.discountTotal().compareTo(BigDecimal.ZERO) > 0) {
-            rows.add(priceRow("הנחות", pricing.discountTotal().negate()));
-        }
-
         Div couponRow = createCouponRow();
         Div discounts = createDiscountsBlock();
+
+        Div discountTotalRows = null;
+
+        if (pricing.discountTotal().compareTo(BigDecimal.ZERO) > 0) {
+            discountTotalRows = new Div();
+            discountTotalRows.addClassName("cart-summary-rows");
+            discountTotalRows.add(priceRow("סך הנחות", pricing.discountTotal().negate()));
+        }
 
         Div totalRow = new Div();
         totalRow.addClassName("cart-total-row");
@@ -220,7 +224,13 @@ public class ActiveOrderCart extends VerticalLayout {
         Span secureText = iconText(VaadinIcon.LOCK, "תשלום מאובטח באמצעות TixNow");
         secureText.addClassName("cart-secure-text");
 
-        card.add(title, rows, couponRow, discounts, totalRow, continueButton, secureText);
+        card.add(title, rows, couponRow, discounts);
+
+        if (discountTotalRows != null) {
+            card.add(discountTotalRows);
+        }
+
+        card.add(totalRow, continueButton, secureText);
         return card;
     }
 
@@ -260,7 +270,7 @@ public class ActiveOrderCart extends VerticalLayout {
                 row.addClassName("cart-discount-row");
 
                 Span text = new Span(discount.name() + " · " + discount.description());
-                Span amount = new Span("-" + formatMoney(discount.amount()));
+                Span amount = new Span(formatMoney(discount.amount().negate()));
 
                 row.add(text, amount);
                 block.add(row);
@@ -391,12 +401,16 @@ public class ActiveOrderCart extends VerticalLayout {
         }
 
         BigDecimal normalized = amount.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros();
+        boolean negative = normalized.signum() < 0;
+        BigDecimal absolute = normalized.abs();
 
-        if (normalized.scale() <= 0) {
-            return "₪" + normalized.toPlainString();
+        String value = absolute.toPlainString();
+
+        if (negative) {
+            return "\u200E- ₪" + value;
         }
 
-        return "₪" + normalized.toPlainString();
+        return "₪" + value;
     }
 
     private void showError(String message) {
