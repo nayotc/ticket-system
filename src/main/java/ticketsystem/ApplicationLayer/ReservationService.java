@@ -548,8 +548,6 @@ public class ReservationService {
      *                             completion
      * @param event                event related to the active order
      * @param amount               payment amount that should be refunded
-     * @param details              payment details used for the original payment
-     * @param eventId              event identifier used for logging
      * @param originalException    original exception that caused checkout
      *                             completion to fail
      * @param refundSuccessMessage message used when refund succeeds

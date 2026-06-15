@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -62,7 +63,6 @@ public class EventCatalogServiceTest {
         );
 
         rockConcert = new Event(
-                1L,
                 LocalDateTime.now().plusDays(10),
                 "Rock Concert",
                 100L,
@@ -76,7 +76,6 @@ public class EventCatalogServiceTest {
         );
 
         theaterShow = new Event(
-                2L,
                 LocalDateTime.now().plusDays(20),
                 "Theater Show",
                 200L,
@@ -90,7 +89,6 @@ public class EventCatalogServiceTest {
         );
 
         jazzFestival = new Event(
-                3L,
                 LocalDateTime.now().plusDays(30),
                 "Jazz Festival",
                 100L,
@@ -104,7 +102,6 @@ public class EventCatalogServiceTest {
         );
 
         cancelledRockConcert = new Event(
-                4L,
                 LocalDateTime.now().plusDays(15),
                 "Cancelled Rock Concert",
                 100L,
@@ -118,7 +115,6 @@ public class EventCatalogServiceTest {
         );
 
         draftRockConcert = new Event(
-                5L,
                 LocalDateTime.now().plusDays(25),
                 "Draft Rock Concert",
                 100L,
@@ -137,6 +133,12 @@ public class EventCatalogServiceTest {
         activateEvent(cancelledRockConcert);
 
         cancelledRockConcert.cancel();
+
+        setEventId(rockConcert, 1L);
+        setEventId(theaterShow, 2L);
+        setEventId(jazzFestival, 3L);
+        setEventId(cancelledRockConcert, 4L);
+        setEventId(draftRockConcert, 5L);
     }
 
     @Test
@@ -535,8 +537,18 @@ public class EventCatalogServiceTest {
         event.setStatus(eventStatus.ACTIVE);
     }
 
+    private void setEventId(Event event, Long id) {
+        try {
+            Field idField = Event.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(event, id);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Failed to set generated event ID in unit test", exception);
+        }
+    }
+
     private boolean containsEventId(List<EventSearchResultDTO> events, Long eventId) {
         return events.stream()
-                .anyMatch(event -> event.id().equals(eventId));
+                .anyMatch(event -> java.util.Objects.equals(event.id(), eventId));
     }
 }
