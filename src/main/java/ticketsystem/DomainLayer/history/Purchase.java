@@ -18,6 +18,7 @@ public class Purchase {
     private Long eventId;
     private BigDecimal totalPrice;
     private Integer transactionId;
+    private boolean refunded;
 
     public Purchase() {
     }
@@ -83,6 +84,14 @@ public class Purchase {
 
     public BigDecimal getTotalPrice() {
         return totalPrice;
+    }
+
+    public boolean isRefunded(){
+        return refunded;
+    }
+
+    public void setRefunded(boolean refund){
+        this.refunded=refund;
     }
 
 }

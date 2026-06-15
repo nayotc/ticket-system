@@ -419,6 +419,7 @@ public class MembershipPresenter {
             case "No pending assignment found.",
                  "No pending role assignment found." ->
                     "לא נמצאה בקשת מינוי שממתינה לאישור.";
+            case "Event cancellation failed. Please try again later to complete the cancellation process." -> "ביטול אירוע לא הושלם, נסה מאוחר יותר להשלים את הפעולה"; 
 
             default -> translateDynamicError(cleanMessage);
         };

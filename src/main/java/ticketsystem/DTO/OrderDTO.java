@@ -18,6 +18,7 @@ public class OrderDTO {
     private Long eventId;
     private BigDecimal totalPrice;
     private Integer transactionId ;
+    private boolean refunded;
 
 
     //for json 
@@ -25,7 +26,7 @@ public class OrderDTO {
     }
 
     public OrderDTO(Long purchaseId, List<PurchaseDTO> tickets, String eventName, 
-                    String location, Long memberId, Long companyId, Long managedByMemberId, Long eventId,BigDecimal total, Integer transactionId) {
+                    String location, Long memberId, Long companyId, Long managedByMemberId, Long eventId,BigDecimal total, Integer transactionId, boolean refunded) {
         this.purchaseId = purchaseId;
         this.tickets = tickets;
         this.eventName = eventName;
@@ -36,6 +37,7 @@ public class OrderDTO {
         this.eventId = eventId;
         this.totalPrice=total;
         this.transactionId = transactionId;
+        this.refunded=refunded;
     }
 
     public Long getPurchaseId() {
@@ -109,4 +111,11 @@ public class OrderDTO {
         this.transactionId = transactionId;
     }
 
+    public boolean isRefunded() {
+    return refunded;
+}
+
+public void setRefunded(boolean refunded) {
+    this.refunded = refunded;
+}
 }
