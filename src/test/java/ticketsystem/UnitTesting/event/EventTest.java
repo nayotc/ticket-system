@@ -40,7 +40,7 @@ public class EventTest {
 
     private Event event;
 
-    private final Long eventId = 1L;
+    private Long eventId = 1L;
     private final Long companyId = 10L;
     private final Long openedBy = 100L;
     private final LocalDateTime eventDate = LocalDateTime.now().plusDays(10);
@@ -48,7 +48,6 @@ public class EventTest {
     @BeforeEach
     void setUp() {
         event = new Event(
-                eventId,
                 eventDate,
                 "Music Festival",
                 companyId,
@@ -60,6 +59,7 @@ public class EventTest {
                 new BigDecimal("99.99"),
                 new Pair<>(10, 10)
         );
+        eventId = event.getId();
     }
 
     @Test
