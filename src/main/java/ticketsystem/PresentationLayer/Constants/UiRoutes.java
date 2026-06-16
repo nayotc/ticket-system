@@ -36,6 +36,7 @@ public final class UiRoutes {
     public static final String POLICIES_EDITOR = "companies/:companyId/policies";
     public static final String SALES_REPORT = "companies/:companyId/sales";
     public static final String ROLES_AND_PERMISSIONS_TREE = "companies/:companyId/roles";
+    public static final String PURCHASE_HISTORY = "management/:companyId/purchase-history";
 
     // Event management
     public static final String CREATE_EVENT = "companies/:companyId/events/create";
