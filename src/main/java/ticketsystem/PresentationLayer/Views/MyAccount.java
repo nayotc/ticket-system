@@ -432,7 +432,8 @@ public void setProfile(AccountProfileViewData profile) {
                 "0"
         );
 
-        String total = formatMoney(readRaw(order, "totalPrice", "totalAmount", "price", "total"));
+        BigDecimal finalPrice = order.getTotalPrice() != null ? order.getTotalPrice() : BigDecimal.ZERO;
+        String total = formatMoney(finalPrice);
 
         String status = firstNonBlank(
                 asText(readRaw(order, "status", "orderStatus", "purchaseStatus")),
@@ -450,7 +451,6 @@ public void setProfile(AccountProfileViewData profile) {
                 "צפה",ticketsList
         );
     }
-
 
     private String countTickets(OrderDTO order) {
         Object tickets = readRaw(order, "tickets", "purchasedTickets", "orderTickets");
@@ -704,11 +704,10 @@ private void openBarcodeDialog(String barcodeValue) {
 
 private String generateQrCodeDataUrl(String value) {
     try {
-        int width = 420;
-        int height = 140;
+        int size = 200;
 
         BitMatrix bitMatrix = new MultiFormatWriter()
-                .encode(value, BarcodeFormat.QR_CODE, width, height);
+                .encode(value, BarcodeFormat.QR_CODE, size, size);
 
         BufferedImage image = MatrixToImageWriter.toBufferedImage(bitMatrix);
 

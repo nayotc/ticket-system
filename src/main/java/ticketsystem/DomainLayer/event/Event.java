@@ -27,8 +27,8 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 public class Event {
 
     public enum eventStatus {
-        DRAFT, ACTIVE, INACTIVE, CANCELLED
-    }
+        DRAFT, ACTIVE, INACTIVE, CANCELLED,CANCELLATION_PENDING,CANCELLATION_FAILED
+    };
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -99,9 +99,7 @@ public class Event {
     @Column(name = "version")
     private int version;
 
-    @Transient
-    private AtomicLong discountId = new AtomicLong(0L);
-
+    // waiting queue
     @Enumerated(EnumType.STRING)
     @Column(name = "sale_status")
     private SaleStatus saleStatus = SaleStatus.NOT_STARTED;
@@ -149,7 +147,8 @@ public class Event {
         this.discountPolicy = other.discountPolicy;
         this.activeReservationsCount = new AtomicInteger(other.getActiveReservationsCount());
         this.version = other.version;
-        this.discountId = new AtomicLong(other.getDiscountIdCounter());
+
+        
     }
 
     public Event copy() {
@@ -276,9 +275,6 @@ public class Event {
         this.discountPolicy = discountPolicy;
     }
 
-    private Long getNextDiscountId() {
-        return discountId.incrementAndGet();
-    }
 
     public boolean isSoldOut() {
         return map.isSoldOut();
@@ -288,7 +284,7 @@ public class Event {
         return saleStatus;
     }
 
-    public void setSaleStatus(SaleStatus saleStatus) {
+    public  void setSaleStatus(SaleStatus saleStatus) {
         this.saleStatus = saleStatus;
     }
 
@@ -356,16 +352,6 @@ public class Event {
         this.activeReservationsCount = new AtomicInteger(value);
     }
 
-    @Access(AccessType.PROPERTY)
-    @Column(name = "discount_id_counter")
-    protected long getDiscountIdCounter() {
-        return discountId == null ? 0L : discountId.get();
-    }
-
-    protected void setDiscountIdCounter(long value) {
-        this.discountId = new AtomicLong(value);
-    }
-
     // use case: search and filtering
     public boolean matchesSearchCriteria(SearchCriteria criteria) {
         if (criteria == null) {
@@ -380,6 +366,20 @@ public class Event {
                 && matchesRate(criteria.getEventRate())
                 && matchesArtist(criteria.getArtist());
 
+    }
+    public void markCancellationPending() {
+        if (status == eventStatus.CANCELLED) {
+            throw new IllegalStateException("Event is already canceled");
+        }
+        this.status = eventStatus.CANCELLATION_PENDING;
+        this.saleStatus=SaleStatus.ENDED;
+    }
+
+    public void markCancellationFailed() {
+        if (status != eventStatus.CANCELLATION_PENDING) {
+            throw new IllegalStateException("Event cancellation is not pending");
+        }
+        this.status = eventStatus.CANCELLATION_FAILED;
     }
 
     private boolean matchesSearchTerm(String searchTerm) {
@@ -539,6 +539,40 @@ public class Event {
         discountPolicy.addDiscount(discount);
     }
 
+    public int getSoldTicketsCount() {
+        AtomicInteger sold = new AtomicInteger(0);
+
+        map.getElements().forEach(element -> {
+            if (element instanceof StandingArea standingArea) {
+                sold.addAndGet((int) standingArea.getSold());
+            }
+
+            if (element instanceof SeatingArea seatingArea) {
+                sold.addAndGet((int) seatingArea.getSeats()
+                        .values()
+                        .stream()
+                        .filter(seat -> seat.getStatus() == SeatStatus.SOLD)
+                        .count());
+            }
+        });
+
+        return sold.get();
+    }
+    public int getCapacity() {
+        AtomicInteger capacity = new AtomicInteger(0);
+
+        map.getElements().forEach(element -> {
+            if (element instanceof StandingArea standingArea) {
+                capacity.addAndGet((int) standingArea.getCapacity());
+            }
+
+            if (element instanceof SeatingArea seatingArea) {
+                capacity.addAndGet(seatingArea.getSeats().size());
+            }
+        });
+
+        return capacity.get();
+    }
 
 
     public void setDiscountCompositionType(DiscountCompositionType compositionType) {

@@ -419,14 +419,10 @@ public class ReservationService {
     }
 
     // 2.8 checkout
-
     public boolean checkout(String token, Long eventId, PaymentDetails details, String couponCode) {
-        expireOldOrders();
-
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
-
 
             ActiveOrder order = findActiveOrder(token, eventId);
             Event event = eventRepository.getEventById(eventId);
@@ -434,19 +430,20 @@ public class ReservationService {
                 throw new IllegalStateException("No active order or event found");
             }
 
+            if (reservationDomeinService.timeExpire(event, order)) {
+                expireCurrentOrder(token, order, event);
+                throw new IllegalStateException("Active order has expired");
+            }
+
             if (!paymentService.handshake()) {
                 throw new IllegalStateException("Payment service is unavailable");
             }
-
-            if (!ticketIssuingService.handshake()) {
-                throw new IllegalStateException("Ticket issuing service is unavailable");
-            }
-
 
             if (details == null || details.getBirthDate() == null || details.getPayerName() == null
                     || details.getPaymentMethodId() == null) {
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
+
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
             BigDecimal amountAfterDiscount = eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event,
                     amount, order.getTickets().size(), couponCode);
@@ -512,10 +509,30 @@ public class ReservationService {
             throw e;
         }
     }
+    private void expireCurrentOrder(String token, ActiveOrder order, Event event) {
+        notifyOrderOwner(
+                token,
+                "Your active order has expired. Please select tickets again."
+        );
+
+        expirationWarningSentOrderIds.remove(order.getOrderId());
+        eventRepository.updateEvent(event);
+        orderRepository.deleteOrder(order.getOrderId());
+
+        logger.logEvent(
+                "Active order expired during checkout: orderId="
+                        + order.getOrderId() + ", eventId=" + event.getId(),
+                LogLevel.INFO
+        );
+    }
 
     // listener
     public void addOrderListener(OrderCompletedListener listener) {
         listeners.add(listener);
+    }
+
+    public void sweepExpiredAndExpiringOrders() {
+        expireOldOrders();
     }
 
     private boolean notifyListeners(OrderDTO order) {
@@ -548,8 +565,6 @@ public class ReservationService {
      *                             completion
      * @param event                event related to the active order
      * @param amount               payment amount that should be refunded
-     * @param details              payment details used for the original payment
-     * @param eventId              event identifier used for logging
      * @param originalException    original exception that caused checkout
      *                             completion to fail
      * @param refundSuccessMessage message used when refund succeeds

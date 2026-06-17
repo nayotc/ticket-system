@@ -181,6 +181,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         }
     }
 
+
+
     @Override
     public void saveEventDiscountPolicy(String token, Long eventId, EditEvent.DiscountPolicyDraftDTO discountDraft) {
         try {
@@ -249,6 +251,45 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             throw new PresentationException("אירעה שגיאה בעת ביצוע ההגרלה. נסו שוב.");
         }
     }
+    @Override
+public int getEventCapacity(String sessionId, Long eventId) {
+    try {
+        validateEventId(eventId);
+        return eventService.getEventCapacity(sessionId, eventId);
+
+    } catch (PresentationException exception) {
+        throw exception;
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+        throw presentationException(exception.getMessage());
+    } catch (Exception exception) {
+        logger.logEvent(
+                "Unexpected error while loading event capacity for event "
+                        + eventId + ": " + exception.getMessage(),
+                LogbackSystemLogger.LogLevel.DEBUG
+        );
+        throw new PresentationException("אירעה שגיאה בעת טעינת קיבולת האירוע. נסו שוב.");
+    }
+}
+@Override
+public int getSoldTicketsCount(String sessionId, Long eventId) {
+    try {
+        validateEventId(eventId);
+        return eventService.getSoldTicketsCount(sessionId, eventId);
+
+    } catch (PresentationException exception) {
+        throw exception;
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+        throw presentationException(exception.getMessage());
+    } catch (Exception exception) {
+        logger.logEvent(
+                "Unexpected error while loading sold tickets count for event "
+                        + eventId + ": " + exception.getMessage(),
+                LogbackSystemLogger.LogLevel.DEBUG
+        );
+        throw new PresentationException("אירעה שגיאה בעת טעינת נתוני המכירות. נסו שוב.");
+    }
+}
+
 
 
     private PurchasePolicyDTO mapToAppPurchasePolicyExpression(EditEvent.PurchasePolicyExpressionDraftDTO draft) {
@@ -457,84 +498,6 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         }
     }
 
-    // private Condition parseCondition(String conditionText) {
-    //     if (conditionText == null || conditionText.isBlank()) {
-    //         throw new IllegalArgumentException("Discount condition cannot be empty");
-    //     }
-
-    //     String normalized = conditionText.trim().toUpperCase();
-
-    //     if (normalized.contains("DATE") || normalized.contains("TIME") || normalized.contains("תאריך")) {
-    //         return firstExistingCondition(
-    //                 "DATE",
-    //                 "DATE_RANGE",
-    //                 "TIME_RANGE",
-    //                 "BETWEEN_DATES"
-    //         );
-    //     }
-
-    //     if (normalized.contains("MIN") || normalized.contains("מינימום") || normalized.contains("לפחות")) {
-    //         return firstExistingCondition(
-    //                 "MIN_TICKET",
-    //                 "MIN_TICKETS",
-    //                 "MINIMUM_TICKET",
-    //                 "MINIMUM_TICKETS"
-    //         );
-    //     }
-
-    //     if (normalized.contains("MAX") || normalized.contains("מקסימום")) {
-    //         return firstExistingCondition(
-    //                 "MAX_TICKET",
-    //                 "MAX_TICKETS",
-    //                 "MAXIMUM_TICKET",
-    //                 "MAXIMUM_TICKETS"
-    //         );
-    //     }
-
-    //     throw new IllegalArgumentException("Unsupported discount condition");
-    // }
-
-    // private Condition parseCondition(EditEvent.DiscountConditionType conditionType) {
-    //     if (conditionType == null) {
-    //         throw new IllegalArgumentException("Discount condition cannot be empty");
-    //     }
-
-    //     return switch (conditionType) {
-    //         case MIN_TICKET -> firstExistingCondition(
-    //                 "MIN_TICKET",
-    //                 "MIN_TICKETS",
-    //                 "MINIMUM_TICKET",
-    //                 "MINIMUM_TICKETS"
-    //         );
-
-    //         case MAX_TICKET -> firstExistingCondition(
-    //                 "MAX_TICKET",
-    //                 "MAX_TICKETS",
-    //                 "MAXIMUM_TICKET",
-    //                 "MAXIMUM_TICKETS"
-    //         );
-
-    //         case DATE -> firstExistingCondition(
-    //                 "DATE",
-    //                 "DATE_RANGE",
-    //                 "TIME_RANGE",
-    //                 "BETWEEN_DATES"
-    //         );
-    //     };
-    // }
-
-    // private Condition firstExistingCondition(String... candidates) {
-    //     for (String candidate : candidates) {
-    //         try {
-    //             return Condition.valueOf(candidate);
-    //         } catch (IllegalArgumentException ignored) {
-    //             // Try next alias
-    //         }
-    //     }
-
-    //     throw new IllegalArgumentException("Unsupported discount condition");
-    // }
-
     private void validateUpdateEventRequest(EditEvent.UpdateEventRequest request) {
         if (request == null || request.event() == null) {
             throw new IllegalArgumentException("Event data cannot be null");
@@ -593,6 +556,10 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         if (message.startsWith("Map elements cannot overlap")) {
             return "לא ניתן לשמור את מפת האולם כי קיימים אלמנטים שחופפים במיקום. הזז את האלמנטים כך שלא יכסו אחד את השני.";
         }
+        if (message.contains("Cancellation failed")
+            || message.contains("Some refunds were not completed")) {
+        return "ביטול האירוע נכשל. חלק מההחזרים לא הושלמו. ניתן לנסות שוב מאוחר יותר.";
+    }
 
         return switch (message) {
             case "Invalid token.", "Invalid session ID" -> "אנא התחבר מחדש";
@@ -630,6 +597,7 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             case "Event map must contain at least one seating area or standing area" -> "מפת האירוע חייבת להכיל לפחות אזור ישיבה או אזור עמידה אחד.";
             case "Event is already canceled" -> "האירוע כבר מבוטל.";
             case "Event Event does not exist" -> "האירוע לא קיים.";
+            case "Event cancellation failed. Please try again later to complete the cancellation process." -> "ביטול אירוע נכשל, נסה שוב מאוחר יותר. ";
             default -> message;
         };
     }

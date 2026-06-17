@@ -101,6 +101,14 @@ public class OrderService implements UserLoginListener, EventUpdatesListener,Use
         }
     }
 
+        @Override
+        @Transactional
+        public boolean onEventCancellationRequested(Long eventId) {
+            return true;
+        }
+
+
+
     private void notifyTokenHolder(String token, String message) {
         if (notificationsService == null || token == null || token.isBlank()
                 || message == null || message.isBlank()) {

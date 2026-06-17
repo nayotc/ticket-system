@@ -587,7 +587,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             } else if (pricing.discountTotal().compareTo(BigDecimal.ZERO) > 0 || !pricing.appliedDiscounts().isEmpty()) {
                 showSuccess("קוד הקופון הופעל");
             } else {
-                showSuccess("קוד הקופון נשמר וייבדק בעת התשלום");
+                 showError("קוד הקופון שגוי או שאינו בתוקף");
             }
         } catch (Exception exception) {
             showError(exception.getMessage());

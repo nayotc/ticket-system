@@ -518,7 +518,15 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     }
 
     private BigDecimal calculateOrderTotal(OrderDTO order) {
-        if (order == null || order.getTickets() == null) {
+        if (order == null) {
+            return BigDecimal.ZERO;
+        }
+
+        if (order.getTotalPrice() != null) {
+            return order.getTotalPrice();
+        }
+
+        if (order.getTickets() == null) {
             return BigDecimal.ZERO;
         }
 
