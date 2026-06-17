@@ -29,7 +29,6 @@ import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
@@ -44,12 +43,33 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.testutil.RecordingNotifier;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+
+/**
+ * Acceptance tests for {@link CompanyService}.
+ *
+ * <p>The tests use the production {@link CompanyRepository} implementation
+ * with an embedded H2 database. Only the database configuration differs from
+ * the production environment.</p>
+ */
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import(CompanyRepository.class)
 public class CompanyServiceTest {
 
     private CompanyService companyService;
@@ -62,7 +82,8 @@ public class CompanyServiceTest {
     private String nonFounderToken;
     private IUserRepository userRepository;
     private MembershipDomainService membershipDomain;
-    private ICompanyRepository companyRepository;
+    @Autowired
+    private CompanyRepository companyRepository;
     private UserAccessService userAccessService;
     private INotificationsRepository notificationRepository;
 
@@ -70,7 +91,6 @@ public class CompanyServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        companyRepository = new InMemoryCompanyRepository();
         userRepository = new InMemoryUserRepository();
         ITokenRepository tokenRepository = new TokenRepository();
         testLogger = new LogbackSystemLogger();

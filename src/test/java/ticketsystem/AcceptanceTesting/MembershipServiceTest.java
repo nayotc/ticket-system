@@ -25,7 +25,6 @@ import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.MemberDTO;
 import ticketsystem.DTO.RoleTreeDTO;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -40,22 +39,38 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.testutil.RecordingNotifier;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+import ticketsystem.InfrastructureLayer.CompanyRepository;
 /**
- * Acceptance Tests for MembershipService. This class uses real Domain objects
- * and relies on existing Repository implementations.
+ * Acceptance tests for membership and company-role operations.
+ *
+ * <p>The tests exercise the production company repository implementation
+ * against an embedded H2 database.</p>
  */
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import(CompanyRepository.class)
 public class MembershipServiceTest {
 
     private ITokenService tokenService;
     private IUserRepository userRepository;
-    private ICompanyRepository companyRepository;
+    @Autowired
+    private CompanyRepository companyRepository;
     private MembershipDomainService domainService;
     private ISystemLogger systemLogger;
     private MembershipService membershipService;
@@ -63,7 +78,7 @@ public class MembershipServiceTest {
     private RecordingNotifier recordingNotifier;
     private InMemoryNotificationsRepository notificationsRepository;
     // Test Data
-    private final Long companyId = 1L;
+    private Long companyId;
     private Company testCompany;
 
     private Member founderMember;
@@ -92,7 +107,6 @@ public class MembershipServiceTest {
         this.systemLogger = new LogbackSystemLogger();
         this.tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo, systemLogger);
         this.userRepository = new InMemoryUserRepository();
-        this.companyRepository = new InMemoryCompanyRepository();
         this.domainService = new MembershipDomainService(userRepository);
         this.recordingNotifier = new RecordingNotifier();
         this.notifier = recordingNotifier;
@@ -109,15 +123,20 @@ public class MembershipServiceTest {
         );
 
         /*
-        * The in-memory repository assigns the identifier before the test creates
-        * company roles that refer to it.
+        * The database assigns the identifier before company roles are created.
         */
         companyRepository.save(testCompany);
 
-        assertEquals(
-                companyId.longValue(),
-                testCompany.getId(),
-                "The first company stored in a fresh repository should receive ID 1."
+        companyId = testCompany.getId();
+
+        assertNotNull(
+                companyId,
+                "The database should assign an identifier to the saved company."
+        );
+
+        assertTrue(
+                companyId > 0,
+                "The database-generated company identifier should be positive."
         );
         // 3. Setup Founder - Active state
         founderMember = new Member(founderId, "FounderUser", "Founder User", "0500000001", LocalDate.of(2001, 1, 1));

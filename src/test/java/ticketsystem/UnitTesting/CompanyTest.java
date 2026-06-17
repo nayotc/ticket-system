@@ -14,12 +14,10 @@ import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountKind;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.policy.PurchaseRule;
-import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 
 class CompanyTest {
 
@@ -39,32 +37,6 @@ class CompanyTest {
         assertTrue(company.isActive(), "A new company should be active by default.");
         assertEquals(FOUNDER_ID, company.getFounderId(), "Founder id should be saved on company creation.");
         assertEquals("BGU Productions", company.getName(), "Company name should be saved.");
-    }
-
-    @Test
-    void GivenNewCompanies_WhenSaved_ThenIdsAreUniqueAndPositive() {
-        ICompanyRepository repository = new InMemoryCompanyRepository();
-
-        Company first = new Company(
-                "Company A",
-                1L,
-                PurchasePolicy.noRestrictions(),
-                new DiscountPolicy(DiscountCompositionType.MAX)
-        );
-
-        Company second = new Company(
-                "Company B",
-                2L,
-                PurchasePolicy.noRestrictions(),
-                new DiscountPolicy(DiscountCompositionType.MAX)
-        );
-
-        repository.save(first);
-        repository.save(second);
-
-        assertTrue(first.getId() > 0, "First company ID should be a positive number.");
-        assertTrue(second.getId() > 0, "Second company ID should be a positive number.");
-        assertNotEquals(first.getId(), second.getId(), "Company IDs should be unique.");
     }
 
     // --- UC 4.13: Close/Suspend Company state ---

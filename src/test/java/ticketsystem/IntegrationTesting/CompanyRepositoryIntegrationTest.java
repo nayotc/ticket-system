@@ -40,10 +40,9 @@ import ticketsystem.InfrastructureLayer.CompanyRepository;
 /**
  * Integration tests for the JPA-based company repository.
  *
- * <p>These tests use an embedded test database and the real Hibernate/JPA
- * mappings. They intentionally do not use {@link InMemoryCompanyRepository},
- * because their purpose is to verify persistence, database queries and
- * optimistic locking.</p>
+ * <p>These tests use an embedded H2 database while exercising the same
+ * repository implementation and Hibernate/JPA mappings used by the
+ * production application.</p>
  *
  * <p>PurchasePolicy and DiscountPolicy persistence is not tested here while
  * those fields remain {@code @Transient}. Their save-and-reload tests should

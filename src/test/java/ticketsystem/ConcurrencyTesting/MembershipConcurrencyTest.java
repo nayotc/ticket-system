@@ -23,7 +23,6 @@ import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -36,18 +35,49 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Owner;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import ticketsystem.InfrastructureLayer.persistence.CompanyJpaRepository;
+
+/**
+ * Concurrency tests for membership role assignments.
+ *
+ * <p>The tests use the production company repository with an embedded H2
+ * database. The surrounding test transaction is disabled so that database
+ * writes are committed and visible to worker threads.</p>
+ */
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import(CompanyRepository.class)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 public class MembershipConcurrencyTest {
 
     private IUserRepository userRepository;
     private MembershipService membershipService;
     private UserAccessService userAccessService;
+    @Autowired
+    private CompanyRepository companyRepository;
 
-    private final Long companyId = 1L;
+    @Autowired
+    private CompanyJpaRepository companyJpaRepository;
+
+    private Long companyId;
     private final Long targetMemberId = 200L;
     private final String targetMemberName = "TargetUser";
 
@@ -58,11 +88,11 @@ public class MembershipConcurrencyTest {
 
     @BeforeEach
     void setUp() {
+        companyJpaRepository.deleteAll();
         ITokenRepository tokenRepo = new TokenRepository();
         ISystemLogger logger = new LogbackSystemLogger();
         ITokenService tokenService = new TokenService("my_very_long_secret_key_for_testing_purposes_only_32_chars", tokenRepo, logger);
         this.userRepository = new InMemoryUserRepository();
-        ICompanyRepository companyRepository = new InMemoryCompanyRepository();
         MembershipDomainService domainService = new MembershipDomainService(userRepository);
         notifier = new FakeNotifier();
         userAccessService = new UserAccessService(userRepository);
@@ -82,15 +112,18 @@ public class MembershipConcurrencyTest {
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
-        /*
-        * The repository assigns the identifier used by the company roles below.
-        */
         companyRepository.save(company);
 
-        assertEquals(
-                companyId.longValue(),
-                company.getId(),
-                "The first company stored in a fresh repository should receive ID 1."
+        companyId = company.getId();
+
+        assertNotNull(
+                companyId,
+                "The database should assign an identifier to the saved company."
+        );
+
+        assertTrue(
+                companyId > 0,
+                "The database-generated company identifier should be positive."
         );
 
         // Setup Founder (Appointer 1) - Has version 0
