@@ -822,6 +822,18 @@ public class ReservationPresenter {
             return "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
         }
 
+        if (message != null && (
+                message.contains("JWT") ||
+                message.contains("expired") ||
+                message.contains("Invalid") ||
+                message.contains("Invalid session ID") ||
+                message.contains("Token is missing or null") ||
+                message.contains("Session is no longer active") ||
+                message.contains("Invalid or expired security token")
+        )) {
+            return message; // מחזירים באנגלית כדי שהמסך יזהה ניתוק!
+        }
+
         // 1. טיפול דינמי בכמות כרטיסים מקסימלית
         if (message.matches("Failed to validate active order policy: Cannot purchase more than \\d+ tickets\\.")) {
             String maxTickets = message.replaceAll("\\D+", "");

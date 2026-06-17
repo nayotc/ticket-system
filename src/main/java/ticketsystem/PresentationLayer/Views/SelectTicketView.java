@@ -236,14 +236,11 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
             }
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
-                // זה מספיק בהחלט! זה מבצע את כל הניקוי והניתוב בצורה אחידה
                 UiSession.handleTimeoutRedirect();
                 return; 
             }
-            // במקרה שזו שגיאה עסקית רגילה (לא פקיעת סשן)
-            Notifications.error(e.getMessage());
         } catch (Exception e) {
-            Notifications.error("לא ניתן לסנכרן את מושבי ההזמנה הפעילה. יש לנסות שוב");
+            // הסרנו את ההתראה! אנחנו סופגים את השגיאה בשקט
         } 
     }
 
@@ -834,8 +831,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
-            Notifications.error(e.getMessage());
-            
+           
         } catch (Exception e) {
             Notifications.error("שגיאה בעדכון סל הכרטיסים.");
         }
@@ -889,10 +885,8 @@ private ActiveOrderDTO loadCurrentEventActiveOrder() {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
-            Notifications.error("שגיאה בסנכרון אזורי עמידה: " + e.getMessage());
         } catch (Exception e) {
-            // שגיאה כללית
-            Notifications.error("אירעה שגיאה בסנכרון הנתונים.");
+            // הסרנו את ההתראה! אנחנו סופגים את השגיאה בשקט        
         }
     }
 
@@ -1207,7 +1201,7 @@ private Div createSelectedTicketRowFromOrder(TicketDTO ticket) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
-            Notifications.error(e.getMessage());
+            reservationTimer.setVisible(false);
 
         } catch (Exception e) {
             reservationTimer.setVisible(false);

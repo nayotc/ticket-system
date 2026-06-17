@@ -553,6 +553,18 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
             return "אירעה שגיאה. נסו שוב.";
         }
 
+        if (message != null && (
+                message.contains("JWT") ||
+                message.contains("expired") ||
+                message.contains("Invalid") ||
+                message.contains("Invalid session ID") ||
+                message.contains("Token is missing or null") ||
+                message.contains("Session is no longer active") ||
+                message.contains("Invalid or expired security token")
+        )) {
+            return message; // מחזירים באנגלית כדי שהמסך יזהה ניתוק!
+        }
+
         if (message.startsWith("Map elements cannot overlap")) {
             return "לא ניתן לשמור את מפת האולם כי קיימים אלמנטים שחופפים במיקום. הזז את האלמנטים כך שלא יכסו אחד את השני.";
         }

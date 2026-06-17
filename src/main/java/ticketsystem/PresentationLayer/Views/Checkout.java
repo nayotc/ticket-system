@@ -31,6 +31,7 @@ import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
@@ -178,7 +179,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
@@ -604,7 +605,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                  showError("קוד הקופון שגוי או שאינו בתוקף");
             }
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
@@ -665,7 +666,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             currentStep = 2;
             renderCheckout();
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
@@ -742,7 +743,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                 UI.getCurrent().navigate(UiRoutes.HOME);
             }
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();

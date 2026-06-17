@@ -11,9 +11,12 @@ public class PresentationException extends RuntimeException {
         if (msg == null) return false;
         
         return msg.contains("פג תוקף") || 
-               msg.contains("לא תקין") || 
                msg.contains("לא פעיל") ||
-               msg.contains("JWT expired") || 
-               msg.contains("Invalid or expired");
+               msg.contains("JWT expired") ||
+               msg.contains("Invalid token") ||
+               msg.contains("Invalid session ID") ||
+               msg.contains("Invalid or expired") ||
+               msg.contains("Token is missing or null") ||
+               msg.contains("Session is no longer active");
     }
 }

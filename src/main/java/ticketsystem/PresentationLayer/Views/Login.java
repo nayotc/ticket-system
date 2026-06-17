@@ -62,7 +62,7 @@ public class Login extends PageContainer implements BeforeEnterObserver {
     public void beforeEnter(BeforeEnterEvent event) {
         // כאן אנחנו תופסים את הניתובים שבאו בעקבות ניתוק ומקפיצים את ההודעה המסודרת
         if (event.getLocation().getQueryParameters().getParameters().containsKey("timeout")) {
-            Notifications.error("זמן החיבור פג, אנא התחבר מחדש למערכת.");
+            Notifications.error("זמן החיבור פג. אנא התחבר מחדש למערכת.");
         }
     }
 

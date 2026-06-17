@@ -24,6 +24,7 @@ import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.PublicLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
@@ -79,7 +80,7 @@ public class ActiveOrderCart extends VerticalLayout {
 
             renderCart();
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
@@ -319,7 +320,7 @@ public class ActiveOrderCart extends VerticalLayout {
             pricing = presenter.applyCoupon(resolveSessionToken(), activeOrder, currentCouponCode);
             renderCart();
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
@@ -347,7 +348,7 @@ public class ActiveOrderCart extends VerticalLayout {
             loadCart();
             refreshHeader();
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();

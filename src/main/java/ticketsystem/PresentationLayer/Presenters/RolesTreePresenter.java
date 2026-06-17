@@ -85,6 +85,18 @@ public class RolesTreePresenter {
             return "טעינת עץ התפקידים נכשלה. נסו שוב.";
         }
 
+        if (message != null && (
+                message.contains("JWT") ||
+                message.contains("expired") ||
+                message.contains("Invalid") ||
+                message.contains("Invalid session ID") ||
+                message.contains("Token is missing or null") ||
+                message.contains("Session is no longer active") ||
+                message.contains("Invalid or expired security token")
+        )) {
+            return message; // מחזירים באנגלית כדי שהמסך יזהה ניתוק!
+        }
+
         if (message.contains("Session authentication failed")) {
             return "החיבור למערכת לא תקין. התחברי מחדש ונסי שוב.";
         }

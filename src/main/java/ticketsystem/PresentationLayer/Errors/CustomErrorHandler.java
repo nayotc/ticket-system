@@ -23,11 +23,15 @@ public class CustomErrorHandler implements ErrorHandler {
             String msg = cause.getMessage();
             
             if (msg != null) {
-                boolean isTimeout = msg.contains("פג תוקף") || 
-                                                    msg.contains("לא תקין") || 
-                                                    msg.contains("לא פעיל") ||
-                                                    msg.contains("Invalid or expired") ||
-                                                    msg.contains("JWT expired");
+                boolean isTimeout = msg != null && (         
+                    msg.contains("JWT") ||
+                    msg.contains("expired") ||
+                    msg.contains("Invalid") ||
+                    msg.contains("Invalid session ID") ||
+                    msg.contains("Token is missing or null") ||
+                    msg.contains("Session is no longer active") ||
+                    msg.contains("Invalid or expired security token")
+                );
 
                 if (isTimeout) {
                     handleSessionTimeout();
@@ -45,11 +49,13 @@ public class CustomErrorHandler implements ErrorHandler {
         UI ui = UI.getCurrent();
         if (ui != null) {
             ui.access(() -> {
-                boolean wasLoggedIn = UiSession.isLoggedIn();
-                UiSession.exit();
+                boolean wasLoggedIn = UiSession.isLoggedIn(); // המערכת בודקת: האם זה מנוי או אורח?
+                UiSession.exit(); // מנקים את הסשן הפגום
                 if (wasLoggedIn) {
+                    // אם זה מנוי: זורקים אותו ל-Login עם הפרמטר שמדליק את ההודעה האדומה
                     ui.getPage().setLocation("/" + UiRoutes.LOGIN + "?timeout=true");
                 } else {
+                    // אם זה אורח: עושים רענון שקט לאותו העמוד!
                     ui.getPage().reload();
                 }
             });

@@ -1,5 +1,6 @@
 package ticketsystem.PresentationLayer.Session;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.server.VaadinSession;
 
 import ticketsystem.PresentationLayer.Components.Notifications;
@@ -264,7 +265,7 @@ public final class UiSession {
      * Instead, it displays a gentle notification prompting the user to try again.
      */
     public static void handleTimeoutRedirect() {
-        com.vaadin.flow.component.UI ui = com.vaadin.flow.component.UI.getCurrent();
+        UI ui = UI.getCurrent();
         if (ui != null) {
             ui.access(() -> {
                 boolean wasLoggedIn = isLoggedIn();
@@ -279,7 +280,7 @@ public final class UiSession {
                     // Guest: keep them on the page to prevent losing typed data,
                     // just show a notification. The next button click will 
                     // generate a fresh guest token dynamically.
-                    Notifications.info("Session expired. Please click the button again to continue.");
+                    Notifications.info("תוקף החיבור פג. אנא נסו ללחוץ שוב כדי להמשיך.");
                 }
             });
         }

@@ -35,6 +35,7 @@ import ticketsystem.PresentationLayer.Session.UiSession;
 
 import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
 import ticketsystem.PresentationLayer.Presenters.MembershipPresenter;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState;
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.CompanyStats;
 import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.EventManagementItem;
@@ -113,7 +114,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
             }
             render();
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 UiSession.handleTimeoutRedirect();
                 return;
@@ -695,7 +696,16 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
             managerNameInput.clear();
             managerPermissions.deselectAll();
             ownerNameInput.clear();
-
+            
+            loadState(state.selectedCompany().id());
+        
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
+        
         } catch (Exception e) {
             showError(e.getMessage());
 
