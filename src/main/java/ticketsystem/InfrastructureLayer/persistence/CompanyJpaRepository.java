@@ -10,9 +10,6 @@ import ticketsystem.DomainLayer.company.Company;
 
 public interface CompanyJpaRepository extends JpaRepository<Company, Long> {
 
-    @Query("SELECT c FROM Company c WHERE c.name = :name ORDER BY c.id ASC")
-    List<Company> findAllByNameOrderedById(@Param("name") String name);
-
     boolean existsByName(String name);
 
     @Query("SELECT c.id FROM Company c WHERE c.active = true")

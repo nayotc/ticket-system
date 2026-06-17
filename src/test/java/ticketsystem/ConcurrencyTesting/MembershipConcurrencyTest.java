@@ -75,13 +75,23 @@ public class MembershipConcurrencyTest {
                 notifier,
                 logger, userAccessService
         );
-        // Setup Company
-        Company company = new Company("BGU Productions", 100L, PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
-        try {
-            company.setId(companyId);
-        } catch (Exception e) {
-        }
+        Company company = new Company(
+                "BGU Productions",
+                100L,
+                PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX)
+        );
+
+        /*
+        * The repository assigns the identifier used by the company roles below.
+        */
         companyRepository.save(company);
+
+        assertEquals(
+                companyId.longValue(),
+                company.getId(),
+                "The first company stored in a fresh repository should receive ID 1."
+        );
 
         // Setup Founder (Appointer 1) - Has version 0
         Member founder = new Member(100L, "Founder", "Founder User", "0500000001",LocalDate.of(2001, 1, 1));

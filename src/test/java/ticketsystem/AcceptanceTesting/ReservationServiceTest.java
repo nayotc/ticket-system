@@ -51,7 +51,6 @@ import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
@@ -131,8 +130,13 @@ public class ReservationServiceTest {
                 PurchasePolicy.noRestrictions(),
                 new DiscountPolicy(DiscountCompositionType.MAX));
 
-        company.setId(COMPANY_ID);
         companyRepository.save(company);
+
+        assertEquals(
+                COMPANY_ID.longValue(),
+                company.getId(),
+                "The first company stored in a fresh repository should receive ID 1."
+        );
 
         eventCatalogDomainService = new EventCatalogDomainService(
                 companyRepository);

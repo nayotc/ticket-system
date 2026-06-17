@@ -22,9 +22,15 @@ public class InMemoryCompanyRepository implements ICompanyRepository {
             throw new IllegalArgumentException("Company cannot be null");
         }
 
-        if (company.getId() <= 0) {
-            company.setId(idCounter.getAndIncrement());
-        }
+    Long existingId = company.getIdOrNull();
+
+    if (existingId == null) {
+        company.setIdForRepository(idCounter.getAndIncrement());
+    } else {
+        idCounter.updateAndGet(
+                currentValue -> Math.max(currentValue, existingId + 1)
+        );
+    }
 
         Company currentCompany = companies.get(company.getId());
 
@@ -57,17 +63,6 @@ public class InMemoryCompanyRepository implements ICompanyRepository {
         return Optional.of(new Company(company));
     }
 
-    @Override
-    public Optional<Company> findByName(String name) {
-        if (name == null || name.isBlank()) {
-            return Optional.empty();
-        }
-
-        return companies.values().stream()
-                .filter(company -> company.getName().equals(name))
-                .min(Comparator.comparingLong(Company::getId))
-                .map(Company::new);
-    }
 
     @Override
     public List<Company> findAll() {

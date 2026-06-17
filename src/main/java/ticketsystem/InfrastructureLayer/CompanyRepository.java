@@ -28,7 +28,7 @@ public class CompanyRepository implements ICompanyRepository {
         }
 
         try {
-            companyJpaRepository.saveAndFlush(company);
+            companyJpaRepository.save(company);
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new RuntimeException(
                     "OptimisticLockingFailureException: Company "
@@ -50,20 +50,6 @@ public class CompanyRepository implements ICompanyRepository {
         }
     }
 
-    @Override
-    public Optional<Company> findByName(String name) {
-        if (name == null || name.isBlank()) {
-            return Optional.empty();
-        }
-
-        try {
-            return companyJpaRepository.findAllByNameOrderedById(name)
-                    .stream()
-                    .findFirst();
-        } catch (DataAccessException e) {
-            throw new RuntimeException("Failed to find company by name " + name, e);
-        }
-    }
 
     @Override
     public List<Company> findAll() {

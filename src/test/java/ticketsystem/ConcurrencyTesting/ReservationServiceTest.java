@@ -46,7 +46,6 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.InMemoryCompanyRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
@@ -112,9 +111,13 @@ public class ReservationServiceTest {
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
-        company.setId(COMPANY_ID);
         companyRepository.save(company);
 
+        assertEquals(
+                COMPANY_ID.longValue(),
+                company.getId(),
+                "The first company stored in a fresh repository should receive ID 1."
+        );
         eventCatalogDomainService = new EventCatalogDomainService(companyRepository);
 
         resetPaymentProxy();

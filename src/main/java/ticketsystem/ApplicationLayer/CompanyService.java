@@ -110,7 +110,7 @@ public class CompanyService {
      * @throws Exception if the session is invalid, belongs to a guest, or
      * company creation fails
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CompanyDTO createProductionCompany(String sessionId, String companyName) throws Exception {
         logEvent("UC 3.2 started: create production company, companyName=" + companyName,
                 ISystemLogger.LogLevel.INFO);
@@ -161,7 +161,7 @@ public class CompanyService {
      * @throws Exception if the company does not exist, the requester is not
      * founder, or the company is already inactive
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CompanyDTO closeProductionCompany(String sessionId, long companyId) throws Exception {
         logEvent("UC 4.13 started: close production company, companyId=" + companyId,
                 ISystemLogger.LogLevel.INFO);
@@ -209,7 +209,7 @@ public class CompanyService {
      * @throws Exception if the company does not exist, the requester is not
      * founder, or the company is already active
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CompanyDTO reopenProductionCompany(String sessionId, long companyId) throws Exception {
         logEvent("UC 4.14 started: reopen production company, companyId=" + companyId,
                 ISystemLogger.LogLevel.INFO);
@@ -367,7 +367,7 @@ public class CompanyService {
     }
 
     //set composition type
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void setCompositionType(String token,Long companyId,DiscountCompositionType compositionType)
     throws Exception{
         try{
@@ -401,7 +401,7 @@ public class CompanyService {
             return company;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void setCompanyPurchasePolicy(String token, Long companyId, PurchasePolicyDTO policyDTO) throws Exception {
         try {
             logger.logEvent("setCompanyPurchasePolicy started for companyId: " + companyId,ISystemLogger.LogLevel.INFO);
@@ -438,78 +438,129 @@ public class CompanyService {
             return company;
     }
 
-/**
-     * Retrieves the purchase policy of a specified company and maps it to a DTO.
-     * Validates the user's session and permissions before allowing access.
+    /**
+     * Returns the purchase policy of a company after validating that the
+     * requesting user is permitted to view the company details.
      *
-     * @param token     The authentication token of the current user.
-     * @param companyId The unique identifier of the target company.
-     * @return PurchasePolicyDTO representing the current purchase policy of the company.
-     * @throws Exception If the company is not found, the user lacks permission to view it,
-     * or an internal retrieval error occurs.
+     * @param token authentication token of the requesting user
+     * @param companyId identifier of the requested company
+     * @return the company's purchase policy DTO
+     * @throws Exception if the policy cannot be retrieved
      */
     @Transactional(readOnly = true)
-    public PurchasePolicyDTO getCompanyPurchasePolicy(String token, Long companyId) throws Exception {
+    public PurchasePolicyDTO getCompanyPurchasePolicy(
+            String token,
+            Long companyId
+    ) throws Exception {
         try {
             Company company = companyRepository.findById(companyId)
-                    .orElseThrow(() -> new Exception("Error: Company not found."));
+                    .orElseThrow(() ->
+                            new Exception("Error: Company not found.")
+                    );
 
             if (!canViewCompanyDetails(token, company)) {
-                throw new Exception("Error: User does not have permission to view this company's policies.");
+                throw new Exception(
+                        "Error: User does not have permission to view this company's policies."
+                );
             }
 
             return mapper.toDTO(company.getPurchasePolicy());
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new Exception(e.getMessage());
+
         } catch (Exception e) {
-            throw new Exception("An error occurred while retrieving the purchase policy.");
+            throw new Exception(
+                    "An error occurred while retrieving the purchase policy."
+            );
         }
     }
 
+    /**
+     * Returns the discount policy of a company after validating that the
+     * requesting user is allowed to view the company's details.
+     *
+     * @param token authentication token of the requesting user
+     * @param companyId identifier of the requested company
+     * @return the company's discount policy DTO
+     * @throws Exception if the company does not exist, the user is not authorized,
+     *                   or the policy cannot be retrieved
+     */
     @Transactional(readOnly = true)
-    public DiscountPolicyDTO getCompanyDiscountPolicy(String token, Long companyId) throws Exception {
-        logEvent("getCompanyDiscountPolicy started. companyId=" + companyId,
-                ISystemLogger.LogLevel.INFO);
+    public DiscountPolicyDTO getCompanyDiscountPolicy(
+            String token,
+            Long companyId
+    ) throws Exception {
+        logEvent(
+                "getCompanyDiscountPolicy started. companyId=" + companyId,
+                ISystemLogger.LogLevel.INFO
+        );
 
         try {
-            Company company = canViewCompanyDetails(token, companyRepository.findById(companyId)
-                    .orElseThrow(() -> new Exception("Error: Company not found."))) ?
-                    companyRepository.findById(companyId).get() : null;
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() ->
+                            new Exception("Error: Company not found.")
+                    );
 
-            if (company == null) {
-                logEvent("getCompanyDiscountPolicy rejected. companyId=" + companyId
+            if (!canViewCompanyDetails(token, company)) {
+                logEvent(
+                        "getCompanyDiscountPolicy rejected. companyId="
+                                + companyId
                                 + ", reason=no view permission",
-                        ISystemLogger.LogLevel.WARN);
-                throw new Exception("Error: User does not have permission to view this company's policies.");
+                        ISystemLogger.LogLevel.WARN
+                );
+
+                throw new Exception(
+                        "Error: User does not have permission to view this company's policies."
+                );
             }
 
             DiscountPolicy domainPolicy = company.getDiscountPolicy();
 
             if (domainPolicy == null) {
-                logEvent("getCompanyDiscountPolicy completed. companyId=" + companyId
+                logEvent(
+                        "getCompanyDiscountPolicy completed. companyId="
+                                + companyId
                                 + ", domainPolicy=null, returning empty DTO",
-                        ISystemLogger.LogLevel.INFO);
+                        ISystemLogger.LogLevel.INFO
+                );
+
                 return new DiscountPolicyDTO();
             }
 
-           DiscountPolicyDTO dto = discountPolicyMapper.toDTO(company.getDiscountPolicy());
+            DiscountPolicyDTO dto =
+                    discountPolicyMapper.toDTO(domainPolicy);
 
-            logEvent("getCompanyDiscountPolicy completed. companyId=" + companyId
-                            + ", composition=" + dto.getCompositionType()
-                            + ", dtoDiscounts=" + dto.getDiscounts().size(),
-                    ISystemLogger.LogLevel.INFO);
+            logEvent(
+                    "getCompanyDiscountPolicy completed. companyId="
+                            + companyId
+                            + ", composition="
+                            + dto.getCompositionType()
+                            + ", dtoDiscounts="
+                            + dto.getDiscounts().size(),
+                    ISystemLogger.LogLevel.INFO
+            );
 
             return dto;
+
         } catch (IllegalArgumentException | IllegalStateException e) {
-            logEvent("getCompanyDiscountPolicy failed. companyId=" + companyId
-                            + ", reason=" + e.getMessage(),
-                    ISystemLogger.LogLevel.WARN);
-            throw new Exception("An error occurred while retrieving the discount policy.");
+            logEvent(
+                    "getCompanyDiscountPolicy failed. companyId="
+                            + companyId
+                            + ", reason="
+                            + e.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
+
+            throw new Exception(
+                    "An error occurred while retrieving the discount policy: "
+                            + e.getMessage(),
+                    e
+            );
         }
     }
 
-@Transactional
+  @Transactional(rollbackFor = Exception.class)
   public void setCompanyDiscountPolicy(String token,
                                      Long companyId,
                                      DiscountPolicyDTO policyDTO) throws Exception {

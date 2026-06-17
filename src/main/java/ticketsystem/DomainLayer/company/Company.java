@@ -123,16 +123,58 @@ public class Company {
         }
     }
 
+    /**
+     * Returns the persistent identifier of this company.
+     *
+     * @return the company identifier
+     * @throws IllegalStateException if the company has not been persisted yet
+     */
     public long getId() {
-        return id == null ? 0L : id;
-    }
+        if (id == null) {
+            throw new IllegalStateException(
+                    "Company has not been persisted yet."
+            );
+        }
 
-    public void setId(long id) {
-        this.id = id;
-    }
-
-    public Long getJpaId() {
         return id;
+    }
+
+    /**
+     * Returns the company identifier without requiring the company to have
+     * already been persisted.
+     *
+     * <p>This method is intended for repository implementations that need to
+     * determine whether an identifier has already been assigned.</p>
+     *
+     * @return the company identifier, or {@code null} if none was assigned yet
+     */
+    public Long getIdOrNull() {
+        return id;
+    }
+
+    /**
+     * Assigns an identifier when using a repository implementation that does not
+     * rely on a database-generated identifier, such as the in-memory test
+     * repository.
+     *
+     * @param id identifier to assign
+     * @throws IllegalArgumentException if the identifier is not positive
+     * @throws IllegalStateException if an identifier was already assigned
+     */
+    public void setIdForRepository(long id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException(
+                    "Company ID must be a positive number."
+            );
+        }
+
+        if (this.id != null) {
+            throw new IllegalStateException(
+                    "Company ID has already been assigned."
+            );
+        }
+
+        this.id = id;
     }
 
     public String getName() {

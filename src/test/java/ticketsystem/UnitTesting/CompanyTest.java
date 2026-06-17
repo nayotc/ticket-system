@@ -129,7 +129,11 @@ class CompanyTest {
 
         Company copy = new Company(company);
 
-        assertEquals(company.getId(), copy.getId());
+        assertEquals(
+                company.getIdOrNull(),
+                copy.getIdOrNull(),
+                "The copy should preserve the original nullable ID state."
+        );
         assertEquals(company.getName(), copy.getName());
         assertEquals(company.getFounderId(), copy.getFounderId());
         assertEquals(company.isActive(), copy.isActive());

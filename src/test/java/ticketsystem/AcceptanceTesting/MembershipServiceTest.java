@@ -101,14 +101,24 @@ public class MembershipServiceTest {
         this.membershipService = new MembershipService(tokenService, userRepository, companyRepository, domainService,
                 notifier, systemLogger, userAccessService);
 
-        // 2. Setup Company state
-        testCompany = new Company("BGU Productions", founderId, PurchasePolicy.noRestrictions(),
-                new DiscountPolicy(DiscountCompositionType.MAX));
-        try {
-            testCompany.setId(companyId);
-        } catch (Exception e) {
-        }
+        testCompany = new Company(
+                "BGU Productions",
+                founderId,
+                PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX)
+        );
 
+        /*
+        * The in-memory repository assigns the identifier before the test creates
+        * company roles that refer to it.
+        */
+        companyRepository.save(testCompany);
+
+        assertEquals(
+                companyId.longValue(),
+                testCompany.getId(),
+                "The first company stored in a fresh repository should receive ID 1."
+        );
         // 3. Setup Founder - Active state
         founderMember = new Member(founderId, "FounderUser", "Founder User", "0500000001", LocalDate.of(2001, 1, 1));
         founderMember.addFounderRole(companyId);
@@ -136,9 +146,6 @@ public class MembershipServiceTest {
 
         founderRole.addAppointee(ownerId);
         userRepository.updateMember(founderMember);
-
-        // Save company after setup
-        companyRepository.save(testCompany);
 
         // 6. Setup Regular Member - Starting with no role (For UC 4.7, 4.8)
         member = new Member(memberId, "PlainMember", "Plain Member", "0500000004", LocalDate.of(2001, 1, 1));
