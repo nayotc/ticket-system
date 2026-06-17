@@ -18,6 +18,7 @@ import com.vaadin.flow.server.streams.DownloadResponse;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
+
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -116,38 +117,85 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     }
 
     /**
-     * Creates the export button wrapped in an Anchor tag to trigger the CSV download.
-     * Uses the official Vaadin StreamResource approach for dynamic, lazy-loaded file generation.
+     * Creates the export button and wraps it in an anchor that triggers
+     * the CSV download.
+     *
+     * @return an anchor containing the sales-report export button
      */
     private Anchor createExportAnchor() {
         DownloadHandler handler = DownloadHandler.fromInputStream(event -> {
             try {
-                if (currentToken == null || companyId == null) {
+                // Use cached values because the download may run outside the UI thread.
+                if (currentToken == null || currentToken.isBlank()) {
+
                     return new DownloadResponse(
-                            new ByteArrayInputStream("שגיאה: חסר טוקן חיבור או מזהה חברה.".getBytes(StandardCharsets.UTF_8)),
-                            "error.txt",
+                            new ByteArrayInputStream(
+                                    "לא נמצאה פעילות משתמש. יש לרענן את העמוד ולנסות שוב."
+                                            .getBytes(StandardCharsets.UTF_8)
+                            ),
+                            "sales-report-error.txt",
                             "text/plain;charset=UTF-8",
                             -1
                     );
                 }
 
+                if (companyId == null) {
+                    return new DownloadResponse(
+                            new ByteArrayInputStream(
+                                    ("לא ניתן לזהות את חברת ההפקה שעבורה התבקש הדוח. "
+                                            + "יש לפתוח מחדש את דוח המכירות ולנסות שוב.")
+                                            .getBytes(StandardCharsets.UTF_8)
+                            ),
+                            "sales-report-error.txt",
+                            "text/plain;charset=UTF-8",
+                            -1
+                    );
+                }
+
+                // Generate the CSV through the presenter.
+
                 return new DownloadResponse(
-                        presenter.exportTransactionsToCsv(currentToken, companyId),
+                        presenter.exportTransactionsToCsv(
+                                currentToken,
+                                companyId
+                        ),
                         "sales-report.csv",
                         "text/csv;charset=UTF-8",
                         -1
                 );
-            } catch (Exception e) {
+
+            } catch (PresentationException e) {
+                // Return the user-facing message prepared by the presenter.
+
                 return new DownloadResponse(
-                        new ByteArrayInputStream(("שגיאה בהפקת דוח המכירות: " + e.getMessage()).getBytes(StandardCharsets.UTF_8)),
-                        "error_log.txt",
+                        new ByteArrayInputStream(
+                                e.getMessage().getBytes(StandardCharsets.UTF_8)
+                        ),
+                        "sales-report-error.txt",
+                        "text/plain;charset=UTF-8",
+                        -1
+                );
+
+            } catch (Exception e) {
+                // Hide unexpected technical details from the user.
+                return new DownloadResponse(
+                        new ByteArrayInputStream(
+                                "אירעה שגיאה במהלך ייצוא דוח המכירות. יש לנסות שוב."
+                                        .getBytes(StandardCharsets.UTF_8)
+                        ),
+                        "sales-report-error.txt",
                         "text/plain;charset=UTF-8",
                         -1
                 );
             }
         });
 
-        Button exportButton = createHeaderButton("ייצוא", VaadinIcon.DOWNLOAD, false);
+        Button exportButton =
+                createHeaderButton(
+                        "ייצוא",
+                        VaadinIcon.DOWNLOAD,
+                        false
+                );
 
         Anchor anchor = new Anchor(handler, "");
         anchor.add(exportButton);
@@ -159,11 +207,13 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     private Div createCompanySelector() {
         Div wrapper = new Div();
         wrapper.addClassName("company-selector-wrapper");
-        
+
         companySelector.setItemLabelGenerator(ManagedCompanyItem::name);
         companySelector.setPlaceholder("בחר חברה...");
         companySelector.addClassName("company-selector");
-        
+
+        // Navigate to the selected company's sales report.
+
         companySelector.addValueChangeListener(event -> {
             ManagedCompanyItem selected = event.getValue();
             if (selected != null && companyId != null && selected.id() != companyId) {
@@ -171,7 +221,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
                 UI.getCurrent().navigate(newRoute);
             }
         });
-        
+
         wrapper.add(companySelector);
         return wrapper;
     }
@@ -196,7 +246,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         currentTransactions = filterTransactionsByCompany(companyTransactions);
         refreshView();
     }
-    
+
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         event.getRouteParameters()
@@ -214,6 +264,8 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         }
 
         try {
+            // Load the user's managed companies for the selector.
+
             CompanyManagementState state = membershipPresenter.loadCompanyManagement(token, companyId);
             if (state != null && state.companies() != null) {
                 companySelector.setItems(state.companies());
@@ -223,10 +275,12 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
                         .ifPresent(companySelector::setValue);
             }
 
+            // Load the sales report data.
+
             SalesReportDTO report = presenter.generateSalesReport(token, companyId);
             List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
             bindSalesReport(report, transactions);
-            
+
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 UiSession.handleTimeoutRedirect();
@@ -240,16 +294,21 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     @Override
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
-        
+
+        // Enable polling every 10 seconds.
         attachEvent.getUI().setPollInterval(10000);
-        
+
+        // Refresh the report silently on each poll.
+
         attachEvent.getUI().addPollListener(event -> refreshDataSilently());
     }
 
     @Override
     protected void onDetach(DetachEvent detachEvent) {
+        // Disable polling when leaving the view to avoid unnecessary server load.
+
         detachEvent.getUI().setPollInterval(-1);
-        
+
         super.onDetach(detachEvent);
     }
 
@@ -259,7 +318,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         this.currentToken = token;
 
         if (token == null || token.isBlank()) {
-            showError("פג תוקף החיבור, אנא התחבר מחדש.");
+            showError("יש להתחבר כדי לצפות בדוח המכירות.");
             UI.getCurrent().navigate(UiRoutes.LOGIN);
             return;
         }
@@ -268,8 +327,8 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             SalesReportDTO report = presenter.generateSalesReport(token, companyId);
             List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
             bindSalesReport(report, transactions);
-            Notifications.success("הנתונים רעננו בהצלחה");
-        
+            Notifications.success("הנתונים רועננו בהצלחה.");
+
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 UiSession.handleTimeoutRedirect();
@@ -280,10 +339,11 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         }
     }
 
-    // Silent helper function for automatic background refresh (no pop-up notifications)
+    // Refreshes the report in the background without showing notifications.
+
     private void refreshDataSilently() {
         String token = UiSession.getMemberToken();
-        
+
         if (token == null || token.isBlank() || companyId == null) {
             return;
         }
@@ -291,9 +351,11 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         try {
             SalesReportDTO report = presenter.generateSalesReport(token, companyId);
             List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
-            
+
             bindSalesReport(report, transactions);
         } catch (Exception ignored) {
+            // Ignore background refresh errors to avoid interrupting the user.
+
         }
     }
 
@@ -334,7 +396,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
                 .setAutoWidth(true);
 
         transactionsGrid.addColumn(order -> presenter.getBuyerName(order.getMemberId()))
-                .setHeader("משתמש שם")
+                .setHeader("שם משתמש")
                 .setAutoWidth(true);
 
         transactionsGrid.addColumn(this::countSoldTickets)
