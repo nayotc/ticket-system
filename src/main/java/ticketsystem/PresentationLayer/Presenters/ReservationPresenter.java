@@ -1002,20 +1002,35 @@ public class ReservationPresenter {
                     "הרכישה לא הושלמה. יש לנסות שוב.";
         };
     }
+    /**
+     * Releases the user's active purchasing slot for an event.
+     *
+     * This method is called only when the purchasing flow ends explicitly:
+     * after successful checkout or when the user cancels checkout.
+     *
+     * Queue cleanup is best-effort and must not turn an already completed payment
+     * into a presentation-layer failure.
+     *
+     * @param token active guest/member session token
+     * @param eventId event whose purchasing slot should be released
+     */
     public void releaseQueueAccess(String token, Long eventId) {
-    try {
-        if (token == null || token.isBlank()) {
-            return;
+        try {
+            if (token == null || token.isBlank()) {
+                return;
+            }
+
+            if (eventId == null || eventId <= 0) {
+                return;
+            }
+
+            waitingQueueService.releaseSpot(eventId, token);
+
+        } catch (Exception ignored) {
+            /*
+            * A successful checkout must remain successful even if queue cleanup
+            * encounters a temporary failure.
+            */
         }
-
-        if (eventId == null || eventId <= 0) {
-            return;
-        }
-
-        waitingQueueService.releaseSpot(eventId, token);
-
-    } catch (Exception ignored) {
-        // Leaving the ticket-selection page should not fail because queue cleanup failed.
     }
-}
 }

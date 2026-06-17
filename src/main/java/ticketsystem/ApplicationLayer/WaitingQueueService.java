@@ -14,6 +14,27 @@ import java.util.Set;
 
 @Service
 public class WaitingQueueService {
+    /**
+     * User-facing messages for the virtual waiting-queue flow.
+     *
+     * Internal service results and log messages remain in English, while all
+     * messages delivered to guests and members are written in Hebrew to match
+     * the presentation language used throughout the application.
+     */
+    private static final String SOLD_OUT_NOTIFICATION =
+            "הכרטיסים לאירוע אזלו.";
+
+    private static final String TURN_REACHED_NOTIFICATION =
+            "התור שלך הגיע! אפשר לעבור כעת לרכישת כרטיסים.";
+
+    private static final String LEFT_QUEUE_NOTIFICATION =
+            "יצאת מתור ההמתנה.";
+
+    private static final String ACCESS_EXPIRED_NOTIFICATION =
+            "זמן הגישה שלך לבחירת הכרטיסים הסתיים, ולכן הוסרת מהתור.";
+
+    private static final String QUEUE_CLOSED_SOLD_OUT_NOTIFICATION =
+            "הכרטיסים לאירוע אזלו ותור ההמתנה נסגר.";
 
     private final IEventRepository eventRepository;
     private final IWaitingQueueRepository queueRepository;
@@ -57,10 +78,10 @@ public class WaitingQueueService {
                     if (event.isSoldOut()) {
                         logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId,
                                 LogbackSystemLogger.LogLevel.INFO);
-                        notifyTokenHolder(
-                                tokenString,
-                                "The event is sold out."
-                        );
+                    notifyTokenHolder(
+                            tokenString,
+                            SOLD_OUT_NOTIFICATION
+                    );
                         return "ERROR: Sold Out";
                     }
 
@@ -98,7 +119,8 @@ public class WaitingQueueService {
                             LogLevel.INFO);
                     notifyTokenHolder(
                             tokenString,
-                            "You have entered the waiting queue. Your current position is: " + position + "."
+                            "נכנסת לתור ההמתנה. המיקום הנוכחי שלך בתור הוא "
+                                    + position + "."
                     );
                     return "QUEUED";
                 }
@@ -148,7 +170,7 @@ public class WaitingQueueService {
 
         notifyTokenHolder(
                 sessionId,
-                "It's your turn! You can now purchase tickets for Event " + eventId
+                TURN_REACHED_NOTIFICATION
         );
 
         logger.logEvent(
@@ -241,7 +263,7 @@ public class WaitingQueueService {
 
         notifyTokenHolder(
                 sessionId,
-                "You have left the waiting queue for Event " + eventId + "."
+                LEFT_QUEUE_NOTIFICATION
         );
     }
     public void expireUserSession(long eventId, String sessionId) {
@@ -250,7 +272,7 @@ public class WaitingQueueService {
                 LogLevel.INFO);
         notifyTokenHolder(
                 sessionId,
-                "Your access time for ticket selection has expired. You were removed from the queue."
+                ACCESS_EXPIRED_NOTIFICATION
         );
     }
 
@@ -260,7 +282,7 @@ public class WaitingQueueService {
                 LogLevel.INFO);
         notifyTokenHolders(
                 remainingUsers,
-                "The event is sold out. The waiting queue has been closed."
+                QUEUE_CLOSED_SOLD_OUT_NOTIFICATION
         );
     }
 

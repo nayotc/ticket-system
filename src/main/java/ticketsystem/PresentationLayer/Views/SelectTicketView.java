@@ -11,6 +11,7 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.BeforeLeaveEvent;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,8 +34,6 @@ import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
-import com.vaadin.flow.router.BeforeLeaveEvent;
-import com.vaadin.flow.router.BeforeLeaveObserver;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -45,7 +44,7 @@ import java.util.Map;
 
 @PageTitle("TixNow | Ticket Selection")
 @Route(value = UiRoutes.TICKET_SELECTION, layout = BookingLayout.class)
-public class SelectTicketView extends Div implements BeforeEnterObserver, BeforeLeaveObserver {
+public class SelectTicketView extends Div implements BeforeEnterObserver {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final int BASE_MAP_CELL_SIZE = 36;
@@ -73,7 +72,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     private Long eventId;
     private int zoomPercent = 100;
     private int cellSize = BASE_MAP_CELL_SIZE;
-    private boolean queueAccessReleased = false;
 
     @Autowired
     public SelectTicketView(ReservationPresenter reservationPresenter, UiVisitCoordinator visitCoordinator) {
@@ -111,10 +109,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         loadTicketSelectionEventData();
     }
 
-    @Override
-        public void beforeLeave(BeforeLeaveEvent event) {
-            releaseQueueAccessIfNeeded();
-        }
 
     private Long parseEventId(String value) {
         if (value == null || value.isBlank()) {
@@ -1077,17 +1071,5 @@ private Div createSelectedTicketRowFromOrder(TicketDTO ticket) {
         } catch (Exception e) {
             reservationTimer.setVisible(false);
         }
-    }
-    private void releaseQueueAccessIfNeeded() {
-        if (queueAccessReleased) {
-            return;
-        }
-
-        if (eventId == null) {
-            return;
-        }
-
-        queueAccessReleased = true;
-        reservationPresenter.releaseQueueAccess(currentToken(), eventId);
     }
 }

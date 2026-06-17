@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -97,7 +98,10 @@ public class WaitingQueueServiceTest {
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
 
-        recordingNotifier.assertNotifiedGuest(secondToken, "entered the waiting queue");
+        recordingNotifier.assertNotifiedGuest(
+                secondToken,
+                "נכנסת לתור ההמתנה"
+        );
         recordingNotifier.assertNotificationCount(1);
     }
 
@@ -124,8 +128,14 @@ public class WaitingQueueServiceTest {
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
         assertEquals(0, realQueueRepo.getQueueSize(3), "Queue should be empty after the user was dequeued.");
-        recordingNotifier.assertNotifiedGuest(validToken2, "entered the waiting queue");
-        recordingNotifier.assertNotifiedGuest(validToken2, "It's your turn!");
+        recordingNotifier.assertNotifiedGuest(
+                validToken2,
+                "נכנסת לתור ההמתנה"
+        );
+        recordingNotifier.assertNotifiedGuest(
+                validToken2,
+                "התור שלך הגיע"
+        );
         recordingNotifier.assertNotificationCount(2);
     }
 
@@ -153,24 +163,59 @@ public class WaitingQueueServiceTest {
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Capacity should drop to 1.");
     }
 
+    /**
+     * Verifies that an invalid or expired security token is rejected without
+     * changing either the event capacity or the waiting queue.
+     */
     @Test
     public void givenInvalidToken_whenTryReserve_thenUserIsRejected() {
         // Arrange
-        Event event = new Event(5L, LocalDateTime.now().plusDays(1), "Secret Show", 1L, 1L, EventLocation.NEW_YORK,
-                100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
+        Event event = new Event(
+                5L,
+                LocalDateTime.now().plusDays(1),
+                "Secret Show",
+                1L,
+                1L,
+                EventLocation.NEW_YORK,
+                100L,
+                EventCategory.CONCERT,
+                "Artist Name",
+                BigDecimal.valueOf(100),
+                new Pair<>(10, 10)
+        );
+
         EventRepo.addEvent(event);
         FailureStateSnapshot beforeState = captureStateSnapshot(5L);
 
         // Act
-        assertThrows(IllegalArgumentException.class, () -> waitingQueueService.tryReserve(5, "invalid-token"),
-                "An invalid token should throw an exception.");
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> waitingQueueService.tryReserve(5L, "invalid-token"),
+                "An invalid token should throw an exception."
+        );
+
         FailureStateSnapshot afterState = captureStateSnapshot(5L);
 
         // Assert
         Event savedEvent = EventRepo.getEventById(event.getId());
-        assertEquals(0, savedEvent.getActiveReservationsCount(), "Active reservations should remain 0.");
-        assertEquals(0, realQueueRepo.getQueueSize(5), "Queue should remain empty.");
-        assertStateUnchanged(beforeState, afterState, "Invalid token reservation attempt");
+
+        assertEquals(
+                0,
+                savedEvent.getActiveReservationsCount(),
+                "Active reservations should remain 0."
+        );
+
+        assertEquals(
+                0,
+                realQueueRepo.getQueueSize(5L),
+                "Queue should remain empty."
+        );
+
+        assertStateUnchanged(
+                beforeState,
+                afterState,
+                "Invalid token reservation attempt"
+        );
     }
 
     @Test
@@ -351,7 +396,10 @@ public class WaitingQueueServiceTest {
 
         // Assert
         assertEquals("QUEUED", result);
-        recordingNotifier.assertNotifiedMember(100L, "entered the waiting queue");
+        recordingNotifier.assertNotifiedMember(
+                100L,
+                "נכנסת לתור ההמתנה"
+        );
         recordingNotifier.assertNotificationCount(1);
     }
 

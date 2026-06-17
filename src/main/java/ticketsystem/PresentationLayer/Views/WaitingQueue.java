@@ -40,7 +40,7 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
     private final Span position = new Span();
     private final Span helperText = new Span();
     private final Div progressRing = new Div();
-    private final Button enterSelectionButton = new Button("כניסה לבחירת כרטיסים", VaadinIcon.TICKET.create());
+    private boolean navigationInProgress = false;
     private final Button leaveQueueButton = new Button("יציאה מהתור", VaadinIcon.CLOSE_SMALL.create());
     private Registration pollRegistration;
 
@@ -94,16 +94,11 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
         eventName.addClassName("waiting-queue-event-name");
         helperText.addClassName("waiting-queue-helper-text");
 
-        enterSelectionButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        enterSelectionButton.addClassName("waiting-queue-enter-button");
-        enterSelectionButton.addClickListener(event -> navigateToTicketSelection());
-        enterSelectionButton.setVisible(false);
-
         leaveQueueButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         leaveQueueButton.addClassName("waiting-queue-leave-button");
         leaveQueueButton.addClickListener(event -> leaveQueue());
 
-        Div actions = new Div(leaveQueueButton, enterSelectionButton);
+        Div actions = new Div(leaveQueueButton);
         actions.addClassName("waiting-queue-actions");
 
         panel.add(
@@ -168,27 +163,64 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
         return card;
     }
 
+    /**
+     * Reloads the current user's queue state.
+     *
+     * Poll requests are ignored once navigation to ticket selection has started,
+     * preventing repeated navigation attempts while the current view is being
+     * detached.
+     */
     private void loadQueueState() {
+        if (navigationInProgress) {
+            return;
+        }
+
         try {
-            WaitingQueueSnapshot snapshot = presenter.getQueueSnapshot(eventId, getCurrentSessionToken());
+            WaitingQueueSnapshot snapshot =
+                    presenter.getQueueSnapshot(eventId, getCurrentSessionToken());
+
             renderSnapshot(snapshot);
+
         } catch (Exception exception) {
-            renderSnapshot(WaitingQueueSnapshot.error("האירוע", "לא ניתן לטעון את מצב התור כרגע"));
+            renderSnapshot(
+                    WaitingQueueSnapshot.error(
+                            "האירוע",
+                            "לא ניתן לטעון את מצב התור כרגע"
+                    )
+            );
         }
     }
 
+    /**
+     * Renders the latest waiting-queue state.
+     *
+     * When queue access has been granted, the user is moved directly to ticket
+     * selection. No intermediate ready screen or confirmation button is shown.
+     *
+     * @param snapshot latest queue state returned by the presenter
+     */
     private void renderSnapshot(WaitingQueueSnapshot snapshot) {
         WaitingQueueSnapshot safeSnapshot = snapshot == null
-                ? WaitingQueueSnapshot.error("האירוע", "לא ניתן לטעון את מצב התור כרגע")
+                ? WaitingQueueSnapshot.error(
+                        "האירוע",
+                        "לא ניתן לטעון את מצב התור כרגע"
+                )
                 : snapshot;
 
+        if (safeSnapshot.status() == WaitingQueueStatus.READY) {
+            navigateToTicketSelection();
+            return;
+        }
+
         eventName.setText(safeSnapshot.eventName());
-        estimatedWait.setText(formatEstimatedWait(safeSnapshot.estimatedWaitMinutes()));
+        estimatedWait.setText(
+                formatEstimatedWait(safeSnapshot.estimatedWaitMinutes())
+        );
         position.setText(formatPosition(safeSnapshot.position()));
         helperText.setText(safeSnapshot.message());
 
         renderProgress(safeSnapshot.progressPercent());
-        renderActions(safeSnapshot.status());
+        leaveQueueButton.setVisible(true);
     }
 
     private void renderProgress(int progressPercent) {
@@ -196,26 +228,61 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
         progressRing.getElement().getStyle().set("--queue-progress", safePercent + "%");
     }
 
-    private void renderActions(WaitingQueueStatus status) {
-        boolean ready = status == WaitingQueueStatus.READY;
-        enterSelectionButton.setVisible(ready);
-        leaveQueueButton.setVisible(!ready);
-    }
-
+    /**
+     * Explicitly leaves the waiting queue and returns to the home page.
+     */
     private void leaveQueue() {
+        if (navigationInProgress) {
+            return;
+        }
+
         try {
+            navigationInProgress = true;
+            stopPolling();
+
             presenter.leaveQueue(eventId, getCurrentSessionToken());
             UI.getCurrent().navigate(UiRoutes.HOME);
+
         } catch (Exception exception) {
-            Notification notification = Notification.show("לא ניתן לצאת מהתור כרגע", 3500, Notification.Position.TOP_CENTER);
+            navigationInProgress = false;
+
+            Notification notification = Notification.show(
+                    "לא ניתן לצאת מהתור כרגע",
+                    3500,
+                    Notification.Position.TOP_CENTER
+            );
             notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
+    /**
+     * Stops queue polling and moves the approved user directly to ticket
+     * selection.
+     */
     private void navigateToTicketSelection() {
-        UI.getCurrent().navigate(routeForEvent(UiRoutes.TICKET_SELECTION));
+        if (navigationInProgress) {
+            return;
+        }
+
+        navigationInProgress = true;
+        stopPolling();
+
+        UI.getCurrent().navigate(
+                routeForEvent(UiRoutes.TICKET_SELECTION)
+        );
     }
 
+    /**
+     * Stops the polling listener owned by this waiting-queue view.
+     */
+    private void stopPolling() {
+        if (pollRegistration != null) {
+            pollRegistration.remove();
+            pollRegistration = null;
+        }
+
+        getUI().ifPresent(ui -> ui.setPollInterval(-1));
+    }
     private String getCurrentSessionToken() {
         return UiSession.getCurrentToken();
     }
@@ -241,8 +308,9 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
 
     private String formatPosition(int value) {
         if (value <= 0) {
-            return "ממתין לעדכון";
+            return "—";
         }
+
         return String.valueOf(value);
     }
 
