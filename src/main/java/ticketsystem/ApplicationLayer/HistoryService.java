@@ -1,54 +1,60 @@
 package ticketsystem.ApplicationLayer;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
-import javax.swing.text.html.HTMLDocument.HTMLReader.IsindexAction;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-
+import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.DTO.OrderDTO;
-import ticketsystem.DTO.PaymentDetails;
-import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.SalesReportDTO;
-import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
+import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.history.PurchasedTicket;
 import ticketsystem.DomainLayer.history.TicketStatus;
 import ticketsystem.DomainLayer.user.Permission;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
-import java.time.LocalDateTime;
-import java.util.Objects;
-
-import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
+/**
+ * Application service for purchase-history use cases.
+ *
+ * <p>Read operations execute in read-only transactions. Operations that
+ * create or update history override this setting with a writable transaction.</p>
+ */
 @Service
-public class HistoryService implements OrderCompletedListener, EventUpdatesListener {
+@Transactional(readOnly = true)
+public class HistoryService
+        implements OrderCompletedListener, EventUpdatesListener {
 
     private final IHistoryRepository historyRepository;
     private final ITokenService tokenService;
-    private ObjectMapper objectMapper = new ObjectMapper();
-    private MembershipDomainService membershipDomainService;
-    private ISystemLogger logger;
+    private final MembershipDomainService membershipDomainService;
+    private final ISystemLogger logger;
     private final UserAccessService userAccessService;
     private final INotifier notificationsService;
     private final IPaymentService paymentService;
     private final ITicketIssuingService ticketIssuingService;
 
+    /**
+     * Creates the history application service.
+     */
     @Autowired
-    public HistoryService(IHistoryRepository historyRepository, ITokenService tokenService, MembershipDomainService membershipDomainService, ISystemLogger logger,
-            UserAccessService userAccessService, INotifier notificationsService, IPaymentService paymentService, ITicketIssuingService ticketIssuingService) {
+    public HistoryService(
+            IHistoryRepository historyRepository,
+            ITokenService tokenService,
+            MembershipDomainService membershipDomainService,
+            ISystemLogger logger,
+            UserAccessService userAccessService,
+            INotifier notificationsService,
+            IPaymentService paymentService,
+            ITicketIssuingService ticketIssuingService
+    ) {
         this.historyRepository = historyRepository;
         this.tokenService = tokenService;
         this.membershipDomainService = membershipDomainService;
@@ -57,181 +63,286 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         this.notificationsService = notificationsService;
         this.paymentService = paymentService;
         this.ticketIssuingService = ticketIssuingService;
-        this.objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
     }
 
-    // This method is called when an order is completed. It takes the order details, converts them into a Purchase object, and stores it in the history repository.
+    /**
+     * Persists a completed order as a purchase-history snapshot.
+     *
+     * <p>The purchase starts without an identifier. The repository flushes the
+     * insert, the database assigns an ID, and the generated value is then
+     * copied back to the completed order DTO.</p>
+     *
+     * @param order completed order
+     */
     @Override
+    @Transactional
     public void onOrderCompleted(OrderDTO order) {
         try {
-            long newPurchaseId = historyRepository.generateNextId();
-            order.setPurchaseId(newPurchaseId);
+            Purchase purchase =
+                    HistoryMapper.toPurchase(order);
 
-            Purchase purchase = objectMapper.convertValue(order, Purchase.class);
             historyRepository.addPurchase(purchase);
-        } catch (IllegalArgumentException e) {
+
+            order.setPurchaseId(
+                    purchase.getPurchaseId()
+            );
+        } catch (RuntimeException exception) {
             logger.logEvent(
-                    "Failed to process completed order: " + e.getMessage(),
+                    "Failed to process completed order: "
+                            + exception.getMessage(),
                     ISystemLogger.LogLevel.WARN
             );
-            throw e;
+
+            throw exception;
         }
     }
 
+    /**
+     * Returns the personal purchase history of the authenticated member.
+     */
     public List<OrderDTO> getHistoryForUser(String token) {
         try {
-            // Validate token
             if (!tokenService.validateToken(token)) {
-                throw new IllegalArgumentException("Invalid or expired token");
+                throw new IllegalArgumentException(
+                        "Invalid or expired token"
+                );
             }
 
             if (!tokenService.isMemberToken(token)) {
-                throw new IllegalArgumentException("Only members can view personal purchase history");
+                throw new IllegalArgumentException(
+                        "Only members can view personal purchase history"
+                );
             }
 
-            Long memberId = tokenService.extractUserId(token);
+            Long memberId =
+                    tokenService.extractUserId(token);
+
             if (memberId == null) {
-                throw new IllegalArgumentException("Could not extract user id from token");
+                throw new IllegalArgumentException(
+                        "Could not extract user id from token"
+                );
             }
 
-            List<Purchase> purchases = historyRepository.getPurchasesByMemberId(memberId);
-            if (purchases.isEmpty()) {
-            }
-            List<OrderDTO> historyDtoList = objectMapper.convertValue(
-                    purchases,
-                    new TypeReference<List<OrderDTO>>() {
-            }
-            );
-            return historyDtoList;
-        } catch (IllegalArgumentException e) {
-            logger.logEvent("Failed to retrieve personal purchase history: " + e.getMessage(), ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
-    }
-
-    // This method retrieves the purchase history for a specific company. It validates the token, checks permissions, and then fetches the purchase history from the repository.
-    public List<OrderDTO> getHistoryForCompany(String token, long companyId) {
-        try {
-            // Validate token
-            if (!tokenService.validateToken(token)) {
-                throw new IllegalArgumentException("Invalid or expired token");
-            }
-
-            if (!tokenService.isMemberToken(token)) {
-                throw new IllegalArgumentException("Only members can view personal purchase history");
-            }
-
-            Long memberId = tokenService.extractUserId(token);
-            if (memberId == null) {
-                throw new IllegalArgumentException("Could not extract user id from token");
-            }
-            if (!membershipDomainService.validatePermission(memberId, companyId, Permission.VIEW_PURCHASE_HISTORY)) {
-                throw new IllegalArgumentException("Insufficient permissions to view company purchase history");
-            }
-            List<Purchase> purchases = historyRepository.getPurchasesByCompanyId(companyId);
-            if (purchases.isEmpty()) {
-                //notification
-            }
-            List<OrderDTO> historyDtoList = objectMapper.convertValue(
-                    purchases,
-                    new TypeReference<List<OrderDTO>>() {
-            }
-            );
-            return historyDtoList;
-        } catch (IllegalArgumentException e) {
-            logger.logEvent("Failed to retrieve company purchase history: " + e.getMessage(), ISystemLogger.LogLevel.WARN);
-            throw e;
-        }
-    }
-
-    // פונקציה חדשה וייעודית עבור דוח המכירות של המנהלים (כוללת סינון לפי עץ ניהול)
-    public List<OrderDTO> getManagerFilteredHistoryForCompany(String token, long companyId) {
-        try {
-            // 1. אימות טוקן
-            if (!tokenService.validateToken(token)) {
-                throw new IllegalArgumentException("Invalid or expired token");
-            }
-            if (!tokenService.isMemberToken(token)) {
-                throw new IllegalArgumentException("Only members can generate sales reports");
-            }
-            Long memberId = tokenService.extractUserId(token);
-            if (memberId == null) {
-                throw new IllegalArgumentException("Could not extract user id from token");
-            }
-            // 2. אימות הרשאות לדוח מכירות
-            if (!membershipDomainService.validatePermission(memberId, companyId, Permission.GENERATE_SALES_REPORT)) {
-                throw new IllegalArgumentException("Insufficient permissions to generate sales report");
-            }
-            // 3. הבאת תת-העץ של המנהל (עוטפים ב-HashSet כדי שנוכל להוסיף אליו את המנהל עצמו בבטחה)
-            Set<Long> allowedManagers = new java.util.HashSet<>(
-                    membershipDomainService.getManagementSubTreeMemberIds(memberId, companyId)
-            );
-            allowedManagers.add(memberId); // מוסיפים את המנהל המבקש
-
-            // 4. שליפת כל העסקאות וסינון לפי מי שניהל את האירוע
-            List<Purchase> allPurchases = historyRepository.getPurchasesByCompanyId(companyId);
-
-            List<Purchase> filteredPurchases = allPurchases.stream()
-                    .filter(purchase -> allowedManagers.contains(purchase.getManagedByMemberId()))
+            return historyRepository
+                    .getPurchasesByMemberId(memberId)
+                    .stream()
+                    .map(HistoryMapper::toOrderDTO)
                     .toList();
 
-            // 5. המרה ל-DTO והחזרה
-            return objectMapper.convertValue(
-                    filteredPurchases,
-                    new TypeReference<List<OrderDTO>>() {
-            }
+        } catch (IllegalArgumentException exception) {
+            logger.logEvent(
+                    "Failed to retrieve personal purchase history: "
+                            + exception.getMessage(),
+                    ISystemLogger.LogLevel.WARN
             );
 
-        } catch (IllegalArgumentException e) {
-            logger.logEvent("Failed to retrieve filtered sales history: " + e.getMessage(), ISystemLogger.LogLevel.WARN);
-            throw e;
+            throw exception;
         }
     }
 
-    public SalesReportDTO generateSalesReport(String token, long companyId) {
+    /**
+     * Returns purchase history for a production company.
+     */
+    public List<OrderDTO> getHistoryForCompany(
+            String token,
+            long companyId
+    ) {
         try {
             if (!tokenService.validateToken(token)) {
-                throw new IllegalArgumentException("Invalid or expired token");
+                throw new IllegalArgumentException(
+                        "Invalid or expired token"
+                );
             }
 
             if (!tokenService.isMemberToken(token)) {
-                throw new IllegalArgumentException("Only members can generate sales reports");
+                throw new IllegalArgumentException(
+                        "Only members can view personal purchase history"
+                );
             }
 
-            Long memberId = tokenService.extractUserId(token);
+            Long memberId =
+                    tokenService.extractUserId(token);
+
             if (memberId == null) {
-                throw new IllegalArgumentException("Could not extract user id from token");
+                throw new IllegalArgumentException(
+                        "Could not extract user id from token"
+                );
             }
-            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            if (!membershipDomainService.validatePermission(
+                    memberId,
+                    companyId,
+                    Permission.VIEW_PURCHASE_HISTORY
+            )) {
+                throw new IllegalArgumentException(
+                        "Insufficient permissions to view company purchase history"
+                );
+            }
+
+            return historyRepository
+                    .getPurchasesByCompanyId(companyId)
+                    .stream()
+                    .map(HistoryMapper::toOrderDTO)
+                    .toList();
+
+        } catch (IllegalArgumentException exception) {
+            logger.logEvent(
+                    "Failed to retrieve company purchase history: "
+                            + exception.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
+
+            throw exception;
+        }
+    }
+
+    /**
+     * Returns company history filtered according to the requesting manager's
+     * management subtree.
+     */
+    public List<OrderDTO> getManagerFilteredHistoryForCompany(
+            String token,
+            long companyId
+    ) {
+        try {
+            if (!tokenService.validateToken(token)) {
+                throw new IllegalArgumentException(
+                        "Invalid or expired token"
+                );
+            }
+
+            if (!tokenService.isMemberToken(token)) {
+                throw new IllegalArgumentException(
+                        "Only members can generate sales reports"
+                );
+            }
+
+            Long memberId =
+                    tokenService.extractUserId(token);
+
+            if (memberId == null) {
+                throw new IllegalArgumentException(
+                        "Could not extract user id from token"
+                );
+            }
+
             if (!membershipDomainService.validatePermission(
                     memberId,
                     companyId,
                     Permission.GENERATE_SALES_REPORT
             )) {
-                throw new IllegalArgumentException("Insufficient permissions to generate sales report");
+                throw new IllegalArgumentException(
+                        "Insufficient permissions to generate sales report"
+                );
             }
 
-            Set<Long> allowedManagers
-                    = membershipDomainService.getManagementSubTreeMemberIds(memberId, companyId);
+            Set<Long> allowedManagers = new HashSet<>(
+                    membershipDomainService
+                            .getManagementSubTreeMemberIds(
+                                    memberId,
+                                    companyId
+                            )
+            );
 
-            List<Purchase> companyPurchases
-                    = historyRepository.getPurchasesByCompanyId(companyId);
+            allowedManagers.add(memberId);
+
+            return historyRepository
+                    .getPurchasesByCompanyId(companyId)
+                    .stream()
+                    .filter(purchase ->
+                            allowedManagers.contains(
+                                    purchase.getManagedByMemberId()
+                            )
+                    )
+                    .map(HistoryMapper::toOrderDTO)
+                    .toList();
+
+        } catch (IllegalArgumentException exception) {
+            logger.logEvent(
+                    "Failed to retrieve filtered sales history: "
+                            + exception.getMessage(),
+                    ISystemLogger.LogLevel.WARN
+            );
+
+            throw exception;
+        }
+    }
+
+    /**
+     * Generates a sales report for the requesting manager's management
+     * subtree.
+     */
+    public SalesReportDTO generateSalesReport(
+            String token,
+            long companyId
+    ) {
+        try {
+            if (!tokenService.validateToken(token)) {
+                throw new IllegalArgumentException(
+                        "Invalid or expired token"
+                );
+            }
+
+            if (!tokenService.isMemberToken(token)) {
+                throw new IllegalArgumentException(
+                        "Only members can generate sales reports"
+                );
+            }
+
+            Long memberId =
+                    tokenService.extractUserId(token);
+
+            if (memberId == null) {
+                throw new IllegalArgumentException(
+                        "Could not extract user id from token"
+                );
+            }
+
+            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            if (!membershipDomainService.validatePermission(
+                    memberId,
+                    companyId,
+                    Permission.GENERATE_SALES_REPORT
+            )) {
+                throw new IllegalArgumentException(
+                        "Insufficient permissions to generate sales report"
+                );
+            }
+
+            Set<Long> allowedManagers =
+                    membershipDomainService
+                            .getManagementSubTreeMemberIds(
+                                    memberId,
+                                    companyId
+                            );
+
+            List<Purchase> companyPurchases =
+                    historyRepository
+                            .getPurchasesByCompanyId(companyId);
 
             int totalTicketsSold = 0;
             BigDecimal totalRevenue = BigDecimal.ZERO;
 
             for (Purchase purchase : companyPurchases) {
-                if (!allowedManagers.contains(purchase.getManagedByMemberId())) {
+                if (!allowedManagers.contains(
+                        purchase.getManagedByMemberId()
+                )) {
                     continue;
                 }
 
-                List<PurchasedTicket> tickets = purchase.getTickets();
+                for (PurchasedTicket ticket :
+                        purchase.getTickets()) {
 
-                for (PurchasedTicket ticket : tickets) {
-                    if (!ticket.getStatus().equals(TicketStatus.CANCELED)) {
-                        totalRevenue = totalRevenue.add(BigDecimal.valueOf(ticket.getPrice()));
+                    if (ticket.getStatus()
+                            != TicketStatus.CANCELED) {
+
+                        totalRevenue =
+                                totalRevenue.add(
+                                        ticket.getPrice()
+                                );
+
                         totalTicketsSold++;
-
                     }
                 }
             }
@@ -250,106 +361,157 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
                     "Sales report generated successfully"
             );
 
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException exception) {
             logger.logEvent(
-                    "Failed to generate sales report: " + e.getMessage(),
+                    "Failed to generate sales report: "
+                            + exception.getMessage(),
                     ISystemLogger.LogLevel.WARN
             );
-            throw e;
+
+            throw exception;
         }
     }
 
+    /**
+     * Notifies buyers after an event has been canceled.
+     */
     @Override
     public void onEventCanceled(Long eventId) {
         List<Purchase> purchases =
-                historyRepository.getPurchasesByEventId(eventId);
+                historyRepository
+                        .getPurchasesByEventId(eventId);
 
         if (!purchases.isEmpty()) {
             notifyPurchasedBuyers(
                     purchases,
-                    "The event \"" + purchases.get(0).getEventName()
+                    "The event \""
+                            + purchases.get(0).getEventName()
                             + "\" that you purchased tickets for was canceled."
             );
         }
     }
 
-   @Override
+    /**
+     * Attempts to refund and cancel every purchase associated with an event.
+     *
+     * <p>The loaded purchases remain managed for the duration of this
+     * transaction. Changes to the refund flag and embedded ticket statuses are
+     * persisted by Hibernate dirty checking when the transaction commits.</p>
+     */
+    @Override
+    @Transactional
     public boolean onEventCancellationRequested(Long eventId) {
         boolean allSucceeded = true;
 
-        if (!paymentService.handshake() || !ticketIssuingService.handshake()) {
+        if (!paymentService.handshake()
+                || !ticketIssuingService.handshake()) {
             return false;
         }
 
-        List<Purchase> purchases = historyRepository.getPurchasesByEventId(eventId);
+        List<Purchase> purchases =
+                historyRepository
+                        .getPurchasesByEventId(eventId);
 
         for (Purchase purchase : purchases) {
-
             if (purchase.isRefunded()) {
                 continue;
             }
 
-            boolean refunded = paymentService.refund(purchase.getTransactionId());
+            boolean refunded =
+                    paymentService.refund(
+                            purchase.getTransactionId()
+                    );
 
             if (!refunded) {
                 allSucceeded = false;
                 continue;
             }
+
             notifyRefundCompleted(purchase);
 
             purchase.setRefunded(true);
 
-            for (PurchasedTicket ticket : purchase.getTickets()) {
+            for (PurchasedTicket ticket :
+                    purchase.getTickets()) {
                 ticket.setStatus(TicketStatus.CANCELED);
             }
-
         }
 
         return allSucceeded;
     }
 
-
+    /**
+     * Notifies buyers about an event update.
+     */
     @Override
-    public void onEventUpdated(Long eventId, LocalDateTime date, String location, String updateMessage) {
+    @Transactional(readOnly = true)
+    public void onEventUpdated(
+            Long eventId,
+            LocalDateTime date,
+            String location,
+            String updateMessage
+    ) {
         if (eventId == null) {
             return;
         }
 
-        List<Purchase> purchases = historyRepository.getPurchasesByEventId(eventId);
+        List<Purchase> purchases =
+                historyRepository
+                        .getPurchasesByEventId(eventId);
 
-        notifyPurchasedBuyers(purchases, updateMessage);
+        notifyPurchasedBuyers(
+                purchases,
+                updateMessage
+        );
     }
 
-    private void notifyPurchasedBuyers(List<Purchase> purchases, String message) {
-        if (notificationsService == null || purchases == null || purchases.isEmpty()
-                || message == null || message.isBlank()) {
+    /**
+     * Sends one event notification to every distinct member buyer.
+     */
+    private void notifyPurchasedBuyers(
+            List<Purchase> purchases,
+            String message
+    ) {
+        if (notificationsService == null
+                || purchases == null
+                || purchases.isEmpty()
+                || message == null
+                || message.isBlank()) {
             return;
         }
 
-        List<Long> buyerMemberIds = purchases.stream()
-                .map(Purchase::getMemberId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
+        List<Long> buyerMemberIds =
+                purchases.stream()
+                        .map(Purchase::getMemberId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
 
         if (buyerMemberIds.isEmpty()) {
             return;
         }
 
-        notificationsService.notifyMembers(buyerMemberIds, message);
+        notificationsService.notifyMembers(
+                buyerMemberIds,
+                message
+        );
     }
-private void notifyRefundCompleted(Purchase purchase) {
-    if (notificationsService == null || purchase == null || purchase.getMemberId() == null) {
-        return;
+
+    /**
+     * Notifies one member that their purchase was refunded.
+     */
+    private void notifyRefundCompleted(Purchase purchase) {
+        if (notificationsService == null
+                || purchase == null
+                || purchase.getMemberId() == null) {
+            return;
+        }
+
+        notificationsService.notifyMembers(
+                List.of(purchase.getMemberId()),
+                "בוצע החזר כספי עבור רכישת הכרטיסים לאירוע \""
+                        + purchase.getEventName()
+                        + "\" בעקבות ביטול האירוע."
+        );
     }
-
-    notificationsService.notifyMembers(
-            List.of(purchase.getMemberId()),
-            "בוצע החזר כספי עבור רכישת הכרטיסים לאירוע \"" +
-                    purchase.getEventName() +
-                    "\" בעקבות ביטול האירוע."
-    );
-}
-
-
 }

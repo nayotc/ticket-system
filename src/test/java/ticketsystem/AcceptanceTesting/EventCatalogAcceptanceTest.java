@@ -29,16 +29,38 @@ import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Member;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+
+/**
+ * Acceptance tests for event catalog operations.
+ *
+ * <p>The tests use the production company repository implementation with an
+ * embedded H2 database. Only the database configuration differs from the
+ * production environment.</p>
+ */
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import(CompanyRepository.class)
 public class EventCatalogAcceptanceTest {
 
     private EventCatalogService eventCatalogService;
 
     private EventRepository eventRepository;
+    @Autowired
     private CompanyRepository companyRepository;
     private TokenService tokenService;
     private ISystemLogger logger;
@@ -58,7 +80,6 @@ public class EventCatalogAcceptanceTest {
     @BeforeEach
     void setUp() {
         eventRepository = new EventRepository();
-        companyRepository = new CompanyRepository();
         tokenService = new TokenService("default_secret_key_for_development_purposes_only_32_chars", new TokenRepository(), new LogbackSystemLogger());
         logger = new LogbackSystemLogger();
 

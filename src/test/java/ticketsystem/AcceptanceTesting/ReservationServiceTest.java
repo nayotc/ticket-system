@@ -30,7 +30,6 @@ import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketIssueRequest;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
@@ -67,15 +66,40 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+/**
+ * Acceptance tests for reservation and checkout operations.
+ *
+ * <p>Company and Lottery data are persisted through the production JPA
+ * repository adapters using an embedded H2 database.</p>
+ */
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import({
+        CompanyRepository.class,
+        LotteryRepository.class
+})
 public class ReservationServiceTest {
-
     private ReservationService reservationService;
 
     private IOrderRepository orderRepository;
     private IEventRepository eventRepository;
-    private ILotteryRepository lotteryRepository;
-    private ICompanyRepository companyRepository;
+    @Autowired
+    private LotteryRepository lotteryRepository;
+
+    @Autowired
+    private CompanyRepository companyRepository;
     private IUserRepository userRepository;
 
     private TokenService tokenService;
@@ -92,15 +116,15 @@ public class ReservationServiceTest {
     private String guestToken;
     private Long memberId;
 
-    private static final Long COMPANY_ID = 1L;
+    private Long companyId;
+
     private static final Long COMPANY_FOUNDER_ID = 1L;
 
     @BeforeEach
     void setUp() {
         orderRepository = new InMemoryOrderRepository();
         eventRepository = new EventRepository();
-        lotteryRepository = new LotteryRepository();
-        companyRepository = new CompanyRepository();
+
         userRepository = new InMemoryUserRepository();
 
         membershipDomain = new MembershipDomainService(userRepository);
@@ -130,11 +154,22 @@ public class ReservationServiceTest {
                 PurchasePolicy.noRestrictions(),
                 new DiscountPolicy(DiscountCompositionType.MAX));
 
-        company.setId(COMPANY_ID);
         companyRepository.save(company);
 
+        companyId = company.getId();
+
+        assertNotNull(
+                companyId,
+                "The database should assign an identifier to the saved company."
+        );
+
+        assertTrue(
+                companyId > 0,
+                "The database-generated company identifier should be positive."
+        );
+
         eventCatalogDomainService = new EventCatalogDomainService(
-                (CompanyRepository) companyRepository);
+                companyRepository);
 
         resetPaymentProxy();
 
@@ -240,7 +275,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, lotteryCode);
         lotteryRepository.addLottery(lottery);
@@ -264,7 +299,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -286,7 +321,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -309,7 +344,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(otherUserId);
         lottery.setWinner(otherUserId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -350,7 +385,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, lotteryCode);
         lotteryRepository.addLottery(lottery);
@@ -374,7 +409,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
 
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
@@ -397,7 +432,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -420,7 +455,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(otherUserId);
         lottery.setWinner(otherUserId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -1026,11 +1061,11 @@ public class ReservationServiceTest {
         Member founder = userRepository.getMemberById(COMPANY_FOUNDER_ID);
         assertNotNull(founder, "Founder member must exist in test setup");
 
-        if (founder.getRoleInCompany(COMPANY_ID) == null) {
-                founder.addFounderRole(COMPANY_ID);
+        if (founder.getRoleInCompany(companyId) == null) {
+                founder.addFounderRole(companyId);
         }
 
-        Founder founderRole = (Founder) founder.getRoleInCompany(COMPANY_ID);
+        Founder founderRole = (Founder) founder.getRoleInCompany(companyId);
 
         Member owner = new Member(
                 ownerId,
@@ -1040,8 +1075,8 @@ public class ReservationServiceTest {
                 LocalDate.of(2001, 1, 1)
         );
 
-        owner.addOwnerRole(COMPANY_ID, COMPANY_FOUNDER_ID);
-        owner.getRoleInCompany(COMPANY_ID).setStatus(RoleStatus.ACTIVE);
+        owner.addOwnerRole(companyId, COMPANY_FOUNDER_ID);
+        owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, owner, "password123");
 
         Set<Permission> managerPermissions = new HashSet<>();
@@ -1055,8 +1090,8 @@ public class ReservationServiceTest {
                 LocalDate.of(2001, 1, 1)
         );
 
-        manager.addManagerRole(COMPANY_ID, COMPANY_FOUNDER_ID, managerPermissions);
-        manager.getRoleInCompany(COMPANY_ID).setStatus(RoleStatus.ACTIVE);
+        manager.addManagerRole(companyId, COMPANY_FOUNDER_ID, managerPermissions);
+        manager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(managerId, manager, "password123");
 
         founderRole.addAppointee(ownerId);
@@ -1069,7 +1104,7 @@ public class ReservationServiceTest {
             eventId,
             LocalDateTime.now().plusDays(10),
             "Sold Out Test Event",
-            COMPANY_ID,
+            companyId,
             COMPANY_FOUNDER_ID,
             EventLocation.TEL_AVIV,
             100L,
@@ -1101,7 +1136,7 @@ public class ReservationServiceTest {
                 eventId,
                 LocalDateTime.now().plusDays(10),
                 "Checkout Test Event",
-                COMPANY_ID,
+                companyId,
                 COMPANY_FOUNDER_ID,
                 EventLocation.TEL_AVIV,
                 100L,
@@ -1132,7 +1167,7 @@ public class ReservationServiceTest {
                 eventId,
                 LocalDateTime.now().plusDays(10),
                 "Seat Test Event",
-                COMPANY_ID,
+                companyId,
                 COMPANY_FOUNDER_ID,
                 EventLocation.TEL_AVIV,
                 100L,

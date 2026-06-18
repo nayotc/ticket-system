@@ -7,24 +7,25 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.DomainLayer.notifications.Notification;
 import ticketsystem.DomainLayer.notifications.Notification.Type;
-import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
+import ticketsystem.InfrastructureLayer.NotificationsRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
+@SpringBootTest
+@Transactional
 public class VaadinNotifierTest {
 
-    private InMemoryNotificationsRepository notificationsRepository;
-    private VaadinNotifier notifier;
+    @Autowired
+    private NotificationsRepository notificationsRepository;
 
-    @BeforeEach
-    void setUp() {
-        notificationsRepository = new InMemoryNotificationsRepository();
-        notifier = new VaadinNotifier(notificationsRepository);
-    }
+    @Autowired
+    private VaadinNotifier notifier;
 
     @Test
     void GivenValidMemberAndMessage_WhenNotifyMember_ThenNotificationIsSavedForMember() {

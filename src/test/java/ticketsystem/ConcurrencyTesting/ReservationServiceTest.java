@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,9 +32,7 @@ import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -46,22 +46,56 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.persistence.CompanyJpaRepository;
+import ticketsystem.InfrastructureLayer.persistence.LotteryJpaRepository;
+
+
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import({
+        CompanyRepository.class,
+        LotteryRepository.class
+})
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 public class ReservationServiceTest {
-
     private ReservationService reservationService;
 
     private IOrderRepository orderRepository;
     private IEventRepository eventRepository;
-    private ILotteryRepository lotteryRepository;
-    private ICompanyRepository companyRepository;
+
+    @Autowired
+    private LotteryRepository lotteryRepository;
+
+    @Autowired
+    private LotteryJpaRepository lotteryJpaRepository;
+
+    @Autowired
+    private CompanyRepository companyRepository;
+
+    @Autowired
+    private CompanyJpaRepository companyJpaRepository;
+
     private IUserRepository userRepository;
 
     private IPaymentService paymentService;
@@ -77,18 +111,17 @@ public class ReservationServiceTest {
 
     private String[] memberTokens;
 
-    private static final Long COMPANY_ID = 1L;
+    private Long companyId;
+
     private static final Long COMPANY_FOUNDER_ID = 1L;
 
     @BeforeEach
     void setUp() {
+        companyJpaRepository.deleteAll();
         orderRepository = new InMemoryOrderRepository();
         eventRepository = new EventRepository();
 
-        lotteryRepository = new LotteryRepository();
-        ((LotteryRepository) lotteryRepository).clearForTests();
 
-        companyRepository = new CompanyRepository();
         userRepository = new InMemoryUserRepository();
         membershipDomain = new MembershipDomainService(userRepository);
 
@@ -111,12 +144,23 @@ public class ReservationServiceTest {
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
-        company.setId(COMPANY_ID);
         companyRepository.save(company);
 
-        eventCatalogDomainService
-                = new EventCatalogDomainService((CompanyRepository) companyRepository);
+        companyId = company.getId();
 
+        assertNotNull(
+                companyId,
+                "The database should assign an identifier to the saved company."
+        );
+
+        assertTrue(
+                companyId > 0,
+                "The database-generated company identifier should be positive."
+        );
+        eventCatalogDomainService =
+                new EventCatalogDomainService(
+                        companyRepository
+                );
         resetPaymentProxy();
 
         reservationService = new ReservationService(
@@ -593,7 +637,7 @@ public class ReservationServiceTest {
                 eventId,
                 LocalDateTime.now().plusDays(10),
                 name,
-                COMPANY_ID,
+                companyId,
                 COMPANY_FOUNDER_ID,
                 EventLocation.TEL_AVIV,
                 100L,

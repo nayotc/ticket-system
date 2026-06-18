@@ -7,3 +7,6 @@ logs/
 *.log
 .DS_Store
 src/main/frontend/generated/
+.classpath
+.project
+.settings/
