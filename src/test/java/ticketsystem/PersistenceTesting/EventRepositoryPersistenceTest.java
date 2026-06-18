@@ -320,9 +320,15 @@ public class EventRepositoryPersistenceTest {
 
         eventRepository.addEvent(event);
 
-        Event loadedEvent = eventRepository.getEventById(event.getId());
+        Long eventId = event.getId();
+        assertNotNull(eventId);
+
+        flushAndClear();
+
+        Event loadedEvent = eventRepository.getEventById(eventId);
 
         assertNotNull(loadedEvent);
+        assertNotSame(event, loadedEvent);
         assertNotNull(loadedEvent.getPurchasePolicy());
         assertTrue(
                 loadedEvent.getPurchasePolicy()

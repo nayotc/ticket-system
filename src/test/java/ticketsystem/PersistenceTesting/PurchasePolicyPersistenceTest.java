@@ -23,6 +23,13 @@ import ticketsystem.DomainLayer.policy.MinTicketsRule;
 import ticketsystem.DomainLayer.policy.OrPurchaseRule;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.policy.PurchaseRule;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventLocation;
+import ticketsystem.DomainLayer.event.Pair;
 
 @DataJpaTest
 class PurchasePolicyPersistenceTest {
@@ -94,6 +101,77 @@ class PurchasePolicyPersistenceTest {
         }
     }
 
+    @Test
+    void GivenEventWithPurchasePolicy_WhenPolicyIsReplaced_ThenOldPolicyAndRuleTreeAreDeleted() {
+        Event event = createEvent();
+        PurchasePolicy oldPolicy = createNestedPolicy();
+
+        event.setPurchasePolicy(oldPolicy);
+        entityManager.persistAndFlush(event);
+
+        Long eventId = event.getId();
+        Long oldPolicyId = oldPolicy.getId();
+        List<Long> oldRuleIds = collectRuleIds(oldPolicy.getRootRule());
+
+        assertNotNull(eventId);
+        assertNotNull(oldPolicyId);
+        assertEquals(5, oldRuleIds.size());
+        assertTrue(oldRuleIds.stream().allMatch(id -> id != null));
+
+        entityManager.clear();
+
+        Event managedEvent = entityManager.find(Event.class, eventId);
+
+        assertNotNull(managedEvent);
+
+        PurchasePolicy replacementPolicy =
+                new PurchasePolicy(new MinAgeRule(21));
+
+        managedEvent.setPurchasePolicy(replacementPolicy);
+
+        entityManager.flush();
+
+        Long replacementPolicyId = replacementPolicy.getId();
+        assertNotNull(replacementPolicyId);
+
+        entityManager.clear();
+
+        Event reloadedEvent = entityManager.find(Event.class, eventId);
+
+        assertNotNull(reloadedEvent);
+        assertNotNull(reloadedEvent.getPurchasePolicy());
+        assertEquals(
+                replacementPolicyId,
+                reloadedEvent.getPurchasePolicy().getId()
+        );
+        assertTrue(
+                reloadedEvent.getPurchasePolicy()
+                        .validate(1, 21)
+                        .isAllowed()
+        );
+        assertFalse(
+                reloadedEvent.getPurchasePolicy()
+                        .validate(1, 20)
+                        .isAllowed()
+        );
+
+        assertNull(
+                entityManager.find(
+                        PurchasePolicy.class,
+                        oldPolicyId
+                )
+        );
+
+        for (Long ruleId : oldRuleIds) {
+            assertNull(
+                    entityManager.find(
+                            PurchaseRule.class,
+                            ruleId
+                    )
+            );
+        }
+    }
+
     private PurchasePolicy createNestedPolicy() {
         return new PurchasePolicy(
                 new AndPurchaseRule(
@@ -121,5 +199,20 @@ class PurchasePolicyPersistenceTest {
         }
 
         return ids;
+    }
+
+    private Event createEvent() {
+        return new Event(
+                LocalDateTime.now().plusDays(30),
+                "Purchase Policy Owner Event",
+                1L,
+                10L,
+                EventLocation.TEL_AVIV,
+                100L,
+                EventCategory.CONCERT,
+                "Test Artist",
+                new BigDecimal("100.00"),
+                new Pair<>(20, 15)
+        );
     }
 }
