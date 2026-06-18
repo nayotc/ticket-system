@@ -2,15 +2,29 @@ package ticketsystem.DomainLayer.discount;
 
 import java.math.BigDecimal;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+
+@Entity
+@DiscriminatorValue("CONDITIONAL")
 public class ConditionalDiscount extends VisibleDiscount {
 
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "condition_id", unique = true)
     private DiscountCondition condition;
 
-    public ConditionalDiscount(String name,
-                               
-                               BigDecimal percentage,
-                               DiscountCondition condition) {
+    protected ConditionalDiscount() {
+    }
 
+    public ConditionalDiscount(
+            String name,
+            BigDecimal percentage,
+            DiscountCondition condition
+    ) {
         super(name, percentage);
 
         if (condition == null) {

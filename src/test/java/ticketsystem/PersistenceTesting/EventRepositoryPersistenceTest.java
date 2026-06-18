@@ -7,17 +7,23 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.hibernate.Hibernate;
 
+import ticketsystem.DomainLayer.discount.*;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
@@ -27,7 +33,12 @@ import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.exception.OptimisticLockException;
+import ticketsystem.DomainLayer.policy.AndPurchaseRule;
+import ticketsystem.DomainLayer.policy.MaxTicketsRule;
+import ticketsystem.DomainLayer.policy.MinAgeRule;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.DomainLayer.discount.*;
 
 @DataJpaTest
 @Import(EventRepository.class)
@@ -297,6 +308,236 @@ public class EventRepositoryPersistenceTest {
         assertEquals("Event cannot be null", exception.getMessage());
     }
 
+    // ------------------- Purchase Policy Tests ------------------
+
+    @Test
+    void GivenEventWithNestedPurchasePolicy_WhenSavedAndReloaded_ThenPolicyIsPreserved() {
+        Event event = createEvent(1L, "Policy Event");
+
+        event.setPurchasePolicy(
+                new PurchasePolicy(
+                        new AndPurchaseRule(
+                                List.of(
+                                        new MinAgeRule(18),
+                                        new MaxTicketsRule(5)
+                                )
+                        )
+                )
+        );
+
+        eventRepository.addEvent(event);
+
+        Long eventId = event.getId();
+        assertNotNull(eventId);
+
+        flushAndClear();
+
+        Event loadedEvent = eventRepository.getEventById(eventId);
+
+        assertNotNull(loadedEvent);
+        assertNotSame(event, loadedEvent);
+        assertNotNull(loadedEvent.getPurchasePolicy());
+        assertTrue(
+                loadedEvent.getPurchasePolicy()
+                        .validate(5, 18)
+                        .isAllowed()
+        );
+        assertFalse(
+                loadedEvent.getPurchasePolicy()
+                        .validate(6, 18)
+                        .isAllowed()
+        );
+        assertFalse(
+                loadedEvent.getPurchasePolicy()
+                        .validate(5, 17)
+                        .isAllowed()
+        );
+    }
+
+    // ------------------- Discount Policy Tests ------------------
+
+    @Test
+    void GivenEventWithDiscountPolicy_WhenSavedAndReloaded_ThenPolicyIsPreserved() {
+        Event event = createEvent(1L, "Discount Event");
+
+        DiscountPolicy policy =
+                new DiscountPolicy(
+                        DiscountCompositionType.MAX
+                );
+
+        policy.addDiscount(
+                new VisibleDiscount(
+                        "Visible discount",
+                        new BigDecimal("10")
+                )
+        );
+
+        policy.addDiscount(
+                new ConditionalDiscount(
+                        "Conditional discount",
+                        new BigDecimal("25"),
+                        new AndDiscountCondition(
+                                List.of(
+                                        new MinTicketsCondition(2),
+                                        new MaxTicketsCondition(5)
+                                )
+                        )
+                )
+        );
+
+        policy.addDiscount(
+                new CouponDiscount(
+                        "Coupon discount",
+                        "SAVE30",
+                        new BigDecimal("30"),
+                        LocalDateTime.now().plusDays(5)
+                )
+        );
+
+        event.setDiscountPolicy(policy);
+
+        eventRepository.addEvent(event);
+        flushAndClear();
+
+        Event loadedEvent =
+                eventRepository.getEventById(event.getId());
+
+        assertNotNull(loadedEvent);
+        assertNotNull(loadedEvent.getDiscountPolicy());
+        assertEquals(
+                DiscountCompositionType.MAX,
+                loadedEvent.getDiscountPolicy()
+                        .getDiscountCompositionType()
+        );
+        assertEquals(
+                3,
+                loadedEvent.getDiscountPolicy()
+                        .getDiscounts()
+                        .size()
+        );
+
+        BigDecimal discount =
+                loadedEvent.getDiscountPolicy()
+                        .calculateDiscount(
+                                new BigDecimal("100.00"),
+                                3,
+                                "SAVE30"
+                        );
+
+        assertEquals(
+                0,
+                new BigDecimal("30.00")
+                        .compareTo(discount)
+        );
+    }
+
+    @Test
+    void GivenEventWithDiscountPolicy_WhenPolicyIsReplaced_ThenOldPolicyGraphIsDeleted() {
+        Event event = createEvent(
+                1L,
+                "Discount policy replacement event"
+        );
+
+        DiscountPolicy originalPolicy =
+                createNestedDiscountPolicy();
+
+        event.setDiscountPolicy(originalPolicy);
+
+        eventRepository.addEvent(event);
+        flushAndClear();
+
+        Event persistedEvent =
+                eventRepository.getEventById(event.getId());
+
+        assertNotNull(persistedEvent);
+        assertNotNull(persistedEvent.getDiscountPolicy());
+
+        DiscountPolicy persistedOriginalPolicy =
+                persistedEvent.getDiscountPolicy();
+
+        Long originalPolicyId =
+                persistedOriginalPolicy.getId();
+
+        List<Long> originalDiscountIds =
+                persistedOriginalPolicy.getDiscounts()
+                        .stream()
+                        .map(DiscountTypes::getId)
+                        .toList();
+
+        List<Long> originalConditionIds =
+                collectConditionIds(
+                        persistedOriginalPolicy
+                );
+
+        assertNotNull(originalPolicyId);
+        assertEquals(3, originalDiscountIds.size());
+        assertEquals(5, originalConditionIds.size());
+
+        DiscountPolicy replacementPolicy =
+                new DiscountPolicy(
+                        DiscountCompositionType.MAX
+                );
+
+        replacementPolicy.addDiscount(
+                new VisibleDiscount(
+                        "Replacement discount",
+                        new BigDecimal("15")
+                )
+        );
+
+        persistedEvent.setDiscountPolicy(
+                replacementPolicy
+        );
+
+        eventRepository.updateEvent(persistedEvent);
+        flushAndClear();
+
+        Event updatedEvent =
+                eventRepository.getEventById(event.getId());
+
+        assertNotNull(updatedEvent);
+        assertNotNull(updatedEvent.getDiscountPolicy());
+
+        assertNotEquals(
+                originalPolicyId,
+                updatedEvent.getDiscountPolicy().getId()
+        );
+
+        assertEquals(
+                1,
+                updatedEvent.getDiscountPolicy()
+                        .getDiscounts()
+                        .size()
+        );
+
+        assertNull(
+                entityManager.find(
+                        DiscountPolicy.class,
+                        originalPolicyId
+                )
+        );
+
+        for (Long discountId : originalDiscountIds) {
+            assertNull(
+                    entityManager.find(
+                            DiscountTypes.class,
+                            discountId
+                    )
+            );
+        }
+
+        for (Long conditionId : originalConditionIds) {
+            assertNull(
+                    entityManager.find(
+                            DiscountCondition.class,
+                            conditionId
+                    )
+            );
+        }
+    }
+
+    // ------------------- Helper Methods ------------------
+
     private Event createEvent(Long companyId, String eventName) {
         Event event = new Event(
                 LocalDateTime.now().plusDays(30),
@@ -364,5 +605,95 @@ public class EventRepositoryPersistenceTest {
     private void flushAndClear() {
         entityManager.flush();
         entityManager.clear();
+    }
+
+    private DiscountPolicy createNestedDiscountPolicy() {
+        LocalDateTime now = LocalDateTime.now();
+
+        DiscountPolicy policy =
+                new DiscountPolicy(
+                        DiscountCompositionType.SUM
+                );
+
+        policy.addDiscount(
+                new VisibleDiscount(
+                        "Visible discount",
+                        new BigDecimal("10")
+                )
+        );
+
+        policy.addDiscount(
+                new ConditionalDiscount(
+                        "Conditional discount",
+                        new BigDecimal("20"),
+                        new AndDiscountCondition(
+                                List.of(
+                                        new MinTicketsCondition(2),
+                                        new AndDiscountCondition(
+                                                List.of(
+                                                        new MaxTicketsCondition(4),
+                                                        new DateRangeCondition(
+                                                                now.minusDays(1),
+                                                                now.plusDays(1)
+                                                        )
+                                                )
+                                        )
+                                )
+                        )
+                )
+        );
+
+        policy.addDiscount(
+                new CouponDiscount(
+                        "Coupon discount",
+                        "SAVE30",
+                        new BigDecimal("30"),
+                        now.plusDays(2)
+                )
+        );
+
+        return policy;
+    }
+
+    private List<Long> collectConditionIds(
+            DiscountPolicy policy
+    ) {
+        List<Long> ids = new ArrayList<>();
+
+        for (DiscountTypes discount :
+                policy.getDiscounts()) {
+            DiscountTypes unproxiedDiscount =
+                    (DiscountTypes)
+                            Hibernate.unproxy(discount);
+
+            if (unproxiedDiscount instanceof
+                    ConditionalDiscount conditionalDiscount) {
+                collectConditionIds(
+                        conditionalDiscount.getCondition(),
+                        ids
+                );
+            }
+        }
+
+        return ids;
+    }
+
+    private void collectConditionIds(
+            DiscountCondition condition,
+            List<Long> ids
+    ) {
+        DiscountCondition unproxiedCondition =
+                (DiscountCondition)
+                        Hibernate.unproxy(condition);
+
+        ids.add(unproxiedCondition.getId());
+
+        if (unproxiedCondition instanceof
+                AndDiscountCondition andCondition) {
+            for (DiscountCondition child :
+                    andCondition.getConditions()) {
+                collectConditionIds(child, ids);
+            }
+        }
     }
 }

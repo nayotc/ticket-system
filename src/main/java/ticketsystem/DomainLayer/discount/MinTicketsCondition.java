@@ -1,8 +1,18 @@
 package ticketsystem.DomainLayer.discount;
 
-public class MinTicketsCondition implements DiscountCondition {
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
-    private final int minTickets;
+@Entity
+@DiscriminatorValue("MIN_TICKETS")
+public class MinTicketsCondition extends DiscountCondition {
+
+    @Column(name = "min_tickets")
+    private int minTickets;
+
+    protected MinTicketsCondition() {
+    }
 
     public MinTicketsCondition(int minTickets) {
         if (minTickets <= 0) {

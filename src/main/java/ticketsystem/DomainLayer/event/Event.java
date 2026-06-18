@@ -80,14 +80,12 @@ public class Event {
     @Column(name = "rating_count")
     private Integer ratingCount = 0; // for calculating average rating
 
-    @Transient  // TODO : change to one to one
-//    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-//    @JoinColumn(name = "purchase_policy_id")
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "purchase_policy_id", nullable = false, unique = true)
     private PurchasePolicy purchasePolicy;
 
-    @Transient  // TODO : change to one to one
-//    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-//    @JoinColumn(name = "discount_policy_id")
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "discount_policy_id", nullable = false, unique = true)
     private DiscountPolicy discountPolicy;
 
     @Transient
