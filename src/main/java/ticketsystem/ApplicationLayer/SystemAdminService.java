@@ -15,9 +15,6 @@ import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.SuspentionUserDTO;
@@ -34,6 +31,7 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Suspension;
 import ticketsystem.DomainLayer.user.User;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SystemAdminService {
@@ -46,7 +44,6 @@ public class SystemAdminService {
     private final ICompanyRepository companyRepository;
     private final ISystemLogger logger;
     private final IHistoryRepository historyRepository;
-    private final ObjectMapper objectMapper;
     private final MembershipDomainService membershipDomain;
     private final INotifier notificationsService;
 
@@ -69,9 +66,7 @@ public class SystemAdminService {
         this.logger = logger;
         this.historyRepository = historyRepository;
         this.membershipDomain = membershipDomain;
-        this.objectMapper = new ObjectMapper();
         this.notificationsService = notificationsService;
-        this.objectMapper.registerModule(new JavaTimeModule());
 
     }
 
@@ -198,6 +193,7 @@ public class SystemAdminService {
     }
 
     // Use Case: View Purchase History by Company and Event 6.4
+    @Transactional(readOnly = true)
     public Map<Long, Map<String, List<OrderDTO>>> getPurchaseHistoryByCompanyAndEvent(long adminId) {
         try {
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
@@ -215,7 +211,7 @@ public class SystemAdminService {
                             Collectors.groupingBy(
                                     Purchase::getEventName,
                                     Collectors.mapping(
-                                            purchase -> objectMapper.convertValue(purchase, OrderDTO.class),
+                                            HistoryMapper::toOrderDTO,
                                             Collectors.toList()
                                     )
                             )
@@ -229,6 +225,7 @@ public class SystemAdminService {
     }
 
     // Use Case: View Purchase History by Buyer 6.4
+    @Transactional(readOnly = true)
     public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(long adminId) {
         try {
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
@@ -245,8 +242,8 @@ public class SystemAdminService {
 
             for (Purchase purchase : allOrders) {
                 Long buyerMemberId = purchase.getMemberId();
-                OrderDTO orderDTO = objectMapper.convertValue(purchase, OrderDTO.class);
-                result.computeIfAbsent(buyerMemberId, k -> new ArrayList<>())
+                OrderDTO orderDTO = HistoryMapper.toOrderDTO(purchase);
+                        result.computeIfAbsent(buyerMemberId, k -> new ArrayList<>())
                         .add(orderDTO);
             }
 

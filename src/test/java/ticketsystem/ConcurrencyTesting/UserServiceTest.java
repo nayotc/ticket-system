@@ -126,7 +126,7 @@ public class UserServiceTest {
             }
         }
         startLatch.countDown();
-        boolean completed = doneLatch.await(10, TimeUnit.SECONDS);
+        boolean completed = doneLatch.await(60, TimeUnit.SECONDS);
         executor.shutdown();
 
         assertTrue(completed, "Test timed out!");

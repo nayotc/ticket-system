@@ -71,6 +71,7 @@ import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 import ticketsystem.DTO.DiscountDTO;
 import ticketsystem.DTO.DiscountConditionDTO;
+import static org.mockito.ArgumentMatchers.anyLong;
 
 public class EventServiceAcceptanceTest {
 
@@ -141,7 +142,15 @@ public class EventServiceAcceptanceTest {
             }
         };
 
-        historyRepository = new HistoryRepository();
+        /*
+        * This test exercises EventService rather than history persistence.
+        * The history repository is mocked so that the real HistoryService can
+        * participate as an event listener without requiring a JPA test context.
+        */
+        historyRepository = mock(IHistoryRepository.class);
+
+        when(historyRepository.getPurchasesByEventId(anyLong()))
+                .thenReturn(List.of());
         paymentService = mock(IPaymentService.class);
         ticketIssuingService = mock(ITicketIssuingService.class);
 

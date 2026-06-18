@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.INotifier;
@@ -50,16 +51,41 @@ import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.testutil.RecordingNotifier;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+/**
+ * Acceptance tests for purchase-history use cases.
+ *
+ * <p>The tests use the production company and history repository adapters
+ * with an embedded H2 database. Only the database configuration differs from
+ * the production environment.</p>
+ */
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import({
+        CompanyRepository.class,
+        HistoryRepository.class
+})
 public class HistoryServiceTest {
 
-    private IHistoryRepository historyRepository;
+    @Autowired
+    private HistoryRepository historyRepository;
     private ITokenRepository tokenRepository;
     private IUserRepository userRepository;
     private ITokenService tokenService;
     private UserService userService;
     private HistoryService historyService;
-    private ICompanyRepository companyRepository;
+    @Autowired
+    private CompanyRepository companyRepository;
     private UserAccessService userAccessService;
     private RecordingNotifier recordingNotifier;
     private INotifier notifier;
@@ -71,15 +97,13 @@ public class HistoryServiceTest {
     @BeforeEach
     void setUp() {
         // --- Setup Real Repositories (Acceptance Level) ---
-        HistoryRepository hRepo = new HistoryRepository();
-        this.historyRepository = hRepo;
+
 
         this.tokenRepository = new TokenRepository();
         this.userRepository = new InMemoryUserRepository();
         this.logger = new LogbackSystemLogger();
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         this.userService = new UserService(userRepository, tokenService, logger);
-        this.companyRepository = new CompanyRepository();
         this.userAccessService = new UserAccessService(userRepository);
         this.notificationRepository = new InMemoryNotificationsRepository();
         this.recordingNotifier = new RecordingNotifier();
