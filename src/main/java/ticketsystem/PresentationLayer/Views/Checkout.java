@@ -257,8 +257,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         Button cancel = new Button("ביטול", VaadinIcon.CLOSE.create());
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         cancel.addClassName("checkout-cancel-button");
-        cancel.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.ACTIVE_ORDER_CART));
-
+        cancel.addClickListener(event -> cancelCheckout());
         header.add(brand, cancel);
         return header;
     }
@@ -643,36 +642,63 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
     }
 
+   /**
+     * Submits the current active order for payment.
+     *
+     * Queue access is released only after checkout has completed successfully.
+     * Failed validation or failed payment keeps the user's queue access active so
+     * the user can correct the details and retry the purchase.
+     */
     private void submitPayment() {
         if (!validatePersonalDetails() || !validatePaymentDetails()) {
             return;
         }
 
+        String token = resolveSessionToken();
+        Long completedEventId = activeOrder == null
+                ? requestedRouteEventId
+                : activeOrder.getEventId();
+
         try {
             PaymentDetails details = new PaymentDetails(
                     resolvePaymentMethodId(),
                     payerId.getValue().trim(),
-                    birthDate.getValue(),cardNumber.getValue().trim(),parseExpiryDate()[0],parseExpiryDate()[1],cvv.getValue().trim(),payerId.getValue().trim(),"ILS" );
-
-            boolean success = presenter.checkout(
-                    resolveSessionToken(),
-                    activeOrder.getEventId(),
-                    details,
-                    normalizedCouponCode()
-
+                    birthDate.getValue(),
+                    cardNumber.getValue().trim(),
+                    parseExpiryDate()[0],
+                    parseExpiryDate()[1],
+                    cvv.getValue().trim(),
+                    payerId.getValue().trim(),
+                    DEFAULT_CURRENCY
             );
 
-            if (success) {
-                ReservationTimer.clear();
-                reservationTimer.refreshFromSession();
-                showSuccess("הרכישה הושלמה בהצלחה");
-                if (UiSession.isLoggedIn()) {
-                    UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT);
-                } else {
-                    UI.getCurrent().navigate(UiRoutes.HOME);
-                }
-            } else {
+            boolean success = presenter.checkout(
+                    token,
+                    completedEventId,
+                    details,
+                    normalizedCouponCode()
+            );
+
+            if (!success) {
                 showError("התשלום לא הושלם");
+                return;
+            }
+
+            /*
+            * Checkout has completed successfully, so this user no longer occupies
+            * an active purchasing slot for the event.
+            */
+            presenter.releaseQueueAccess(token, completedEventId);
+
+            ReservationTimer.clear();
+            reservationTimer.refreshFromSession();
+
+            showSuccess("הרכישה הושלמה בהצלחה");
+
+            if (UiSession.isLoggedIn()) {
+                UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT);
+            } else {
+                UI.getCurrent().navigate(UiRoutes.HOME);
             }
 
         } catch (Exception exception) {
@@ -911,5 +937,24 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                 Notification.Position.TOP_CENTER
         );
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    /**
+     * Cancels the current checkout flow.
+     *
+     * This is an explicit cancellation action, so the user no longer occupies an
+     * active purchasing slot for the event. The existing navigation behavior is
+     * preserved and the user is returned to the active-order cart.
+     */
+    private void cancelCheckout() {
+        String token = resolveSessionToken();
+
+        Long eventId = activeOrder == null
+                ? requestedRouteEventId
+                : activeOrder.getEventId();
+
+        presenter.releaseQueueAccess(token, eventId);
+
+        UI.getCurrent().navigate(UiRoutes.ACTIVE_ORDER_CART);
     }
 }

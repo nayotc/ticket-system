@@ -9,25 +9,30 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.OrderService;
 import ticketsystem.ApplicationLayer.TokenService;
-import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
 import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
-import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.InfrastructureLayer.OrderRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 
+@SpringBootTest
+@Transactional
 public class OrderServiceAcceptanceTest {
 
     private OrderService orderService;
-    private IOrderRepository orderRepository;
+    @Autowired
+    private OrderRepository orderRepository;
     private TokenService tokenService;
     private ISystemLogger logger;
     private INotifier notification;
@@ -38,20 +43,18 @@ public class OrderServiceAcceptanceTest {
 
     @BeforeEach
     void setUp() {
-        orderRepository = new InMemoryOrderRepository();
         logger = new LogbackSystemLogger();
         notification = new VaadinNotifier(new InMemoryNotificationsRepository());
 
-        // use real token repository + token service
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
                 tokenRepository,
                 logger);
 
-        // create real user sessions
         ticketsystem.DomainLayer.user.Guest guest = new ticketsystem.DomainLayer.user.Guest();
-        ticketsystem.DomainLayer.user.Member member = new ticketsystem.DomainLayer.user.Member(userId, "user", "full", "phone", LocalDate.of(2001, 1, 1));
+        ticketsystem.DomainLayer.user.Member member = new ticketsystem.DomainLayer.user.Member(
+                userId, "user", "full", "phone", LocalDate.of(2001, 1, 1));
 
         guestToken = tokenService.addActiveSession(guest);
         memberToken = tokenService.addActiveSession(member);
@@ -59,7 +62,8 @@ public class OrderServiceAcceptanceTest {
         orderService = new OrderService(
                 orderRepository,
                 tokenService,
-                logger, notification);
+                logger,
+                notification);
     }
 
     @Test
@@ -77,12 +81,8 @@ public class OrderServiceAcceptanceTest {
     void AcceptanceTest_OnUserLogin_WhenGuestHasOrderAndMemberHasNoOrder_ThenGuestOrderBecomesMemberOrder() {
         Long eventId = 100L;
 
-        ActiveOrder guestOrder = new ActiveOrder(
-                1L,
-                guestToken,
-                null,
-                eventId);
-        guestOrder.addTicket(new Ticket(1L, eventId, 10L, 0, 0, new BigDecimal(10))); // add a ticket to guest order to differentiate it from member order
+        ActiveOrder guestOrder = new ActiveOrder(null, guestToken, null, eventId);
+        guestOrder.addTicket(new Ticket(null, eventId, 10L, 0, 0, new BigDecimal(10)));
         orderRepository.addOrder(guestOrder);
 
         orderService.onUserLogin(guestToken, memberToken);
@@ -90,6 +90,7 @@ public class OrderServiceAcceptanceTest {
         ActiveOrder updatedOrder = orderRepository.getActiveOrderByUserId(userId);
 
         assertNotNull(updatedOrder);
+        assertEquals(guestOrder.getOrderId(), updatedOrder.getOrderId());
         assertEquals(userId, updatedOrder.getUserId());
         assertEquals(memberToken, updatedOrder.getSessionToken());
         assertEquals(eventId, updatedOrder.getEventId());
@@ -102,20 +103,13 @@ public class OrderServiceAcceptanceTest {
         Long eventId = 200L;
         Long areaId = 10L;
 
-        ActiveOrder guestOrder = new ActiveOrder(
-                1L,
-                guestToken,
-                null,
-                eventId);
+        ActiveOrder guestOrder = new ActiveOrder(null, guestToken, null, eventId);
 
-        ActiveOrder memberOrder = new ActiveOrder(
-                2L,
-                memberToken,
-                userId,
-                eventId);
-        memberOrder.addTicket(new Ticket(1L, eventId, areaId, 0, 0, new BigDecimal(10))); // add a ticket to member order to differentiate it from guest order
+        ActiveOrder memberOrder = new ActiveOrder(null, memberToken, userId, eventId);
+        memberOrder.addTicket(new Ticket(null, eventId, areaId, 0, 0, new BigDecimal(10)));
         orderRepository.addOrder(guestOrder);
         orderRepository.addOrder(memberOrder);
+        long memberOrderId = memberOrder.getOrderId();
 
         orderService.onUserLogin(guestToken, memberToken);
 
@@ -123,7 +117,7 @@ public class OrderServiceAcceptanceTest {
         ActiveOrder deletedGuestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
 
         assertNotNull(updatedMemberOrder);
-        assertEquals(2L, updatedMemberOrder.getOrderId());
+        assertEquals(memberOrderId, updatedMemberOrder.getOrderId());
         assertEquals(userId, updatedMemberOrder.getUserId());
         assertEquals(eventId, updatedMemberOrder.getEventId());
 
@@ -135,38 +129,33 @@ public class OrderServiceAcceptanceTest {
         Long guestEventId = 300L;
         Long memberEventId = 400L;
 
-        ActiveOrder guestOrder = new ActiveOrder(
-                1L,
-                guestToken,
-                null,
-                guestEventId);
+        ActiveOrder guestOrder = new ActiveOrder(null, guestToken, null, guestEventId);
 
-        ActiveOrder memberOrder = new ActiveOrder(
-                2L,
-                memberToken,
-                userId,
-                memberEventId);
-        guestOrder.addTicket(new Ticket(1L, guestEventId, 10L, 0, 0, new BigDecimal(10))); // add a ticket to guest order to differentiate it from member order
-        memberOrder.addTicket(new Ticket(2L, memberEventId, 20L, 0, 0, new BigDecimal(20))); // add a ticket to member order to differentiate it from guest order
+        ActiveOrder memberOrder = new ActiveOrder(null, memberToken, userId, memberEventId);
+        guestOrder.addTicket(new Ticket(null, guestEventId, 10L, 0, 0, new BigDecimal(10)));
+        memberOrder.addTicket(new Ticket(null, memberEventId, 20L, 0, 0, new BigDecimal(20)));
         orderRepository.addOrder(guestOrder);
         orderRepository.addOrder(memberOrder);
+        long memberOrderId = memberOrder.getOrderId();
 
         orderService.onUserLogin(guestToken, memberToken);
 
         ActiveOrder remainingMemberOrder = orderRepository.getActiveOrderByUserId(userId);
-        ActiveOrder deletedGuestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
+        ActiveOrder cancelledGuestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
 
         assertNotNull(remainingMemberOrder);
-        assertEquals(2L, remainingMemberOrder.getOrderId());
+        assertEquals(memberOrderId, remainingMemberOrder.getOrderId());
         assertEquals(memberEventId, remainingMemberOrder.getEventId());
-        assertEquals(OrderStatus.CANCELLED, deletedGuestOrder.getStatus());
+        assertNotNull(cancelledGuestOrder);
+        assertEquals(OrderStatus.CANCELLED, cancelledGuestOrder.getStatus());
     }
 
     @Test
     void AcceptanceTest_OnUserLogin_WhenTokenExtractionFails_ThenWarningIsLoggedAndExceptionIsThrown() {
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
-                new TokenRepository(), logger) {
+                new TokenRepository(),
+                logger) {
             @Override
             public Long extractUserId(String token) {
                 throw new IllegalArgumentException("Invalid member token");
@@ -179,12 +168,7 @@ public class OrderServiceAcceptanceTest {
                 logger,
                 notification);
 
-        ActiveOrder guestOrder = new ActiveOrder(
-                1L,
-                guestToken,
-                null,
-                500L);
-
+        ActiveOrder guestOrder = new ActiveOrder(null, guestToken, null, 500L);
         orderRepository.addOrder(guestOrder);
 
         assertThrows(

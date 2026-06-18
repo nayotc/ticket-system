@@ -31,7 +31,7 @@ import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
 import ticketsystem.PresentationLayer.DTO.OrderPricing;
 import ticketsystem.DTO.AppliedDiscountDTO;
 import ticketsystem.DTO.PricingQuoteDTO;
-
+import ticketsystem.ApplicationLayer.WaitingQueueService;
 
 
 import java.math.BigDecimal;
@@ -44,11 +44,13 @@ public class ReservationPresenter {
     private final ReservationService reservationService;
     private final EventService eventService;
     private final UserService userService;
+    private final WaitingQueueService waitingQueueService;
 
-    public ReservationPresenter(ReservationService reservationService, EventService eventService, UserService userService) {
+    public ReservationPresenter(ReservationService reservationService, EventService eventService, UserService userService, WaitingQueueService waitingQueueService) {
         this.reservationService = reservationService;
         this.eventService = eventService;
         this.userService = userService;
+        this.waitingQueueService=waitingQueueService;
     }
 
     /**
@@ -904,10 +906,10 @@ public class ReservationPresenter {
 
             case "Ticket removal failed. Please try again." ->
                     "הסרת הכרטיסים נכשלה. יש לנסות שוב.";
-            
+
             case "Lottery code is required for this event" ->
                 "נדרש קוד זכייה בהגרלה כדי לבחור כרטיסים לאירוע הזה.";
-            
+
             case "Invalid lottery code",
                 "Invalid winner code",
                 "Lottery code is invalid" ->
@@ -999,5 +1001,36 @@ public class ReservationPresenter {
             default ->
                     "הרכישה לא הושלמה. יש לנסות שוב.";
         };
+    }
+    /**
+     * Releases the user's active purchasing slot for an event.
+     *
+     * This method is called only when the purchasing flow ends explicitly:
+     * after successful checkout or when the user cancels checkout.
+     *
+     * Queue cleanup is best-effort and must not turn an already completed payment
+     * into a presentation-layer failure.
+     *
+     * @param token active guest/member session token
+     * @param eventId event whose purchasing slot should be released
+     */
+    public void releaseQueueAccess(String token, Long eventId) {
+        try {
+            if (token == null || token.isBlank()) {
+                return;
+            }
+
+            if (eventId == null || eventId <= 0) {
+                return;
+            }
+
+            waitingQueueService.releaseSpot(eventId, token);
+
+        } catch (Exception ignored) {
+            /*
+            * A successful checkout must remain successful even if queue cleanup
+            * encounters a temporary failure.
+            */
+        }
     }
 }
