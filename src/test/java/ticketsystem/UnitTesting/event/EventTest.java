@@ -940,7 +940,7 @@ public class EventTest {
         assertEquals(DiscountCompositionType.MAX, event.getDiscountPolicy().getDiscountCompositionType());
     }
 
-    private static class FixedResultPurchaseRule implements PurchaseRule {
+    private static class FixedResultPurchaseRule extends PurchaseRule {
 
         private final PolicyResult result;
 
