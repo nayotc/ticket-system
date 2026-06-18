@@ -56,7 +56,7 @@ public class DevQueueTestDataInitializer {
                     EventCategory.THEATER,
                     "Laugh Factory",
                     new BigDecimal("119"),
-                    0L,
+                    1L,
                     SaleStatus.ONGOING
             );
             ensureEvent(
@@ -66,7 +66,7 @@ public class DevQueueTestDataInitializer {
             EventCategory.CONCERT,
             "Electronic Line",
             new BigDecimal("180"),
-            0L,
+            1L,
             SaleStatus.PRE_SALE
     );
 
