@@ -44,7 +44,6 @@ public class PurchaseHistory extends PageContainer implements BeforeEnterObserve
         addClassName("purchase-history-page");
         setSpacing(false);
 
-        // כותרת נקייה לעמוד
         ViewHeader header = new ViewHeader(
                 "היסטוריית רכישות והזמנות",
                 "צפייה בכלל הכרטיסים והעסקאות שנמכרו לאירועי החברה (נתונים קבועים שאינם משתנים)."
@@ -83,16 +82,17 @@ public class PurchaseHistory extends PageContainer implements BeforeEnterObserve
                 .setAutoWidth(true);
 
 
+
         transactionsGrid.addColumn(order -> {
             if (order.getTickets() == null || order.getTickets().isEmpty()) return "-";
             
             return order.getTickets().stream()
                     .map(t -> {
-                        // בדיקה אם מדובר בכרטיס עמידה (שורה 0 וכיסא 0)
+                        // Check for standing tickets (row 0, chair 0)
                         if (t.getRow() != null && t.getChair() != null && t.getRow() == 0 && t.getChair() == 0) {
                             return "[כרטיס עמידה]";
                         }
-                        // אם זה כרטיס ישיבה רגיל
+                        //simple format for seat tickets
                         return String.format("[ש׳ %d, כ׳ %d]", t.getRow(), t.getChair());
                     })
                     .collect(Collectors.joining(", "));
@@ -138,14 +138,4 @@ public class PurchaseHistory extends PageContainer implements BeforeEnterObserve
         BigDecimal safeAmount = amount != null ? amount : BigDecimal.ZERO;
         return currencyFormat.format(safeAmount);
     }
-
-    private record FlatTicketRow(
-        Long ticketId,
-        String eventName,
-        String location,
-        String buyerName,
-        int row,
-        int chair,
-        BigDecimal price
-    ) {}
 }
