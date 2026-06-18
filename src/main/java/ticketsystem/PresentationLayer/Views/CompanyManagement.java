@@ -719,14 +719,18 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         
         // הפרדנו את ההרשאות כדי למנוע כפילויות במסך
         if (name.contains("discount")) return "עריכת מדיניות הנחות";
-        if (name.contains("purchas")) return "עריכת מדיניות רכישה";
+        if (name.contains("purchasing_policy")) return "עריכת מדיניות רכישה";
         if (name.contains("policy")) return "ניהול מדיניות כללית"; 
         
         // תיקון הבאג: חיפוש של החלק המשותף למילה כדי לתפוס גם inquiries וגם inquiry
         if (name.contains("inquir") || name.contains("message") || name.contains("support")) return "טיפול בפניות";
         
-        if (name.contains("history") || name.contains("sales") || name.contains("report")) return "צפייה בהיסטוריה ודוחות";
-        
+        if (permission == Permission.VIEW_PURCHASE_HISTORY) {
+            return "צפייה בהיסטוריית רכישות";
+        }
+        if (permission == Permission.GENERATE_SALES_REPORT) {
+            return "הפקת דוחות מכירה";
+        }
         // במקרה שנוספה הרשאה חדשה שלא הכרנו, נציג אותה בצורה נקייה יותר
         return "הרשאת " + name.replace('_', ' ');
     }

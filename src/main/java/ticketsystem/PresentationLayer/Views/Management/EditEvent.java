@@ -1867,7 +1867,7 @@ private String conditionText(DiscountConditionDTO condition) {
             showSuccess("מדיניות הרכישה נשמרה והתעדכנה בהצלחה באירוע.");
 
         } catch (Exception e) {
-            showError("שגיאה בשמירת מדיניות הרכישה: " + e.getMessage());
+            showError("שגיאה בשמירת מדיניות הרכישה: " + translatePermissionError(e.getMessage()));
         }
     }
 
@@ -1882,7 +1882,7 @@ private String conditionText(DiscountConditionDTO condition) {
             showSuccess("מדיניות ההנחות נשמרה והתעדכנה בהצלחה באירוע.");
 
         } catch (Exception e) {
-            showError("שגיאה בשמירת מדיניות ההנחות: " + e.getMessage());
+            showError("שגיאה בשמירת מדיניות ההנחות: " + translatePermissionError(e.getMessage()));
         }
     }
 
@@ -2554,6 +2554,15 @@ private void confirmCancelEvent() {
             }
             return String.valueOf(number);
         }
+    }
+    private String translatePermissionError(String message) {
+        if (message == null) return "אירעה שגיאה בשמירת המדיניות.";
+        
+        if (message.contains("User does not have permission")) {
+            return "אין לך הרשאות מתאימות לעריכת המדיניות של האירוע.";
+        }
+        
+        return message;
     }
 
     public interface EditEventPresenter {

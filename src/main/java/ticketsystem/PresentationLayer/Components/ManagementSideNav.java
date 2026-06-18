@@ -105,6 +105,10 @@ public class ManagementSideNav extends Div {
             links.add(navButton("דוח מכירות", UiRoutes.SALES_REPORT));
         }
 
+        if (hasPermission(Permission.VIEW_PURCHASE_HISTORY)) {
+            links.add(navButton("היסטוריית רכישות", UiRoutes.PURCHASE_HISTORY));
+        }
+
         links.add(navButton("עץ תפקידים והרשאות", UiRoutes.ROLES_AND_PERMISSIONS_TREE));
     }
 

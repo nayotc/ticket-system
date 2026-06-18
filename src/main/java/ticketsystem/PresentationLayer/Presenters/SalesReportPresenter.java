@@ -44,6 +44,19 @@ public class SalesReportPresenter {
         }
     }
 
+    public List<OrderDTO> getCompanyHistoryUnfiltered(String token, Long companyId) {
+    try {
+            return historyService.getHistoryForCompany(token, companyId);
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new PresentationException(e.getMessage());
+        } catch (Exception e) {
+            throw new PresentationException("An error occurred while presenting the company history. Please try again.");
+        }
+    }
+
     public List<OrderDTO> getCompanyTransactions(String token, long companyId) {
         try {
             // Calling the Service to fetch the raw purchase history for the company
