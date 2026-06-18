@@ -1,6 +1,7 @@
 package ticketsystem.ApplicationLayer;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -365,6 +366,7 @@ public class ReservationService {
      * @param couponCode coupon code entered by the user, if any
      * @return full pricing DTO for the active order
      */
+    @Transactional(readOnly = true)
     public PricingQuoteDTO calculateActiveOrderPricing(String token, Long eventId, String couponCode) {
         try {
             tokenService.validateToken(token);
@@ -392,6 +394,7 @@ public class ReservationService {
         }
     }
 
+    @Transactional
     public boolean validateActiveOrderPolicy(String token, Long eventId, PaymentDetails details, String couponCode) {
         // Implementation for validating active order policy
         try {
@@ -419,7 +422,7 @@ public class ReservationService {
     }
 
     // 2.8 checkout
-
+    @Transactional
     public boolean checkout(String token, Long eventId, PaymentDetails details, String couponCode) {
         expireOldOrders();
 

@@ -55,22 +55,27 @@ public class DiscountPolicyPersistenceTest {
         assertInstanceOf(ConditionalDiscount.class, loadedPolicy.getDiscounts().get(1));
         assertInstanceOf(CouponDiscount.class, loadedPolicy.getDiscounts().get(2));
 
-        ConditionalDiscount conditionalDiscount =
-                (ConditionalDiscount) loadedPolicy.getDiscounts().get(1);
+        ConditionalDiscount conditionalDiscount = (ConditionalDiscount) loadedPolicy.getDiscounts().get(1);
 
         DiscountCondition loadedCondition = conditionalDiscount.getCondition();
 
         assertEquals(AndDiscountCondition.class, Hibernate.getClass(loadedCondition));
 
-        AndDiscountCondition andCondition =
-                (AndDiscountCondition) Hibernate.unproxy(loadedCondition);
+        AndDiscountCondition outerAnd = (AndDiscountCondition) Hibernate.unproxy(loadedCondition);
 
-        List<DiscountCondition> loadedConditions = andCondition.getConditions();
+        List<DiscountCondition> outerConditions = outerAnd.getConditions();
 
-        assertEquals(3, loadedConditions.size());
-        assertInstanceOf(MinTicketsCondition.class, loadedConditions.get(0));
-        assertInstanceOf(MaxTicketsCondition.class, loadedConditions.get(1));
-        assertInstanceOf(DateRangeCondition.class, loadedConditions.get(2));
+        assertEquals(2, outerConditions.size());
+        assertEquals(MinTicketsCondition.class, Hibernate.getClass(outerConditions.get(0)));
+        assertEquals(AndDiscountCondition.class, Hibernate.getClass(outerConditions.get(1)));
+
+        AndDiscountCondition innerAnd = (AndDiscountCondition) Hibernate.unproxy(outerConditions.get(1));
+
+        List<DiscountCondition> innerConditions = innerAnd.getConditions();
+
+        assertEquals(2, innerConditions.size());
+        assertEquals(MaxTicketsCondition.class, Hibernate.getClass(innerConditions.get(0)));
+        assertEquals(DateRangeCondition.class, Hibernate.getClass(innerConditions.get(1)));
 
         BigDecimal result = loadedPolicy.calculateDiscount(
                 new BigDecimal("100.00"),
@@ -95,7 +100,7 @@ public class DiscountPolicyPersistenceTest {
                 collectConditionIds(policy);
 
         assertEquals(3, discountIds.size());
-        assertEquals(4, conditionIds.size());
+        assertEquals(5, conditionIds.size());
 
         entityManager.remove(policy);
         entityManager.flush();
@@ -149,10 +154,14 @@ public class DiscountPolicyPersistenceTest {
                         new AndDiscountCondition(
                                 List.of(
                                         new MinTicketsCondition(2),
-                                        new MaxTicketsCondition(4),
-                                        new DateRangeCondition(
-                                                now.minusDays(1),
-                                                now.plusDays(1)
+                                        new AndDiscountCondition(
+                                                List.of(
+                                                        new MaxTicketsCondition(4),
+                                                        new DateRangeCondition(
+                                                                now.minusDays(1),
+                                                                now.plusDays(1)
+                                                        )
+                                                )
                                         )
                                 )
                         )
@@ -187,10 +196,14 @@ public class DiscountPolicyPersistenceTest {
 
         for (DiscountTypes discount :
                 policy.getDiscounts()) {
-            if (discount instanceof
-                    ConditionalDiscount conditional) {
+            DiscountTypes unproxiedDiscount =
+                    (DiscountTypes)
+                            Hibernate.unproxy(discount);
+
+            if (unproxiedDiscount instanceof
+                    ConditionalDiscount conditionalDiscount) {
                 collectConditionIds(
-                        conditional.getCondition(),
+                        conditionalDiscount.getCondition(),
                         ids
                 );
             }
@@ -203,9 +216,13 @@ public class DiscountPolicyPersistenceTest {
             DiscountCondition condition,
             List<Long> ids
     ) {
-        ids.add(condition.getId());
+        DiscountCondition unproxiedCondition =
+                (DiscountCondition)
+                        Hibernate.unproxy(condition);
 
-        if (condition instanceof
+        ids.add(unproxiedCondition.getId());
+
+        if (unproxiedCondition instanceof
                 AndDiscountCondition andCondition) {
             for (DiscountCondition child :
                     andCondition.getConditions()) {
