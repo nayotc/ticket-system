@@ -483,11 +483,23 @@ public class EventService {
             if (event.getStatus() == eventStatus.CANCELLED) {
                 throw new IllegalStateException("Event is already canceled");
             }
-            event.cancel();
-            eventRepository.updateEvent(event); // update event status to cancelled
-            notifyEventCanceledListeners(eventId);
-            logger.logEvent("Completed - cancelEvent. " + context, LogLevel.INFO);
-            return true;
+         
+            event.markCancellationPending();
+            eventRepository.updateEvent(event);
+
+            boolean success = notifyEventCancellationRequestedListeners(eventId);
+            event = eventRepository.getEventById(eventId);
+            if (success) {
+                event.cancel();
+                eventRepository.updateEvent(event);
+                notifyEventCanceledListeners(eventId);
+                return true;
+            } else {
+                event.markCancellationFailed();
+                eventRepository.updateEvent(event);
+                throw new IllegalArgumentException("Event cancellation failed. Please try again later to complete the cancellation process.");
+            }
+
         } catch (IllegalArgumentException e) {
             logger.logEvent("Failed - cancelEvent. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
             throw e;
@@ -602,6 +614,24 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
     }
 
     
+    private boolean notifyEventCancellationRequestedListeners(Long eventId) {
+            for (EventUpdatesListener listener : eventUpdatesListeners) {
+                boolean success = listener.onEventCancellationRequested(eventId);
+
+                logger.logEvent(
+                        "Notified event cancellation requested listener. Listener class: "
+                                + listener.getClass().getName()
+                                + ", success=" + success,
+                        LogLevel.DEBUG
+                );
+
+                if (!success) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     private void validateEventDetails(
             String eventName,
             LocalDateTime date,

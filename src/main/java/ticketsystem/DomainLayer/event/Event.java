@@ -25,7 +25,7 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 public class Event {
 
     public enum eventStatus {
-        DRAFT, ACTIVE, INACTIVE, CANCELLED
+        DRAFT, ACTIVE, INACTIVE, CANCELLED,CANCELLATION_PENDING,CANCELLATION_FAILED
     };
 
     private final Long id;
@@ -299,6 +299,20 @@ public class Event {
                 && matchesRate(criteria.getEventRate())
                 && matchesArtist(criteria.getArtist());
 
+    }
+    public void markCancellationPending() {
+        if (status == eventStatus.CANCELLED) {
+            throw new IllegalStateException("Event is already canceled");
+        }
+        this.status = eventStatus.CANCELLATION_PENDING;
+        this.saleStatus=SaleStatus.ENDED;
+    }
+
+    public void markCancellationFailed() {
+        if (status != eventStatus.CANCELLATION_PENDING) {
+            throw new IllegalStateException("Event cancellation is not pending");
+        }
+        this.status = eventStatus.CANCELLATION_FAILED;
     }
 
     private boolean matchesSearchTerm(String searchTerm) {
