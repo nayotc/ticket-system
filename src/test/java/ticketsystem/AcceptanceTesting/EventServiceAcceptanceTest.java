@@ -41,7 +41,6 @@ import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
-import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
@@ -71,7 +70,20 @@ import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.VaadinNotifier;
 import ticketsystem.DTO.DiscountDTO;
 import ticketsystem.DTO.DiscountConditionDTO;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import(HistoryRepository.class)
 public class EventServiceAcceptanceTest {
 
     private EventService eventService;
@@ -84,7 +96,8 @@ public class EventServiceAcceptanceTest {
     private INotifier notifier;
     private String validOwnerSessionId;
     private final String invalidSessionId = "invalid-session";
-    private IHistoryRepository historyRepository;
+    @Autowired
+    private HistoryRepository historyRepository;
     private final Long ownerId = 1L;
     private final Long companyId = 100L;
     private UserAccessService userAccessService;
@@ -141,7 +154,9 @@ public class EventServiceAcceptanceTest {
             }
         };
 
-        historyRepository = new HistoryRepository();
+
+
+
         paymentService = mock(IPaymentService.class);
         ticketIssuingService = mock(ITicketIssuingService.class);
 

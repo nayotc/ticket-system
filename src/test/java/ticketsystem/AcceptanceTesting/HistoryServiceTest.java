@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.INotifier;
@@ -40,6 +41,7 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
@@ -53,14 +55,12 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
-import ticketsystem.InfrastructureLayer.CompanyRepository;
-
 /**
- * Acceptance tests for history use cases.
+ * Acceptance tests for purchase-history use cases.
  *
- * <p>Company data is persisted through the production company repository
- * implementation using an embedded H2 database. History persistence remains
- * unchanged until the dedicated history database task is implemented.</p>
+ * <p>The tests use the production company and history repository adapters
+ * with an embedded H2 database. Only the database configuration differs from
+ * the production environment.</p>
  */
 @DataJpaTest(
         properties = {
@@ -70,10 +70,14 @@ import ticketsystem.InfrastructureLayer.CompanyRepository;
 @AutoConfigureTestDatabase(
         replace = AutoConfigureTestDatabase.Replace.ANY
 )
-@Import(CompanyRepository.class)
+@Import({
+        CompanyRepository.class,
+        HistoryRepository.class
+})
 public class HistoryServiceTest {
 
-    private IHistoryRepository historyRepository;
+    @Autowired
+    private HistoryRepository historyRepository;
     private ITokenRepository tokenRepository;
     private IUserRepository userRepository;
     private ITokenService tokenService;
@@ -92,8 +96,7 @@ public class HistoryServiceTest {
     @BeforeEach
     void setUp() {
         // --- Setup Real Repositories (Acceptance Level) ---
-        HistoryRepository hRepo = new HistoryRepository();
-        this.historyRepository = hRepo;
+
 
         this.tokenRepository = new TokenRepository();
         this.userRepository = new InMemoryUserRepository();
