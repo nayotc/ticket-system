@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import ticketsystem.DomainLayer.discount.AppliedDiscountResult;
 import ticketsystem.DomainLayer.discount.PricingQuote;
+import ticketsystem.DomainLayer.discount.DiscountKind;
 
 class PricingQuoteTest {
 
@@ -165,11 +166,29 @@ class PricingQuoteTest {
 
         assertEquals("Subtotal cannot be null", ex.getMessage());
     }
+
+    /**
+     * Verifies that an applied discount preserves its business discount kind.
+     */
+    @Test
+    void GivenAppliedDiscount_WhenAccessKind_ThenReturnExpectedKind() {
+        AppliedDiscountResult discount = createAppliedDiscount();
+
+        assertEquals(DiscountKind.VISIBLE, discount.kind());
+    }
+
+
+    /**
+     * Creates a valid applied discount used by the pricing quote unit tests.
+     *
+     * @return a visible applied discount with fixed test values
+     */
     private AppliedDiscountResult createAppliedDiscount() {
-    return new AppliedDiscountResult(
-            "Test Discount",
-            BigDecimal.valueOf(10),
-            BigDecimal.valueOf(20)
-    );
-}
+        return new AppliedDiscountResult(
+                "Test Discount",
+                DiscountKind.VISIBLE,
+                BigDecimal.valueOf(10),
+                BigDecimal.valueOf(20)
+        );
+    }
 }

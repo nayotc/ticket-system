@@ -58,6 +58,13 @@ public abstract class DiscountTypes {
     public abstract BigDecimal calculateDiscount(BigDecimal totalPrice,int ticketCount,String couponCode);
 
     /**
+     * Returns the business type of this discount rule.
+     *
+     * @return the discount kind represented by this implementation
+     */
+    public abstract DiscountKind getKind();
+
+    /**
      * Calculates this discount and returns a detailed domain result.
      *
      * This method keeps the existing discount calculation logic in one place by
@@ -81,7 +88,12 @@ public abstract class DiscountTypes {
 
         return new DiscountCalculationResult(
                 amount,
-                List.of(new AppliedDiscountResult(getName(), getPercentage(), amount))
+                List.of(new AppliedDiscountResult(
+                        getName(),
+                        getKind(),
+                        getPercentage(),
+                        amount
+                ))
         );
     }
 }
