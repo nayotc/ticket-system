@@ -26,7 +26,7 @@ import ticketsystem.DomainLayer.user.User;
 public class TokenService implements ITokenService {
 
     private final SecretKey key;
-    private final long expirationTime = 1000 * 60 * 5; // 5 minute in milliseconds
+    private final long expirationTime = 1000 * 60 * 60; // 1 hour in milliseconds
     private final ITokenRepository tokenRepository;
     private final ISystemLogger logger;
 
