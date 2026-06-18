@@ -21,7 +21,7 @@ import ticketsystem.DomainLayer.history.Purchase;
 import ticketsystem.DomainLayer.history.PurchasedTicket;
 import ticketsystem.DomainLayer.history.TicketStatus;
 import ticketsystem.DomainLayer.user.Permission;
-
+import org.springframework.transaction.annotation.Transactional;
 /**
  * Application service for purchase-history use cases.
  *
@@ -445,6 +445,7 @@ public class HistoryService
      * Notifies buyers about an event update.
      */
     @Override
+    @Transactional(readOnly = true)
     public void onEventUpdated(
             Long eventId,
             LocalDateTime date,

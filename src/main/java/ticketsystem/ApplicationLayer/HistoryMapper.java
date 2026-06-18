@@ -40,10 +40,12 @@ public final class HistoryMapper {
                 "Completed order cannot be null."
         );
 
+        List<PurchaseDTO> orderTickets = order.getTickets();
+
         List<PurchasedTicket> tickets =
-                order.getTickets() == null
+                orderTickets == null || orderTickets.isEmpty()
                         ? List.of()
-                        : order.getTickets().stream()
+                        : orderTickets.stream()
                                 .map(HistoryMapper::toPurchasedTicket)
                                 .toList();
 
