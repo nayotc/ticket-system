@@ -27,6 +27,10 @@ import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.exception.OptimisticLockException;
+import ticketsystem.DomainLayer.policy.AndPurchaseRule;
+import ticketsystem.DomainLayer.policy.MaxTicketsRule;
+import ticketsystem.DomainLayer.policy.MinAgeRule;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.EventRepository;
 
 @DataJpaTest
@@ -296,6 +300,48 @@ public class EventRepositoryPersistenceTest {
 
         assertEquals("Event cannot be null", exception.getMessage());
     }
+
+    // ------------------- Purchase Policy Tests ------------------
+
+    @Test
+    void GivenEventWithNestedPurchasePolicy_WhenSavedAndReloaded_ThenPolicyIsPreserved() {
+        Event event = createEvent(1L, "Policy Event");
+
+        event.setPurchasePolicy(
+                new PurchasePolicy(
+                        new AndPurchaseRule(
+                                List.of(
+                                        new MinAgeRule(18),
+                                        new MaxTicketsRule(5)
+                                )
+                        )
+                )
+        );
+
+        eventRepository.addEvent(event);
+
+        Event loadedEvent = eventRepository.getEventById(event.getId());
+
+        assertNotNull(loadedEvent);
+        assertNotNull(loadedEvent.getPurchasePolicy());
+        assertTrue(
+                loadedEvent.getPurchasePolicy()
+                        .validate(5, 18)
+                        .isAllowed()
+        );
+        assertFalse(
+                loadedEvent.getPurchasePolicy()
+                        .validate(6, 18)
+                        .isAllowed()
+        );
+        assertFalse(
+                loadedEvent.getPurchasePolicy()
+                        .validate(5, 17)
+                        .isAllowed()
+        );
+    }
+
+    // ------------------- Helper Methods ------------------
 
     private Event createEvent(Long companyId, String eventName) {
         Event event = new Event(
