@@ -18,6 +18,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
+import ticketsystem.DomainLayer.discount.*;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
@@ -338,6 +339,83 @@ public class EventRepositoryPersistenceTest {
                 loadedEvent.getPurchasePolicy()
                         .validate(5, 17)
                         .isAllowed()
+        );
+    }
+
+    // ------------------- Discount Policy Tests ------------------
+
+    @Test
+    void GivenEventWithDiscountPolicy_WhenSavedAndReloaded_ThenPolicyIsPreserved() {
+        Event event = createEvent(1L, "Discount Event");
+
+        DiscountPolicy policy =
+                new DiscountPolicy(
+                        DiscountCompositionType.MAX
+                );
+
+        policy.addDiscount(
+                new VisibleDiscount(
+                        "Visible discount",
+                        new BigDecimal("10")
+                )
+        );
+
+        policy.addDiscount(
+                new ConditionalDiscount(
+                        "Conditional discount",
+                        new BigDecimal("25"),
+                        new AndDiscountCondition(
+                                List.of(
+                                        new MinTicketsCondition(2),
+                                        new MaxTicketsCondition(5)
+                                )
+                        )
+                )
+        );
+
+        policy.addDiscount(
+                new CouponDiscount(
+                        "Coupon discount",
+                        "SAVE30",
+                        new BigDecimal("30"),
+                        LocalDateTime.now().plusDays(5)
+                )
+        );
+
+        event.setDiscountPolicy(policy);
+
+        eventRepository.addEvent(event);
+        flushAndClear();
+
+        Event loadedEvent =
+                eventRepository.getEventById(event.getId());
+
+        assertNotNull(loadedEvent);
+        assertNotNull(loadedEvent.getDiscountPolicy());
+        assertEquals(
+                DiscountCompositionType.MAX,
+                loadedEvent.getDiscountPolicy()
+                        .getDiscountCompositionType()
+        );
+        assertEquals(
+                3,
+                loadedEvent.getDiscountPolicy()
+                        .getDiscounts()
+                        .size()
+        );
+
+        BigDecimal discount =
+                loadedEvent.getDiscountPolicy()
+                        .calculateDiscount(
+                                new BigDecimal("100.00"),
+                                3,
+                                "SAVE30"
+                        );
+
+        assertEquals(
+                0,
+                new BigDecimal("30.00")
+                        .compareTo(discount)
         );
     }
 
