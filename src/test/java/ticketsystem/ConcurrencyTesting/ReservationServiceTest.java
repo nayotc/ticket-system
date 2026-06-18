@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +33,6 @@ import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -57,18 +58,13 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.persistence.CompanyJpaRepository;
+import ticketsystem.InfrastructureLayer.persistence.LotteryJpaRepository;
+
+
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import ticketsystem.InfrastructureLayer.persistence.CompanyJpaRepository;
-
-/**
- * Concurrency tests for reservation operations.
- *
- * <p>The tests use the production company repository with an embedded H2
- * database. The surrounding test transaction is disabled so that the company
- * created during setup is committed and visible to worker threads.</p>
- */
 @DataJpaTest(
         properties = {
                 "spring.jpa.hibernate.ddl-auto=create-drop"
@@ -77,20 +73,29 @@ import ticketsystem.InfrastructureLayer.persistence.CompanyJpaRepository;
 @AutoConfigureTestDatabase(
         replace = AutoConfigureTestDatabase.Replace.ANY
 )
-@Import(CompanyRepository.class)
+@Import({
+        CompanyRepository.class,
+        LotteryRepository.class
+})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 public class ReservationServiceTest {
-
     private ReservationService reservationService;
 
     private IOrderRepository orderRepository;
     private IEventRepository eventRepository;
-    private ILotteryRepository lotteryRepository;
+
+    @Autowired
+    private LotteryRepository lotteryRepository;
+
+    @Autowired
+    private LotteryJpaRepository lotteryJpaRepository;
+
     @Autowired
     private CompanyRepository companyRepository;
 
     @Autowired
     private CompanyJpaRepository companyJpaRepository;
+
     private IUserRepository userRepository;
 
     private IPaymentService paymentService;
@@ -116,8 +121,6 @@ public class ReservationServiceTest {
         orderRepository = new InMemoryOrderRepository();
         eventRepository = new EventRepository();
 
-        lotteryRepository = new LotteryRepository();
-        ((LotteryRepository) lotteryRepository).clearForTests();
 
         userRepository = new InMemoryUserRepository();
         membershipDomain = new MembershipDomainService(userRepository);
