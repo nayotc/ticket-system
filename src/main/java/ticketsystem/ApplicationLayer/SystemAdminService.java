@@ -46,16 +46,19 @@ public class SystemAdminService {
     private final IHistoryRepository historyRepository;
     private final MembershipDomainService membershipDomain;
     private final INotifier notificationsService;
+    private final ITokenService tokenService;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
             ITicketIssuingService barcodeService,
             IUserRepository userRepository,
             IOrderRepository orderRepository,
-            ITokenService tokenService,
             ICompanyRepository companyRepository,
-            ISystemLogger logger, IHistoryRepository historyRepository,
-            MembershipDomainService membershipDomain, INotifier notificationsService) {
+            ISystemLogger logger,
+            IHistoryRepository historyRepository,
+            MembershipDomainService membershipDomain,
+            INotifier notificationsService,
+            ITokenService tokenService) {
 
         this.adminRepository = adminRepository;
         this.paymentService = paymentService;
@@ -67,10 +70,11 @@ public class SystemAdminService {
         this.historyRepository = historyRepository;
         this.membershipDomain = membershipDomain;
         this.notificationsService = notificationsService;
+        this.tokenService = tokenService;
 
     }
 
-//Use Case: Ticket System Initialization
+    //Use Case: Ticket System Initialization
     public boolean initSystem() {
         try {
             if (adminRepository.countAdmins() == 0) {
@@ -102,9 +106,11 @@ public class SystemAdminService {
         }
     }
 
-// Use-case: Delete Member by Admin
-    public String deleteMemberByAdmin(long adminId, long memberId) {
+    // Use-case: Delete Member by Admin
+    public String deleteMemberByAdmin(String sessionToken, long memberId) {
+        long adminId = tokenService.extractUserId(sessionToken);
         SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+
         if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
             logger.logEvent("ERROR: Unauthorized access. Invalid admin credentials.", LogbackSystemLogger.LogLevel.WARN);
             return "ERROR: Unauthorized access. Invalid admin credentials.";
@@ -154,7 +160,8 @@ public class SystemAdminService {
     }
 
     // Use Case 6.1: Close Production Company by System Admin
-    public CompanyDTO closeProductionCompanyByAdmin(long adminId, long companyId) throws Exception {
+    public CompanyDTO closeProductionCompanyByAdmin(String sessionToken, long companyId) throws Exception {
+        long adminId = tokenService.extractUserId(sessionToken);
         SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
         if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
@@ -194,9 +201,11 @@ public class SystemAdminService {
 
     // Use Case: View Purchase History by Company and Event 6.4
     @Transactional(readOnly = true)
-    public Map<Long, Map<String, List<OrderDTO>>> getPurchaseHistoryByCompanyAndEvent(long adminId) {
+    public Map<Long, Map<String, List<OrderDTO>>> getPurchaseHistoryByCompanyAndEvent(String sessionToken) {
         try {
+            long adminId = tokenService.extractUserId(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
                 throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
             }
@@ -226,9 +235,11 @@ public class SystemAdminService {
 
     // Use Case: View Purchase History by Buyer 6.4
     @Transactional(readOnly = true)
-    public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(long adminId) {
+    public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(String sessionToken) {
         try {
+            long adminId = tokenService.extractUserId(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+
             if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
                 throw new SecurityException("ERROR: Unauthorized access. Invalid admin credentials.");
             }
@@ -265,8 +276,10 @@ public class SystemAdminService {
     }
 
     // logs documentation of the system admin service
-    public List<String> viewEventLogs(long adminId) throws Exception {
+    public List<String> viewEventLogs(String sessionToken) throws Exception {
+        long adminId = tokenService.extractUserId(sessionToken);
         SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+
         if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
             logger.logError("Unauthorized access. Invalid admin credentials.", new Exception("Unauthorized access. Invalid admin credentials."));
             throw new Exception("Unauthorized access. Invalid admin credentials.");
@@ -274,8 +287,10 @@ public class SystemAdminService {
         return readLastNLines(Paths.get("logs/events.log"), 100);
     }
 
-    public List<String> viewErrorLogs(long adminId) throws Exception {
+    public List<String> viewErrorLogs(String sessionToken) throws Exception {
+        long adminId = tokenService.extractUserId(sessionToken);
         SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+
         if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
             logger.logError("Unauthorized access. Invalid admin credentials.", new Exception("Unauthorized access. Invalid admin credentials."));
             throw new Exception("Unauthorized access. Invalid admin credentials.");
@@ -292,10 +307,11 @@ public class SystemAdminService {
     }
 
     //uc 6.7 - Suspend Member by Admin
-    public boolean suspendMemberByAdmin(long adminId, long memberId, LocalDateTime startDate,
-            LocalDateTime endDate, String reason) {
+    public boolean suspendMemberByAdmin(String sessionToken, long memberId, LocalDateTime startDate, LocalDateTime endDate, String reason) {
         try {
+            long adminId = tokenService.extractUserId(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
                 logger.logEvent("Unauthorized access. Invalid admin credentials.",
                         LogbackSystemLogger.LogLevel.WARN);
@@ -320,9 +336,11 @@ public class SystemAdminService {
     }
 
     //uc 6.8 - Revoke Suspension of Member by Admin
-    public boolean revokeMemberByAdmin(long adminId, long memberId) {
+    public boolean revokeMemberByAdmin(String sessionToken, long memberId) {
         try {
+            long adminId = tokenService.extractUserId(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
                 logger.logEvent("Unauthorized access. Invalid admin credentials.",
                         LogbackSystemLogger.LogLevel.WARN);
@@ -347,9 +365,11 @@ public class SystemAdminService {
     }
 
     //uc 6.9 - View Suspended Members by Admin
-    public List<SuspentionUserDTO> viewSuspendedMembersByAdmin(long adminId) {
+    public List<SuspentionUserDTO> viewSuspendedMembersByAdmin(String sessionToken) {
         try {
+            long adminId = tokenService.extractUserId(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
+
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
                 logger.logEvent("Unauthorized access. Invalid admin credentials.",
                         LogbackSystemLogger.LogLevel.WARN);
@@ -417,11 +437,25 @@ public class SystemAdminService {
         }
     }
 
-    public boolean isSystemAdmin(Long memberId) {
-        if (memberId == null) {
+    public boolean isSystemAdmin(String sessionToken) {
+        if (sessionToken == null || sessionToken.isBlank()) {
             return false;
         }
 
-        return adminRepository.isSystemAdmin(String.valueOf(memberId));
+        try {
+            long memberId = tokenService.extractUserId(sessionToken);
+            return adminRepository.isSystemAdmin(String.valueOf(memberId));
+            
+        } catch (Exception e) {
+            logger.logEvent("Failed to verify admin status: Invalid token", LogbackSystemLogger.LogLevel.WARN);
+            return false;
+        }
+    }
+
+    public long getCurrentAdminId(String sessionToken) {
+        if (sessionToken == null || sessionToken.isBlank()) {
+            throw new IllegalArgumentException("Invalid session ID");
+        }
+        return tokenService.extractUserId(sessionToken);
     }
 }

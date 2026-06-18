@@ -28,14 +28,12 @@ import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.RoleType
 public class MembershipPresenter {
     
     private final MembershipService membershipService;
-    private final ITokenService tokenService;
     private final UserService userService;
     private final CompanyService companyService;
     private final EventService eventService;
 
-    public MembershipPresenter(MembershipService membershipService, ITokenService tokenService, UserService userService, CompanyService companyService, EventService eventService) {
+    public MembershipPresenter(MembershipService membershipService, UserService userService, CompanyService companyService, EventService eventService) {
         this.membershipService = membershipService;
-        this.tokenService = tokenService;
         this.userService = userService;
         this.companyService = companyService;
         this.eventService = eventService;
@@ -44,7 +42,7 @@ public class MembershipPresenter {
     public CompanyManagementState loadCompanyManagement(String sessionToken, Long requestedCompanyId) {
         try {
             // 1. Validate token and extract current user ID
-            Long currentUserId = tokenService.extractUserId(sessionToken);
+            Long currentUserId = membershipService.getCurrentUserId(sessionToken);
             if (currentUserId == null) {
                 throw new PresentationException("פג תוקף החיבור של המשתמש. אנא התחבר מחדש.");
             }
