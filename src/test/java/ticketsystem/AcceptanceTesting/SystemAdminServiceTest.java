@@ -26,7 +26,6 @@ import ticketsystem.ApplicationLayer.UserAccessService;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.SuspentionUserDTO;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -53,7 +52,28 @@ import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.testutil.RecordingNotifier;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+
+/**
+ * Acceptance tests for system administrator operations.
+ *
+ * <p>Company persistence uses the production repository implementation with
+ * an embedded H2 database.</p>
+ */
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import(CompanyRepository.class)
 public class SystemAdminServiceTest {
 
     private SystemAdminService systemAdminService;
@@ -62,7 +82,8 @@ public class SystemAdminServiceTest {
     private IUserRepository userRepo = new InMemoryUserRepository();
     private CompanyService companyService;
     private SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
-    ICompanyRepository companyRepo;
+    @Autowired
+    private CompanyRepository companyRepo;
     HistoryRepository historyRepo;
     IOrderRepository orderRepo;
     ISystemLogger logger = new LogbackSystemLogger();
@@ -82,7 +103,6 @@ public class SystemAdminServiceTest {
         PaymentServiceProxy.wasConnectCalled = false;
         SecureBarcodeProxy.isConnectionSuccessful = true;
         userRepo = new InMemoryUserRepository();
-        companyRepo = new CompanyRepository();
         TokenRepository tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         membershipDomain = new MembershipDomainService(userRepo);

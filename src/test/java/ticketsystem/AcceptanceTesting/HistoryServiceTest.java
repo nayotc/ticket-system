@@ -29,7 +29,6 @@ import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.SalesReportDTO;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
@@ -41,7 +40,6 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
-import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.HistoryRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.InMemoryNotificationsRepository;
@@ -50,7 +48,29 @@ import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.testutil.RecordingNotifier;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+
+/**
+ * Acceptance tests for history use cases.
+ *
+ * <p>Company data is persisted through the production company repository
+ * implementation using an embedded H2 database. History persistence remains
+ * unchanged until the dedicated history database task is implemented.</p>
+ */
+@DataJpaTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=create-drop"
+        }
+)
+@AutoConfigureTestDatabase(
+        replace = AutoConfigureTestDatabase.Replace.ANY
+)
+@Import(CompanyRepository.class)
 public class HistoryServiceTest {
 
     private IHistoryRepository historyRepository;
@@ -59,7 +79,8 @@ public class HistoryServiceTest {
     private ITokenService tokenService;
     private UserService userService;
     private HistoryService historyService;
-    private ICompanyRepository companyRepository;
+    @Autowired
+    private CompanyRepository companyRepository;
     private UserAccessService userAccessService;
     private RecordingNotifier recordingNotifier;
     private INotifier notifier;
@@ -79,7 +100,6 @@ public class HistoryServiceTest {
         this.logger = new LogbackSystemLogger();
         this.tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         this.userService = new UserService(userRepository, tokenService, logger);
-        this.companyRepository = new CompanyRepository();
         this.userAccessService = new UserAccessService(userRepository);
         this.notificationRepository = new InMemoryNotificationsRepository();
         this.recordingNotifier = new RecordingNotifier();
