@@ -3,7 +3,15 @@ package ticketsystem.DomainLayer.policy;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+
+@Entity
+@DiscriminatorValue("OR")
 public class OrPurchaseRule extends CompositePurchaseRule {
+
+    protected OrPurchaseRule() {
+    }
 
     public OrPurchaseRule(List<PurchaseRule> rules) {
         super(rules);

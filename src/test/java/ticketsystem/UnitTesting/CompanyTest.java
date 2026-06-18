@@ -323,7 +323,7 @@ class CompanyTest {
         );
     }
 
-    private static class FixedResultPurchaseRule implements PurchaseRule {
+    private static class FixedResultPurchaseRule extends PurchaseRule {
 
         private final PolicyResult result;
 
