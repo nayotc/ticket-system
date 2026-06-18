@@ -3,23 +3,57 @@ package ticketsystem.DomainLayer.discount;
 import java.math.BigDecimal;
 import java.util.List;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "discount_types")
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(
+        name = "discount_type",
+        discriminatorType = DiscriminatorType.STRING,
+        length = 32
+)
 public abstract class DiscountTypes {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "name", nullable = false)
     protected String name;
-    //private Long discountId;
+
+    @Column(
+            name = "percentage",
+            nullable = false,
+            precision = 10,
+            scale = 4
+    )
     private BigDecimal percentage;
 
-    public DiscountTypes(String name,BigDecimal percentage) {
-        validateName(name);
-        validatePercentage(percentage);
-       // this.discountId=discountId;
-        this.name = name;
-        this.percentage = percentage;
-
+    protected DiscountTypes() {
     }
 
-    // public Long getDiscountId(){
-    //     return discountId;
-    // }
+    public DiscountTypes(String name, BigDecimal percentage) {
+        validateName(name);
+        validatePercentage(percentage);
+
+        this.name = name;
+        this.percentage = percentage;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
     public String getName() {
         return name;
     }
@@ -32,6 +66,7 @@ public abstract class DiscountTypes {
         validatePercentage(percentage);
         this.percentage = percentage;
     }
+
     protected void validateName(String name) {
 
         if (name == null || name.isBlank()) {
@@ -40,13 +75,6 @@ public abstract class DiscountTypes {
         }
     }
 
-    protected void validateDiscountId(Long discountId) {
-
-        if (discountId == null ) {
-            throw new IllegalArgumentException(
-                    "Discount id must be positive");
-        }
-    }
     protected void validatePercentage(BigDecimal percentage) {
 
         if (percentage == null) {
