@@ -33,7 +33,6 @@ import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -59,19 +58,10 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 import ticketsystem.InfrastructureLayer.CompanyRepository;
-import ticketsystem.InfrastructureLayer.EventRepository;
-import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
-import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
-import ticketsystem.InfrastructureLayer.LotteryRepository;
-import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
-import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.persistence.CompanyJpaRepository;
 import ticketsystem.InfrastructureLayer.persistence.LotteryJpaRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
+
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 

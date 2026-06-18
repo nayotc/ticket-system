@@ -177,7 +177,7 @@ public class Lottery {
      * @throws IllegalStateException if registration is closed or the member is
      *                               already registered
      */
-    public synchronized void registerMember(long memberId) {
+    public void registerMember(long memberId) {
         if (status != LotteryStatus.OPEN) {
             throw new IllegalStateException(
                     "Registration is closed for this lottery."
@@ -212,7 +212,7 @@ public class Lottery {
      * @param authCode authentication code generated for that member
      * @throws IllegalArgumentException if the member is not registered
      */
-    public synchronized void setWinner(long memberId, String authCode) {
+    public void setWinner(long memberId, String authCode) {
         LotteryRegistration registration = registrations.get(memberId);
 
         if (registration == null) {
@@ -231,7 +231,7 @@ public class Lottery {
      * @param inputCode submitted authentication code
      * @return true when the member won and the code matches
      */
-    public synchronized boolean validateWinnerCode(
+    public boolean validateWinnerCode(
             long memberId,
             String inputCode
     ) {

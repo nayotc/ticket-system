@@ -15,7 +15,7 @@ import ticketsystem.DomainLayer.user.Permission;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
+@Transactional(readOnly = true)
 public class LotteryService {
 
     private final ILotteryRepository lotteryRepository;
@@ -50,6 +50,7 @@ public class LotteryService {
      * @param winnersNumber number of winners to select
      * @return database-generated lottery identifier
      */
+    @Transactional
     public long addLottery(
             String token,
             long eventId,
@@ -135,6 +136,7 @@ public class LotteryService {
     }
 
     // Method to register a member for a lottery
+    @Transactional
     public boolean registerMemberToLottery(String token, long lotteryId) {
         try {
             tokenService.validateToken(token);
@@ -162,6 +164,7 @@ public class LotteryService {
     }
 
     // Method to close lottery registration
+    @Transactional
     public boolean closeLotteryRegistration(String token, long lotteryId, long companyId) {
         try {
             tokenService.validateToken(token);
@@ -191,6 +194,7 @@ public class LotteryService {
     }
 
     // Method to conduct the lottery draw and select winners
+    @Transactional
     public boolean conductLotteryDraw(String token, long lotteryId, long companyId) {
         try {
             tokenService.validateToken(token);
@@ -304,7 +308,7 @@ public class LotteryService {
 
         return lottery.getLotteryId();
     }
-
+    @Transactional
     public boolean registerMemberToLotteryByEventId(String token, long eventId) {
         if (eventId <= 0) {
             throw new IllegalArgumentException("Event ID is invalid.");
