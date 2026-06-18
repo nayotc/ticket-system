@@ -67,13 +67,27 @@ import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+/**
+ * Acceptance tests for ReservationService.
+ *
+ * <p>Lottery data is persisted through the production JPA repository with
+ * the embedded test database. The remaining repositories keep their existing
+ * test implementations because they are outside the Lottery persistence
+ * migration.</p>
+ */
+@DataJpaTest
+@Import(LotteryRepository.class)
 public class ReservationServiceTest {
 
     private ReservationService reservationService;
 
     private IOrderRepository orderRepository;
     private IEventRepository eventRepository;
+    @Autowired
     private ILotteryRepository lotteryRepository;
     private ICompanyRepository companyRepository;
     private IUserRepository userRepository;
@@ -99,7 +113,6 @@ public class ReservationServiceTest {
     void setUp() {
         orderRepository = new InMemoryOrderRepository();
         eventRepository = new EventRepository();
-        lotteryRepository = new LotteryRepository();
         companyRepository = new CompanyRepository();
         userRepository = new InMemoryUserRepository();
 
@@ -240,7 +253,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, lotteryCode);
         lotteryRepository.addLottery(lottery);
@@ -264,7 +277,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -286,7 +299,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -309,7 +322,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(otherUserId);
         lottery.setWinner(otherUserId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -350,7 +363,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, lotteryCode);
         lotteryRepository.addLottery(lottery);
@@ -374,7 +387,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
 
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
@@ -397,7 +410,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -420,7 +433,7 @@ public class ReservationServiceTest {
         event.setSaleStatus(SaleStatus.PRE_SALE);
         eventRepository.addEvent(event);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(otherUserId);
         lottery.setWinner(otherUserId, "ABC12345");
         lotteryRepository.addLottery(lottery);

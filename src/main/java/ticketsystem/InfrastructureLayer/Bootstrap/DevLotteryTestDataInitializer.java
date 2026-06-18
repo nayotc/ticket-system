@@ -187,7 +187,6 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
 
         if (lottery == null) {
             lottery = new Lottery(
-                    lotteryRepository.generateNextLotteryId(),
                     PRE_SALE_WINNER_EVENT_ID,
                     1
             );
@@ -222,7 +221,6 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
 
         if (lottery == null) {
             lottery = new Lottery(
-                    lotteryRepository.generateNextLotteryId(),
                     LOTTERY_REGISTRATION_EVENT_ID,
                     5
             );

@@ -53,7 +53,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
     private static final long NEW_YORK_ART_EVENT_ID = 140L;
     private static final long OTHER_FAMILY_EVENT_ID = 150L;
 
-    private static final long ELECTRONIC_EVENT_LOTTERY_ID = 100L;
     private static final int ELECTRONIC_EVENT_LOTTERY_WINNERS = 10;
 
     private final IEventRepository eventRepository;
@@ -112,7 +111,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
         addEventIfMissing(createOtherFamilyEvent(tixNowCompany));
 
         addLotteryIfMissing(
-                ELECTRONIC_EVENT_LOTTERY_ID,
                 ELECTRONIC_EVENT_ID,
                 ELECTRONIC_EVENT_LOTTERY_WINNERS
         );
@@ -140,19 +138,38 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
         return company;
     }
 
-    private void addLotteryIfMissing(long lotteryId, long eventId, int winnersNumber) {
-        if (lotteryRepository.findById(lotteryId) != null) {
-            System.out.println("Dev lottery already exists for event ID: " + eventId);
+    /**
+     * Creates the development lottery only when the event does not already have
+     * one.
+     *
+     * @param eventId       event associated with the lottery
+     * @param winnersNumber number of lottery winners
+     */
+    private void addLotteryIfMissing(
+            long eventId,
+            int winnersNumber
+    ) {
+        Lottery existingLottery =
+                lotteryRepository.findByEventId(eventId);
+
+        if (existingLottery != null) {
+            System.out.println(
+                    "Dev lottery already exists for event ID: " + eventId
+            );
             return;
         }
 
-        if (lotteryRepository.findByEventId(eventId) != null) {
-            System.out.println("Dev lottery already exists for event ID: " + eventId);
-            return;
-        }
+        Lottery lottery = new Lottery(eventId, winnersNumber);
 
-        lotteryRepository.addLottery(new Lottery(lotteryId, eventId, winnersNumber));
-        System.out.println("Dev lottery created for event ID: " + eventId + " [Lottery ID: " + lotteryId + "]");
+        lotteryRepository.addLottery(lottery);
+
+        System.out.println(
+                "Dev lottery created for event ID: "
+                        + eventId
+                        + " [Lottery ID: "
+                        + lottery.getLotteryId()
+                        + "]"
+        );
     }
 
     private void addEventIfMissing(Event event) {

@@ -12,8 +12,10 @@ import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.lottery.LotteryStatus;
 import ticketsystem.DomainLayer.user.Permission;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class LotteryService {
 
     private final ILotteryRepository lotteryRepository;
@@ -36,38 +38,100 @@ public class LotteryService {
         this.logger = logger;
     }
 
-    public long addLottery(String token, long eventId, long companyId, int winnersNumber) {
+    /**
+     * Creates and persists a new purchase lottery for an event.
+     *
+     * <p>The lottery identifier is assigned by the database during persistence.
+     * Only one lottery may be associated with a specific event.</p>
+     *
+     * @param token         active member token
+     * @param eventId       event associated with the lottery
+     * @param companyId     company that manages the event
+     * @param winnersNumber number of winners to select
+     * @return database-generated lottery identifier
+     */
+    public long addLottery(
+            String token,
+            long eventId,
+            long companyId,
+            int winnersNumber
+    ) {
         try {
-            //need to validate that this event id id exists in the system and premission of the member to create lottery for this event
             tokenService.validateToken(token);
+
             if (!tokenService.isMemberToken(token)) {
-                throw new IllegalArgumentException("Only members can add lotteries");
+                throw new IllegalArgumentException(
+                        "Only members can add lotteries"
+                );
             }
 
             Long memberId = tokenService.extractUserId(token);
-            if (memberId == null) {
-                throw new IllegalArgumentException("Could not extract user id from token");
-            }
-            if (!membershipDomainService.validatePermission(memberId, companyId, Permission.MANAGE_EVENT_INVENTORY)) {
-                throw new IllegalArgumentException("Insufficient permissions to add lottery");
-            }
-            userAccessService.validateCanPerformNonViewAction(memberId);
-            if (winnersNumber <= 0) {
-                throw new IllegalArgumentException("Number of winners must be greater than zero.");
-            }
-            long lotteryId = lotteryRepository.generateNextLotteryId();
-            lotteryRepository.addLottery(new Lottery(lotteryId, eventId, winnersNumber));
-            logger.logEvent("Completed - Add Lottery. eventId=" + eventId + ", winnerNumber=" + winnersNumber, ISystemLogger.LogLevel.INFO);
-            return lotteryId;
 
-        } catch (IllegalArgumentException e) {
+            if (memberId == null) {
+                throw new IllegalArgumentException(
+                        "Could not extract user id from token"
+                );
+            }
+
+            if (!membershipDomainService.validatePermission(
+                    memberId,
+                    companyId,
+                    Permission.MANAGE_EVENT_INVENTORY
+            )) {
+                throw new IllegalArgumentException(
+                        "Insufficient permissions to add lottery"
+                );
+            }
+
+            userAccessService.validateCanPerformNonViewAction(memberId);
+
+            if (eventId <= 0) {
+                throw new IllegalArgumentException(
+                        "Event ID must be positive."
+                );
+            }
+
+            if (winnersNumber <= 0) {
+                throw new IllegalArgumentException(
+                        "Number of winners must be greater than zero."
+                );
+            }
+
+            if (lotteryRepository.findByEventId(eventId) != null) {
+                throw new IllegalArgumentException(
+                        "A lottery already exists for this event."
+                );
+            }
+
+            Lottery lottery = new Lottery(eventId, winnersNumber);
+
+            lotteryRepository.addLottery(lottery);
+
+            Long generatedLotteryId = lottery.getLotteryId();
+
+            if (generatedLotteryId == null) {
+                throw new IllegalStateException(
+                        "Lottery ID was not generated after persistence."
+                );
+            }
+
+            logger.logEvent(
+                    "Completed - Add Lottery. lotteryId="
+                            + generatedLotteryId
+                            + ", eventId=" + eventId
+                            + ", winnerNumber=" + winnersNumber,
+                    ISystemLogger.LogLevel.INFO
+            );
+
+            return generatedLotteryId;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
             logger.logEvent(
                     "Failed to add lottery: " + e.getMessage(),
                     ISystemLogger.LogLevel.WARN
             );
-            throw (e);
+            throw e;
         }
-
     }
 
     // Method to register a member for a lottery
@@ -179,6 +243,7 @@ public class LotteryService {
     }
 
     //method for tests
+    @Transactional(readOnly = true)
     public List<Long> getWinners(long lotteryId) {
         Lottery lottery = lotteryRepository.findById(lotteryId);
         if (lottery == null) {
@@ -214,6 +279,7 @@ public class LotteryService {
      * @param eventId event id to check
      * @return true if a lottery exists for the event, false otherwise
      */
+    @Transactional(readOnly = true)
     public boolean hasLotteryForEvent(String token, long eventId) {
         tokenService.validateToken(token);
 
@@ -224,6 +290,7 @@ public class LotteryService {
         return lotteryRepository.findByEventId(eventId) != null;
     }
 
+    @Transactional(readOnly = true)
     public long getLotteryIdByEventId(long eventId) {
         if (eventId <= 0) {
             throw new IllegalArgumentException("Event ID is invalid.");
@@ -252,6 +319,7 @@ public class LotteryService {
         return registerMemberToLottery(token, lottery.getLotteryId());
     }
 
+    @Transactional(readOnly = true)
     public boolean validateWinnerCodeForEvent(String token, long eventId, String authCode) {
         try {
             tokenService.validateToken(token);

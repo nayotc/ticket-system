@@ -53,6 +53,7 @@ import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
+import static org.mockito.Mockito.mock;
 
 public class ReservationServiceTest {
 
@@ -85,8 +86,12 @@ public class ReservationServiceTest {
         orderRepository = new InMemoryOrderRepository();
         eventRepository = new EventRepository();
 
-        lotteryRepository = new LotteryRepository();
-        ((LotteryRepository) lotteryRepository).clearForTests();
+    /*
+    * These concurrency tests exercise reservation and checkout behavior rather
+    * than Lottery persistence. A repository mock therefore represents the
+    * absence of a lottery for the tested regular events.
+    */
+    lotteryRepository = mock(ILotteryRepository.class);
 
         companyRepository = new CompanyRepository();
         userRepository = new InMemoryUserRepository();
