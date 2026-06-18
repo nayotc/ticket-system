@@ -1,6 +1,9 @@
 package ticketsystem.IntegrationTesting;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
@@ -377,11 +380,13 @@ class EventHistoryIntegrationTests {
 
         PurchasedTicket canceledTicket = mock(PurchasedTicket.class);
         when(canceledTicket.getStatus()).thenReturn(TicketStatus.CANCELED);
-        when(canceledTicket.getPrice()).thenReturn(100.0);
+        when(canceledTicket.getPrice())
+        .thenReturn(BigDecimal.valueOf(100.0));
 
         PurchasedTicket validTicket = mock(PurchasedTicket.class);
         when(validTicket.getStatus()).thenReturn(nonCanceledStatus);
-        when(validTicket.getPrice()).thenReturn(80.0);
+        when(validTicket.getPrice())
+        .thenReturn(BigDecimal.valueOf(80.0));
 
         Purchase purchase = purchase(1L, 55L, 12345, List.of(canceledTicket, validTicket));
 
@@ -398,7 +403,8 @@ class EventHistoryIntegrationTests {
     void GivenOnlyCanceledTickets_WhenGenerateSalesReport_ThenReturnNoSalesData() {
         PurchasedTicket canceledTicket = mock(PurchasedTicket.class);
         when(canceledTicket.getStatus()).thenReturn(TicketStatus.CANCELED);
-        when(canceledTicket.getPrice()).thenReturn(100.0);
+        when(canceledTicket.getPrice())
+        .thenReturn(BigDecimal.valueOf(100.0));
 
         Purchase purchase = purchase(1L, 55L, 12345, List.of(canceledTicket));
 
@@ -417,7 +423,8 @@ class EventHistoryIntegrationTests {
 
         PurchasedTicket ticket = mock(PurchasedTicket.class);
         when(ticket.getStatus()).thenReturn(nonCanceledStatus);
-        when(ticket.getPrice()).thenReturn(100.0);
+        when(ticket.getPrice())
+        .thenReturn(BigDecimal.valueOf(100.0));
 
         Purchase purchaseManagedByOtherMember = new Purchase(
                 1L,

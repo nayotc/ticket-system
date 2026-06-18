@@ -1,85 +1,116 @@
 package ticketsystem.InfrastructureLayer;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Objects;
 
 import org.springframework.stereotype.Repository;
+
 import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.history.Purchase;
-import org.springframework.stereotype.Repository;
+import ticketsystem.InfrastructureLayer.persistence.HistoryJpaRepository;
 
+/**
+ * JPA-based adapter for purchase-history persistence.
+ *
+ * <p>This is the single concrete history-repository implementation used by
+ * both the production application and database-backed tests. The environment
+ * changes the database configuration, not the repository implementation.</p>
+ */
 @Repository
 public class HistoryRepository implements IHistoryRepository {
-    private AtomicLong counter;
-    private static HistoryRepository instance;
-    private Map<Long, Purchase> allPurchases;
-    private Map<Long, List<Purchase>> purchasesByMemberId;
-    private Map<Long, List<Purchase>> purchasesByCompanyId;
-    private Map<Long, List<Purchase>> purchasesByEventId;
 
-    public HistoryRepository() {
-        this.counter = new AtomicLong(1);
-        this.allPurchases = new ConcurrentHashMap<>();
-        this.purchasesByMemberId = new ConcurrentHashMap<>();
-        this.purchasesByCompanyId = new ConcurrentHashMap<>();
-        this.purchasesByEventId = new ConcurrentHashMap<>();
+    private final HistoryJpaRepository historyJpaRepository;
+
+    /**
+     * Creates the history repository adapter.
+     *
+     * @param historyJpaRepository Spring Data repository used for database
+     *                             access
+     */
+    public HistoryRepository(
+            HistoryJpaRepository historyJpaRepository
+    ) {
+        this.historyJpaRepository = Objects.requireNonNull(
+                historyJpaRepository,
+                "History JPA repository cannot be null."
+        );
     }
 
+    /**
+     * Persists a purchase aggregate.
+     *
+     * <p>{@code saveAndFlush} ensures that a database-generated identifier is
+     * assigned before control returns to the application service. Flushing
+     * does not commit the surrounding transaction.</p>
+     *
+     * @param purchase purchase to persist
+     */
     @Override
     public void addPurchase(Purchase purchase) {
-        allPurchases.put(purchase.getPurchaseId(), purchase);
+        Objects.requireNonNull(
+                purchase,
+                "Purchase cannot be null."
+        );
 
-        if (purchase.getMemberId() != null) { //if it is null it is guest purchase and we do not want to add it to the purchasesByMemberId map
-            purchasesByMemberId
-                    .computeIfAbsent(purchase.getMemberId(), k -> new CopyOnWriteArrayList<>())
-                    .add(purchase);//
-        }
-
-        purchasesByCompanyId
-                .computeIfAbsent(purchase.getCompanyId(), k -> new CopyOnWriteArrayList<>())
-                .add(purchase);
-
-        if (purchase.getEventId() != null) {
-        purchasesByEventId
-                .computeIfAbsent(purchase.getEventId(), k -> new CopyOnWriteArrayList<>())
-                .add(purchase);
-    }
+        historyJpaRepository.saveAndFlush(purchase);
     }
 
+    /**
+     * Finds a purchase by identifier.
+     *
+     * @param purchaseId purchase identifier
+     * @return matching purchase, or {@code null}
+     */
     @Override
     public Purchase findPurchaseById(long purchaseId) {
-        return allPurchases.get(purchaseId);
+        return historyJpaRepository.findById(purchaseId)
+                .orElse(null);
     }
 
+    /**
+     * Returns the history of a specific buyer.
+     *
+     * @param memberId buyer member identifier
+     * @return buyer purchases
+     */
     @Override
     public List<Purchase> getPurchasesByMemberId(long memberId) {
-        List<Purchase> purchases = purchasesByMemberId.getOrDefault(memberId, new CopyOnWriteArrayList<>());
-        return new ArrayList<>(purchases);
+        return historyJpaRepository
+                .findAllByMemberIdOrderByPurchaseIdAsc(memberId);
     }
 
+    /**
+     * Returns the history associated with a company.
+     *
+     * @param companyId company identifier
+     * @return company purchases
+     */
     @Override
     public List<Purchase> getPurchasesByCompanyId(long companyId) {
-        List<Purchase> purchases = purchasesByCompanyId.getOrDefault(companyId, new ArrayList<>());
-        return new ArrayList<>(purchases);
+        return historyJpaRepository
+                .findAllByCompanyIdOrderByPurchaseIdAsc(companyId);
     }
 
+    /**
+     * Returns all persisted purchases.
+     *
+     * @return all purchases
+     */
     @Override
     public List<Purchase> getAllPurchases() {
-        return new ArrayList<>(allPurchases.values());
-    }
-    
-    @Override
-    public long generateNextId() {
-        return counter.getAndIncrement(); 
+        return historyJpaRepository
+                .findAllByOrderByPurchaseIdAsc();
     }
 
+    /**
+     * Returns the history associated with an event.
+     *
+     * @param eventId event identifier
+     * @return event purchases
+     */
     @Override
     public List<Purchase> getPurchasesByEventId(long eventId) {
-        List<Purchase> purchases = purchasesByEventId.getOrDefault(eventId, new CopyOnWriteArrayList<>());
-        return new ArrayList<>(purchases);
+        return historyJpaRepository
+                .findAllByEventIdOrderByPurchaseIdAsc(eventId);
     }
 }

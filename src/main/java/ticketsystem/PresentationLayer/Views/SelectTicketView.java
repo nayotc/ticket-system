@@ -11,6 +11,7 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.BeforeLeaveEvent;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,6 @@ import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -108,6 +108,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
         loadTicketSelectionEventData();
     }
+
 
     private Long parseEventId(String value) {
         if (value == null || value.isBlank()) {
