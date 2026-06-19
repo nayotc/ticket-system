@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 
+import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.SuspentionUserDTO;
@@ -106,9 +107,22 @@ public class SystemAdminService {
         }
     }
 
+    private long extractAdminIdSafely(String sessionToken) {
+        try {
+            if (sessionToken != null && !sessionToken.isBlank() && tokenService.validateToken(sessionToken)) {
+                return tokenService.extractUserId(sessionToken);
+            }
+        } catch (IllegalArgumentException e) {
+            logger.logEvent("Invalid extractAdminIdSafely criteria: " + e.getMessage(), LogLevel.WARN);
+        } catch (Exception e) {
+            logger.logEvent("Token extraction failed safely. reason=" + e.getMessage(), LogLevel.DEBUG);
+        }
+        return -1L; 
+    }
+
     // Use-case: Delete Member by Admin
     public String deleteMemberByAdmin(String sessionToken, long memberId) {
-        long adminId = tokenService.extractUserId(sessionToken);
+        long adminId = extractAdminIdSafely(sessionToken);
         SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
         if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
@@ -161,7 +175,7 @@ public class SystemAdminService {
 
     // Use Case 6.1: Close Production Company by System Admin
     public CompanyDTO closeProductionCompanyByAdmin(String sessionToken, long companyId) throws Exception {
-        long adminId = tokenService.extractUserId(sessionToken);
+        long adminId = extractAdminIdSafely(sessionToken);
         SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
         if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
@@ -203,7 +217,7 @@ public class SystemAdminService {
     @Transactional(readOnly = true)
     public Map<Long, Map<String, List<OrderDTO>>> getPurchaseHistoryByCompanyAndEvent(String sessionToken) {
         try {
-            long adminId = tokenService.extractUserId(sessionToken);
+            long adminId = extractAdminIdSafely(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
@@ -237,7 +251,7 @@ public class SystemAdminService {
     @Transactional(readOnly = true)
     public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(String sessionToken) {
         try {
-            long adminId = tokenService.extractUserId(sessionToken);
+            long adminId = extractAdminIdSafely(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
             if (!adminRepository.isSystemAdmin("" + adminId) || admin == null || !admin.isActive()) {
@@ -277,7 +291,7 @@ public class SystemAdminService {
 
     // logs documentation of the system admin service
     public List<String> viewEventLogs(String sessionToken) throws Exception {
-        long adminId = tokenService.extractUserId(sessionToken);
+        long adminId = extractAdminIdSafely(sessionToken);
         SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
         if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
@@ -288,7 +302,7 @@ public class SystemAdminService {
     }
 
     public List<String> viewErrorLogs(String sessionToken) throws Exception {
-        long adminId = tokenService.extractUserId(sessionToken);
+        long adminId = extractAdminIdSafely(sessionToken);
         SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
         if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
@@ -309,7 +323,7 @@ public class SystemAdminService {
     //uc 6.7 - Suspend Member by Admin
     public boolean suspendMemberByAdmin(String sessionToken, long memberId, LocalDateTime startDate, LocalDateTime endDate, String reason) {
         try {
-            long adminId = tokenService.extractUserId(sessionToken);
+            long adminId = extractAdminIdSafely(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
@@ -338,7 +352,7 @@ public class SystemAdminService {
     //uc 6.8 - Revoke Suspension of Member by Admin
     public boolean revokeMemberByAdmin(String sessionToken, long memberId) {
         try {
-            long adminId = tokenService.extractUserId(sessionToken);
+            long adminId = extractAdminIdSafely(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
@@ -367,7 +381,7 @@ public class SystemAdminService {
     //uc 6.9 - View Suspended Members by Admin
     public List<SuspentionUserDTO> viewSuspendedMembersByAdmin(String sessionToken) {
         try {
-            long adminId = tokenService.extractUserId(sessionToken);
+            long adminId = extractAdminIdSafely(sessionToken);
             SystemAdmin admin = adminRepository.getAdminById("" + adminId);
 
             if (adminRepository.isSystemAdmin("" + adminId) == false || admin == null || !admin.isActive()) {
@@ -443,7 +457,7 @@ public class SystemAdminService {
         }
 
         try {
-            long memberId = tokenService.extractUserId(sessionToken);
+            long memberId = extractAdminIdSafely(sessionToken);
             return adminRepository.isSystemAdmin(String.valueOf(memberId));
             
         } catch (Exception e) {
@@ -453,9 +467,11 @@ public class SystemAdminService {
     }
 
     public long getCurrentAdminId(String sessionToken) {
-        if (sessionToken == null || sessionToken.isBlank()) {
-            throw new IllegalArgumentException("Invalid session ID");
+        long id = extractAdminIdSafely(sessionToken);
+        if (id == -1L) {
+            throw new IllegalArgumentException("Session token is invalid or expired.");
         }
-        return tokenService.extractUserId(sessionToken);
+        return id;
     }
+
 }
