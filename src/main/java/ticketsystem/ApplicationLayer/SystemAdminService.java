@@ -117,6 +117,7 @@ public class SystemAdminService {
         } catch (Exception e) {
             logger.logEvent("Token extraction failed safely. reason=" + e.getMessage(), LogLevel.DEBUG);
         }
+        // Return a dummy ID (-1) to gracefully fail the database authorization checks
         return -1L; 
     }
 
