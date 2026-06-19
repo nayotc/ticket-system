@@ -562,7 +562,7 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
                 message.contains("Session is no longer active") ||
                 message.contains("Invalid or expired security token")
         )) {
-            return message; // מחזירים באנגלית כדי שהמסך יזהה ניתוק!
+            return message;
         }
 
         if (message.startsWith("Map elements cannot overlap")) {

@@ -831,7 +831,7 @@ public class ReservationPresenter {
                 message.contains("Session is no longer active") ||
                 message.contains("Invalid or expired security token")
         )) {
-            return message; // מחזירים באנגלית כדי שהמסך יזהה ניתוק!
+            return message;
         }
 
         // 1. טיפול דינמי בכמות כרטיסים מקסימלית

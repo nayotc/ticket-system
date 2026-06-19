@@ -2,8 +2,6 @@ package ticketsystem.PresentationLayer.Presenters;
 
 import org.springframework.stereotype.Component;
 
-import com.nimbusds.jwt.JWT;
-
 import ticketsystem.ApplicationLayer.LotteryService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
@@ -75,7 +73,7 @@ public class EventCardPresenter {
                 message.contains("Session is no longer active") ||
                 message.contains("Invalid or expired security token")
         )) {
-            return message; // מחזירים באנגלית כדי שהמסך יזהה ניתוק!
+            return message;
         }
 
         if (message.contains("Member must be logged in")) {
@@ -174,7 +172,7 @@ public class EventCardPresenter {
                     message.contains("Session is no longer active") ||
                     message.contains("Invalid or expired security token")
             )) {
-                return message; // מחזירים באנגלית כדי שהמסך יזהה ניתוק!
+                return message;
             }
 
             if (message.contains("Event not found")) {
