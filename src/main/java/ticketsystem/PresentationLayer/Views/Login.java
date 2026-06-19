@@ -60,7 +60,7 @@ public class Login extends PageContainer implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        // כאן אנחנו תופסים את הניתובים שבאו בעקבות ניתוק ומקפיצים את ההודעה המסודרת
+        // Here we intercept routes triggered by a session timeout and show the proper message
         if (event.getLocation().getQueryParameters().getParameters().containsKey("timeout")) {
             Notifications.error("זמן החיבור פג. אנא התחבר מחדש למערכת.");
         }

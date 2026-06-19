@@ -336,7 +336,7 @@ private void openPasswordConfirmationDialog() {
         
         } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
             if (e.isSessionTimeout()) {
-                dialog.close(); // סוגרים את חלונית האימות לפני הניתוב
+                dialog.close();
                 UiSession.handleTimeoutRedirect();
                 return;
             }

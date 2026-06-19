@@ -48,7 +48,6 @@ import ticketsystem.PresentationLayer.Components.StatusBadge;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.AdminLayout;
-import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.SystemAdminPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
@@ -89,27 +88,22 @@ public class SystemAdminDashboard extends Div {
 
         loadInitialData();
 
-        // הגדרת עיצוב למכל הסטטיסטיקות
         metricsContainer.setId("admin-overview");
         metricsContainer.addClassName("system-admin-metrics-grid");
         
-        // יצירה ראשונית של הסטטיסטיקות
         refreshMetrics();
 
         add(
                 createHeader(),
-                metricsContainer, // <--- שימוש במכל ששמרנו במקום בפונקציה הישנה
+                metricsContainer,
                 createDashboardGrid()
         );
     }
 
     private ViewHeader createHeader() {
-        // 1. שולפים את הטוקן עכשיו, כשעדיין יש לנו גישה מלאה ל-UI ול-Session!
         final String token = UiSession.getMemberToken();
 
-        // כפתור הורדת לוג אירועים
         DownloadHandler eventLogsHandler = DownloadHandler.fromInputStream(event -> {
-            // משתמשים בטוקן שנשמר מראש
             InputStream stream = downloadEventLogsStream(token);
             
             return new DownloadResponse(
@@ -125,9 +119,7 @@ public class SystemAdminDashboard extends Div {
         eventLogsAnchor.getElement().setAttribute("download", true);
         eventLogsAnchor.add(eventLogsBtn);
 
-        // כפתור הורדת לוג שגיאות
         DownloadHandler errorLogsHandler = DownloadHandler.fromInputStream(event -> {
-            // משתמשים בטוקן שנשמר מראש
             InputStream stream = downloadErrorLogsStream(token);
             
             return new DownloadResponse(
@@ -153,7 +145,7 @@ public class SystemAdminDashboard extends Div {
     }
 
     private void refreshMetrics() {
-            metricsContainer.removeAll(); // מנקים את הקלפים הישנים
+            metricsContainer.removeAll();
             
             metricsContainer.add(
                     new MetricCard("סך הכל מנויים", String.valueOf(allUsers.size()), "פעילים ומושעים במערכת"),
@@ -466,7 +458,6 @@ public class SystemAdminDashboard extends Div {
         HorizontalLayout actions = new HorizontalLayout();
         actions.addClassName("system-admin-row-actions");
 
-        // חסימת פעולות על המנהל עצמו (הגנה מפני השעיה/מחיקה עצמית)
         if (currentLoggedInAdminId != null && currentLoggedInAdminId.equals(user.id())) {
             Span meLabel = new Span("משתמש נוכחי (את/ה)");
             meLabel.getStyle().set("color", "var(--lumo-tertiary-text-color)");
@@ -476,7 +467,7 @@ public class SystemAdminDashboard extends Div {
             return actions;
         }
 
-        // כפתור דינמי (מתחלף בין השעיה להחזרה לפעילות)
+    // Dynamic button (toggles between suspend and return to activity)
         Button suspendAction = new Button();
         if ("מושעה".equals(user.status())) {
             suspendAction.setText("החזר לפעילות");
@@ -502,7 +493,6 @@ public class SystemAdminDashboard extends Div {
         boolean isFounder = allCompanies.stream()
                 .anyMatch(company -> Objects.equals(company.founderId(), user.id()));
 
-        // כפתור הסרה מכל החברות
         Button removeFromCompanies = new Button("הסר מכל החברות", VaadinIcon.UNLINK.create());
         removeFromCompanies.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         removeFromCompanies.addClassName("system-admin-secondary-action");
@@ -518,7 +508,6 @@ public class SystemAdminDashboard extends Div {
             ));
         }
 
-        // כפתור המחיקה
         Button delete = new Button("מחיקה", VaadinIcon.TRASH.create());
         delete.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         delete.addClassName("system-admin-danger-action");
@@ -609,16 +598,14 @@ public class SystemAdminDashboard extends Div {
         approve.addClassName("system-admin-confirm-button");
         
         approve.addClickListener(event -> {
-            // 1. הגנה 1: ולידציה ששדה הסיבה אינו ריק
             if (reasonField.isEmpty()) {
                 reasonField.setInvalid(true);
-                return; // עוצר את התהליך ולא שולח את הבקשה לשרת
+                return;
             }
 
-            // 2. הגנה 2: Fallback לתאריך במקרה של Null
             LocalDateTime endDate = endPicker.getValue();
             if (endDate == null) {
-                endDate = LocalDateTime.now().plusDays(7); // מציב שבוע במקרה של חוסר
+                endDate = LocalDateTime.now().plusDays(7);
             }
 
             dialog.close();
@@ -666,7 +653,7 @@ public class SystemAdminDashboard extends Div {
             refreshUsersGrid();
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : "";
-            // בדיקה ייעודית למקרה הספציפי שבו אי אפשר להסיר את המשתמש
+            
             if (msg.contains("Failed to remove user")) {
                 showError("שגיאה: לא ניתן להסיר את המשתמש. ייתכן שיש לו תפקיד ניהולי שלא ניתן לביטול כרגע.");
             } else {
@@ -1006,37 +993,18 @@ public class SystemAdminDashboard extends Div {
     private void handleAdminActionError(Exception e) {
         String msg = e.getMessage() != null ? e.getMessage() : "";
 
-        // בדיקה 1: האם זו שגיאת ניתוק סטנדרטית מה-Presenter
         if (e instanceof ticketsystem.PresentationLayer.Presenters.PresentationException pe && pe.isSessionTimeout()) {
             UiSession.handleTimeoutRedirect();
             return;
         }
 
-        // בדיקה 2: האם זו שגיאת הרשאות אדמין שנזרקה ישירות מה-Service בבקאנד
         if (msg.contains("Unauthorized") || msg.contains("Invalid admin credentials") || msg.contains("ERROR: Unauthorized")) {
             UiSession.handleTimeoutRedirect();
             return;
         }
 
-        // אם זו שגיאה רגילה (למשל חברה לא קיימת), נציג אותה כרגיל
         showError(msg.isBlank() ? "הפעולה נכשלה" : msg);
     }
-
-    // public interface SystemAdminPresenter {
-    //     List<AdminUserRow> loadActiveUsers(String sessionToken) throws Exception;
-
-    //     List<CompanyDTO> loadActiveCompanies(String sessionToken) throws Exception;
-
-    //     Map<Long, Map<String, List<OrderDTO>>> loadPurchaseHistoryByCompanyAndEvent(String sessionToken) throws Exception;
-
-    //     Map<Long, List<OrderDTO>> loadPurchaseHistoryByBuyer(String sessionToken) throws Exception;
-
-    //     void deleteUser(String sessionToken, long memberId) throws Exception;
-
-    //     void removeUserFromAllCompanies(String sessionToken, long memberId) throws Exception;
-
-    //     void closeCompany(String sessionToken, long companyId) throws Exception;
-    // }
 
     public record AdminUserRow(
             Long id,

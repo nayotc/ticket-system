@@ -945,7 +945,6 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
             }
             
         } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            // תפיסת פקיעת הסשן וניתוב המנהל לדף ה-Login
             if (e.isSessionTimeout()) {
                 ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
                 return;

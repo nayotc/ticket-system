@@ -92,7 +92,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         ViewHeader header = new ViewHeader(
                 "דוח מכירות",
                 "סקירה של הכנסות, כרטיסים שנמכרו ועסקאות של חברת ההפקה.",
-                createCompanySelector(), // <--- הכפתור החדש שלנו!
+                createCompanySelector(),
                 exportButton,
                 refreshButton
         );
@@ -122,7 +122,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     private Anchor createExportAnchor() {
         DownloadHandler handler = DownloadHandler.fromInputStream(event -> {
             try {
-                // שימוש במשתנים שנשמרו מראש כדי למנוע קריסת Session ב-Thread נפרד!
                 if (currentToken == null || companyId == null) {
                     return new DownloadResponse(
                             new ByteArrayInputStream("שגיאה: חסר טוקן חיבור או מזהה חברה.".getBytes(StandardCharsets.UTF_8)),
@@ -132,7 +131,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
                     );
                 }
 
-                // קריאה ישירה לפרזנטר שלנו שמייצר את הקובץ התקין עם השמות
                 return new DownloadResponse(
                         presenter.exportTransactionsToCsv(currentToken, companyId),
                         "sales-report.csv",
@@ -140,7 +138,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
                         -1
                 );
             } catch (Exception e) {
-                // במקרה של שגיאה - נוריד קובץ טקסט עם תיאור השגיאה במקום לקרוס לחלוטין
                 return new DownloadResponse(
                         new ByteArrayInputStream(("שגיאה בהפקת דוח המכירות: " + e.getMessage()).getBytes(StandardCharsets.UTF_8)),
                         "error_log.txt",
@@ -167,7 +164,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         companySelector.setPlaceholder("בחר חברה...");
         companySelector.addClassName("company-selector");
         
-        // כשמשנים חברה, מנווטים מחדש לדוח המכירות של החברה שנבחרה
         companySelector.addValueChangeListener(event -> {
             ManagedCompanyItem selected = event.getValue();
             if (selected != null && companyId != null && selected.id() != companyId) {
@@ -218,7 +214,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         }
 
         try {
-            // טעינת רשימת החברות של המשתמש (כדי למלא את הרשימה הנפתחת)
             CompanyManagementState state = membershipPresenter.loadCompanyManagement(token, companyId);
             if (state != null && state.companies() != null) {
                 companySelector.setItems(state.companies());
@@ -228,7 +223,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
                         .ifPresent(companySelector::setValue);
             }
 
-            // טעינת הנתונים הרגילה של דוח המכירות
             SalesReportDTO report = presenter.generateSalesReport(token, companyId);
             List<OrderDTO> transactions = presenter.getCompanyTransactions(token, companyId);
             bindSalesReport(report, transactions);
@@ -247,16 +241,13 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
         
-        // מפעיל מנגנון "דגימה" (Polling) כל 10 שניות (10,000 מילי-שניות)
         attachEvent.getUI().setPollInterval(10000);
         
-        // אומרים למסך מה לעשות בכל פעם שהטיימר מתאפס: לרענן בשקט!
         attachEvent.getUI().addPollListener(event -> refreshDataSilently());
     }
 
     @Override
     protected void onDetach(DetachEvent detachEvent) {
-        // חובה: מכבים את הדגימה כשהמשתמש עוזב את העמוד כדי למנוע עומס על השרת
         detachEvent.getUI().setPollInterval(-1);
         
         super.onDetach(detachEvent);
@@ -289,7 +280,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
         }
     }
 
-    // פונקציית עזר שקטה לרענון אוטומטי ברקע (ללא הודעות קופצות)
+    // Silent helper function for automatic background refresh (no pop-up notifications)
     private void refreshDataSilently() {
         String token = UiSession.getMemberToken();
         
@@ -303,7 +294,6 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             
             bindSalesReport(report, transactions);
         } catch (Exception ignored) {
-            // מתעלמים משגיאות ברקע כדי לא להפריע לחווית המשתמש
         }
     }
 

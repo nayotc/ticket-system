@@ -240,7 +240,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
                 return; 
             }
         } catch (Exception e) {
-            // הסרנו את ההתראה! אנחנו סופגים את השגיאה בשקט
         } 
     }
 
@@ -717,11 +716,9 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
             }
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
-                // זה מספיק בהחלט! זה מבצע את כל הניקוי והניתוב בצורה אחידה
                 UiSession.handleTimeoutRedirect();
                 return; 
             }
-            // במקרה שזו שגיאה עסקית רגילה (לא פקיעת סשן)
             Notifications.error(e.getMessage());
         } catch (Exception e) {
             Notifications.error("לא ניתן להסיר את המושב מההזמנה. יש לנסות שוב");
@@ -827,7 +824,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
-                // זה יקטע את הלופ וישלח את המשתמש הביתה
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -881,12 +877,10 @@ private ActiveOrderDTO loadCurrentEventActiveOrder() {
             }
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
-                // ניתוב בטוח החוצה אם הטוקן פג
                 UiSession.handleTimeoutRedirect();
                 return;
             }
         } catch (Exception e) {
-            // הסרנו את ההתראה! אנחנו סופגים את השגיאה בשקט        
         }
     }
 

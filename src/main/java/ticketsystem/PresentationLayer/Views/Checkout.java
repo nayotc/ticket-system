@@ -487,10 +487,6 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         Div payerRow = new Div(payerId);
         payerRow.addClassName("checkout-field-row");
 
-        // if (isBlank(payerId.getValue()) && !isBlank(fullName.getValue())) {
-        //     payerId.setValue(fullName.getValue());
-        // }
-
         wrapper.add(separator, cardNumberRow, grid, payerRow);
         return wrapper;
     }

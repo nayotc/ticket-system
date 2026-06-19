@@ -49,7 +49,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -244,7 +243,6 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
 
         card.add(policyList);
 
-        // הכפתור ייווצר ויתווסף אך ורק אם למשתמש יש הרשאת ניהול מדיניות
         if (state.canManagePolicies()) {
             Button openEditor = createNavigateButton("מעבר לעורך מדיניות", routeFor(UiRoutes.POLICIES_EDITOR), VaadinIcon.ARROW_FORWARD);
             openEditor.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -470,7 +468,6 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         Div actions = new Div();
         actions.addClassName("owner-actions");
 
-        // 1. כפתורי השהייה ופתיחה מחדש - מוגבלים למייסד בלבד
         if (state.founder()) {
             Button close = new Button("השהה חברה", VaadinIcon.BAN.create());
             close.addClassName("company-secondary-button");
@@ -498,11 +495,9 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                     )
             ));
 
-            // הוספת כפתורי המייסד לאזור הפעולות
             actions.add(close, reopen);
         }
 
-        // 2. כפתור ויתור בעלות - זמין לכל מי שיש לו בעלות (Founder או Owner)
         Button resign = new Button("ויתור בעלות", VaadinIcon.WARNING.create());
         resign.addClassName("company-danger-button");
         resign.setWidthFull();
@@ -515,7 +510,6 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
                 )
         ));
 
-        // הוספת כפתור ויתור הבעלות לאזור הפעולות
         actions.add(resign);
         
         return actions;
@@ -660,25 +654,6 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         return value;
     }
 
-    // private void runPresenterAction(ThrowingRunnable action, String successMessage) {
-    //     try {
-    //         if (membershipPresenter == null || companyPresenter == null) {
-    //             showWarning("הפעולה מוכנה לחיבור Presenter. כרגע מוצג מידע דמו בלבד.");
-    //             return;
-    //         }
-    //         action.run();
-    //         showSuccess(successMessage);
-            
-    //         // ניקוי הטפסים כדי להשלים את חוויית הריפרש בממשק
-    //         managerNameInput.clear();
-    //         managerPermissions.deselectAll();
-    //         ownerNameInput.clear();
-            
-    //         loadState(state.selectedCompany().id());
-    //     } catch (Exception e) {
-    //         showError(e.getMessage());
-    //     }
-    // }
     private void runPresenterAction(ThrowingRunnable action, String successMessage) {
         Long currentCompanyId = state == null || state.selectedCompany() == null
                 ? null
@@ -735,12 +710,10 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
         if (name.contains("inventory") || name.contains("event")) return "ניהול מלאי ואירועים";
         if (name.contains("map") || name.contains("hall")) return "הגדרת אולם ומפת אירוע";
         
-        // הפרדנו את ההרשאות כדי למנוע כפילויות במסך
         if (name.contains("discount")) return "עריכת מדיניות הנחות";
         if (name.contains("purchasing_policy")) return "עריכת מדיניות רכישה";
         if (name.contains("policy")) return "ניהול מדיניות כללית"; 
         
-        // תיקון הבאג: חיפוש של החלק המשותף למילה כדי לתפוס גם inquiries וגם inquiry
         if (name.contains("inquir") || name.contains("message") || name.contains("support")) return "טיפול בפניות";
         
         if (permission == Permission.VIEW_PURCHASE_HISTORY) {
