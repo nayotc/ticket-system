@@ -13,10 +13,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class AppServiceInitListener implements VaadinServiceInitListener {
 
+    private final CustomErrorHandler customErrorHandler;
+
+    public AppServiceInitListener(CustomErrorHandler customErrorHandler) {
+        this.customErrorHandler = customErrorHandler;
+    }
+
     @Override
     public void serviceInit(ServiceInitEvent event) {
         event.getSource().addSessionInitListener(initEvent -> {
-            initEvent.getSession().setErrorHandler(new CustomErrorHandler());
+            initEvent.getSession().setErrorHandler(customErrorHandler);
         });
     }
 }

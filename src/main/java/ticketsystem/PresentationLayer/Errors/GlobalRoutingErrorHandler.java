@@ -4,7 +4,9 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.ErrorParameter;
 import com.vaadin.flow.router.HasErrorParameter;
-import ticketsystem.PresentationLayer.Components.Notifications;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.Notification.Position;
+
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
@@ -24,15 +26,13 @@ public class GlobalRoutingErrorHandler extends Div implements HasErrorParameter<
             String msg = cause.getMessage();
             
             if (msg != null) {
-                boolean isTimeout = msg != null && (         
+                boolean isTimeout = 
                     msg.contains("JWT") ||
-                    msg.contains("expired") ||
-                    msg.contains("Invalid") ||
                     msg.contains("Invalid session ID") ||
+                    msg.contains("Invalid session token") ||
                     msg.contains("Token is missing or null") ||
                     msg.contains("Session is no longer active") ||
-                    msg.contains("Invalid or expired security token")
-                );
+                    msg.contains("Invalid or expired security token");
 
                 if (isTimeout) {
                     boolean wasLoggedIn = UiSession.isLoggedIn();
@@ -41,15 +41,18 @@ public class GlobalRoutingErrorHandler extends Div implements HasErrorParameter<
                     if (wasLoggedIn) {
                         event.getUI().getPage().setLocation("/" + UiRoutes.LOGIN + "?timeout=true");
                     } else {
-                        event.getUI().getPage().reload();
+                        Notification.show(
+                                "תוקף החיבור פג. המערכת חודשה, אנא נסו ללחוץ שוב על הפעולה.", 
+                                5000, 
+                                Position.TOP_CENTER
+                        );
                     }
-                    return 302; // עוצר את בניית העמוד ומונע את ציור ה"אופס"
+                    return 302;
                 }
             }
             cause = cause.getCause();
         }
 
-        // ברירת מחדל לשאר הקריסות הלא צפויות (רק לשגיאות אמיתיות)
         setText("אופס! אירעה שגיאה בלתי צפויה בטעינת העמוד. נסה לרענן או לחזור לדף הבית.");
         return 500; 
     }

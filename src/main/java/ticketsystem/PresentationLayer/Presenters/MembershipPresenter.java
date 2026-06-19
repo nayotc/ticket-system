@@ -381,7 +381,7 @@ public class MembershipPresenter {
                 message.contains("Session is no longer active") ||
                 message.contains("Invalid or expired security token")
         )) {
-            return messageף
+            return message;
         }
 
         return switch (cleanMessage) {
