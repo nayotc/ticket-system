@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 
+import jakarta.persistence.PersistenceException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -169,6 +170,35 @@ public class EventRepositoryPersistenceTest {
                         .compareTo(updatedEvent.getTicketPrice())
         );
         assertEquals(originalVersion + 1, updatedEvent.getVersion());
+    }
+
+    @Test
+    void GivenDetachedEventCopy_WhenSeatIsUpdated_ThenSeatRelationshipAndStatusArePersisted() {
+        Event event = createEvent(1L, "Copied Seating Area Event");
+        eventRepository.addEvent(event);
+        Long eventId = event.getId();
+        flushAndClear();
+
+        Event detachedEvent = eventRepository.getEventById(eventId);
+        assertNotNull(detachedEvent);
+
+        SeatingArea detachedSeatingArea = getSeatingArea(detachedEvent);
+        SeatPosition position = new SeatPosition(1, 1);
+
+        detachedSeatingArea.reserveSeat(position);
+        eventRepository.updateEvent(detachedEvent);
+        flushAndClear();
+
+        Event reloadedEvent = eventRepository.getEventById(eventId);
+        assertNotNull(reloadedEvent);
+
+        SeatingArea reloadedSeatingArea = getSeatingArea(reloadedEvent);
+
+        assertEquals(4, reloadedSeatingArea.getSeats().size());
+        assertEquals(
+                Seat.SeatStatus.RESERVED,
+                reloadedSeatingArea.getSeats().get(position).getStatus()
+        );
     }
 
     @Test
@@ -346,6 +376,32 @@ public class EventRepositoryPersistenceTest {
         assertNotNull(persistedEvent);
         assertEquals("First Successful Update", persistedEvent.getName());
         assertEquals(originalVersion + 1, persistedEvent.getVersion());
+    }
+
+    @Test
+    void GivenDuplicateSeatPositionInSameArea_WhenPersisted_ThenThrowPersistenceException() {
+        Event event = createEvent(1L, "Duplicate Seat Event");
+        eventRepository.addEvent(event);
+
+        Long seatingAreaId = getSeatingArea(event).getId();
+        assertNotNull(seatingAreaId);
+
+        flushAndClear();
+
+        SeatingArea managedSeatingArea = entityManager.find(
+                SeatingArea.class,
+                seatingAreaId
+        );
+
+        assertNotNull(managedSeatingArea);
+
+        Seat duplicateSeat = new Seat(new SeatPosition(1, 1));
+        duplicateSeat.setSeatingArea(managedSeatingArea);
+
+        assertThrows(PersistenceException.class, () -> {
+            entityManager.persist(duplicateSeat);
+            entityManager.flush();
+        });
     }
 
     // ------------------- Purchase Policy Tests ------------------

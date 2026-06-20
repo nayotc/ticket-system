@@ -12,9 +12,20 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "event_seats")
+@Table(
+        name = "event_seats",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_event_seat_position",
+                columnNames = {
+                        "seating_area_id",
+                        "seat_row",
+                        "seat_number"
+                }
+        )
+)
 public class Seat {
 
     @Id
@@ -29,7 +40,7 @@ public class Seat {
     private SeatStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seating_area_id")
+    @JoinColumn(name = "seating_area_id", nullable = false)
     private SeatingArea seatingArea;
 
     protected Seat() {}
