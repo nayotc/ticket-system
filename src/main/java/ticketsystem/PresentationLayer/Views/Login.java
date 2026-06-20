@@ -10,9 +10,8 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -33,7 +32,7 @@ import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
 @PageTitle("TixNow | התחברות")
 @Route(value = UiRoutes.LOGIN, layout = AuthLayout.class)
-public class Login extends PageContainer {
+public class Login extends PageContainer implements BeforeEnterObserver {
 
     private final EmailField email = createEmailField();
     private final PasswordField password = createPasswordField();
@@ -57,6 +56,14 @@ public class Login extends PageContainer {
         card.addClassName("auth-card");
 
         add(card);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        // Here we intercept routes triggered by a session timeout and show the proper message
+        if (event.getLocation().getQueryParameters().getParameters().containsKey("timeout")) {
+            Notifications.error("זמן החיבור פג. אנא התחבר מחדש למערכת.");
+        }
     }
 
     private Div createBrandBlock() {
@@ -169,11 +176,17 @@ public class Login extends PageContainer {
             );
 
             Notifications.success("התחברת בהצלחה");
-
             UI.getCurrent().navigate(UiRoutes.HOME);
 
         } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
             showError(e.getMessage());
+            
+        } catch (Exception e) {
+            showError(e.getMessage() == null ? "שגיאה בהתחברות" : e.getMessage());
         }
     }
 

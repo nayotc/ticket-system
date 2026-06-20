@@ -1,6 +1,5 @@
 package ticketsystem.PresentationLayer.Views;
 
-
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -10,16 +9,18 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.component.notification.Notification;
+
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import ticketsystem.PresentationLayer.Components.EventCard;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.SearchPanel;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
-import com.vaadin.flow.component.notification.Notification;
 import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.EventCardViewModel;
@@ -248,48 +249,71 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
      */
     private EventCard.EventCardActionHandler createEventCardActionHandler() {
         return new EventCard.EventCardActionHandler() {
-        @Override
-        public void onPurchaseRequested(Long eventId) {
-            EventCardPresenter.PurchaseRequestResult result =
-                    eventCardPresenter.requestPurchase(
-                            UiSession.getCurrentToken(),
-                            eventId
-                    );
-
-            UI.getCurrent().navigate(result.route());
-        }
+            @Override
+            public void onPurchaseRequested(Long eventId) {
+                try {
+                    EventCardPresenter.PurchaseRequestResult result =
+                            eventCardPresenter.requestPurchase(UiSession.getCurrentToken(), eventId);
+                    UI.getCurrent().navigate(result.route());
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                        return;
+                    }
+                    Notifications.error(e.getMessage());
+                } catch (Exception e) {
+                    Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
+                }
+            }
 
             @Override
             public void onLotteryRegistrationRequested(Long eventId) {
-                eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
-
-                Notification.show(
-                        "נרשמת להגרלה בהצלחה.",
-                        3000,
-                        Notification.Position.TOP_CENTER
-                );
+                try {
+                    eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
+                    Notifications.success("נרשמת להגרלה בהצלחה.");
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                        return;
+                    }
+                    Notifications.error(e.getMessage());
+                } catch (Exception e) {
+                    Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
+                }
             }
 
             @Override
             public boolean isPreSaleCodeValid(Long eventId, String lotteryCode) {
-                return eventCardPresenter.isPreSaleCodeValid(
-                        UiSession.getMemberToken(),
-                        eventId,
-                        lotteryCode
-                );
+                try {
+                    return eventCardPresenter.isPreSaleCodeValid(UiSession.getMemberToken(), eventId, lotteryCode);
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                    } else {
+                        Notifications.error(e.getMessage());
+                    }
+                    return false;
+                } catch (Exception e) {
+                    return false;
+                }
             }
 
             @Override
             public void onPreSaleApproved(Long eventId, String lotteryCode) {
-                UiSession.setLotteryCode(eventId, lotteryCode);
-
-                EventCardPresenter.PurchaseRequestResult result =
-                        eventCardPresenter.requestPurchase(
-                                UiSession.getCurrentToken(),
-                                eventId
-                        );
-
-                UI.getCurrent().navigate(result.route());
+                try {
+                    UiSession.setLotteryCode(eventId, lotteryCode);
+                    EventCardPresenter.PurchaseRequestResult result =
+                            eventCardPresenter.requestPurchase(UiSession.getCurrentToken(), eventId);
+                    UI.getCurrent().navigate(result.route());
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                        return;
+                    }
+                    Notifications.error(e.getMessage());
+                } catch (Exception e) {
+                    Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
+                }
             }
         };
     }

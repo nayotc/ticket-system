@@ -17,7 +17,6 @@ import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
-import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
 @PageTitle("TixNow | My productions")
@@ -132,7 +131,16 @@ public class CreateProductionCompany extends Div {
             }
             Notifications.success("חברת ההפקה נוצרה בהצלחה");
             UI.getCurrent().navigate(UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(company.getId())));
-        } catch (PresentationException e) {
+            
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            createButton.setEnabled(true);
+            showError(e.getMessage());
+            
+        } catch (Exception e) {
             createButton.setEnabled(true);
             showError(e.getMessage());
         }

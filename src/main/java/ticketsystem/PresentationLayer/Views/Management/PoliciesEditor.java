@@ -1179,6 +1179,15 @@ private String conditionText(DiscountConditionDTO condition) {
             applyPurchasePolicyDraft(purchaseDraft);
             applyDiscountPolicyDraft(discountDraft);
             refreshVisiblePolicySections();
+        
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
+            resetDraft();
+            refreshVisiblePolicySections();
 
         } catch (Exception e) {
             showError("שגיאה בטעינת המדיניות: " + e.getMessage());
@@ -1248,15 +1257,22 @@ private String conditionText(DiscountConditionDTO condition) {
     private void savePurchaseDraft() {
         try {
             Long parsedCompanyId = Long.parseLong(companyId);
-
+            
             presenter.savePurchasePolicy(
                     UiSession.getMemberToken(),
                     parsedCompanyId,
                     getPurchasePolicyExpressionDraft()
             );
-
-            showSuccess("מדיניות הרכישה נשמרה והתעדכנה בהצלחה במערכת.");
-
+            
+            showSuccess("מדיניות הרכישה נשמרה והתעדכנה בהצלחה בחברה.");
+            
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
+            
         } catch (Exception e) {
             showError("שגיאה בשמירת מדיניות הרכישה: " + e.getMessage());
         }
@@ -1272,8 +1288,15 @@ private String conditionText(DiscountConditionDTO condition) {
                     getDiscountPolicyDraft()
             );
 
-            showSuccess("מדיניות ההנחות נשמרה והתעדכנה בהצלחה במערכת.");
-
+            showSuccess("מדיניות ההנחות נשמרה והתעדכנה בהצלחה בחברה.");
+        
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
+        
         } catch (Exception e) {
             showError("שגיאה בשמירת מדיניות ההנחות: " + e.getMessage());
         }

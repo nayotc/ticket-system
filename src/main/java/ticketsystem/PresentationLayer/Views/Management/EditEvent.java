@@ -33,19 +33,14 @@ import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.SaleStatus;
-import ticketsystem.InfrastructureLayer.VaadinNotifier;
 import ticketsystem.PresentationLayer.Components.AppCard;
 import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.StatusBadge;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
-import ticketsystem.PresentationLayer.Presenters.CompanyManagementState;
-import ticketsystem.PresentationLayer.Presenters.ManageEventPresenter;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
-import ticketsystem.PresentationLayer.Views.Management.EditEvent.EditEventPresenter;
-import ticketsystem.PresentationLayer.Views.Management.EditEvent.UpdateEventRequest;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -240,6 +235,13 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             loadPolicyDrafts();
             refreshTabs();
 
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            Notifications.error(e.getMessage());
+            
         } catch (Exception exception) {
             Notifications.error("שגיאה בטעינת פרטי האירוע: " + exception.getMessage());
         }
@@ -271,6 +273,13 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
                     eventId
             );
             applyPurchasePolicyDraft(purchaseDraft);
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            purchasePolicyRoot = PurchaseExpressionNode.group(LogicalOperator.AND);
+            refreshPurchaseExpression();
         } catch (Exception exception) {
             purchasePolicyRoot = PurchaseExpressionNode.group(LogicalOperator.AND);
             refreshPurchaseExpression();
@@ -282,6 +291,14 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
                     eventId
             );
             applyDiscountPolicyDraft(discountDraft);
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            discounts.clear();
+            setDiscountCompositionStrategy(DiscountCompositionStrategy.MAXIMUM);
+            refreshDiscounts();
         } catch (Exception exception) {
             discounts.clear();
             setDiscountCompositionStrategy(DiscountCompositionStrategy.MAXIMUM);
@@ -412,8 +429,18 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             summary.add(paragraph("האירוע עדיין לא נטען."));
             return summary;
         }
-         int sold = presenter.getSoldTicketsCount(UiSession.getMemberToken(), eventId);
-        int capacity = presenter.getEventCapacity(UiSession.getMemberToken(), eventId);
+        
+        int sold = 0;
+        int capacity = 0;
+        try {
+            sold = presenter.getSoldTicketsCount(UiSession.getMemberToken(), eventId);
+            capacity = presenter.getEventCapacity(UiSession.getMemberToken(), eventId);
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return summary;
+            }
+        } catch (Exception ignored) {}
 
         summary.add(
                 statusRow("סטטוס אירוע", new StatusBadge(translateStatus(loadedEvent.status()), statusType(loadedEvent.status()))),
@@ -444,13 +471,21 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
         quickActions.addClassName("edit-event-sale-status-actions");
 
         if ("ACTIVE".equalsIgnoreCase(loadedEvent.status())) {
-            boolean hasLottery = presenter.hasLottery(UiSession.getMemberToken(), eventId);
+            boolean hasLottery = false;
+            try {
+                hasLottery = presenter.hasLottery(UiSession.getMemberToken(), eventId);
+            } catch (PresentationException e) {
+                if (e.isSessionTimeout()) {
+                    UiSession.handleTimeoutRedirect();
+                    return wrapper;
+                }
+            } catch (Exception ignored) {}
+            
             SaleStatus currentStatus = currentSaleStatus();
 
             boolean notStarted = currentStatus == null || currentStatus == SaleStatus.NOT_STARTED;
             boolean preSale = currentStatus == SaleStatus.PRE_SALE;
             boolean ongoing = currentStatus == SaleStatus.ONGOING;
-
             boolean showPreSaleButton = hasLottery && notStarted;
 
             boolean showRegularSaleButton =
@@ -595,6 +630,12 @@ private boolean hasStatus(String status) {
             presenter.updateEventSaleStatus(UiSession.getMemberToken(), eventId, targetStatus);
             Notifications.success("מצב המכירה עודכן בהצלחה.");
             loadEventDetails();
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            Notifications.error(e.getMessage());
         } catch (Exception exception) {
             Notifications.error("שגיאה בעדכון מצב המכירה: " + exception.getMessage());
         }
@@ -606,6 +647,12 @@ private boolean hasStatus(String status) {
             presenter.updateEventSaleStatus(UiSession.getMemberToken(), eventId, SaleStatus.PRE_SALE);
             Notifications.success("הגרלה בוצעה בהצלחה, מכירה מוקדמת נפתחה.");
             loadEventDetails();
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            Notifications.error(e.getMessage()); 
         } catch (Exception exception) {
             Notifications.error("שגיאה בביצוע הגרלה: " + exception.getMessage());
         }
@@ -637,6 +684,12 @@ private boolean hasStatus(String status) {
             presenter.updateEvent(new UpdateEventRequest(UiSession.getMemberToken(), updateDTO));
             Notifications.success("פרטי האירוע נשמרו בהצלחה.");
             loadEventDetails();
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            Notifications.error(e.getMessage());
         } catch (Exception exception) {
             Notifications.error("שגיאה בשמירת פרטי האירוע: " + exception.getMessage());
         }
@@ -1020,70 +1073,6 @@ private boolean hasStatus(String status) {
         discounts.forEach(discount -> discountsContainer.add(createDiscountRow(discount)));
     }
 
-    // private Component createDiscountRow(DiscountDTO discount) {
-    //     Div row = new Div();
-    //     row.addClassName("discount-row");
-
-    //     Div top = new Div();
-    //     top.addClassName("discount-row-top");
-
-    //     Span icon = new Span(discount.type().getIconText());
-    //     icon.addClassName("discount-row-icon");
-
-    //     Div titleBlock = new Div();
-    //     titleBlock.addClassName("discount-row-title-block");
-
-    //     H3 title = new H3(discount.name());
-    //     title.addClassName("discount-row-title");
-
-    //     titleBlock.add(title, smallText(discount.type().getDescription()));
-
-    //     Div labels = new Div();
-    //     labels.addClassName("discount-row-labels");
-
-    //     if (discount.type() == DiscountType.COUPON && !discount.couponCode().isBlank()) {
-    //         Span coupon = new Span(discount.couponCode());
-    //         coupon.addClassName("discount-coupon-badge");
-    //         labels.add(coupon);
-    //     }
-
-    //     if (discount.type() == DiscountType.CONDITIONAL && !discount.conditionText().isBlank()) {
-    //         Span condition = new Span(discount.conditionText());
-    //         condition.addClassName("discount-condition-badge");
-    //         labels.add(condition);
-    //     }
-
-    //     Button edit = createIconButton("עריכה", "✎");
-    //     edit.addClickListener(event -> openDiscountDialog(discount));
-
-    //     Button delete = createDangerIconButton("מחיקה", "×");
-    //     delete.addClickListener(event -> {
-    //         discounts.remove(discount);
-    //         refreshDiscounts();
-    //     });
-
-    //     labels.add(edit, delete);
-
-    //     top.add(icon, titleBlock, labels);
-
-    //     Div data = new Div(
-    //             createDiscountDataBox("אופן חישוב", discount.valueType().getLabel()),
-    //             createDiscountDataBox("ערך", discount.formattedValue())
-    //     );
-
-    //     if (discount.type() == DiscountType.COUPON && discount.validUntil() != null) {
-    //         data.add(createDiscountDataBox("תוקף קופון", formatDate(discount.validUntil())));
-    //     }
-
-    //     if (discount.type() == DiscountType.CONDITIONAL && discount.conditionType() != null) {
-    //         data.add(createDiscountDataBox("סוג תנאי", discount.conditionType().getLabel()));
-    //     }
-
-    //     data.addClassName("discount-data-grid");
-
-    //     row.add(top, data);
-    //     return row;
-    // }
     private Component createDiscountRow(DiscountDTO discount) {
     Div row = new Div();
     row.addClassName("discount-row");
@@ -1610,159 +1599,6 @@ private String conditionText(DiscountConditionDTO condition) {
 }
 
 
-    // private void openDiscountDialog(DiscountDTO existingDiscount) {
-    //     boolean editing = existingDiscount != null;
-    //     DiscountDTO draft = editing ? existingDiscount : DiscountDTO.defaultDiscount();
-
-    //     Dialog dialog = new Dialog();
-    //     dialog.addClassName("policy-editor-dialog");
-    //     dialog.setHeaderTitle(editing ? "עריכת הנחה" : "הוספת הנחה");
-
-    //     TextField name = new TextField("שם ההנחה");
-    //     name.setValue(draft.name());
-
-    //     ComboBox<DiscountType> type = new ComboBox<>("סוג הנחה");
-    //     type.setItems(DiscountType.values());
-    //     type.setItemLabelGenerator(DiscountType::getLabel);
-    //     type.setValue(draft.type());
-
-    //     ComboBox<DiscountValueType> valueType = new ComboBox<>("אופן חישוב");
-    //     valueType.setItems(DiscountValueType.values());
-    //     valueType.setItemLabelGenerator(DiscountValueType::getLabel);
-    //     valueType.setValue(draft.valueType());
-
-    //     NumberField value = new NumberField("ערך");
-    //     value.setMin(0);
-    //     value.setValue(draft.value());
-
-    //     TextField couponCode = new TextField("קוד קופון");
-    //     couponCode.setValue(draft.couponCode());
-    //     couponCode.setPlaceholder("לדוגמה: EARLYBIRD20");
-
-    //     DatePicker validUntil = createPolicyDatePicker("תוקף קופון עד", draft.validUntil());
-
-    //     ComboBox<DiscountConditionType> conditionType = new ComboBox<>("תנאי להפעלה");
-    //     conditionType.setItems(DiscountConditionType.values());
-    //     conditionType.setItemLabelGenerator(DiscountConditionType::getLabel);
-    //     conditionType.setValue(Objects.requireNonNullElse(draft.conditionType(), DiscountConditionType.MIN_TICKET));
-
-    //     NumberField ticketThreshold = new NumberField("כמות כרטיסים");
-    //     ticketThreshold.setMin(1);
-    //     ticketThreshold.setStep(1);
-    //     if (draft.ticketThreshold() != null) {
-    //         ticketThreshold.setValue(draft.ticketThreshold().doubleValue());
-    //     }
-    //     ticketThreshold.setPlaceholder("לדוגמה: 2");
-
-    //     DatePicker startDate = createPolicyDatePicker("מתאריך", draft.startTime() != null ? draft.startTime().toLocalDate() : null);
-    //     DatePicker endDate = createPolicyDatePicker("עד תאריך", draft.endTime() != null ? draft.endTime().toLocalDate() : null);
-
-    //     Div form = new Div(name, type, valueType, value, couponCode, validUntil, conditionType, ticketThreshold, startDate, endDate);
-    //     form.addClassName("policy-dialog-form");
-
-    //     applyDiscountTypeVisibility(type.getValue(), conditionType.getValue(), couponCode, validUntil, conditionType, ticketThreshold, startDate, endDate);
-
-    //     type.addValueChangeListener(event -> {
-    //         if (event.getValue() == DiscountType.CONDITIONAL && conditionType.isEmpty()) {
-    //             conditionType.setValue(DiscountConditionType.MIN_TICKET);
-    //         }
-
-    //         applyDiscountTypeVisibility(event.getValue(), conditionType.getValue(), couponCode, validUntil, conditionType, ticketThreshold, startDate, endDate);
-    //     });
-
-    //     conditionType.addValueChangeListener(event -> applyDiscountTypeVisibility(type.getValue(), event.getValue(), couponCode, validUntil, conditionType, ticketThreshold, startDate, endDate));
-
-    //     Button delete = createDangerButton("מחיקה", null);
-    //     delete.setVisible(editing);
-    //     delete.addClickListener(event -> {
-    //         discounts.remove(existingDiscount);
-    //         refreshDiscounts();
-    //         dialog.close();
-    //     });
-
-    //     Button cancel = createSecondaryButton("ביטול", null);
-    //     cancel.addClickListener(event -> dialog.close());
-
-    //     Button save = createPrimaryButton(editing ? "עדכן הנחה" : "הוסף הנחה", null);
-    //     save.addClickListener(event -> {
-    //         if (name.isEmpty() || type.isEmpty() || valueType.isEmpty() || value.isEmpty()) {
-    //             showError("יש למלא שם, סוג, אופן חישוב וערך.");
-    //             return;
-    //         }
-
-    //         DiscountType selectedType = type.getValue();
-    //         DiscountConditionType selectedCondition = selectedType == DiscountType.CONDITIONAL ? conditionType.getValue() : null;
-
-    //         if (selectedType == DiscountType.COUPON && safeTrim(couponCode.getValue()).isBlank()) {
-    //             showError("בהנחת קופון יש למלא קוד קופון.");
-    //             return;
-    //         }
-
-    //         Integer normalizedThreshold = null;
-    //         LocalDateTime normalizedStartTime = null;
-    //         LocalDateTime normalizedEndTime = null;
-
-    //         if (selectedType == DiscountType.CONDITIONAL) {
-    //             if (selectedCondition == null) {
-    //                 showError("בהנחה מותנית יש לבחור תנאי להפעלה.");
-    //                 return;
-    //             }
-
-    //             if (selectedCondition.requiresTicketThreshold()) {
-    //                 if (ticketThreshold.isEmpty() || ticketThreshold.getValue() <= 0) {
-    //                     showError("בתנאי לפי כמות כרטיסים יש להזין כמות חיובית.");
-    //                     return;
-    //                 }
-
-    //                 normalizedThreshold = ticketThreshold.getValue().intValue();
-    //             }
-
-    //             if (selectedCondition.requiresDateRange()) {
-    //                 if (startDate.isEmpty() || endDate.isEmpty()) {
-    //                     showError("בתנאי לפי תאריך יש למלא תאריך התחלה ותאריך סיום.");
-    //                     return;
-    //                 }
-
-    //                 if (endDate.getValue().isBefore(startDate.getValue())) {
-    //                     showError("תאריך הסיום לא יכול להיות לפני תאריך ההתחלה.");
-    //                     return;
-    //                 }
-
-    //                 normalizedStartTime = startDate.getValue().atStartOfDay();
-    //                 normalizedEndTime = endDate.getValue().atTime(23, 59);
-    //             }
-    //         }
-
-    //         DiscountDTO updated = new DiscountDTO(
-    //                 draft.id(),
-    //                 name.getValue().trim(),
-    //                 selectedType,
-    //                 valueType.getValue(),
-    //                 value.getValue(),
-    //                 selectedType == DiscountType.COUPON ? safeTrim(couponCode.getValue()) : "",
-    //                 selectedType == DiscountType.COUPON ? validUntil.getValue() : null,
-    //                 selectedCondition,
-    //                 normalizedThreshold,
-    //                 normalizedStartTime,
-    //                 normalizedEndTime
-    //         );
-
-    //         if (editing) {
-    //             int index = discounts.indexOf(existingDiscount);
-    //             discounts.set(index, updated);
-    //         } else {
-    //             discounts.add(updated);
-    //         }
-
-    //         refreshDiscounts();
-    //         dialog.close();
-    //     });
-
-    //     dialog.getFooter().add(delete, cancel, save);
-    //     dialog.add(form);
-    //     dialog.open();
-    // }
-
     private void applyDiscountTypeVisibility(
             DiscountType selectedType,
             DiscountConditionType selectedCondition,
@@ -1866,6 +1702,12 @@ private String conditionText(DiscountConditionDTO condition) {
 
             showSuccess("מדיניות הרכישה נשמרה והתעדכנה בהצלחה באירוע.");
 
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
         } catch (Exception e) {
             showError("שגיאה בשמירת מדיניות הרכישה: " + translatePermissionError(e.getMessage()));
         }
@@ -1878,9 +1720,14 @@ private String conditionText(DiscountConditionDTO condition) {
                     eventId,
                     getDiscountPolicyDraft()
             );
-
             showSuccess("מדיניות ההנחות נשמרה והתעדכנה בהצלחה באירוע.");
 
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            showError(e.getMessage());
         } catch (Exception e) {
             showError("שגיאה בשמירת מדיניות ההנחות: " + translatePermissionError(e.getMessage()));
         }
@@ -1924,6 +1771,10 @@ private void confirmCancelEvent() {
                     Notifications.success("אירוע בוטל בהצלחה.");
 
                 } catch (PresentationException exception) {
+                    if (exception.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                        return;
+                    }
                     Notifications.error(exception.getMessage());
 
                 } catch (Exception exception) {
@@ -2465,37 +2316,6 @@ private void confirmCancelEvent() {
             );
         }
 
-        // public String conditionText() {
-        //     if (type != DiscountType.CONDITIONAL || conditionType == null) {
-        //         return "";
-        //     }
-
-        //     if (conditionType.requiresTicketThreshold()) {
-        //         if (ticketThreshold == null) {
-        //             return "";
-        //         }
-
-        //         return conditionType.getDisplayPrefix() + " " + ticketThreshold;
-        //     }
-
-        //     if (conditionType.requiresDateRange()) {
-        //         if (startTime != null && endTime != null) {
-        //             return "תאריך מ-" + startTime.format(DISPLAY_DATE_TIME) + " עד " + endTime.format(DISPLAY_DATE_TIME);
-        //         }
-
-        //         if (endTime != null) {
-        //             return "תאריך עד " + endTime.format(DISPLAY_DATE_TIME);
-        //         }
-
-        //         if (startTime != null) {
-        //             return "תאריך מ-" + startTime.format(DISPLAY_DATE_TIME);
-        //         }
-
-        //         return "";
-        //     }
-
-        //     return "";
-        // }
         public String conditionText() {
             if (type != DiscountType.CONDITIONAL || conditions == null || conditions.isEmpty()) {
                 return "";

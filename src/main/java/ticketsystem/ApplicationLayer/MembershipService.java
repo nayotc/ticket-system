@@ -67,7 +67,7 @@ public class MembershipService {
         try {
             // Authenticate session
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             // Extract user ID from token
@@ -110,7 +110,7 @@ public class MembershipService {
         try {
             // Authenticate session
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             // Extract user ID from token and retrieve member information
@@ -184,7 +184,7 @@ public class MembershipService {
         try {
             // Authenticate session
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             // Extract user ID from token and retrieve member information
@@ -267,7 +267,7 @@ public class MembershipService {
 
         try {
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             Long appointerId = tokenService.extractUserId(sessionToken);
@@ -330,7 +330,7 @@ public class MembershipService {
         try {
             // Authenticate session
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             // Extract user ID from token and retrieve member information
@@ -402,7 +402,7 @@ public class MembershipService {
         try {
             // Authenticate session
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             // Extract user ID from token and retrieve member information
@@ -473,7 +473,7 @@ public class MembershipService {
         try {
             // 1. Authenticate session
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             // 2. Retrieve appointer and target member information
@@ -535,7 +535,7 @@ public class MembershipService {
         try {
             // Authenticate session
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             // Extract user ID from token and retrieve member information
@@ -612,7 +612,7 @@ public class MembershipService {
         try {
             // Authenticate session
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             // Extract user ID from token and retrieve member information
@@ -681,7 +681,7 @@ public class MembershipService {
 
         try {
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             Long memberId = tokenService.extractUserId(sessionToken);
@@ -731,7 +731,7 @@ public class MembershipService {
 
         try {
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             Long memberId = tokenService.extractUserId(sessionToken);
@@ -902,7 +902,7 @@ public class MembershipService {
         try {
             // 1. אימות הטוקן
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             Long memberId = tokenService.extractUserId(sessionToken);
@@ -949,7 +949,7 @@ public class MembershipService {
         try {
 
             if (!tokenService.validateToken(sessionToken)) {
-                throw new IllegalArgumentException("Session authentication failed.");
+                throw new IllegalArgumentException("Invalid session ID");
             }
 
             Long memberId = tokenService.extractUserId(sessionToken);

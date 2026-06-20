@@ -1,6 +1,7 @@
 package ticketsystem.PresentationLayer.Presenters;
 
 import org.springframework.stereotype.Component;
+
 import ticketsystem.ApplicationLayer.LotteryService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
@@ -63,6 +64,18 @@ public class EventCardPresenter {
             return "הפעולה מול ההגרלה נכשלה. נסו שוב.";
         }
 
+        if (message != null && (
+                message.contains("JWT") ||
+                message.contains("expired") ||
+                message.contains("Invalid") ||
+                message.contains("Invalid session ID") ||
+                message.contains("Token is missing or null") ||
+                message.contains("Session is no longer active") ||
+                message.contains("Invalid or expired security token")
+        )) {
+            return message;
+        }
+
         if (message.contains("Member must be logged in")) {
             return "יש להתחבר כדי לבצע פעולה בהגרלה.";
         }
@@ -81,14 +94,6 @@ public class EventCardPresenter {
 
         if (message.contains("already registered")) {
             return "כבר נרשמת להגרלה הזו.";
-        }
-
-        if (message.contains("token")
-                || message.contains("Token")
-                || message.contains("session")
-                || message.contains("Session")
-                || message.contains("security token")) {
-            return "החיבור למערכת לא תקין. התחברי מחדש ונסי שוב.";
         }
 
         return "הפעולה מול ההגרלה נכשלה. נסו שוב.";
@@ -158,12 +163,16 @@ public class EventCardPresenter {
                 return "לא ניתן להתחיל רכישה כרגע. נסו שוב.";
             }
 
-            if (message.contains("Invalid token")
-                    || message.contains("token")
-                    || message.contains("Token")
-                    || message.contains("session")
-                    || message.contains("Session")) {
-                return "החיבור למערכת לא תקין. התחברי מחדש ונסי שוב.";
+            if (message != null && (
+                    message.contains("JWT") ||
+                    message.contains("expired") ||
+                    message.contains("Invalid") ||
+                    message.contains("Invalid session ID") ||
+                    message.contains("Token is missing or null") ||
+                    message.contains("Session is no longer active") ||
+                    message.contains("Invalid or expired security token")
+            )) {
+                return message;
             }
 
             if (message.contains("Event not found")) {

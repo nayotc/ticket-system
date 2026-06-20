@@ -187,6 +187,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
         permissionFilter.addClassName("role-tree-filter");
         permissionFilter.addValueChangeListener(event -> renderTree());
     }
+
     private void loadRoleTree() {
         try {
             String memberToken = UiSession.getMemberToken();
@@ -195,8 +196,18 @@ public class RolesTree extends Div implements BeforeEnterObserver {
 
             RoleTreeDTO root = presenter.loadRoleTree(memberToken, companyId);
             showRoleTree(toRoleNode(root));
-
+        
         } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            rootNode = null;
+            showError(e.getMessage());
+            showEmptyTree(e.getMessage());
+            updateMetrics();
+            
+        } catch (Exception e) {
             rootNode = null;
             showError(e.getMessage());
             showEmptyTree(e.getMessage());

@@ -26,10 +26,12 @@ import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Components.EmptyState;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
@@ -176,7 +178,21 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
-
+        
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            renderEmptyCheckout();
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
             renderEmptyCheckout();
@@ -471,10 +487,6 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         Div payerRow = new Div(payerId);
         payerRow.addClassName("checkout-field-row");
 
-        // if (isBlank(payerId.getValue()) && !isBlank(fullName.getValue())) {
-        //     payerId.setValue(fullName.getValue());
-        // }
-
         wrapper.add(separator, cardNumberRow, grid, payerRow);
         return wrapper;
     }
@@ -588,6 +600,20 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             } else {
                  showError("קוד הקופון שגוי או שאינו בתוקף");
             }
+        
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
@@ -635,11 +661,23 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             presenter.validateOrderPolicyBeforePayment(resolveSessionToken(), activeOrder.getEventId(), details, normalizedCouponCode());
             currentStep = 2;
             renderCheckout();
-        }catch (Exception exception) {
+        
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            
+        } catch (Exception exception) {
             showError(exception.getMessage());
         }
-       
-
     }
 
    /**
@@ -700,7 +738,20 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             } else {
                 UI.getCurrent().navigate(UiRoutes.HOME);
             }
-
+        
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
