@@ -74,10 +74,12 @@ import org.springframework.context.annotation.Import;
 )
 @Import({
         CompanyRepository.class,
-        HistoryRepository.class
+        HistoryRepository.class,
+        SystemAdminRepository.class
 })
 public class SystemAdminServiceTest {
     private SystemAdminService systemAdminService;
+    @Autowired
     private ISystemAdminRepository realAdminRepo;
     private TokenService tokenService;
     private IUserRepository userRepo = new InMemoryUserRepository();
@@ -98,7 +100,6 @@ public class SystemAdminServiceTest {
 
     @BeforeEach
     public void setUp() {
-        realAdminRepo = new SystemAdminRepository();
         PaymentServiceProxy paymentProxy = new PaymentServiceProxy();
         SecureBarcodeProxy barcodeProxy = new SecureBarcodeProxy();
         PaymentServiceProxy.isConnectionSuccessful = true;

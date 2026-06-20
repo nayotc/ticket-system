@@ -386,14 +386,28 @@ public class SystemAdminService {
         }
     }
 
+    @Transactional
     public void promoteMemberToSystemAdmin(long memberId) throws Exception {
         try {
             Member member = userRepository.getMemberById(memberId);
             if (member == null) {
                 throw new Exception("Member with ID " + memberId + " not found for promotion to System Admin.");
             }
-            SystemAdmin newAdmin = new SystemAdmin(member.getId().toString(), member.getUserName(), Boolean.TRUE);
-            adminRepository.addAdmin(newAdmin);
+
+            String adminId = String.valueOf(memberId);
+            SystemAdmin systemAdmin = adminRepository.findById(adminId).orElse(null);
+
+            if (systemAdmin != null) {
+                if (systemAdmin.isActive()) {
+                    throw new IllegalStateException("Member with ID " + memberId + " is already an active System Admin.");
+                }
+                systemAdmin.activate();
+            } else {
+                systemAdmin = new SystemAdmin(adminId,member.getUserName(), true);
+            }
+
+            adminRepository.addAdmin(systemAdmin);
+
             if (notificationsService != null) {
                 notificationsService.notifyMember(memberId, "Congratulations! You have been promoted to System Admin.");
             }

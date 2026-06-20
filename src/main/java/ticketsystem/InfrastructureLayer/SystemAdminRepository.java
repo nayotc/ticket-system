@@ -1,54 +1,116 @@
 package ticketsystem.InfrastructureLayer;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.dao.DataAccessException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
+import ticketsystem.InfrastructureLayer.persistence.SystemAdminJpaRepository;
 
 @Repository
 public class SystemAdminRepository implements ISystemAdminRepository {
-// Using ConcurrentHashMap for thread safety in case of concurrent access
 
-    private final ConcurrentHashMap<String, SystemAdmin> storage = new ConcurrentHashMap<>();
+    private final SystemAdminJpaRepository systemAdminJpaRepository;
+
+    public SystemAdminRepository(SystemAdminJpaRepository systemAdminJpaRepository) {
+        this.systemAdminJpaRepository = systemAdminJpaRepository;
+    }
 
     @Override
     public void addAdmin(SystemAdmin systemAdmin) {
-        storage.put(systemAdmin.getAdminId(), systemAdmin);
-    }
+        if (systemAdmin == null) {
+            throw new IllegalArgumentException("System admin cannot be null");
+        }
 
-    @Override
-    public Optional<SystemAdmin> findById(String adminId) {
-        return Optional.ofNullable(storage.get(adminId));
-    }
-
-    @Override
-    public List<SystemAdmin> findAll() {
-        return new ArrayList<>(storage.values());
-    }
-
-    @Override
-    public void deleteById(String adminId) {
-        storage.remove(adminId);
-    }
-
-    @Override
-    public int countAdmins() {
-        return storage.size();
+        try {
+            systemAdminJpaRepository.save(systemAdmin);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new RuntimeException(
+                    "OptimisticLockingFailureException: System admin "
+                            + systemAdmin.getAdminId()
+                            + " version mismatch or concurrent modification.",
+                    e
+            );
+        } catch (DataAccessException e) {
+            throw new RuntimeException(
+                    "Failed to save system admin " + systemAdmin.getAdminId(),
+                    e
+            );
+        }
     }
 
     @Override
     public boolean isSystemAdmin(String adminId) {
-        SystemAdmin admin = storage.get(adminId);
-        return admin != null && admin.isActive();
+        if (adminId == null || adminId.isBlank()) {
+            return false;
+        }
+
+        try {
+            return systemAdminJpaRepository.existsByAdminIdAndActiveTrue(adminId);
+        } catch (DataAccessException e) {
+            throw new RuntimeException(
+                    "Failed to check system admin status for " + adminId,
+                    e
+            );
+        }
+    }
+
+    @Override
+    public Optional<SystemAdmin> findById(String adminId) {
+        if (adminId == null || adminId.isBlank()) {
+            return Optional.empty();
+        }
+
+        try {
+            return systemAdminJpaRepository.findById(adminId);
+        } catch (DataAccessException e) {
+            throw new RuntimeException(
+                    "Failed to find system admin by ID " + adminId,
+                    e
+            );
+        }
+    }
+
+    @Override
+    public List<SystemAdmin> findAll() {
+        try {
+            return systemAdminJpaRepository.findAll();
+        } catch (DataAccessException e) {
+            throw new RuntimeException("Failed to find all system admins", e);
+        }
+    }
+
+    @Override
+    public void deleteById(String adminId) {
+        if (adminId == null || adminId.isBlank()) {
+            return;
+        }
+
+        try {
+            systemAdminJpaRepository.deleteById(adminId);
+        } catch (DataAccessException e) {
+            throw new RuntimeException(
+                    "Failed to delete system admin " + adminId,
+                    e
+            );
+        }
+    }
+
+    @Override
+    public int countAdmins() {
+        try {
+            return Math.toIntExact(systemAdminJpaRepository.count());
+        } catch (DataAccessException e) {
+            throw new RuntimeException("Failed to count system admins", e);
+        }
     }
 
     @Override
     public SystemAdmin getAdminById(String adminId) {
-        return storage.get(adminId);
+        return findById(adminId).orElse(null);
     }
 }
