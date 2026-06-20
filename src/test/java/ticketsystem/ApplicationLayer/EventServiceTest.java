@@ -1619,36 +1619,46 @@ public class EventServiceTest {
 
     // ------------------ Cancel Event Tests ------------------
 
-    @Test
-    void GivenActiveEvent_WhenCancelEvent_ThenEventIsCancelledAndUpdated() {
-        Event event = createEvent(Event.eventStatus.ACTIVE);
-        when(mockEventRepository.getEventById(validEventId)).thenReturn(event);
+   @Test
+void GivenActiveEvent_WhenCancelEvent_ThenEventIsCancelledAndUpdated() {
+    Event event = createEvent(Event.eventStatus.ACTIVE);
 
-        eventService.addEventUpdatesListener(mockEventUpdatesListener);
+    when(mockEventRepository.getEventById(validEventId))
+            .thenReturn(event);
 
-        Boolean result = eventService.cancelEvent(validSessionId, validEventId);
+    when(mockEventUpdatesListener.onEventCancellationRequested(validEventId))
+            .thenReturn(true);
 
-        assertTrue(result);
-        assertEquals(Event.eventStatus.CANCELLED, event.getStatus());
+    eventService.addEventUpdatesListener(mockEventUpdatesListener);
 
-        verify(mockTokenService).validateToken(validSessionId);
-        verify(mockTokenService).extractUserId(validSessionId);
-        verify(mockEventRepository).getEventById(validEventId);
-        verify(mockMembershipDomainService).validatePermission(
-                validUserId,
-                validCompanyId,
-                Permission.MANAGE_EVENT_INVENTORY
-        );
-        verify(mockEventRepository).updateEvent(event);
-        verify(mockEventUpdatesListener).onEventCanceled(validEventId);
+    Boolean result = eventService.cancelEvent(validSessionId, validEventId);
 
-        verifyNoMoreInteractions(
-                mockEventRepository,
-                mockTokenService,
-                mockMembershipDomainService,
-                mockEventUpdatesListener
-        );
-    }
+    assertTrue(result);
+    assertEquals(Event.eventStatus.CANCELLED, event.getStatus());
+
+    verify(mockTokenService).validateToken(validSessionId);
+    verify(mockTokenService).extractUserId(validSessionId);
+
+    verify(mockEventRepository, times(2)).getEventById(validEventId);
+
+    verify(mockMembershipDomainService).validatePermission(
+            validUserId,
+            validCompanyId,
+            Permission.MANAGE_EVENT_INVENTORY
+    );
+
+    verify(mockEventRepository, times(2)).updateEvent(event);
+
+    verify(mockEventUpdatesListener).onEventCancellationRequested(validEventId);
+    verify(mockEventUpdatesListener).onEventCanceled(validEventId);
+
+    verifyNoMoreInteractions(
+            mockEventRepository,
+            mockTokenService,
+            mockMembershipDomainService,
+            mockEventUpdatesListener
+    );
+}
 
     @Test
     void GivenActiveEventAndNoListener_WhenCancelEvent_ThenEventIsCancelledAndUpdated() {
@@ -1660,7 +1670,7 @@ public class EventServiceTest {
         assertTrue(result);
         assertEquals(Event.eventStatus.CANCELLED, event.getStatus());
 
-        verify(mockEventRepository).updateEvent(event);
+        verify(mockEventRepository, times(2)).updateEvent(event);
     }
 
     @Test

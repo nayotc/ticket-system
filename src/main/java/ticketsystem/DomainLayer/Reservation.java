@@ -107,30 +107,23 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
          if (order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT) {
         throw new IllegalStateException("Order is not in a state that can be completed");
     }
-            for (Ticket ticket : new ArrayList<>(order.getTickets())) {
-        if (ticket.getRow() == 0 && ticket.getChair() == 0) {
-            event.sellSpot(ticket.getAreaId(), 1);
-        } else {
-            SeatPosition position = new SeatPosition(ticket.getRow(), ticket.getChair());
+        for (Ticket ticket : new ArrayList<>(order.getTickets())) {
+            if (ticket.getRow() == 0 && ticket.getChair() == 0) {
+                event.sellSpot(ticket.getAreaId(), 1);
+            } else {
+                SeatPosition position = new SeatPosition(ticket.getRow(), ticket.getChair());
 
-            if (event.getSeatStatus(ticket.getAreaId(), position) != SeatStatus.RESERVED) {
-                throw new IllegalStateException("Seat is not reserved");
+                if (event.getSeatStatus(ticket.getAreaId(), position) != SeatStatus.RESERVED) {
+                    throw new IllegalStateException("Seat is not reserved");
+                }
+
+                event.sellSeat(ticket.getAreaId(), position);
             }
-
-            event.sellSeat(ticket.getAreaId(), position);
-        }
     }
-
+    event.SoldOut();
     order.completeOrder();
           
-    //     for (Ticket ticket : new ArrayList<>(order.getTickets())) {
-    //         if(ticket.getRow()==0 && ticket.getChair()==0) {
-    //             event.sellSpot(ticket.getAreaId(), 1);
-    //         } else {
-    //             event.sellSeat(ticket.getAreaId(),new SeatPosition(ticket.getRow(), ticket.getChair()));
-    //         }
-    //     }
-    //     order.completeOrder();    
+   
      }
 
     

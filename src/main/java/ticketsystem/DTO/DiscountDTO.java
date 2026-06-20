@@ -10,7 +10,7 @@ public class DiscountDTO {
     private String name;
     private BigDecimal percentage;
     private String type; // Expected values: "VISIBLE", "COUPON", "CONDITIONAL"
-    //private Long discountId;
+  
     
     // Fields for specific discount types
     private String couponCode;

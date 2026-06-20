@@ -229,20 +229,25 @@ public class DevDataInitializer implements CommandLineRunner {
             System.out.println("Failed to setup mock discount policy: " + e.getMessage());
         }
 
+        // --- אתחול מדיניות רכישה דמו ---
         try {
+            // חוק 1: גיל מינימלי 18
             PurchaseRuleDTO ageRule = new PurchaseRuleDTO();
             ageRule.setType(PurchaseRuleType.MIN_AGE);
             ageRule.setValue(18);
 
+            // חוק 2: מקסימום 5 כרטיסים לרוכש
             PurchaseRuleDTO limitRule = new PurchaseRuleDTO();
             limitRule.setType(PurchaseRuleType.MAX_TICKETS);
             limitRule.setValue(5);
 
+            // עץ רכישה: חוק 1 "וגם" (AND) חוק 2
             PurchaseRuleDTO rootRule = new PurchaseRuleDTO();
             rootRule.setType(PurchaseRuleType.AND);
             rootRule.setChildren(List.of(ageRule, limitRule));
             rootRule.setValue(0);
 
+            // המרה ושמירה בחברה באמצעות ה-Mapper
             PurchasePolicyDTO policyDTO = new PurchasePolicyDTO(rootRule);
             ticketsystem.ApplicationLayer.PurchasePolicyMapper mapper =
                     new ticketsystem.ApplicationLayer.PurchasePolicyMapper();
@@ -443,73 +448,52 @@ public class DevDataInitializer implements CommandLineRunner {
         }
         long ownerId = owner.getId();
 
+        // Transaction 1: 2 Tickets bought by the regular test member, managed by the Founder
         PurchaseDTO ticket1 = new PurchaseDTO(100L, 1, 12, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-123");
         PurchaseDTO ticket2 = new PurchaseDTO(101L, 1, 13, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-124");
 
-        OrderDTO order1 = new OrderDTO(
-                8492L,
-                List.of(ticket1, ticket2),
-                "פסטיבל אורות הלילה",
-                "תל אביב",
-                buyerId,
-                TEST_COMPANY_ID,
-                founderId,
-                nightLightsEventId,
-                new BigDecimal(100),
-                111111
-        );
+        OrderDTO order1 = new OrderDTO(8492L, List.of(ticket1, ticket2), "פסטיבל אורות הלילה", "תל אביב", buyerId, TEST_COMPANY_ID, founderId, 91L, new BigDecimal(100), 111111,false);
         historyService.onOrderCompleted(order1);
 
+        // Transaction 2: 1 Ticket bought by the regular test member, managed by the Founder
         PurchaseDTO ticket3 = new PurchaseDTO(102L, 2, 5, BigDecimal.valueOf(120), "ACTIVE", "BARCODE-125");
-
-        OrderDTO order2 = new OrderDTO(
-                8491L,
-                List.of(ticket3),
-                "הופעת רוק במדבר",
-                "באר שבע",
-                buyerId,
-                TEST_COMPANY_ID,
-                founderId,
-                rockEventId,
-                new BigDecimal(100),
-                222222
-        );
+        OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, TEST_COMPANY_ID, founderId, 92L, new BigDecimal(100), 222222,false);
         historyService.onOrderCompleted(order2);
+        // ==========================================
+        //          TRANSACTIONS FOR OWNER
+        // ==========================================
 
+        // Transaction 3: 2 Tickets for "Sunset Festival" managed by Owner
         PurchaseDTO ticket4 = new PurchaseDTO(103L, 3, 1, BigDecimal.valueOf(150), "ACTIVE", "BARCODE-126");
         PurchaseDTO ticket5 = new PurchaseDTO(104L, 3, 2, BigDecimal.valueOf(150), "ACTIVE", "BARCODE-127");
-
-        OrderDTO order3 = new OrderDTO(
-                8493L,
-                List.of(ticket4, ticket5),
-                "פסטיבל שקיעה",
-                "תל אביב",
-                buyerId,
-                TEST_COMPANY_ID,
-                ownerId,
-                sunsetEventId,
-                new BigDecimal(100),
-                111111
-        );
+        
+        OrderDTO order3 = new OrderDTO(8493L, List.of(ticket4, ticket5), "פסטיבל שקיעה", "תל אביב", buyerId, TEST_COMPANY_ID, ownerId, 101L, new BigDecimal(100),111111,false);
         historyService.onOrderCompleted(order3);
 
+        // Transaction 4: 1 Ticket for "Jazz Concert" managed by Owner
         PurchaseDTO ticket6 = new PurchaseDTO(105L, 4, 1, BigDecimal.valueOf(200), "ACTIVE", "BARCODE-128");
-
-        OrderDTO order4 = new OrderDTO(
-                8494L,
-                List.of(ticket6),
-                "הופעת ג'אז",
-                "באר שבע",
-                buyerId,
-                TEST_COMPANY_ID,
-                ownerId,
-                jazzEventId,
-                new BigDecimal(100),
-                111111
-        );
+        OrderDTO order4 = new OrderDTO(8494L, List.of(ticket6), "הופעת ג'אז", "באר שבע", buyerId, TEST_COMPANY_ID, ownerId, 102L, new BigDecimal(100), 111111,false);
         historyService.onOrderCompleted(order4);
 
+
         System.out.println("Test sales data generated successfully. Buyer: " + TEST_USERNAME);
+        
+        // Printing a detailed console summary of the loaded mock transactions
+        // System.out.println("=========================================================================");
+        // System.out.println("DEVELOPMENT MOCK SALES DATA SUMMARY FOR COMPANY ID: #" + TEST_COMPANY_ID);
+        // System.out.println("-------------------------------------------------------------------------");
+        // System.out.println(" -> Order #8492: 'Night Lights Festival' (Tel Aviv) [Manager: Founder]");
+        // System.out.println("    Tickets: 2 | Price: 180.00 NIS each | Status: ACTIVE | Buyer ID: " + buyerId);
+        // System.out.println(" -> Order #8491: 'Rock Concert in the Desert' (Beer Sheva) [Manager: Founder]");
+        // System.out.println("    Tickets: 1 | Price: 120.00 NIS | Status: ACTIVE | Buyer ID: " + buyerId);
+        // System.out.println(" -> Order #8493: 'Sunset Festival' (Tel Aviv) [Manager: Owner]");
+        // System.out.println("    Tickets: 2 | Price: 150.00 NIS each | Status: ACTIVE | Buyer ID: " + buyerId);
+        // System.out.println(" -> Order #8494: 'Jazz Concert' (Beer Sheva) [Manager: Owner]");
+        // System.out.println("    Tickets: 1 | Price: 200.00 NIS | Status: ACTIVE | Buyer ID: " + buyerId);
+        // System.out.println("-------------------------------------------------------------------------");
+        // System.out.println(" -> EXPECTED REPORT TOTALS (All Managers): 6 Tickets Sold | Total Revenue: 980.00 NIS");
+        // System.out.println("=========================================================================");
+        // System.out.println();
     }
 
     private void createReportOnlyManager() {
@@ -544,4 +528,5 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println("username: " + REPORT_MANAGER_USERNAME);
         System.out.println("password: " + REPORT_MANAGER_PASSWORD);
     }
+
 }

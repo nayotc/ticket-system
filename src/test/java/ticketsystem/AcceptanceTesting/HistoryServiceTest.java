@@ -132,7 +132,7 @@ public class HistoryServiceTest {
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
         OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId,
-                20L, new BigDecimal(100), 111111);
+                20L, new BigDecimal(100), 111111,false);
 
         historyService.onOrderCompleted(orderDto);
 
@@ -188,7 +188,7 @@ public class HistoryServiceTest {
 
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
         ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
-        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L, new BigDecimal(100), 111111);
+        OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L, new BigDecimal(100), 111111,false);
 
         // --- Act ---
         historyService.onOrderCompleted(orderDto);
@@ -236,7 +236,7 @@ public class HistoryServiceTest {
                 userId,
                 companyId,
                 userId,
-                20L, new BigDecimal(100), 111111
+                20L, new BigDecimal(100), 111111,false
         );
     }
 
@@ -311,7 +311,7 @@ public class HistoryServiceTest {
                 buyerMemberId,
                 companyId,
                 managedByMemberId,
-                20L, new BigDecimal(100), 111111);
+                20L, new BigDecimal(100), 111111,false);
     }
 
     private long createActiveManagerUnderFounder(long founderId, long companyId, String username) {
@@ -528,7 +528,7 @@ public class HistoryServiceTest {
                 buyerId,
                 company.getId(),
                 ownerId, // managedByMemberId - should come from the event creator in the real flow
-                20L, new BigDecimal(100), 111111);
+                20L, new BigDecimal(100), 111111,false);
 
         // --- When (Act) ---
         historyService.onOrderCompleted(completedOrder);
@@ -571,7 +571,7 @@ public class HistoryServiceTest {
                 new BigDecimal("150.0"));
 
         historyService.onOrderCompleted(order);
-
+        historyService.onEventCancellationRequested(20L);
         historyService.onEventCanceled(20L);
 
         Purchase purchase = historyRepository.getAllPurchases().get(0);
@@ -585,7 +585,7 @@ public class HistoryServiceTest {
         assertEquals(0, BigDecimal.ZERO.compareTo(report.getTotalRevenue()));
         assertEquals("No sales data was found", report.getMessage());
         recordingNotifier.assertNotifiedMember(ownerId, "was canceled");
-        recordingNotifier.assertNotificationCount(1);
+        recordingNotifier.assertNotificationCount(2);
     }
 
     @Test

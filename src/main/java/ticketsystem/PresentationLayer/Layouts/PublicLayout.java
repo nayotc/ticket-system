@@ -1,7 +1,6 @@
 package ticketsystem.PresentationLayer.Layouts;
 
 import com.vaadin.flow.component.AttachEvent;
-import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.HasElement;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -49,12 +48,6 @@ public class PublicLayout extends VerticalLayout implements RouterLayout {
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
         visitCoordinator.ensureVisitAndNotifications(event.getUI());
-    }
-
-    @Override
-    protected void onDetach(DetachEvent event) {
-        visitCoordinator.disconnect();
-        super.onDetach(event);
     }
 
     @Override

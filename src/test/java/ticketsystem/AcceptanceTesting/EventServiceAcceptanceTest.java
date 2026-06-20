@@ -1970,6 +1970,11 @@ public class EventServiceAcceptanceTest {
         int notificationCount() {
             return canceledEventIds.size();
         }
+
+        @Override
+        public boolean onEventCancellationRequested(Long eventId) {
+               return true;
+        }
     }
 
     private PurchasePolicyDTO maxTicketsPolicyDTO(int maxTickets) {

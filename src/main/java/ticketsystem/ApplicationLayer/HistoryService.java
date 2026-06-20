@@ -259,65 +259,55 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
         }
     }
 
-   @Override
+    @Override
     public void onEventCanceled(Long eventId) {
-        if (eventId == null) {
-            return;
-        }
-        
-        if (!paymentService.handshake()) {
-            throw new IllegalStateException("Payment service is unavailable");
-        }
-
-        if (!ticketIssuingService.handshake()) {
-            throw new IllegalStateException("Ticket issuing service is unavailable");
-        }
-
-
         List<Purchase> purchases =
                 historyRepository.getPurchasesByEventId(eventId);
 
+        if (!purchases.isEmpty()) {
+            notifyPurchasedBuyers(
+                    purchases,
+                    "The event \"" + purchases.get(0).getEventName()
+                            + "\" that you purchased tickets for was canceled."
+            );
+        }
+    }
+
+   @Override
+    public boolean onEventCancellationRequested(Long eventId) {
+        boolean allSucceeded = true;
+
+        if (!paymentService.handshake() || !ticketIssuingService.handshake()) {
+            return false;
+        }
+
+        List<Purchase> purchases = historyRepository.getPurchasesByEventId(eventId);
+
         for (Purchase purchase : purchases) {
+
+            if (purchase.isRefunded()) {
+                continue;
+            }
+
+            boolean refunded = paymentService.refund(purchase.getTransactionId());
+
+            if (!refunded) {
+                allSucceeded = false;
+                continue;
+            }
+            notifyRefundCompleted(purchase);
+
+            purchase.setRefunded(true);
 
             for (PurchasedTicket ticket : purchase.getTickets()) {
                 ticket.setStatus(TicketStatus.CANCELED);
-
-                boolean ticketCancelled =
-                        ticketIssuingService.cancelTicket(ticket.getSecureBarcode());
-
-                if (!ticketCancelled) {
-                    logger.logEvent(
-                            "Failed to cancel issued ticket. ticketId="
-                                    + ticket.getSecureBarcode()
-                                    + ", purchaseId=" + purchase.getPurchaseId()
-                                    + ", eventId=" + eventId,
-                            ISystemLogger.LogLevel.WARN
-                    );
-                }
             }
 
-            boolean refunded =
-                    paymentService.refund(purchase.getTransactionId());
-
-            if (!refunded) {
-                logger.logEvent(
-                        "Failed to refund purchase. transactionId="
-                                + purchase.getTransactionId()
-                                + ", purchaseId=" + purchase.getPurchaseId()
-                                + ", eventId=" + eventId,
-                        ISystemLogger.LogLevel.WARN
-                );
-            }
         }
 
-        if (!purchases.isEmpty()) {
-                    notifyPurchasedBuyers(
-                            purchases,
-                            "The event \"" + purchases.get(0).getEventName()
-                                    + "\" that you purchased tickets for was canceled."
-                    );
-                }
+        return allSucceeded;
     }
+
 
     @Override
     public void onEventUpdated(Long eventId, LocalDateTime date, String location, String updateMessage) {
@@ -348,5 +338,18 @@ public class HistoryService implements OrderCompletedListener, EventUpdatesListe
 
         notificationsService.notifyMembers(buyerMemberIds, message);
     }
+private void notifyRefundCompleted(Purchase purchase) {
+    if (notificationsService == null || purchase == null || purchase.getMemberId() == null) {
+        return;
+    }
+
+    notificationsService.notifyMembers(
+            List.of(purchase.getMemberId()),
+            "בוצע החזר כספי עבור רכישת הכרטיסים לאירוע \"" +
+                    purchase.getEventName() +
+                    "\" בעקבות ביטול האירוע."
+    );
+}
+
 
 }

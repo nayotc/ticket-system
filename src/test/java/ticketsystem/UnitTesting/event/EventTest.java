@@ -14,6 +14,9 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,12 +25,16 @@ import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.EventMap;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.event.Seat;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.policy.MaxTicketsRule;
 import ticketsystem.DomainLayer.policy.MinAgeRule;
 import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.policy.PurchaseRule;
 import ticketsystem.DomainLayer.event.SeatPosition;
+import ticketsystem.DomainLayer.event.SeatingArea;
+import ticketsystem.DomainLayer.event.StandingArea;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.event.Event;
@@ -938,6 +945,140 @@ public class EventTest {
         event.setDiscountCompositionType(DiscountCompositionType.MAX);
 
         assertEquals(DiscountCompositionType.MAX, event.getDiscountPolicy().getDiscountCompositionType());
+    }
+
+    @Test
+    void givenEmptyMap_whenGetCapacity_thenReturnZero() {
+        EventMap mockMap = mock(EventMap.class);
+        when(mockMap.getElements()).thenReturn(List.of());
+        event.setMap(mockMap);
+
+        assertEquals(0, event.getCapacity());
+    }
+
+    @Test
+    void givenEmptyMap_whenGetSoldTicketsCount_thenReturnZero() {
+        EventMap mockMap = mock(EventMap.class);
+        when(mockMap.getElements()).thenReturn(List.of());
+        event.setMap(mockMap);
+
+        assertEquals(0, event.getSoldTicketsCount());
+    }
+
+    @Test
+    void givenStandingArea_whenGetCapacity_thenReturnStandingCapacity() {
+        StandingArea standingArea = mock(StandingArea.class);
+        when(standingArea.getCapacity()).thenReturn(120L);
+
+        EventMap mockMap = mock(EventMap.class);
+        when(mockMap.getElements()).thenReturn(List.of(standingArea));
+        event.setMap(mockMap);
+
+        assertEquals(120, event.getCapacity());
+    }
+
+    @Test
+    void givenStandingAreaWithSoldTickets_whenGetSoldTicketsCount_thenReturnStandingSoldCount() {
+        StandingArea standingArea = mock(StandingArea.class);
+        when(standingArea.getSold()).thenReturn(7L);
+
+        EventMap mockMap = mock(EventMap.class);
+        when(mockMap.getElements()).thenReturn(List.of(standingArea));
+        event.setMap(mockMap);
+
+        assertEquals(7, event.getSoldTicketsCount());
+    }
+
+    @Test
+    void givenSeatingArea_whenGetCapacity_thenReturnSeatsCount() {
+        SeatingArea seatingArea = mock(SeatingArea.class);
+
+        Map<SeatPosition, Seat> seats = new HashMap<>();
+        seats.put(mock(SeatPosition.class), mock(Seat.class));
+        seats.put(mock(SeatPosition.class), mock(Seat.class));
+        seats.put(mock(SeatPosition.class), mock(Seat.class));
+
+        when(seatingArea.getSeats()).thenReturn(seats);
+
+        EventMap mockMap = mock(EventMap.class);
+        when(mockMap.getElements()).thenReturn(List.of(seatingArea));
+        event.setMap(mockMap);
+
+        assertEquals(3, event.getCapacity());
+    }
+
+    @Test
+    void givenSeatingAreaWithSoldSeats_whenGetSoldTicketsCount_thenReturnSoldSeatsCount() {
+        Seat soldSeat1 = mock(Seat.class);
+        Seat soldSeat2 = mock(Seat.class);
+        Seat availableSeat = mock(Seat.class);
+
+        when(soldSeat1.getStatus()).thenReturn(SeatStatus.SOLD);
+        when(soldSeat2.getStatus()).thenReturn(SeatStatus.SOLD);
+        when(availableSeat.getStatus()).thenReturn(SeatStatus.AVAILABLE);
+
+        Map<SeatPosition, Seat> seats = new HashMap<>();
+        seats.put(mock(SeatPosition.class), soldSeat1);
+        seats.put(mock(SeatPosition.class), soldSeat2);
+        seats.put(mock(SeatPosition.class), availableSeat);
+
+        SeatingArea seatingArea = mock(SeatingArea.class);
+        when(seatingArea.getSeats()).thenReturn(seats);
+
+        EventMap mockMap = mock(EventMap.class);
+        when(mockMap.getElements()).thenReturn(List.of(seatingArea));
+        event.setMap(mockMap);
+
+        assertEquals(2, event.getSoldTicketsCount());
+    }
+
+    @Test
+    void givenMixedStandingAndSeatingAreas_whenGetCapacity_thenReturnTotalCapacity() {
+        StandingArea standingArea = mock(StandingArea.class);
+        when(standingArea.getCapacity()).thenReturn(120L);
+
+        SeatingArea seatingArea = mock(SeatingArea.class);
+
+        Map<SeatPosition, Seat> seats = new HashMap<>();
+        seats.put(mock(SeatPosition.class), mock(Seat.class));
+        seats.put(mock(SeatPosition.class), mock(Seat.class));
+        seats.put(mock(SeatPosition.class), mock(Seat.class));
+
+        when(seatingArea.getSeats()).thenReturn(seats);
+
+        EventMap mockMap = mock(EventMap.class);
+        when(mockMap.getElements()).thenReturn(List.of(standingArea, seatingArea));
+        event.setMap(mockMap);
+
+        assertEquals(123, event.getCapacity());
+    }
+
+    @Test
+    void givenMixedStandingAndSeatingAreasWithSoldTickets_whenGetSoldTicketsCount_thenReturnTotalSoldTickets() {
+        StandingArea standingArea = mock(StandingArea.class);
+        when(standingArea.getSold()).thenReturn(5L);
+
+        Seat soldSeat1 = mock(Seat.class);
+        Seat soldSeat2 = mock(Seat.class);
+        Seat availableSeat = mock(Seat.class);
+
+        when(soldSeat1.getStatus()).thenReturn(SeatStatus.SOLD);
+        when(soldSeat2.getStatus()).thenReturn(SeatStatus.SOLD);
+        when(availableSeat.getStatus()).thenReturn(SeatStatus.AVAILABLE);
+
+        Map<SeatPosition, Seat> seats = new HashMap<>();
+        seats.put(mock(SeatPosition.class), soldSeat1);
+        seats.put(mock(SeatPosition.class), soldSeat2);
+        seats.put(mock(SeatPosition.class), availableSeat);
+
+        SeatingArea seatingArea = mock(SeatingArea.class);
+        when(seatingArea.getSeats()).thenReturn(seats);
+
+        EventMap mockMap = mock(EventMap.class);
+        when(mockMap.getElements()).thenReturn(List.of(standingArea, seatingArea));
+        event.setMap(mockMap);
+
+        assertEquals(7, event.getSoldTicketsCount());
     }
 
     private static class FixedResultPurchaseRule extends PurchaseRule {

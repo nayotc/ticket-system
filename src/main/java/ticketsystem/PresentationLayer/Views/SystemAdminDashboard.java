@@ -954,10 +954,12 @@ public class SystemAdminDashboard extends Div {
     }
 
     private BigDecimal totalAmount(OrderDTO order) {
+        if (order.getTotalPrice() != null) {
+            return order.getTotalPrice(); 
+        }
         if (order.getTickets() == null) {
             return BigDecimal.ZERO;
         }
-
         return order.getTickets().stream()
                 .map(PurchaseDTO::getPrice)
                 .filter(Objects::nonNull)

@@ -54,6 +54,9 @@ public abstract class DiscountTypes {
         return id;
     }
 
+    // public Long getDiscountId(){
+    //     return discountId;
+    // }
     public String getName() {
         return name;
     }
@@ -66,7 +69,6 @@ public abstract class DiscountTypes {
         validatePercentage(percentage);
         this.percentage = percentage;
     }
-
     protected void validateName(String name) {
 
         if (name == null || name.isBlank()) {
@@ -75,6 +77,13 @@ public abstract class DiscountTypes {
         }
     }
 
+    protected void validateDiscountId(Long discountId) {
+
+        if (discountId == null ) {
+            throw new IllegalArgumentException(
+                    "Discount id must be positive");
+        }
+    }
     protected void validatePercentage(BigDecimal percentage) {
 
         if (percentage == null) {
