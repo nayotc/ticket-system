@@ -47,15 +47,6 @@ public class Element {
         this.size = size;
     }
 
-    @Deprecated
-    public Element(Long id,
-                   String name,
-                   Pair<Integer, Integer> location,
-                   Pair<Integer, Integer> size) {
-        this(name, location, size);
-        this.id = id;
-    }
-
     public Element(Element other) {
         this.id = other.id;
         this.name = other.name;
@@ -67,7 +58,7 @@ public class Element {
         return new Element(this);
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 

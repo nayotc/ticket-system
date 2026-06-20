@@ -10,12 +10,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -64,11 +61,22 @@ public class EventServiceTest {
     private final String validSessionId = "valid-session";
     private final Long validUserId = 1L;
     private final Long validCompanyId = 1L;
-    private final Long validEventId = 1L;
+    private Long validEventId = 1L;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+
+        doAnswer(invocation -> {
+            Event event = invocation.getArgument(0);
+
+            Field idField = Event.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(event, validEventId);
+
+            return null;
+
+        }).when(mockEventRepository).addEvent(any(Event.class));
 
         //notification
         eventService = new EventService(
@@ -96,7 +104,6 @@ public class EventServiceTest {
 
     private Event createEvent(Event.eventStatus status) {
         Event event = new Event(
-                validEventId,
                 LocalDateTime.now().plusDays(10),
                 "Test Event",
                 validCompanyId,
@@ -108,9 +115,19 @@ public class EventServiceTest {
                 BigDecimal.valueOf(50),
                 new Pair<>(10, 10)
         );
-
+        setEventId(event, validEventId);
         event.setStatus(status);
         return event;
+    }
+
+    private void setEventId(Event event, Long id) {
+        try {
+            Field idField = Event.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(event, id);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Failed to set event id for test", e);
+        }
     }
 
     private EventDTO createEventDTO(
@@ -187,7 +204,6 @@ public class EventServiceTest {
 
     @Test
     void GivenValidTokenAndPermission_WhenInsertEvent_ThenAddEventOnce() {
-        when(mockEventRepository.getNextId()).thenReturn(validEventId);
 
         LocalDateTime futureDate = LocalDateTime.now().plusDays(1);
 
@@ -227,7 +243,6 @@ public class EventServiceTest {
                 validCompanyId,
                 Permission.MANAGE_EVENT_INVENTORY
         );
-        verify(mockEventRepository).getNextId();
 
         verifyNoMoreInteractions(mockEventRepository, mockTokenService, mockMembershipDomainService);
     }

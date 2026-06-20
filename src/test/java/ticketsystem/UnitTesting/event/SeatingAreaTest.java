@@ -19,7 +19,7 @@ class SeatingAreaTest {
     }
 
     private SeatingArea seatingArea(int rows, int columns) {
-        return new SeatingArea(1L, "Main Seating", pair(0, 0), pair(10, 10), rows, columns);
+        return new SeatingArea( "Main Seating", pair(0, 0), pair(10, 10), rows, columns);
     }
 
     @Test

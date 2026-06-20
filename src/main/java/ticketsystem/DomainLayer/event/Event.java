@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import jakarta.persistence.*;
 
 import ticketsystem.DomainLayer.SearchCriteria;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
@@ -45,7 +44,7 @@ public class Event {
     private Long openedBy; // userId of the creator
 
     @Column(name = "event_date")
-    private LocalDateTime Date;
+    private LocalDateTime date;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "location")
@@ -69,7 +68,7 @@ public class Event {
     private EventMap map;
 
     @Column(name = "ticket_price", precision = 12, scale = 2)
-    private BigDecimal TicketPrice;
+    private BigDecimal ticketPrice;
 
     @Column(name = "rate")
     private Double rate = 0.0; // for search and filtering
@@ -80,14 +79,12 @@ public class Event {
     @Column(name = "rating_count")
     private Integer ratingCount = 0; // for calculating average rating
 
-    @Transient  // TODO : change to one to one
-//    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-//    @JoinColumn(name = "purchase_policy_id")
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "purchase_policy_id", nullable = false, unique = true)
     private PurchasePolicy purchasePolicy;
 
-    @Transient  // TODO : change to one to one
-//    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-//    @JoinColumn(name = "discount_policy_id")
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "discount_policy_id", nullable = false, unique = true)
     private DiscountPolicy discountPolicy;
 
     @Transient
@@ -106,11 +103,9 @@ public class Event {
 
     protected Event() {}
 
-    @Deprecated
-    public Event(Long id, LocalDateTime date, String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
-        this.id = id;
+    public Event(LocalDateTime date, String name, Long companyId, Long openedBy, EventLocation location, Long trafficThreshold, EventCategory category, String artistName, BigDecimal ticketPrice, Pair<Integer, Integer> mapSize) {
         this.name = name;
-        this.Date = date;
+        this.date = date;
         this.companyId = companyId;
         this.openedBy = openedBy;
         this.artistName = artistName;
@@ -118,7 +113,7 @@ public class Event {
         this.trafficThreshold = trafficThreshold;
         this.status = eventStatus.DRAFT; // Default status until the map is set and the event is activated
         this.category = category;
-        this.TicketPrice = ticketPrice;
+        this.ticketPrice = ticketPrice;
         this.map = new EventMap(mapSize);
         this.purchasePolicy = PurchasePolicy.noRestrictions();
         this.discountPolicy =new DiscountPolicy(DiscountCompositionType.MAX);//defult
@@ -129,14 +124,14 @@ public class Event {
     public Event(Event other) {
         this.id = other.id;
         this.name = other.name;
-        this.Date = other.Date;
+        this.date = other.date;
         this.companyId = other.companyId;
         this.openedBy = other.openedBy;
         this.location = other.location;
         this.trafficThreshold = other.trafficThreshold;
         this.category = other.category;
         this.artistName = other.artistName;
-        this.TicketPrice = other.TicketPrice;
+        this.ticketPrice = other.ticketPrice;
         this.map = other.map == null ? null : new EventMap(other.map); // Deep copy of the map
         this.status = other.status;
         this.saleStatus = other.saleStatus;
@@ -167,11 +162,11 @@ public class Event {
     }
 
     public LocalDateTime getDate() {
-        return Date;
+        return date;
     }
 
     public void setDate(LocalDateTime date) {
-        Date = date;
+        this.date = date;
     }
 
     public Long getCompanyId() {
@@ -235,11 +230,11 @@ public class Event {
     }
 
     public BigDecimal getTicketPrice() {
-        return TicketPrice;
+        return ticketPrice;
     }
 
     public void setTicketPrice(BigDecimal ticketPrice) {
-        this.TicketPrice = ticketPrice;
+        this.ticketPrice = ticketPrice;
     }
 
     public Double getRate() {
@@ -274,10 +269,6 @@ public class Event {
         this.discountPolicy = discountPolicy;
     }
 
-    private Long getNextDiscountId() {
-        return discountId.incrementAndGet();
-    }
-
     public boolean isSoldOut() {
         return map.isSoldOut();
     }
@@ -294,6 +285,23 @@ public class Event {
         if (this.map != null && this.map.isSoldOut()) {
             this.saleStatus = SaleStatus.SOLD_OUT;
         }
+    }
+
+    public void defineMap(EventMap newMap) {
+        if (newMap == null) {
+            throw new IllegalArgumentException("Event map cannot be null");
+        }
+
+        if (status != eventStatus.DRAFT) {
+            throw new IllegalStateException("Event map can only be defined for a draft event");
+        }
+
+        if (map != null && map.getElements() != null && !map.getElements().isEmpty()) {
+            throw new IllegalStateException("Event map has already been defined");
+        }
+
+        this.map = newMap;
+        this.status = eventStatus.ACTIVE;
     }
 
     // use case: ticket reservation 
@@ -402,10 +410,10 @@ public class Event {
     }
 
     private boolean matchesDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        if (startDate != null && Date.isBefore(startDate)) {
+        if (startDate != null && date.isBefore(startDate)) {
             return false;
         }
-        if (endDate != null && Date.isAfter(endDate)) {
+        if (endDate != null && date.isAfter(endDate)) {
             return false;
         }
         return true;
@@ -425,10 +433,10 @@ public class Event {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
             throw new IllegalArgumentException("Minimum price cannot be greater than maximum price");
         }
-        if (minPrice != null && this.TicketPrice.compareTo(minPrice) < 0) {  // event price is less than the minimum price
+        if (minPrice != null && this.ticketPrice.compareTo(minPrice) < 0) {  // event price is less than the minimum price
             return false;
         }
-        if (maxPrice != null && this.TicketPrice.compareTo(maxPrice) > 0) {  // event price is greater than the maximum price
+        if (maxPrice != null && this.ticketPrice.compareTo(maxPrice) > 0) {  // event price is greater than the maximum price
             return false;
         }
         return true; // the event price is within the specified range
@@ -478,7 +486,7 @@ public class Event {
             this.name = name;
         }
         if (date != null && date.isAfter(LocalDateTime.now())) {
-            this.Date = date;
+            this.date = date;
         }
         if (location != null) {
             this.location = location;
@@ -493,7 +501,7 @@ public class Event {
             this.artistName = artistName;
         }
         if (ticketPrice != null && ticketPrice.compareTo(BigDecimal.ZERO) >= 0) {
-            this.TicketPrice = ticketPrice;
+            this.ticketPrice = ticketPrice;
         }
     }
 
@@ -501,7 +509,7 @@ public class Event {
     if (this.status == eventStatus.CANCELLED) {
         throw new IllegalStateException("Event is already cancelled");
     }
-    if (this.Date.isBefore(LocalDateTime.now())) {
+    if (this.date.isBefore(LocalDateTime.now())) {
         throw new IllegalStateException("Cannot cancel an event that has already occurred");
     }
     this.status = eventStatus.CANCELLED;
@@ -577,13 +585,13 @@ public class Event {
                 + ", name='" + name + '\''
                 + ", companyId=" + companyId
                 + ", openedBy=" + openedBy
-                + ", Date=" + Date
+                + ", Date=" + date
                 + ", location=" + location
                 + ", trafficThreshold=" + trafficThreshold
                 + ", status=" + status
                 + ", category=" + category
                 + ", artistName='" + artistName + '\''
-                + ", TicketPrice=" + TicketPrice
+                + ", TicketPrice=" + ticketPrice
                 + ", rate=" + rate
                 + ", activeReservationsCount=" + activeReservationsCount
                 + '}';
