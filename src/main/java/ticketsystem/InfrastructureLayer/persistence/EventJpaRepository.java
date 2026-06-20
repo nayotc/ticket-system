@@ -8,8 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import ticketsystem.DomainLayer.event.Event;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface EventJpaRepository extends JpaRepository<Event,Long> {
+public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecificationExecutor<Event>  {
     @Query("""
             SELECT DISTINCT e
             FROM Event e
@@ -33,6 +34,4 @@ public interface EventJpaRepository extends JpaRepository<Event,Long> {
             """)
     List<Event> findAllWithMap();
 
-    @Query("SELECT COALESCE(MAX(e.id), 0) FROM Event e")
-    Long findMaxId();
 }

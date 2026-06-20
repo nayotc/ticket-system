@@ -48,13 +48,8 @@ import ticketsystem.DomainLayer.discount.ConditionalDiscount;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
-import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.*;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
-import ticketsystem.DomainLayer.event.EventCategory;
-import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.Element;
-import ticketsystem.DomainLayer.event.SeatingArea;
-import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.CompanyRole;
@@ -734,20 +729,55 @@ public class EventServiceAcceptanceTest {
         assertTrue(exception.getMessage().contains("Event not found"));
     }
 
-    private Event createExistingEvent() {
-        Event event = new Event(
-                LocalDateTime.now().plusDays(10),
-                "Rock Concert",
-                companyId,
-                ownerId,
-                EventLocation.TEL_AVIV,
-                100L,
-                EventCategory.CONCERT,
-                "The Rockers",
-                BigDecimal.valueOf(99.99),
-                new ticketsystem.DomainLayer.event.Pair<>(10, 20));
-        event.setSaleStatus(SaleStatus.ONGOING);
-        return event;
+    @Test
+    void GivenEventWithDefinedMap_WhenDefineEventMapAgain_ThenSystemRejectsAndExistingMapIsNotReplaced() {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        eventService.defineEventMap(
+                validOwnerSessionId,
+                event.getId(),
+                createValidMapDTO()
+        );
+
+        Event eventAfterFirstDefinition =
+                eventRepository.getEventById(event.getId());
+
+        List<Long> originalElementIds =
+                eventAfterFirstDefinition.getMap()
+                        .getElements()
+                        .stream()
+                        .map(Element::getId)
+                        .toList();
+
+        int originalElementCount =
+                eventAfterFirstDefinition.getMap()
+                        .getElements()
+                        .size();
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> eventService.defineEventMap(
+                        validOwnerSessionId,
+                        event.getId(),
+                        createEdgeTouchingMapDTO()
+                )
+        );
+
+        Event unchangedEvent =
+                eventRepository.getEventById(event.getId());
+
+        List<Long> persistedElementIds =
+                unchangedEvent.getMap()
+                        .getElements()
+                        .stream()
+                        .map(Element::getId)
+                        .toList();
+
+        assertTrue(exception.getMessage().contains("defined"));
+        assertEquals(eventStatus.ACTIVE, unchangedEvent.getStatus());
+        assertEquals(originalElementCount, elementCount(unchangedEvent));
+        assertEquals(originalElementIds, persistedElementIds);
     }
 
     @Test
@@ -1635,6 +1665,23 @@ public class EventServiceAcceptanceTest {
     }
 
     // -------------------- Helper Methods and Test Doubles -------------------
+
+    private Event createExistingEvent() {
+        Event event = new Event(
+                LocalDateTime.now().plusDays(10),
+                "Rock Concert",
+                companyId,
+                ownerId,
+                EventLocation.TEL_AVIV,
+                100L,
+                EventCategory.CONCERT,
+                "The Rockers",
+                BigDecimal.valueOf(99.99),
+                new ticketsystem.DomainLayer.event.Pair<>(10, 20));
+        event.setSaleStatus(SaleStatus.ONGOING);
+        return event;
+    }
+
     private EventDTO createValidUpdateDTO(Event savedEvent) {
         return new EventDTO(
                 savedEvent.getId(),

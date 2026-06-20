@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
@@ -295,6 +297,44 @@ public class EventRepositoryPersistenceTest {
         );
 
         assertEquals("Event cannot be null", exception.getMessage());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void GivenTwoDetachedCopies_WhenUpdatingStaleCopy_ThenThrowOptimisticLockExceptionAndKeepFirstUpdate() {
+        Event event = createEvent(1L, "Original Event");
+
+        eventRepository.addEvent(event);
+
+        Event firstCopy = eventRepository.getEventById(event.getId());
+        Event staleSecondCopy = eventRepository.getEventById(event.getId());
+
+        assertNotNull(firstCopy);
+        assertNotNull(staleSecondCopy);
+        assertNotSame(firstCopy, staleSecondCopy);
+
+        int originalVersion = firstCopy.getVersion();
+
+        firstCopy.setName("First Successful Update");
+        eventRepository.updateEvent(firstCopy);
+
+        staleSecondCopy.setName("Stale Update");
+
+        OptimisticLockException exception = assertThrows(
+                OptimisticLockException.class,
+                () -> eventRepository.updateEvent(staleSecondCopy)
+        );
+
+        assertTrue(
+                exception.getMessage()
+                        .contains("Event was modified by another request")
+        );
+
+        Event persistedEvent = eventRepository.getEventById(event.getId());
+
+        assertNotNull(persistedEvent);
+        assertEquals("First Successful Update", persistedEvent.getName());
+        assertEquals(originalVersion + 1, persistedEvent.getVersion());
     }
 
     private Event createEvent(Long companyId, String eventName) {

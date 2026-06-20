@@ -14,6 +14,8 @@ import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.event.EventSearchResultView;
 
 /**
  * Test-only in-memory implementation of IEventRepository.
@@ -155,6 +157,23 @@ public final class InMemoryEventRepository implements IEventRepository {
         }
 
         return result;
+    }
+
+    @Override
+    public synchronized List<EventSearchResultView> searchEvents(
+            SearchCriteria criteria,
+            List<Long> companyIds
+    ) {
+        throw new UnsupportedOperationException(
+                "Catalog search is not supported by the policy test repository"
+        );
+    }
+
+    @Override
+    public synchronized List<EventSearchResultView> getFeaturedEvents(int limit) {
+        throw new UnsupportedOperationException(
+                "Featured event search is not supported by the policy test repository"
+        );
     }
 
     /**

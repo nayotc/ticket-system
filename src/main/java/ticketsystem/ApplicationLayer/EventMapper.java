@@ -37,9 +37,7 @@ public class EventMapper {
                 dto.mapSize() != null ? toDomain(dto.mapSize()) : null
         );
 
-        if (dto.map() != null) {
-            event.setMap(toDomain(dto.map()));
-        } else if (eventMapSupplier != null) {
+        if (eventMapSupplier != null) {
             EventMap suppliedMap = eventMapSupplier.get();
             if (suppliedMap != null) {
                 event.setMap(suppliedMap);

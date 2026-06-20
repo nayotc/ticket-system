@@ -40,16 +40,11 @@ import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.event.Element;
-import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.DomainLayer.event.EventCategory;
-import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.DomainLayer.event.SeatingArea;
-import ticketsystem.DomainLayer.event.StandingArea;
+import ticketsystem.DomainLayer.event.*;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.InMemoryEventRepository;
@@ -757,6 +752,19 @@ public class ReservationServiceTest {
         public List<Event> getAllEvents() {
             return realRepository.getAllEvents();
         }
+
+        @Override
+        public List<EventSearchResultView> getFeaturedEvents(int limit) {
+            return realRepository.getFeaturedEvents(limit);
+        }
+
+        @Override
+        public List<EventSearchResultView> searchEvents(SearchCriteria criteria, List<Long> companyIds
+        ) {
+            return realRepository.searchEvents(criteria, companyIds);
+        }
+
+
     }
 
     private static class TestSecureBarcode implements ITicketIssuingService {

@@ -264,8 +264,7 @@ public class EventService {
             );
 
             EventMap map = EventMapper.toDomain(mapDTO);
-            event.setMap(map);
-            event.setStatus(eventStatus.ACTIVE);
+            event.defineMap(map);
             eventRepository.updateEvent(event);
             logger.logEvent("Completed - defineEventMap. " + context, LogLevel.INFO);
             return true;
