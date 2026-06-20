@@ -37,22 +37,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
     private static final String AMAZING_EVENTS_COMPANY_NAME = "Amazing Events";
     private static final String LAUGH_FACTORY_COMPANY_NAME = "Laugh Factory";
 
-    private static final long ELECTRONIC_EVENT_ID = 15L;
-    private static final long STANDUP_EVENT_ID = 20L;
-    private static final long NIGHT_LIGHTS_EVENT_ID = 30L;
-    private static final long BASKETBALL_EVENT_ID = 40L;
-    private static final long ART_EXHIBITION_EVENT_ID = 50L;
-    private static final long HAIFA_LIVE_EVENT_ID = 60L;
-    private static final long BROADWAY_EVENT_ID = 70L;
-    private static final long LA_SPORTS_EVENT_ID = 80L;
-    private static final long MIAMI_FOOD_EVENT_ID = 90L;
-    private static final long CHICAGO_JAZZ_EVENT_ID = 100L;
-    private static final long JERUSALEM_THEATER_EVENT_ID = 110L;
-    private static final long HOUSTON_TECH_EXPO_EVENT_ID = 120L;
-    private static final long BEER_SHEVA_STANDUP_EVENT_ID = 130L;
-    private static final long NEW_YORK_ART_EVENT_ID = 140L;
-    private static final long OTHER_FAMILY_EVENT_ID = 150L;
-
     private static final long ELECTRONIC_EVENT_LOTTERY_ID = 100L;
     private static final int ELECTRONIC_EVENT_LOTTERY_WINNERS = 10;
 
@@ -97,7 +81,7 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
         addEventIfMissing(createNightLightsEvent(amazingEventsCompany));
         addEventIfMissing(createStandupEvent(laughFactoryCompany));
-        addEventIfMissing(createElectronicEvent(tixNowCompany));
+        Event electronicEvent = addEventIfMissing(createElectronicEvent(tixNowCompany));
         addEventIfMissing(createBasketballEvent(tixNowCompany));
         addEventIfMissing(createArtExhibitionEvent(amazingEventsCompany));
         addEventIfMissing(createHaifaLiveEvent(amazingEventsCompany));
@@ -113,7 +97,7 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
         addLotteryIfMissing(
                 ELECTRONIC_EVENT_LOTTERY_ID,
-                ELECTRONIC_EVENT_ID,
+                electronicEvent.getId(),
                 ELECTRONIC_EVENT_LOTTERY_WINNERS
         );
     }
@@ -140,7 +124,12 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
         return company;
     }
 
-    private void addLotteryIfMissing(long lotteryId, long eventId, int winnersNumber) {
+    private void addLotteryIfMissing(long lotteryId, Long eventId, int winnersNumber) {
+        if (eventId == null) {
+            System.out.println("Skipping dev lottery creation: event id was not generated.");
+            return;
+        }
+
         if (lotteryRepository.findById(lotteryId) != null) {
             System.out.println("Dev lottery already exists for event ID: " + eventId);
             return;
@@ -155,26 +144,31 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
         System.out.println("Dev lottery created for event ID: " + eventId + " [Lottery ID: " + lotteryId + "]");
     }
 
-    private void addEventIfMissing(Event event) {
-        if (eventRepository.getEventById(event.getId()) != null) {
-            System.out.println("Dev event already exists: " + event.getName() + " [ID: " + event.getId() + "]");
-            return;
+    private Event addEventIfMissing(Event event) {
+        Event existing = eventRepository.getAllEvents().stream()
+                .filter(existingEvent -> event.getCompanyId().equals(existingEvent.getCompanyId()))
+                .filter(existingEvent -> event.getName().equals(existingEvent.getName()))
+                .findFirst()
+                .orElse(null);
+
+        if (existing != null) {
+            System.out.println("Dev event already exists: " + existing.getName() + " [ID: " + existing.getId() + "]");
+            return existing;
         }
 
         eventRepository.addEvent(event);
         System.out.println("Dev event created: " + event.getName() + " [ID: " + event.getId() + "]");
+        return event;
     }
 
     private void addDefaultTicketMap(Event event) {
         event.getMap().addElement(new Element(
-                1L,
                 "במה מרכזית",
                 new Pair<>(8, 2),
                 new Pair<>(8, 3)
         ));
 
         event.getMap().addElement(new SeatingArea(
-                2L,
                 "יציע ישיבה",
                 new Pair<>(4, 7),
                 new Pair<>(10, 6),
@@ -183,7 +177,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
         ));
 
         event.getMap().addElement(new StandingArea(
-                3L,
                 "רחבת עמידה",
                 new Pair<>(16, 7),
                 new Pair<>(8, 8),
@@ -191,7 +184,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
         ));
 
         event.getMap().addElement(new Element(
-                4L,
                 "כניסה",
                 new Pair<>(1, 1),
                 new Pair<>(3, 3)
@@ -202,7 +194,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createNightLightsEvent(Company company) {
         Event event = new Event(
-                NIGHT_LIGHTS_EVENT_ID,
                 LocalDateTime.of(2026, 10, 24, 21, 0),
                 "פסטיבל אורות הלילה",
                 company.getId(),
@@ -223,7 +214,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createStandupEvent(Company company) {
         Event event = new Event(
-                STANDUP_EVENT_ID,
                 LocalDateTime.of(2026, 11, 15, 22, 30),
                 "מרתון צחוק תל אביבי",
                 company.getId(),
@@ -244,7 +234,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createElectronicEvent(Company company) {
         Event event = new Event(
-                ELECTRONIC_EVENT_ID,
                 LocalDateTime.of(2026, 10, 20, 23, 55),
                 "ליין שישי אלקטרוני",
                 company.getId(),
@@ -265,7 +254,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createBasketballEvent(Company company) {
         Event event = new Event(
-                BASKETBALL_EVENT_ID,
                 LocalDateTime.of(2026, 12, 3, 20, 30),
                 "דרבי הכדורסל של באר שבע",
                 company.getId(),
@@ -286,7 +274,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createArtExhibitionEvent(Company company) {
         Event event = new Event(
-                ART_EXHIBITION_EVENT_ID,
                 LocalDateTime.of(2026, 9, 12, 18, 0),
                 "לילה במוזיאון ירושלים",
                 company.getId(),
@@ -307,7 +294,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createHaifaLiveEvent(Company company) {
         Event event = new Event(
-                HAIFA_LIVE_EVENT_ID,
                 LocalDateTime.of(2026, 8, 7, 21, 15),
                 "ים של מוזיקה בחיפה",
                 company.getId(),
@@ -328,7 +314,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createBroadwayEvent(Company company) {
         Event event = new Event(
-                BROADWAY_EVENT_ID,
                 LocalDateTime.of(2026, 7, 18, 20, 0),
                 "Broadway Night בניו יורק",
                 company.getId(),
@@ -349,7 +334,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createLosAngelesSportsEvent(Company company) {
         Event event = new Event(
-                LA_SPORTS_EVENT_ID,
                 LocalDateTime.of(2026, 9, 28, 19, 45),
                 "גמר החוף בלוס אנג׳לס",
                 company.getId(),
@@ -370,7 +354,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createMiamiFoodEvent(Company company) {
         Event event = new Event(
-                MIAMI_FOOD_EVENT_ID,
                 LocalDateTime.of(2026, 6, 22, 17, 30),
                 "פסטיבל טעמים במיאמי",
                 company.getId(),
@@ -391,7 +374,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createChicagoJazzEvent(Company company) {
         Event event = new Event(
-                CHICAGO_JAZZ_EVENT_ID,
                 LocalDateTime.of(2026, 10, 2, 21, 30),
                 "Jazz Night בשיקגו",
                 company.getId(),
@@ -412,7 +394,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createJerusalemTheaterEvent(Company company) {
         Event event = new Event(
-                JERUSALEM_THEATER_EVENT_ID,
                 LocalDateTime.of(2026, 11, 9, 19, 0),
                 "הצגה ירושלמית מקורית",
                 company.getId(),
@@ -433,7 +414,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createHoustonTechExpoEvent(Company company) {
         Event event = new Event(
-                HOUSTON_TECH_EXPO_EVENT_ID,
                 LocalDateTime.of(2026, 5, 14, 10, 0),
                 "תערוכת חדשנות ביוסטון",
                 company.getId(),
@@ -454,7 +434,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createBeerShevaStandupEvent(Company company) {
         Event event = new Event(
-                BEER_SHEVA_STANDUP_EVENT_ID,
                 LocalDateTime.of(2026, 12, 20, 22, 0),
                 "סטנדאפ במדבר",
                 company.getId(),
@@ -475,7 +454,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createNewYorkArtEvent(Company company) {
         Event event = new Event(
-                NEW_YORK_ART_EVENT_ID,
                 LocalDateTime.of(2026, 8, 30, 12, 0),
                 "גלריית קיץ בניו יורק",
                 company.getId(),
@@ -496,7 +474,6 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     private Event createOtherFamilyEvent(Company company) {
         Event event = new Event(
-                OTHER_FAMILY_EVENT_ID,
                 LocalDateTime.of(2026, 7, 5, 11, 0),
                 "יום משפחות בפארק",
                 company.getId(),

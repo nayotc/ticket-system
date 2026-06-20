@@ -1,13 +1,26 @@
 package ticketsystem.DomainLayer.event;
 
-public class Pair<K, V> {
+import java.io.Serializable;
+import java.util.Objects;
 
-    private final K first;
-    private final V second;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+@Embeddable
+public class Pair<K, V> implements Serializable {
+
+    @Column(name = "first_value")
+    private Integer first;
+
+    @Column(name = "second_value")
+    private Integer second;
+
+    protected Pair() {
+    }
 
     public Pair(K first, V second) {
-        this.first = first;
-        this.second = second;
+        this.first = ((Number) first).intValue();
+        this.second = ((Number) second).intValue();
     }
 
     public Pair(Pair<K, V> other) {
@@ -19,27 +32,33 @@ public class Pair<K, V> {
         return new Pair<>(this);
     }
 
+    @SuppressWarnings("unchecked")
     public K getFirst() {
-        return first;
+        return (K) first;
     }
 
+    @SuppressWarnings("unchecked")
     public V getSecond() {
-        return second;
+        return (V) second;
     }
 
-    
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Pair<?, ?> pair)) return false;
-        return java.util.Objects.equals(first, pair.first) &&
-               java.util.Objects.equals(second, pair.second);
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+
+        if (!(other instanceof Pair<?, ?> pair)) {
+            return false;
+        }
+
+        return Objects.equals(first, pair.first)
+                && Objects.equals(second, pair.second);
     }
 
-   
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(first, second);
+        return Objects.hash(first, second);
     }
 
     @Override

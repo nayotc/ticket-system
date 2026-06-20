@@ -15,32 +15,27 @@ import org.springframework.core.annotation.Order;
 //Services
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.EventService;
-import ticketsystem.ApplicationLayer.SystemAdminService;
-import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.ApplicationLayer.HistoryService;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
-import ticketsystem.ApplicationLayer.PurchasePolicyMapper;
-// Repositories
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
-import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.IRepository.IUserRepository;
-// DTOs
+import ticketsystem.ApplicationLayer.SystemAdminService;
+import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.OrderDTO;
-import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
-// Domain Entities
+import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.IRepository.IEventRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.company.Company;
-import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Founder;
 import ticketsystem.DomainLayer.user.Member;
@@ -60,15 +55,20 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private static final String MANAGER_USERNAME = "manager@test.com";
     private static final String OWNER_USERNAME = "owner@test.com";
-    
+
     private static final long TEST_COMPANY_ID = 1L;
-    private static final String COMPANY_NAME = "TixNow Productions"; 
+    private static final String COMPANY_NAME = "TixNow Productions";
 
     private static final String REPORT_MANAGER_USERNAME = "report@test.com";
     private static final String REPORT_MANAGER_PASSWORD = "123456";
     private static final String SYSTEM_ADMIN_USERNAME = "sysadmin@test.com";
     private static final String SYSTEM_ADMIN_PASSWORD = "123456";
-    
+
+    private Long nightLightsEventId;
+    private Long rockEventId;
+    private Long sunsetEventId;
+    private Long jazzEventId;
+
     private final ITokenService tokenService;
     private final UserService userService;
     private final IUserRepository userRepository;
@@ -94,6 +94,7 @@ public class DevDataInitializer implements CommandLineRunner {
         this.eventRepository = eventRepository;
     }
 
+    @Override
     public void run(String... args) throws Exception {
         createTestMember();               // 1. Create the regular buyer member
         createTestSystemAdmin();          // 1.1 Create a member and promote to system admin
@@ -188,23 +189,25 @@ public class DevDataInitializer implements CommandLineRunner {
      */
     private void createTestCompany() {
         System.out.println("Creating test production company...");
-        
-        var founder = userRepository.getMemberByUsername(FOUNDER_USERNAME);
+
+        Member founder = userRepository.getMemberByUsername(FOUNDER_USERNAME);
         founder.addFounderRole(TEST_COMPANY_ID);
         userRepository.updateMember(founder);
 
         Company company = new Company(COMPANY_NAME, founder.getId(), PurchasePolicy.noRestrictions(), new DiscountPolicy(DiscountCompositionType.MAX));
         try {
-            company.setId(TEST_COMPANY_ID); 
-        } catch (Exception e) {}
-        
-        // קריאה לפונקציית העזר החדשה שמלבישה את נתוני הדמה של המדיניות
-        setupMockPolicies(company);
+            company.setId(TEST_COMPANY_ID);
+        } catch (Exception ignored) {
+        }
 
-        // שמירת החברה (עם המדיניות שעודכנה) למסד הנתונים
-        companyRepository.save(company); 
-        
-        System.out.println("Test company created: " + company.getName() + " [ID: " + company.getId() + "] owned by Founder ID: " + founder.getId());
+        setupMockPolicies(company);
+        companyRepository.save(company);
+
+        System.out.println(
+                "Test company created: " + company.getName()
+                        + " [ID: " + company.getId()
+                        + "] owned by Founder ID: " + founder.getId()
+        );
     }
 
     /**
@@ -213,15 +216,15 @@ public class DevDataInitializer implements CommandLineRunner {
      */
     private void setupMockPolicies(Company company) {
         System.out.println("Setting up mock discount and purchase policies...");
-        
-        // --- אתחול מדיניות הנחות דמו ---
+
         try {
-            // הנחה רגילה (10%)
             company.addVisibleDiscountToCompany("הנחת השקה", BigDecimal.valueOf(10));
-            // הנחת קופון (20%) לחודש הקרוב
-            company.addCouponDiscountToCompany("קופון קיץ", "SUMMER26", BigDecimal.valueOf(20), LocalDateTime.now().plusMonths(1));
-            // הנחה מותנית (15%) על רכישה של מינימום 4 כרטיסים
-            //company.addConditionalDiscountToCompany("הנחת כמות", null, null, BigDecimal.valueOf(15), Condition.MIN_TICKET, 4);
+            company.addCouponDiscountToCompany(
+                    "קופון קיץ",
+                    "SUMMER26",
+                    BigDecimal.valueOf(20),
+                    LocalDateTime.now().plusMonths(1)
+            );
         } catch (Exception e) {
             System.out.println("Failed to setup mock discount policy: " + e.getMessage());
         }
@@ -246,9 +249,11 @@ public class DevDataInitializer implements CommandLineRunner {
 
             // המרה ושמירה בחברה באמצעות ה-Mapper
             PurchasePolicyDTO policyDTO = new PurchasePolicyDTO(rootRule);
-            ticketsystem.ApplicationLayer.PurchasePolicyMapper mapper = new ticketsystem.ApplicationLayer.PurchasePolicyMapper();
+            ticketsystem.ApplicationLayer.PurchasePolicyMapper mapper =
+                    new ticketsystem.ApplicationLayer.PurchasePolicyMapper();
+
             company.setPurchasePolicy(mapper.toDomain(policyDTO));
-            
+
         } catch (Exception e) {
             System.out.println("Failed to setup mock purchase policy: " + e.getMessage());
         }
@@ -303,119 +308,150 @@ public class DevDataInitializer implements CommandLineRunner {
         System.out.println("Creating test events for company ID " + TEST_COMPANY_ID + "...");
 
         Member founder = (Member) userRepository.getMemberByUsername(FOUNDER_USERNAME);
-        
-        // 1. Event: Night Lights Festival (Matches Order #8492)
-        Event event1 = new Event(
-                91L, 
-                LocalDateTime.now().plusDays(30), 
-                "פסטיבל אורות הלילה", 
-                TEST_COMPANY_ID, 
-                founder.getId(), 
+
+        Event event1 = findOrCreateActiveEvent(
+                "פסטיבל אורות הלילה",
+                TEST_COMPANY_ID,
+                founder.getId(),
+                LocalDateTime.now().plusDays(30),
                 EventLocation.JERUSALEM,
-                1000L, 
+                1000L,
                 EventCategory.CONCERT,
-                "אומנים שונים", 
-                BigDecimal.valueOf(180), 
+                "אומנים שונים",
+                BigDecimal.valueOf(180),
                 new Pair<>(10, 20)
         );
-        event1.setStatus(Event.eventStatus.ACTIVE);
-        // If you have an OPEN status in SaleStatus enum, you can uncomment and adjust the line below:
-        // event1.setSaleStatus(SaleStatus.OPEN);
-        eventRepository.addEvent(event1);
+        nightLightsEventId = event1.getId();
 
-        // 2. Event: Rock Concert (Matches Order #8491)
-        Event event2 = new Event(
-                92L, 
-                LocalDateTime.now().plusDays(45), 
-                "הופעת רוק במדבר", 
-                TEST_COMPANY_ID, 
-                founder.getId(), 
+        Event event2 = findOrCreateActiveEvent(
+                "הופעת רוק במדבר",
+                TEST_COMPANY_ID,
+                founder.getId(),
+                LocalDateTime.now().plusDays(45),
                 EventLocation.BEER_SHEVA,
-                500L, 
+                500L,
                 EventCategory.OTHER,
-                "להקת המדבר", 
-                BigDecimal.valueOf(120), 
+                "להקת המדבר",
+                BigDecimal.valueOf(120),
                 new Pair<>(10, 10)
         );
-        event2.setStatus(Event.eventStatus.ACTIVE);
-        // If you have an OPEN status in SaleStatus enum, you can uncomment and adjust the line below:
-        // event2.setSaleStatus(SaleStatus.OPEN);
-        eventRepository.addEvent(event2);
-        
-        System.out.println("Test events generated successfully.");
+        rockEventId = event2.getId();
 
-        Member owner = (Member) userRepository.getMemberByUsername("owner@test.com");
+        Member owner = (Member) userRepository.getMemberByUsername(OWNER_USERNAME);
         if (owner != null) {
             long ownerId = owner.getId();
-            long mainCompanyId = 1L; // או TEST_COMPANY_ID אם זה המשתנה אצלך
 
-            // 1. אירוע ראשון באחריות ה-Owner: פסטיבל שקיעה
-            Event ownerEvent1 = new Event(
-                    101L, // מזהה אירוע
-                    LocalDateTime.now().plusDays(20), // תאריך
-                    "פסטיבל שקיעה", // שם האירוע
-                    mainCompanyId, // חברת הפקה
-                    ownerId, // מנהל האירוע (ה-Owner שלנו)
-                    EventLocation.TEL_AVIV, // מיקום (עדכני ל-Enum שקיים אצלך אם צריך)
-                    1000L, // תכולה
-                    EventCategory.OTHER, // קטגוריה
-                    "מסיבת חוף אל תוך הלילה", // תיאור
-                    BigDecimal.valueOf(150), // מחיר בסיס
-                    new Pair<>(10, 10) // סידור
+            Event ownerEvent1 = findOrCreateActiveEvent(
+                    "פסטיבל שקיעה",
+                    TEST_COMPANY_ID,
+                    ownerId,
+                    LocalDateTime.now().plusDays(20),
+                    EventLocation.TEL_AVIV,
+                    1000L,
+                    EventCategory.OTHER,
+                    "מסיבת חוף אל תוך הלילה",
+                    BigDecimal.valueOf(150),
+                    new Pair<>(10, 10)
             );
+            sunsetEventId = ownerEvent1.getId();
 
-            // 2. אירוע שני באחריות ה-Owner: הופעת ג'אז
-            Event ownerEvent2 = new Event(
-                    102L, 
-                    LocalDateTime.now().plusDays(25), 
-                    "הופעת ג'אז", 
-                    mainCompanyId, 
-                    ownerId, // מנהל האירוע (ה-Owner שלנו)
-                    EventLocation.BEER_SHEVA, // מיקום
-                    300L, // תכולה
-                    EventCategory.OTHER, // קטגוריה
-                    "הופעה חיה", // תיאור
-                    BigDecimal.valueOf(200), // מחיר בסיס
-                    new Pair<>(10, 10) // סידור
+            Event ownerEvent2 = findOrCreateActiveEvent(
+                    "הופעת ג'אז",
+                    TEST_COMPANY_ID,
+                    ownerId,
+                    LocalDateTime.now().plusDays(25),
+                    EventLocation.BEER_SHEVA,
+                    300L,
+                    EventCategory.OTHER,
+                    "הופעה חיה",
+                    BigDecimal.valueOf(200),
+                    new Pair<>(10, 10)
             );
-            
-            eventRepository.addEvent(ownerEvent1);
-            eventRepository.addEvent(ownerEvent2);
-            
-            System.out.println("Created 2 events managed by Owner [ID: " + ownerId + "]");
+            jazzEventId = ownerEvent2.getId();
+
+            System.out.println("Created/updated 2 events managed by Owner [ID: " + ownerId + "]");
         }
+
+        System.out.println("Test events generated successfully.");
     }
 
-    /**
-     * Generates test transactions where the test user is the buyer, 
-     * and different members (founder, owner) manage the events.
-     */
+    private Event findOrCreateActiveEvent(
+            String name,
+            Long companyId,
+            Long openedBy,
+            LocalDateTime date,
+            EventLocation location,
+            Long trafficThreshold,
+            EventCategory category,
+            String artistName,
+            BigDecimal ticketPrice,
+            Pair<Integer, Integer> mapSize
+    ) {
+        Event existing = eventRepository.getAllEvents().stream()
+                .filter(event -> companyId.equals(event.getCompanyId()))
+                .filter(event -> name.equals(event.getName()))
+                .findFirst()
+                .orElse(null);
+
+        if (existing != null) {
+            existing.setStatus(Event.eventStatus.ACTIVE);
+            existing.setTrafficThreshold(trafficThreshold);
+            eventRepository.updateEvent(existing);
+
+            System.out.println("Dev event already exists: " + existing.getName() + " [ID: " + existing.getId() + "]");
+            return existing;
+        }
+
+        Event event = new Event(
+                date,
+                name,
+                companyId,
+                openedBy,
+                location,
+                trafficThreshold,
+                category,
+                artistName,
+                ticketPrice,
+                mapSize
+        );
+
+        event.setStatus(Event.eventStatus.ACTIVE);
+        eventRepository.addEvent(event);
+
+        System.out.println("Dev event created: " + event.getName() + " [ID: " + event.getId() + "]");
+        return event;
+    }
+
     private void createTestSalesData() {
         System.out.println("Generating test sales data for HistoryService...");
-        
-        // Fetch the regular member ID (test@test.com) who acts as the buyer
-        var buyer = userRepository.getMemberByUsername(TEST_USERNAME);
-        if (!(buyer instanceof Member)) return;
-        long buyerId = ((Member) buyer).getId();
-        
-        // Fetch the Founder ID (founder@test.com) who manages the first events
-        var founder = userRepository.getMemberByUsername(FOUNDER_USERNAME);
-        if (!(founder instanceof Member)) return;
-        long founderId = ((Member) founder).getId();
 
-        // Fetch the Owner ID (owner@test.com) who manages the new events
-        var owner = userRepository.getMemberByUsername("owner@test.com");
-        if (!(owner instanceof Member)) return;
-        long ownerId = ((Member) owner).getId();
-        
-        // ==========================================
-        //         TRANSACTIONS FOR FOUNDER
-        // ==========================================
+        if (nightLightsEventId == null || rockEventId == null || sunsetEventId == null || jazzEventId == null) {
+            System.out.println("Skipping sales data: one or more generated event ids are missing.");
+            return;
+        }
+
+        Member buyer = userRepository.getMemberByUsername(TEST_USERNAME);
+        if (buyer == null) {
+            return;
+        }
+        long buyerId = buyer.getId();
+
+        Member founder = userRepository.getMemberByUsername(FOUNDER_USERNAME);
+        if (founder == null) {
+            return;
+        }
+        long founderId = founder.getId();
+
+        Member owner = userRepository.getMemberByUsername(OWNER_USERNAME);
+        if (owner == null) {
+            return;
+        }
+        long ownerId = owner.getId();
 
         // Transaction 1: 2 Tickets bought by the regular test member, managed by the Founder
         PurchaseDTO ticket1 = new PurchaseDTO(100L, 1, 12, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-123");
         PurchaseDTO ticket2 = new PurchaseDTO(101L, 1, 13, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-124");
-        
+
         OrderDTO order1 = new OrderDTO(8492L, List.of(ticket1, ticket2), "פסטיבל אורות הלילה", "תל אביב", buyerId, TEST_COMPANY_ID, founderId, 91L, new BigDecimal(100), 111111,false);
         historyService.onOrderCompleted(order1);
 
@@ -472,7 +508,8 @@ public class DevDataInitializer implements CommandLineRunner {
                 REPORT_MANAGER_USERNAME,
                 REPORT_MANAGER_PASSWORD,
                 "Report Manager",
-                "0500000002",LocalDate.of(2001, 1, 1)
+                "0500000002",
+                LocalDate.of(2001, 1, 1)
         );
 
         Member manager = userRepository.getMemberByUsername(REPORT_MANAGER_USERNAME);

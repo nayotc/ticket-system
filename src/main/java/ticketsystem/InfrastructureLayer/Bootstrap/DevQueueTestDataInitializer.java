@@ -21,11 +21,7 @@ public class DevQueueTestDataInitializer {
 
     private static final long COMPANY_ID = 1L;
 
-    private static final long APPROVED_EVENT_ID = 30L;
-    private static final long QUEUED_EVENT_ID = 70L;
-    private static final long PRE_SALE_QUEUED_EVENT_ID = 1L;
     public static final String PRE_SALE_QUEUED_EVENT_NAME = "ליין שישי אלקטרוני";
-
     public static final String APPROVED_EVENT_NAME = "פסטיבל אורות הלילה";
     public static final String QUEUED_EVENT_NAME = "מרתון צחוק תל אביבי";
 
@@ -38,8 +34,7 @@ public class DevQueueTestDataInitializer {
     @EventListener(ApplicationReadyEvent.class)
     public void initializeQueueTestData() {
         try {
-            ensureEvent(
-                    APPROVED_EVENT_ID,
+            Event approvedEvent = ensureEvent(
                     APPROVED_EVENT_NAME,
                     EventLocation.TEL_AVIV,
                     EventCategory.CONCERT,
@@ -49,8 +44,7 @@ public class DevQueueTestDataInitializer {
                     SaleStatus.ONGOING
             );
 
-            ensureEvent(
-                    QUEUED_EVENT_ID,
+            Event queuedEvent = ensureEvent(
                     QUEUED_EVENT_NAME,
                     EventLocation.TEL_AVIV,
                     EventCategory.THEATER,
@@ -59,21 +53,21 @@ public class DevQueueTestDataInitializer {
                     0L,
                     SaleStatus.ONGOING
             );
-            ensureEvent(
-            PRE_SALE_QUEUED_EVENT_ID,
-            PRE_SALE_QUEUED_EVENT_NAME,
-            EventLocation.TEL_AVIV,
-            EventCategory.CONCERT,
-            "Electronic Line",
-            new BigDecimal("180"),
-            0L,
-            SaleStatus.PRE_SALE
-    );
+
+            Event preSaleQueuedEvent = ensureEvent(
+                    PRE_SALE_QUEUED_EVENT_NAME,
+                    EventLocation.TEL_AVIV,
+                    EventCategory.CONCERT,
+                    "Electronic Line",
+                    new BigDecimal("180"),
+                    0L,
+                    SaleStatus.PRE_SALE
+            );
 
             System.out.println("Temporary queue test data initialized.");
-            System.out.println("Approved event id: " + APPROVED_EVENT_ID);
-            System.out.println("Queued event id: " + QUEUED_EVENT_ID);
-            System.out.println("Pre-sale queued event id: " + PRE_SALE_QUEUED_EVENT_ID);
+            System.out.println("Approved event id: " + approvedEvent.getId());
+            System.out.println("Queued event id: " + queuedEvent.getId());
+            System.out.println("Pre-sale queued event id: " + preSaleQueuedEvent.getId());
 
         } catch (Exception e) {
             System.out.println("Failed to initialize temporary queue test data: " + e.getMessage());
@@ -81,8 +75,7 @@ public class DevQueueTestDataInitializer {
         }
     }
 
-    private void ensureEvent(
-            long eventId,
+    private Event ensureEvent(
             String name,
             EventLocation location,
             EventCategory category,
@@ -91,7 +84,10 @@ public class DevQueueTestDataInitializer {
             long trafficThreshold,
             SaleStatus saleStatus
     ) {
-        Event existing = eventRepository.getEventById(eventId);
+        Event existing = eventRepository.getAllEvents().stream()
+                .filter(event -> name.equals(event.getName()))
+                .findFirst()
+                .orElse(null);
 
         if (existing != null) {
             existing.setTrafficThreshold(trafficThreshold);
@@ -99,12 +95,11 @@ public class DevQueueTestDataInitializer {
             existing.setSaleStatus(saleStatus);
             eventRepository.updateEvent(existing);
 
-            System.out.println("Updated queue test event: " + eventId + " - " + name);
-            return;
+            System.out.println("Updated queue test event: " + existing.getId() + " - " + name);
+            return existing;
         }
 
         Event event = new Event(
-                eventId,
                 LocalDateTime.now().plusMonths(2),
                 name,
                 COMPANY_ID,
@@ -122,6 +117,7 @@ public class DevQueueTestDataInitializer {
 
         eventRepository.addEvent(event);
 
-        System.out.println("Created queue test event: " + eventId + " - " + name);
+        System.out.println("Created queue test event: " + event.getId() + " - " + name);
+        return event;
     }
 }

@@ -14,6 +14,10 @@ import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCalculationResult;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 
 public class Company {
     private static long idCounter = 1;
@@ -22,8 +26,15 @@ public class Company {
     private String name;
     private final long founderId;
     private boolean isActive;
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "purchase_policy_id", nullable = false, unique = true)
     private PurchasePolicy purchasePolicy;
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "discount_policy_id", nullable = false, unique = true)
     private DiscountPolicy discountPolicy;
+
     private Double rate = 0.0; // for search and filtering
     private Double totalRating = 0.0; // for calculating average rating
     private Integer ratingCount = 0; // for calculating average rating
