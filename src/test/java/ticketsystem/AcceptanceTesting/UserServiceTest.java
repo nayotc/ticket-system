@@ -11,6 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.ApplicationLayer.Events.UserExitListener;
 import ticketsystem.ApplicationLayer.ISystemLogger;
@@ -19,17 +22,21 @@ import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
+import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import ticketsystem.DomainLayer.IRepository.IUserRepository;
-import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
+import ticketsystem.InfrastructureLayer.UserRepository;
 
+@SpringBootTest
+@Transactional
 public class UserServiceTest {
 
     private static final LocalDate VALID_BIRTH_DATE = LocalDate.of(2001, 1, 1);
 
-    private IUserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
+
     private UserService userService;
     private ITokenService tokenService;
     private ITokenRepository tokenRepository;
@@ -38,7 +45,6 @@ public class UserServiceTest {
     @BeforeEach
     public void setup() {
         logger = new LogbackSystemLogger();
-        userRepository = new InMemoryUserRepository();
         tokenRepository = new TokenRepository();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
         userService = new UserService(userRepository, tokenService, logger);

@@ -34,9 +34,7 @@ import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
@@ -48,15 +46,21 @@ import ticketsystem.DomainLayer.event.*;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.InMemoryEventRepository;
-import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
-import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
+import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
+import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 
+import ticketsystem.InfrastructureLayer.persistence.CompanyJpaRepository;
+import ticketsystem.InfrastructureLayer.persistence.LotteryJpaRepository;
+
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 @SpringBootTest
 public class ReservationServiceTest {
-
     private ReservationService reservationService;
     private ReservationService policyAwareReservationService;
     private IOrderRepository orderRepository;
@@ -64,9 +68,19 @@ public class ReservationServiceTest {
     @Autowired
     private IEventRepository eventRepository;
 
+    @Autowired
+    private LotteryRepository lotteryRepository;
+
+    @Autowired
+    private LotteryJpaRepository lotteryJpaRepository;
+
+    @Autowired
+    private CompanyRepository companyRepository;
+
+    @Autowired
+    private CompanyJpaRepository companyJpaRepository;
+
     private IEventRepository policyRepository;
-    private ILotteryRepository lotteryRepository;
-    private ICompanyRepository companyRepository;
     private IUserRepository userRepository;
     private IPaymentService paymentService;
     private TestSecureBarcode secureBarcode;
@@ -79,18 +93,17 @@ public class ReservationServiceTest {
     private FakeNotifier fakeNotifier;
     private String[] memberTokens;
 
+    private Long companyId;
+
     private final List<Long> createdEventIds = new ArrayList<>();
 
-    private static final Long COMPANY_ID = 1L;
     private static final Long COMPANY_FOUNDER_ID = 1L;
 
     @BeforeEach
     void setUp() {
+        companyJpaRepository.deleteAll();
         orderRepository = new InMemoryOrderRepository();
         policyRepository = new InMemoryEventRepository();
-        lotteryRepository = new LotteryRepository();
-        ((LotteryRepository) lotteryRepository).clearForTests();
-        companyRepository = new CompanyRepository();
         userRepository = new InMemoryUserRepository();
         membershipDomain = new MembershipDomainService(userRepository);
         paymentService = new PaymentServiceProxy();
@@ -114,11 +127,24 @@ public class ReservationServiceTest {
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
-        company.setId(COMPANY_ID);
         companyRepository.save(company);
 
         eventCatalogDomainService = new EventCatalogDomainService((CompanyRepository) companyRepository);
+        companyId = company.getId();
 
+        assertNotNull(
+                companyId,
+                "The database should assign an identifier to the saved company."
+        );
+
+        assertTrue(
+                companyId > 0,
+                "The database-generated company identifier should be positive."
+        );
+        eventCatalogDomainService =
+                new EventCatalogDomainService(
+                        companyRepository
+                );
         resetPaymentProxy();
 
         reservationService = createReservationService(eventRepository);
@@ -632,7 +658,7 @@ public class ReservationServiceTest {
         return new Event(
                 LocalDateTime.now().plusDays(10),
                 name,
-                COMPANY_ID,
+                companyId,
                 COMPANY_FOUNDER_ID,
                 EventLocation.TEL_AVIV,
                 100L,
@@ -645,15 +671,15 @@ public class ReservationServiceTest {
 
     private PaymentDetails createPaymentDetails() {
         return new PaymentDetails(
-                "VISA",
-                "Yosi Cohen",
-                LocalDate.of(2001, 1, 1),
-                "4580458045804580",
-                12,
-                2030,
-                "123",
-                "123456789",
-                "ILS"
+            "VISA",
+            "Yosi Cohen",
+            LocalDate.of(2001, 1, 1),
+            "4580458045804580",
+            12,
+            2030,
+            "123",
+            "123456789",
+            "ILS"
         );
     }
 

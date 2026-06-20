@@ -30,12 +30,30 @@ import java.time.LocalDateTime;
 @Order(2)
 public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
-    private static final long TEST_COMPANY_ID = 1L;
-    private static final long AMAZING_EVENTS_COMPANY_ID = 2L;
-    private static final long LAUGH_FACTORY_COMPANY_ID = 3L;
+    private static final String TIX_NOW_COMPANY_NAME =
+            "TixNow Productions";
 
-    private static final String AMAZING_EVENTS_COMPANY_NAME = "Amazing Events";
-    private static final String LAUGH_FACTORY_COMPANY_NAME = "Laugh Factory";
+    private static final String AMAZING_EVENTS_COMPANY_NAME =
+            "Amazing Events";
+
+    private static final String LAUGH_FACTORY_COMPANY_NAME =
+            "Laugh Factory";
+
+    private static final long ELECTRONIC_EVENT_ID = 15L;
+    private static final long STANDUP_EVENT_ID = 20L;
+    private static final long NIGHT_LIGHTS_EVENT_ID = 30L;
+    private static final long BASKETBALL_EVENT_ID = 40L;
+    private static final long ART_EXHIBITION_EVENT_ID = 50L;
+    private static final long HAIFA_LIVE_EVENT_ID = 60L;
+    private static final long BROADWAY_EVENT_ID = 70L;
+    private static final long LA_SPORTS_EVENT_ID = 80L;
+    private static final long MIAMI_FOOD_EVENT_ID = 90L;
+    private static final long CHICAGO_JAZZ_EVENT_ID = 100L;
+    private static final long JERUSALEM_THEATER_EVENT_ID = 110L;
+    private static final long HOUSTON_TECH_EXPO_EVENT_ID = 120L;
+    private static final long BEER_SHEVA_STANDUP_EVENT_ID = 130L;
+    private static final long NEW_YORK_ART_EVENT_ID = 140L;
+    private static final long OTHER_FAMILY_EVENT_ID = 150L;
 
     private static final long ELECTRONIC_EVENT_LOTTERY_ID = 100L;
     private static final int ELECTRONIC_EVENT_LOTTERY_WINNERS = 10;
@@ -56,7 +74,8 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        Company tixNowCompany = companyRepository.findById(TEST_COMPANY_ID).orElse(null);
+        Company tixNowCompany =
+                findCompanyByName(TIX_NOW_COMPANY_NAME);
 
         if (tixNowCompany == null) {
             System.out.println("Skipping dev event catalog data: test company was not found.");
@@ -66,13 +85,11 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
         long founderId = tixNowCompany.getFounderId();
 
         Company amazingEventsCompany = findOrCreateCompany(
-                AMAZING_EVENTS_COMPANY_ID,
                 AMAZING_EVENTS_COMPANY_NAME,
                 founderId
         );
 
         Company laughFactoryCompany = findOrCreateCompany(
-                LAUGH_FACTORY_COMPANY_ID,
                 LAUGH_FACTORY_COMPANY_NAME,
                 founderId
         );
@@ -96,14 +113,44 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
         addEventIfMissing(createOtherFamilyEvent(tixNowCompany));
 
         addLotteryIfMissing(
-                ELECTRONIC_EVENT_LOTTERY_ID,
                 electronicEvent.getId(),
                 ELECTRONIC_EVENT_LOTTERY_WINNERS
         );
     }
+    /**
+     * Finds a development company by its configured name.
+     *
+     * @param companyName company name
+     * @return matching company, or {@code null} when none exists
+     */
+    private Company findCompanyByName(String companyName) {
+        return companyRepository.findAll()
+                .stream()
+                .filter(company ->
+                        companyName.equals(company.getName()))
+                .findFirst()
+                .orElse(null);
+    }
 
-    private Company findOrCreateCompany(long companyId, String companyName, long founderId) {
-        Company existingCompany = companyRepository.findById(companyId).orElse(null);
+    /**
+     * Finds an existing development company by name or creates and persists it.
+     *
+     * @param companyName development company name
+     * @param founderId founder member identifier
+     * @return existing or newly persisted company
+     */
+    private Company findOrCreateCompany(
+            String companyName,
+            long founderId
+    ) {
+        Company existingCompany = companyRepository.findAll()
+                .stream()
+                .filter(company ->
+                        companyName.equals(company.getName()))
+                .filter(company ->
+                        company.getFounderId() == founderId)
+                .findFirst()
+                .orElse(null);
 
         if (existingCompany != null) {
             return existingCompany;
@@ -116,32 +163,54 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
-        company.setId(companyId);
+        /*
+        * The database generates the identifier during save.
+        */
         companyRepository.save(company);
 
-        System.out.println("Dev company created: " + company.getName() + " [ID: " + company.getId() + "]");
+        System.out.println(
+                "Dev company created: "
+                        + company.getName()
+                        + " [ID: "
+                        + company.getId()
+                        + "]"
+        );
 
         return company;
     }
 
-    private void addLotteryIfMissing(long lotteryId, Long eventId, int winnersNumber) {
-        if (eventId == null) {
-            System.out.println("Skipping dev lottery creation: event id was not generated.");
+    /**
+     * Creates the development lottery only when the event does not already have
+     * one.
+     *
+     * @param eventId       event associated with the lottery
+     * @param winnersNumber number of lottery winners
+     */
+    private void addLotteryIfMissing(
+            long eventId,
+            int winnersNumber
+    ) {
+        Lottery existingLottery =
+                lotteryRepository.findByEventId(eventId);
+
+        if (existingLottery != null) {
+            System.out.println(
+                    "Dev lottery already exists for event ID: " + eventId
+            );
             return;
         }
 
-        if (lotteryRepository.findById(lotteryId) != null) {
-            System.out.println("Dev lottery already exists for event ID: " + eventId);
-            return;
-        }
+        Lottery lottery = new Lottery(eventId, winnersNumber);
 
-        if (lotteryRepository.findByEventId(eventId) != null) {
-            System.out.println("Dev lottery already exists for event ID: " + eventId);
-            return;
-        }
+        lotteryRepository.addLottery(lottery);
 
-        lotteryRepository.addLottery(new Lottery(lotteryId, eventId, winnersNumber));
-        System.out.println("Dev lottery created for event ID: " + eventId + " [Lottery ID: " + lotteryId + "]");
+        System.out.println(
+                "Dev lottery created for event ID: "
+                        + eventId
+                        + " [Lottery ID: "
+                        + lottery.getLotteryId()
+                        + "]"
+        );
     }
 
     private Event addEventIfMissing(Event event) {

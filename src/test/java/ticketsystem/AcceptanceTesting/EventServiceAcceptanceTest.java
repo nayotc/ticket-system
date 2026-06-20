@@ -89,7 +89,8 @@ public class EventServiceAcceptanceTest {
     private INotifier notifier;
     private String validOwnerSessionId;
     private final String invalidSessionId = "invalid-session";
-    private IHistoryRepository historyRepository;
+    @Autowired
+    private HistoryRepository historyRepository;
     private final Long ownerId = 1L;
     private final Long companyId = 100L;
     private UserAccessService userAccessService;
@@ -145,7 +146,6 @@ public class EventServiceAcceptanceTest {
             }
         };
 
-        historyRepository = new HistoryRepository();
         paymentService = mock(IPaymentService.class);
         ticketIssuingService = mock(ITicketIssuingService.class);
 

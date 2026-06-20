@@ -370,7 +370,6 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
     private void submitForm() {
         try {
             CreateEventRequest request = readRequestFromFields();
-
             Long eventId = presenter.createEvent(request);
 
             if (eventId != null) {
@@ -384,8 +383,14 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
                 showError("אירעה שגיאה בעת יצירת האירוע. נסו שוב.");
                 navigateToCompanyManagement();
             }
+        
         } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
             showError(e.getMessage());
+            
         } catch (Exception e) {
             showError("אירעה שגיאה לא צפויה בעת יצירת האירוע.");
         }

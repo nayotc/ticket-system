@@ -35,6 +35,13 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Member;
 
 
+/**
+ * Acceptance tests for event catalog operations.
+ *
+ * <p>The tests use the production company repository implementation with an
+ * embedded H2 database. Only the database configuration differs from the
+ * production environment.</p>
+ */
 @SpringBootTest
 @Transactional
 public class EventCatalogAcceptanceTest {

@@ -43,13 +43,18 @@ public class MembershipDomainServiceTest {
         userRepository.addRegisteredMember(100L, appointingMember, "password123");
         userRepository.addRegisteredMember(200L, targetMember, "password123");
 
-        company = new Company("BGU Productions", 100L, PurchasePolicy.noRestrictions(),
-                new DiscountPolicy(DiscountCompositionType.MAX));
-        try {
-            company.setId(companyId);
-        } catch (Exception e) {
-        }
+        company = new Company(
+                "BGU Productions",
+                100L,
+                PurchasePolicy.noRestrictions(),
+                new DiscountPolicy(DiscountCompositionType.MAX)
+        );
 
+        /*
+        * This is a pure domain unit test without a repository. Assign a controlled,
+        * one-time identifier so the company represents an already stored entity.
+        */
+        company.setIdForRepository(companyId);
         // Setup a pre-existing Owner specifically for UC 4.9 & 4.10 tests
         existingOwner = new Member(existingOwnerId, "ExistingOwner", "Existing Owner", "0500000003",LocalDate.of(2001, 1, 1));
         existingOwner.addOwnerRole(companyId, 100L); // Appointed by appointingMember

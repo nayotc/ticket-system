@@ -39,16 +39,6 @@ class CompanyTest {
         assertEquals("BGU Productions", company.getName(), "Company name should be saved.");
     }
 
-    @Test
-    void GivenNewCompanies_WhenCreated_ThenIdsAreUniqueAndIncremented() {
-        Company secondCompany = new Company("Another Company", FOUNDER_ID, PurchasePolicy.noRestrictions(),
-                new DiscountPolicy(DiscountCompositionType.MAX));
-
-        assertTrue(company.getId() > 0, "Company ID should be a positive number.");
-        assertTrue(secondCompany.getId() > company.getId(), "New company should receive a higher incremented ID.");
-        assertNotEquals(company.getId(), secondCompany.getId(), "Every company should have a unique ID.");
-    }
-
     // --- UC 4.13: Close/Suspend Company state ---
 
     @Test
@@ -111,7 +101,11 @@ class CompanyTest {
 
         Company copy = new Company(company);
 
-        assertEquals(company.getId(), copy.getId());
+        assertEquals(
+                company.getIdOrNull(),
+                copy.getIdOrNull(),
+                "The copy should preserve the original nullable ID state."
+        );
         assertEquals(company.getName(), copy.getName());
         assertEquals(company.getFounderId(), copy.getFounderId());
         assertEquals(company.isActive(), copy.isActive());

@@ -1,16 +1,24 @@
 package ticketsystem.DomainLayer.company;
 
-import ticketsystem.DomainLayer.policy.PolicyResult;
-import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.concurrent.atomic.AtomicLong;
 
-import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.discount.DiscountCompositionType;
-import ticketsystem.DomainLayer.discount.DiscountCondition;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import jakarta.persistence.Version;
+
 import ticketsystem.DomainLayer.discount.ConditionalDiscount;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
+import ticketsystem.DomainLayer.discount.DiscountCalculationResult;
+import ticketsystem.DomainLayer.discount.DiscountCompositionType;
+import ticketsystem.DomainLayer.discount.DiscountCondition;
+import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCalculationResult;
@@ -18,14 +26,26 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import ticketsystem.DomainLayer.policy.PolicyResult;
+import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
+@Entity
+@Table(name = "companies")
 public class Company {
-    private static long idCounter = 1;
 
-    private long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "name", nullable = false)
     private String name;
-    private final long founderId;
-    private boolean isActive;
+
+    @Column(name = "founder_id", nullable = false, updatable = false)
+    private Long founderId;
+
+    @Column(name = "active", nullable = false)
+    private boolean active;
 
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "purchase_policy_id", nullable = false, unique = true)
@@ -35,24 +55,38 @@ public class Company {
     @JoinColumn(name = "discount_policy_id", nullable = false, unique = true)
     private DiscountPolicy discountPolicy;
 
-    private Double rate = 0.0; // for search and filtering
-    private Double totalRating = 0.0; // for calculating average rating
-    private Integer ratingCount = 0; // for calculating average rating
-   
+    @Column(name = "rate", nullable = false)
+    private Double rate = 0.0;
 
-    // Version field for Optimistic Locking
+    @Column(name = "total_rating", nullable = false)
+    private Double totalRating = 0.0;
+
+    @Column(name = "rating_count", nullable = false)
+    private Integer ratingCount = 0;
+
+    @Column(name = "discount_id_counter", nullable = false)
+    private long discountIdCounter = 0L;
+
+    @Version
+    @Column(name = "version")
     private long version;
 
-    public Company(String name, long founderId, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
-        this.id = idCounter++;
+    protected Company() {
+        // Required by JPA
+    }
 
+    public Company(String name, long founderId, PurchasePolicy purchasePolicy, DiscountPolicy discountPolicy) {
         this.name = name;
         this.founderId = founderId;
-        this.isActive = true;
+        this.active = true;
         this.purchasePolicy = purchasePolicy;
         this.discountPolicy = discountPolicy;
-        this.version = 0; // Initialize version
-
+        this.rate = 0.0;
+        this.totalRating = 0.0;
+        this.ratingCount = 0;
+        this.discountIdCounter = 0L;
+        this.version = 0L;
+        ensureDefaultPolicies();
     }
 
     // Copy Constructor
@@ -60,22 +94,90 @@ public class Company {
         this.id = other.id;
         this.name = other.name;
         this.founderId = other.founderId;
-        this.isActive = other.isActive;
-        this.version = other.version;
+        this.active = other.active;
+        this.purchasePolicy = other.purchasePolicy;
+        this.discountPolicy = other.discountPolicy;
         this.rate = other.rate;
         this.totalRating = other.totalRating;
         this.ratingCount = other.ratingCount;
-        this.purchasePolicy = other.purchasePolicy;
-        this.discountPolicy = other.discountPolicy;
-       
+        this.discountIdCounter = other.discountIdCounter;
+        this.version = other.version;
+        ensureDefaultPolicies();
     }
-    // --- Getters & Setters ---
 
+    /**
+     * Ensures that policies are initialized after Hibernate loads the company.
+     */
+    @PostLoad
+    private void onPostLoad() {
+        ensureDefaultPolicies();
+    }
+
+    /**
+     * Restores the default company policies when no policy is currently set.
+     */
+    private void ensureDefaultPolicies() {
+        if (this.purchasePolicy == null) {
+            this.purchasePolicy = PurchasePolicy.noRestrictions();
+        }
+
+        if (this.discountPolicy == null) {
+            this.discountPolicy =
+                    new DiscountPolicy(DiscountCompositionType.MAX);
+        }
+    }
+
+    /**
+     * Returns the persistent identifier of this company.
+     *
+     * @return the company identifier
+     * @throws IllegalStateException if the company has not been persisted yet
+     */
     public long getId() {
+        if (id == null) {
+            throw new IllegalStateException(
+                    "Company has not been persisted yet."
+            );
+        }
+
         return id;
     }
 
-    public void setId(long id) {
+    /**
+     * Returns the company identifier without requiring the company to have
+     * already been persisted.
+     *
+     * <p>This method is intended for repository implementations that need to
+     * determine whether an identifier has already been assigned.</p>
+     *
+     * @return the company identifier, or {@code null} if none was assigned yet
+     */
+    public Long getIdOrNull() {
+        return id;
+    }
+
+    /**
+     * Assigns an identifier when using a repository implementation that does not
+     * rely on a database-generated identifier, such as the in-memory test
+     * repository.
+     *
+     * @param id identifier to assign
+     * @throws IllegalArgumentException if the identifier is not positive
+     * @throws IllegalStateException if an identifier was already assigned
+     */
+    public void setIdForRepository(long id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException(
+                    "Company ID must be a positive number."
+            );
+        }
+
+        if (this.id != null) {
+            throw new IllegalStateException(
+                    "Company ID has already been assigned."
+            );
+        }
+
         this.id = id;
     }
 
@@ -88,14 +190,15 @@ public class Company {
     }
 
     public long getFounderUsername() {
-        return founderId;
+        return founderId == null ? 0L : founderId;
     }
 
     public boolean isActive() {
-        return isActive;
+        return active;
     }
 
     public PurchasePolicy getPurchasePolicy() {
+        ensureDefaultPolicies();
         return purchasePolicy;
     }
 
@@ -107,16 +210,17 @@ public class Company {
     }
 
     public DiscountPolicy getDiscountPolicy() {
+        ensureDefaultPolicies();
         return discountPolicy;
     }
 
-   public void setDiscountPolicy(DiscountPolicy discountPolicy) {
-    if (discountPolicy == null) {
-        throw new IllegalArgumentException("Discount policy cannot be null");
-    }
+    public void setDiscountPolicy(DiscountPolicy discountPolicy) {
+        if (discountPolicy == null) {
+            throw new IllegalArgumentException("Discount policy cannot be null");
+        }
 
-    this.discountPolicy = discountPolicy;
-}
+        this.discountPolicy = discountPolicy;
+    }
 
     public long getVersion() {
         return version;
@@ -127,54 +231,57 @@ public class Company {
     }
 
     public long getFounderId() {
-        return this.founderId;
+        return founderId == null ? 0L : founderId;
     }
 
     public Double getRate() {
-        return this.rate;
+        return rate;
     }
 
     public void setRate(Double rate) {
+        if (rate == null) {
+            throw new IllegalArgumentException("Rate cannot be null");
+        }
+
         this.totalRating += rate;
         this.ratingCount++;
         this.rate = this.totalRating / this.ratingCount;
     }
 
     public void inactivate() {
-        this.isActive = false;
+        this.active = false;
     }
 
-    // --- Use Cases Logic ---
-
     public void closeOrSuspend() throws Exception {
-        if (!this.isActive) {
+        if (!this.active) {
             throw new Exception("Company is already inactive.");
         }
 
-        this.isActive = false;
+        this.active = false;
     }
 
     public void reopenCompany() throws Exception {
-        if (this.isActive) {
+        if (this.active) {
             throw new Exception("The company is already Active. No action needed.");
         }
 
-        this.isActive = true;
+        this.active = true;
     }
 
     public void closeBySystemAdmin() throws Exception {
-        if (!this.isActive) {
+        if (!this.active) {
             throw new Exception("Company is already inactive.");
         }
 
-        this.isActive = false;
+        this.active = false;
     }
 
     public void canPurchase(int quantity, int age) {
-        PolicyResult result = this.purchasePolicy.validate(quantity, age);
+        PolicyResult result = getPurchasePolicy().validate(quantity, age);
         if (result == null) {
             throw new IllegalStateException("Purchase policy validation failed");
         }
+
         if (!result.isAllowed()) {
             String message = result.getMessage();
 
@@ -184,81 +291,69 @@ public class Company {
 
             throw new IllegalArgumentException(message);
         }
-     }
-    public void setDiscountCompositionType(DiscountCompositionType compositionType){
+    }
+
+    public void setDiscountCompositionType(DiscountCompositionType compositionType) {
         getDiscountPolicy().setDiscountCompositionType(compositionType);
-
     }
-    public DiscountCompositionType getDiscountCompositionType(){
+
+    public DiscountCompositionType getDiscountCompositionType() {
         return getDiscountPolicy().getDiscountCompositionType();
-
     }
 
-    
-// visible discount
-    public void addVisibleDiscountToCompany(String name, BigDecimal percentage) {
+    /**
+     * Generates the next internal identifier for a company discount.
+     *
+     * @return the next discount identifier
+     */
+    public synchronized Long getNextId() {
+        discountIdCounter++;
+        return discountIdCounter;
+    }
 
+    // Visible discounts
+    public void addVisibleDiscountToCompany(String name, BigDecimal percentage) {
         DiscountTypes discount = new VisibleDiscount(
                 name,
                 percentage
         );
 
-        discountPolicy.addDiscount(discount);
+        getDiscountPolicy().addDiscount(discount);
     }
 
+    public void addConditionalDiscountToCompany(String name,
+                                                BigDecimal percentage,
+                                                DiscountCondition condition) {
+        DiscountTypes discount = new ConditionalDiscount(
+                name,
+                percentage,
+                condition
+        );
 
-    // conditional discount
-  public void addConditionalDiscountToCompany(String name,
-                                            BigDecimal percentage,
-                                            DiscountCondition condition) {
-    DiscountTypes discount = new ConditionalDiscount(
-            name,
-            percentage,
-            condition
-    );
+        getDiscountPolicy().addDiscount(discount);
+    }
 
-    discountPolicy.addDiscount(discount);
-}
-
-
-    // coupon discount
-    public void addCouponDiscountToCompany(
-            String name,
-            String couponCode,
-            BigDecimal percentage,LocalDateTime endTime
-    ) {
-
+    public void addCouponDiscountToCompany(String name,
+                                           String couponCode,
+                                           BigDecimal percentage,
+                                           LocalDateTime endTime) {
         DiscountTypes discount = new CouponDiscount(
                 name,
                 couponCode,
-                percentage,endTime
+                percentage,
+                endTime
         );
 
-        discountPolicy.addDiscount(discount);
-    }
-    
-   
-
-    public BigDecimal calculateDiscountCompany(BigDecimal totalPrice, int ticketCount, String couponCode){
-        return discountPolicy.calculateDiscount(totalPrice, ticketCount, couponCode);
+        getDiscountPolicy().addDiscount(discount);
     }
 
-    /**
-     * Calculates the company's discount policy and returns a detailed domain result.
-     *
-     * This method is used when callers need to know not only the total discount
-     * amount, but also which company-level discounts were actually applied.
-     *
-     * The existing calculateDiscountCompany(...) method is kept unchanged for
-     * callers that only need the numeric discount amount.
-     *
-     * @param totalPrice the price before applying company-level discounts
-     * @param ticketCount the number of tickets in the order
-     * @param couponCode the coupon code entered by the user, if any
-     * @return detailed result of the company-level discount calculation
-     */
-    public DiscountCalculationResult calculateDiscountCompanyDetails(BigDecimal totalPrice, int ticketCount, String couponCode) {
-        return discountPolicy.calculateDiscountDetails(totalPrice, ticketCount, couponCode);
+    public BigDecimal calculateDiscountCompany(BigDecimal totalPrice, int ticketCount, String couponCode) {
+        return getDiscountPolicy().calculateDiscount(totalPrice, ticketCount, couponCode);
     }
-    
+
+    public DiscountCalculationResult calculateDiscountCompanyDetails(BigDecimal totalPrice,
+                                                                     int ticketCount,
+                                                                     String couponCode) {
+        return getDiscountPolicy().calculateDiscountDetails(totalPrice, ticketCount, couponCode);
+    }
 }

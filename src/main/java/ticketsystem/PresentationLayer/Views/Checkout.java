@@ -26,10 +26,12 @@ import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Components.EmptyState;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
@@ -176,7 +178,21 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
-
+        
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            renderEmptyCheckout();
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
             renderEmptyCheckout();
@@ -257,8 +273,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         Button cancel = new Button("ביטול", VaadinIcon.CLOSE.create());
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         cancel.addClassName("checkout-cancel-button");
-        cancel.addClickListener(event -> UI.getCurrent().navigate(UiRoutes.ACTIVE_ORDER_CART));
-
+        cancel.addClickListener(event -> cancelCheckout());
         header.add(brand, cancel);
         return header;
     }
@@ -472,10 +487,6 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         Div payerRow = new Div(payerId);
         payerRow.addClassName("checkout-field-row");
 
-        // if (isBlank(payerId.getValue()) && !isBlank(fullName.getValue())) {
-        //     payerId.setValue(fullName.getValue());
-        // }
-
         wrapper.add(separator, cardNumberRow, grid, payerRow);
         return wrapper;
     }
@@ -589,6 +600,20 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             } else {
                  showError("קוד הקופון שגוי או שאינו בתוקף");
             }
+        
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
@@ -636,45 +661,97 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             presenter.validateOrderPolicyBeforePayment(resolveSessionToken(), activeOrder.getEventId(), details, normalizedCouponCode());
             currentStep = 2;
             renderCheckout();
-        }catch (Exception exception) {
+        
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            
+        } catch (Exception exception) {
             showError(exception.getMessage());
         }
-       
-
     }
 
+   /**
+     * Submits the current active order for payment.
+     *
+     * Queue access is released only after checkout has completed successfully.
+     * Failed validation or failed payment keeps the user's queue access active so
+     * the user can correct the details and retry the purchase.
+     */
     private void submitPayment() {
         if (!validatePersonalDetails() || !validatePaymentDetails()) {
             return;
         }
 
+        String token = resolveSessionToken();
+        Long completedEventId = activeOrder == null
+                ? requestedRouteEventId
+                : activeOrder.getEventId();
+
         try {
             PaymentDetails details = new PaymentDetails(
                     resolvePaymentMethodId(),
                     payerId.getValue().trim(),
-                    birthDate.getValue(),cardNumber.getValue().trim(),parseExpiryDate()[0],parseExpiryDate()[1],cvv.getValue().trim(),payerId.getValue().trim(),"ILS" );
-
-            boolean success = presenter.checkout(
-                    resolveSessionToken(),
-                    activeOrder.getEventId(),
-                    details,
-                    normalizedCouponCode()
-
+                    birthDate.getValue(),
+                    cardNumber.getValue().trim(),
+                    parseExpiryDate()[0],
+                    parseExpiryDate()[1],
+                    cvv.getValue().trim(),
+                    payerId.getValue().trim(),
+                    DEFAULT_CURRENCY
             );
 
-            if (success) {
-                ReservationTimer.clear();
-                reservationTimer.refreshFromSession();
-                showSuccess("הרכישה הושלמה בהצלחה");
-                if (UiSession.isLoggedIn()) {
-                    UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT);
-                } else {
-                    UI.getCurrent().navigate(UiRoutes.HOME);
-                }
-            } else {
+            boolean success = presenter.checkout(
+                    token,
+                    completedEventId,
+                    details,
+                    normalizedCouponCode()
+            );
+
+            if (!success) {
                 showError("התשלום לא הושלם");
+                return;
             }
 
+            /*
+            * Checkout has completed successfully, so this user no longer occupies
+            * an active purchasing slot for the event.
+            */
+            presenter.releaseQueueAccess(token, completedEventId);
+
+            ReservationTimer.clear();
+            reservationTimer.refreshFromSession();
+
+            showSuccess("הרכישה הושלמה בהצלחה");
+
+            if (UiSession.isLoggedIn()) {
+                UI.getCurrent().navigate(UiRoutes.MY_ACCOUNT);
+            } else {
+                UI.getCurrent().navigate(UiRoutes.HOME);
+            }
+        
+        } catch (PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notifications.error("פג תוקף האבטחה של ההזמנה, הכרטיסים שוחררו ויש לבחור אותם מחדש.");
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            showError(e.getMessage());
+            
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
@@ -907,5 +984,24 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                 Notification.Position.TOP_CENTER
         );
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    /**
+     * Cancels the current checkout flow.
+     *
+     * This is an explicit cancellation action, so the user no longer occupies an
+     * active purchasing slot for the event. The existing navigation behavior is
+     * preserved and the user is returned to the active-order cart.
+     */
+    private void cancelCheckout() {
+        String token = resolveSessionToken();
+
+        Long eventId = activeOrder == null
+                ? requestedRouteEventId
+                : activeOrder.getEventId();
+
+        presenter.releaseQueueAccess(token, eventId);
+
+        UI.getCurrent().navigate(UiRoutes.ACTIVE_ORDER_CART);
     }
 }

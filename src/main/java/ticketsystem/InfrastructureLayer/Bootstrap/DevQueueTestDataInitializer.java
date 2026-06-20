@@ -50,18 +50,17 @@ public class DevQueueTestDataInitializer {
                     EventCategory.THEATER,
                     "Laugh Factory",
                     new BigDecimal("119"),
-                    0L,
+                    1L,
                     SaleStatus.ONGOING
             );
-
             Event preSaleQueuedEvent = ensureEvent(
-                    PRE_SALE_QUEUED_EVENT_NAME,
-                    EventLocation.TEL_AVIV,
-                    EventCategory.CONCERT,
-                    "Electronic Line",
-                    new BigDecimal("180"),
-                    0L,
-                    SaleStatus.PRE_SALE
+                PRE_SALE_QUEUED_EVENT_NAME,
+                EventLocation.TEL_AVIV,
+                EventCategory.CONCERT,
+                "Electronic Line",
+                new BigDecimal("180"),
+                1L,
+                SaleStatus.PRE_SALE
             );
 
             System.out.println("Temporary queue test data initialized.");

@@ -85,7 +85,7 @@ public class WaitingQueueServiceTest {
         assertEquals(0, realQueueRepo.getQueueSize(eventId), "Queue should be completely empty.");
     }
 
-    @Test
+   @Test
     public void givenEventIsFull_whenTryReserve_thenUserIsQueued() {
         // Arrange
         Event event = new Event(LocalDateTime.now().plusDays(1), "Art Expo", 1L, 1L, EventLocation.NEW_YORK, 1L,
@@ -106,7 +106,7 @@ public class WaitingQueueServiceTest {
         assertEquals(1, realQueueRepo.getQueueSize(eventId), "Queue size should be exactly 1.");
         Event savedEvent = EventRepo.getEventById(eventId);
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
-        recordingNotifier.assertNotifiedGuest(queuedToken, "entered the waiting queue");
+        recordingNotifier.assertNotifiedGuest(queuedToken, "נכנסת לתור ההמתנה");
         recordingNotifier.assertNotificationCount(1);
     }
 
@@ -134,8 +134,8 @@ public class WaitingQueueServiceTest {
         Event savedEvent = EventRepo.getEventById(event.getId());
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Active reservations should be 1.");
         assertEquals(0, realQueueRepo.getQueueSize(eventId), "Queue should be empty after the user was dequeued.");
-        recordingNotifier.assertNotifiedGuest(validToken2, "entered the waiting queue");
-        recordingNotifier.assertNotifiedGuest(validToken2, "It's your turn!");
+        recordingNotifier.assertNotifiedGuest(validToken2, "נכנסת לתור ההמתנה");
+        recordingNotifier.assertNotifiedGuest(validToken2, "התור שלך הגיע");
         recordingNotifier.assertNotificationCount(2);
     }
 
@@ -164,6 +164,10 @@ public class WaitingQueueServiceTest {
         assertEquals(1, savedEvent.getActiveReservationsCount(), "Capacity should drop to 1.");
     }
 
+    /**
+     * Verifies that an invalid or expired security token is rejected without
+     * changing either the event capacity or the waiting queue.
+     */
     @Test
     public void givenInvalidToken_whenTryReserve_thenUserIsRejected() {
         // Arrange
@@ -268,7 +272,7 @@ public class WaitingQueueServiceTest {
         assertEquals("ERROR: Sold Out", result);
         assertEquals(0, persistedSoldOutEvent.getActiveReservationsCount(),"A sold-out event must not approve a reservation");
         assertEquals(0,realQueueRepo.getQueueSize(eventId),"A user must not enter the queue for a sold-out event");
-        recordingNotifier.assertNotifiedGuest(token,"sold out");
+        recordingNotifier.assertNotifiedGuest(token, "הכרטיסים לאירוע אזלו");
         recordingNotifier.assertNotificationCount(1);
     }
 
@@ -337,7 +341,7 @@ public class WaitingQueueServiceTest {
         Event updatedEvent =EventRepo.getEventById(eventId);
         assertEquals(0,updatedEvent.getActiveReservationsCount(),"The expired user's reservation spot should be released");
         assertEquals( 0,realQueueRepo.getQueueSize(eventId),"The queue should remain empty");
-        recordingNotifier.assertNotifiedGuest(token,"expired");
+        recordingNotifier.assertNotifiedGuest(token, "זמן הגישה שלך לבחירת הכרטיסים הסתיים");
         recordingNotifier.assertNotificationCount(1);
     }
 
@@ -373,8 +377,8 @@ public class WaitingQueueServiceTest {
 
         // Assert
         assertEquals(0, realQueueRepo.getQueueSize(eventId),"The waiting queue should be cleared");
-        recordingNotifier.assertNotifiedGuest(firstQueuedToken,"sold out");
-        recordingNotifier.assertNotifiedGuest(secondQueuedToken,"sold out");
+        recordingNotifier.assertNotifiedGuest(firstQueuedToken, "תור ההמתנה נסגר");
+        recordingNotifier.assertNotifiedGuest(secondQueuedToken, "תור ההמתנה נסגר");
         recordingNotifier.assertNotificationCount(2);
     }
 
@@ -411,7 +415,7 @@ public class WaitingQueueServiceTest {
 
         // Assert
         assertEquals("QUEUED", result);
-        recordingNotifier.assertNotifiedMember(100L, "entered the waiting queue");
+        recordingNotifier.assertNotifiedMember(100L, "נכנסת לתור ההמתנה");
         recordingNotifier.assertNotificationCount(1);
     }
 

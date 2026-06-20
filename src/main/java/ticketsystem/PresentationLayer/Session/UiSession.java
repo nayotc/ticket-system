@@ -1,6 +1,9 @@
 package ticketsystem.PresentationLayer.Session;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.server.VaadinSession;
+
+import ticketsystem.PresentationLayer.Components.Notifications;
 
 /**
  * Holds UI-level session data for the current Vaadin session.
@@ -251,5 +254,35 @@ public final class UiSession {
         }
 
         session.setAttribute(LOTTERY_CODE_PREFIX + eventId, null);
+    }
+
+    /**
+     * Handles the redirection or state reset when a session/token timeout occurs.
+     * * - For logged-in members: Logs them out (clears UI session) and redirects them
+     * to the login page with a timeout parameter to display an appropriate message.
+     * - For guests: Clears the stale guest token from the UI session but DOES NOT
+     * reload the page. This prevents data loss (e.g., in registration forms). 
+     * Instead, it displays a gentle notification prompting the user to try again.
+     */
+    public static void handleTimeoutRedirect() {
+        UI ui = UI.getCurrent();
+        if (ui != null) {
+            ui.access(() -> {
+                boolean wasLoggedIn = isLoggedIn();
+                
+                // Clear all tokens from the Vaadin session
+                exit();
+                
+                if (wasLoggedIn) {
+                    // Member: redirect to login to secure their account
+                    ui.getPage().setLocation("/" + ticketsystem.PresentationLayer.Constants.UiRoutes.LOGIN + "?timeout=true");
+                } else {
+                    // Guest: keep them on the page to prevent losing typed data,
+                    // just show a notification. The next button click will 
+                    // generate a fresh guest token dynamically.
+                    Notifications.info("תוקף החיבור פג. אנא נסו ללחוץ שוב כדי להמשיך.");
+                }
+            });
+        }
     }
 }

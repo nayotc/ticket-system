@@ -14,6 +14,7 @@ import com.vaadin.flow.router.QueryParameters;
 
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.PresentationLayer.Components.EventCard;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.PageHeader;
 import ticketsystem.PresentationLayer.Components.SearchPanel;
@@ -226,76 +227,85 @@ public class Home extends PageContainer {
      */
     private EventCard.EventCardActionHandler createEventCardActionHandler() {
         return new EventCard.EventCardActionHandler() {
-        @Override
-        public void onPurchaseRequested(Long eventId) {
-        try {
-                EventCardPresenter.PurchaseRequestResult result =
-                        eventCardPresenter.requestPurchase(
-                                UiSession.getCurrentToken(),
-                                eventId
-                        );
+            @Override
+            public void onPurchaseRequested(Long eventId) {
+                try {
+                    EventCardPresenter.PurchaseRequestResult result =
+                            eventCardPresenter.requestPurchase(UiSession.getCurrentToken(), eventId);
 
-                Notification.show(
-                        result.message(),
-                        2500,
-                        Notification.Position.TOP_CENTER
-                );
+                    Notifications.success(result.message());
+                    UI.getCurrent().navigate(result.route());
 
-                UI.getCurrent().navigate(result.route());
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                        return;
+                    }
+                    Notifications.error(e.getMessage());
+                    
+                } catch (Exception e) {
+                    Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
+                }
+            }
 
-        } catch (PresentationException e) {
-                showError(e.getMessage());
-        }
-        }
+            @Override
+            public void onLotteryRegistrationRequested(Long eventId) {
+                try {
+                    eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
+                    Notifications.success("נרשמת להגרלה בהצלחה.");
 
-        @Override
-        public void onLotteryRegistrationRequested(Long eventId) {
-        try {
-                eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
-
-                Notification.show(
-                        "נרשמת להגרלה בהצלחה.",
-                        3000,
-                        Notification.Position.TOP_CENTER
-                );
-
-        } catch (PresentationException e) {
-                showError(e.getMessage());
-        }
-        }
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                        return;
+                    }
+                    Notifications.error(e.getMessage());
+                    
+                } catch (Exception e) {
+                    Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
+                }
+            }
 
             @Override
             public boolean isPreSaleCodeValid(Long eventId, String lotteryCode) {
-                return eventCardPresenter.isPreSaleCodeValid(
-                        UiSession.getMemberToken(),
-                        eventId,
-                        lotteryCode
-                );
+                try {
+                    return eventCardPresenter.isPreSaleCodeValid(UiSession.getMemberToken(), eventId, lotteryCode);
+                    
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                    } else {
+                        Notifications.error(e.getMessage());
+                    }
+                    return false;
+                    
+                } catch (Exception e) {
+                    return false;
+                }
             }
 
-                @Override
-                public void onPreSaleApproved(Long eventId, String lotteryCode) {
+            @Override
+            public void onPreSaleApproved(Long eventId, String lotteryCode) {
                 try {
-                        UiSession.setLotteryCode(eventId, lotteryCode);
+                    UiSession.setLotteryCode(eventId, lotteryCode);
 
-                        EventCardPresenter.PurchaseRequestResult result =
-                                eventCardPresenter.requestPurchase(
-                                        UiSession.getCurrentToken(),
-                                        eventId
-                                );
+                    EventCardPresenter.PurchaseRequestResult result =
+                            eventCardPresenter.requestPurchase(UiSession.getCurrentToken(), eventId);
 
-                        Notification.show(
-                                result.message(),
-                                2500,
-                                Notification.Position.TOP_CENTER
-                        );
+                    Notifications.success(result.message());
+                    UI.getCurrent().navigate(result.route());
 
-                        UI.getCurrent().navigate(result.route());
-
-                } catch (PresentationException e) {
-                        showError(e.getMessage());
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                        return;
+                    }
+                    Notifications.error(e.getMessage());
+                    
+                } catch (Exception e) {
+                    Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
                 }
-                }
+            }
         };
     }
 

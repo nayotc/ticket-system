@@ -35,9 +35,7 @@ import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketIssueRequest;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
-import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
@@ -56,7 +54,6 @@ import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
-import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
@@ -68,15 +65,16 @@ import ticketsystem.testutil.RecordingNotifier;
 @SpringBootTest
 @Transactional
 public class ReservationServiceTest {
-
     private ReservationService reservationService;
     private IOrderRepository orderRepository;
 
     @Autowired
     private IEventRepository eventRepository;
+    @Autowired
+    private LotteryRepository lotteryRepository;
 
-    private ILotteryRepository lotteryRepository;
-    private ICompanyRepository companyRepository;
+    @Autowired
+    private CompanyRepository companyRepository;
     private IUserRepository userRepository;
     private TokenService tokenService;
     private UserService userService;
@@ -92,14 +90,13 @@ public class ReservationServiceTest {
     private String guestToken;
     private Long memberId;
 
-    private static final Long COMPANY_ID = 1L;
+    private Long companyId;
+
     private static final Long COMPANY_FOUNDER_ID = 1L;
 
     @BeforeEach
     void setUp() {
         orderRepository = new InMemoryOrderRepository();
-        lotteryRepository = new LotteryRepository();
-        companyRepository = new CompanyRepository();
         userRepository = new InMemoryUserRepository();
 
         membershipDomain = new MembershipDomainService(userRepository);
@@ -132,12 +129,22 @@ public class ReservationServiceTest {
                 new DiscountPolicy(DiscountCompositionType.MAX)
         );
 
-        company.setId(COMPANY_ID);
         companyRepository.save(company);
 
-        eventCatalogDomainService = new EventCatalogDomainService(
-                (CompanyRepository) companyRepository
+        companyId = company.getId();
+
+        assertNotNull(
+                companyId,
+                "The database should assign an identifier to the saved company."
         );
+
+        assertTrue(
+                companyId > 0,
+                "The database-generated company identifier should be positive."
+        );
+
+        eventCatalogDomainService = new EventCatalogDomainService(
+                companyRepository);
 
         resetPaymentProxy();
 
@@ -249,7 +256,7 @@ public class ReservationServiceTest {
         Long eventId = event.getId();
         Long areaId = getStandingAreaId(eventId);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, lotteryCode);
         lotteryRepository.addLottery(lottery);
@@ -275,7 +282,7 @@ public class ReservationServiceTest {
         Long eventId = event.getId();
         Long areaId = getStandingAreaId(eventId);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -311,7 +318,7 @@ public class ReservationServiceTest {
         Long eventId = event.getId();
         Long areaId = getStandingAreaId(eventId);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -350,7 +357,7 @@ public class ReservationServiceTest {
         Long eventId = event.getId();
         Long areaId = getStandingAreaId(eventId);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
 
         /*
          * The current member must be registered so the test reaches
@@ -415,7 +422,7 @@ public class ReservationServiceTest {
         Long eventId = event.getId();
         Long areaId = getSeatingAreaId(eventId);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, lotteryCode);
         lotteryRepository.addLottery(lottery);
@@ -441,7 +448,7 @@ public class ReservationServiceTest {
         Long eventId = event.getId();
         Long areaId = getSeatingAreaId(eventId);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -479,7 +486,7 @@ public class ReservationServiceTest {
         Long eventId = event.getId();
         Long areaId = getSeatingAreaId(eventId);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.setWinner(memberId, "ABC12345");
         lotteryRepository.addLottery(lottery);
@@ -520,7 +527,7 @@ public class ReservationServiceTest {
         Long eventId = event.getId();
         Long areaId = getSeatingAreaId(eventId);
 
-        Lottery lottery = new Lottery(1L, eventId, 1);
+        Lottery lottery = new Lottery(eventId, 1);
         lottery.registerMember(memberId);
         lottery.registerMember(winningUserId);
         lottery.setWinner(winningUserId, winnerCode);
@@ -1280,11 +1287,11 @@ public class ReservationServiceTest {
         Member founder = userRepository.getMemberById(COMPANY_FOUNDER_ID);
         assertNotNull(founder, "Founder member must exist in test setup");
 
-        if (founder.getRoleInCompany(COMPANY_ID) == null) {
-            founder.addFounderRole(COMPANY_ID);
+        if (founder.getRoleInCompany(companyId) == null) {
+                founder.addFounderRole(companyId);
         }
 
-        Founder founderRole = (Founder) founder.getRoleInCompany(COMPANY_ID);
+        Founder founderRole = (Founder) founder.getRoleInCompany(companyId);
 
         Member owner = new Member(
                 ownerId,
@@ -1294,8 +1301,8 @@ public class ReservationServiceTest {
                 LocalDate.of(2001, 1, 1)
         );
 
-        owner.addOwnerRole(COMPANY_ID, COMPANY_FOUNDER_ID);
-        owner.getRoleInCompany(COMPANY_ID).setStatus(RoleStatus.ACTIVE);
+        owner.addOwnerRole(companyId, COMPANY_FOUNDER_ID);
+        owner.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(ownerId, owner, "password123");
 
         Set<Permission> managerPermissions = new HashSet<>();
@@ -1309,28 +1316,27 @@ public class ReservationServiceTest {
                 LocalDate.of(2001, 1, 1)
         );
 
-        manager.addManagerRole(COMPANY_ID, COMPANY_FOUNDER_ID, managerPermissions);
-        manager.getRoleInCompany(COMPANY_ID).setStatus(RoleStatus.ACTIVE);
+        manager.addManagerRole(companyId, COMPANY_FOUNDER_ID, managerPermissions);
+        manager.getRoleInCompany(companyId).setStatus(RoleStatus.ACTIVE);
         userRepository.addRegisteredMember(managerId, manager, "password123");
 
         founderRole.addAppointee(ownerId);
         founderRole.addAppointee(managerId);
         userRepository.updateMember(founder);
-    }
-
-    private Event createActiveEventWithSingleStandingTicket() {
-        Event event = new Event(
-                LocalDateTime.now().plusDays(10),
-                "Sold Out Test Event",
-                COMPANY_ID,
-                COMPANY_FOUNDER_ID,
-                EventLocation.TEL_AVIV,
-                100L,
-                EventCategory.CONCERT,
-                "Test Artist",
-                new BigDecimal("100.00"),
-                new Pair<>(10, 10)
-        );
+        }
+        private Event createActiveEventWithSingleStandingTicket() {
+            Event event = new Event(
+            LocalDateTime.now().plusDays(10),
+            "Sold Out Test Event",
+            companyId,
+            COMPANY_FOUNDER_ID,
+            EventLocation.TEL_AVIV,
+            100L,
+            EventCategory.CONCERT,
+            "Test Artist",
+            new BigDecimal("100.00"),
+            new Pair<>(10, 10)
+    );
 
         event.setStatus(Event.eventStatus.ACTIVE);
 
@@ -1350,16 +1356,16 @@ public class ReservationServiceTest {
 
     private Event createActiveEvent() {
         Event event = new Event(
-                LocalDateTime.now().plusDays(10),
-                "Checkout Test Event",
-                COMPANY_ID,
-                COMPANY_FOUNDER_ID,
-                EventLocation.TEL_AVIV,
-                100L,
-                EventCategory.CONCERT,
-                "Test Artist",
-                new BigDecimal("100.00"),
-                new Pair<>(10, 10)
+            LocalDateTime.now().plusDays(10),
+            "Checkout Test Event",
+            companyId,
+            COMPANY_FOUNDER_ID,
+            EventLocation.TEL_AVIV,
+            100L,
+            EventCategory.CONCERT,
+            "Test Artist",
+            new BigDecimal("100.00"),
+            new Pair<>(10, 10)
         );
 
         event.setStatus(Event.eventStatus.ACTIVE);
@@ -1382,7 +1388,7 @@ public class ReservationServiceTest {
         Event event = new Event(
                 LocalDateTime.now().plusDays(10),
                 "Seat Test Event",
-                COMPANY_ID,
+                companyId,
                 COMPANY_FOUNDER_ID,
                 EventLocation.TEL_AVIV,
                 100L,

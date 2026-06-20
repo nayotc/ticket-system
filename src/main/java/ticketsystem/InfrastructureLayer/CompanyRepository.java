@@ -1,75 +1,85 @@
 package ticketsystem.InfrastructureLayer;
 
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
+import org.springframework.dao.DataAccessException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
-import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
+import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.company.Company;
+import ticketsystem.InfrastructureLayer.persistence.CompanyJpaRepository;
 
 @Repository
 public class CompanyRepository implements ICompanyRepository {
-    private final ConcurrentHashMap<Long, Company> companies = new ConcurrentHashMap<>(); 
-   @Override
+
+    private final CompanyJpaRepository companyJpaRepository;
+
+    public CompanyRepository(CompanyJpaRepository companyJpaRepository) {
+        this.companyJpaRepository = companyJpaRepository;
+    }
+
+    @Override
     public void save(Company company) {
-        Company currentCompany = companies.get(company.getId()); 
+        if (company == null) {
+            throw new IllegalArgumentException("Company cannot be null");
+        }
 
-        if (currentCompany == null) {
-            companies.put(company.getId(), new Company(company));
-        } else {
-            Company updatedCompany = new Company(company); 
-            updatedCompany.setVersion(company.getVersion() + 1); 
-
-            boolean replaced = companies.replace(company.getId(), currentCompany, updatedCompany); 
-            
-            if (!replaced) {
-                throw new RuntimeException("OptimisticLockingFailureException: Company " + company.getId() + " version mismatch or concurrent modification."); 
-            }
-            
-            company.setVersion(updatedCompany.getVersion());
+        try {
+            companyJpaRepository.save(company);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new RuntimeException(
+                    "OptimisticLockingFailureException: Company "
+                            + company.getId()
+                            + " version mismatch or concurrent modification.",
+                    e
+            );
+        } catch (DataAccessException e) {
+            throw new RuntimeException("Failed to save company " + company.getId(), e);
         }
     }
 
     @Override
     public Optional<Company> findById(long id) {
-        Company dbCompany = companies.get(id); 
-        if (dbCompany != null) {
-            return Optional.of(new Company(dbCompany)); 
+        try {
+            return companyJpaRepository.findById(id);
+        } catch (DataAccessException e) {
+            throw new RuntimeException("Failed to find company by id " + id, e);
         }
-        return Optional.empty(); 
     }
 
-    @Override
-    public Optional<Company> findByName(String name) {
-        return companies.values().stream()
-                .filter(c -> c.getName().equals(name))
-                .findFirst()
-                .map(Company::new); 
-    }
 
     @Override
     public List<Company> findAll() {
-        return companies.values().stream()
-                .map(Company::new) 
-                .collect(Collectors.toList());
+        try {
+            return companyJpaRepository.findAll();
+        } catch (DataAccessException e) {
+            throw new RuntimeException("Failed to find all companies", e);
+        }
     }
-    
-    
+
     @Override
     public boolean existsByName(String name) {
-        return companies.values().stream()
-                .anyMatch(c -> c.getName().equals(name));
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+
+        try {
+            return companyJpaRepository.existsByName(name);
+        } catch (DataAccessException e) {
+            throw new RuntimeException("Failed to check if company exists by name " + name, e);
+        }
     }
 
     @Override
     public boolean existsById(long id) {
-        return companies.containsKey(id);
+        try {
+            return companyJpaRepository.existsById(id);
+        } catch (DataAccessException e) {
+            throw new RuntimeException("Failed to check if company exists by id " + id, e);
+        }
     }
 
     @Override
@@ -77,20 +87,17 @@ public class CompanyRepository implements ICompanyRepository {
         if (criteria == null) {
             throw new IllegalArgumentException("Search criteria cannot be null");
         }
-        Double requestedRate = criteria.getCompanyRate();
-        return companies.values().stream()
-                .filter(company -> company != null)
-                .filter(company -> company.isActive())
-                .filter(company -> matchesCompanyRate(company, requestedRate))
-                .map(Company::getId)
-                .collect(Collectors.toList());
-    }
 
-    private boolean matchesCompanyRate(Company company, Double requestedRate) {
-        if (requestedRate == null) {
-            return true; 
+        try {
+            Double requestedRate = criteria.getCompanyRate();
+
+            if (requestedRate == null) {
+                return companyJpaRepository.findActiveCompanyIds();
+            }
+
+            return companyJpaRepository.findActiveCompanyIdsByMinimumRate(requestedRate);
+        } catch (DataAccessException e) {
+            throw new RuntimeException("Failed to get company ids by search criteria", e);
         }
-
-        return company.getRate() >= requestedRate;
     }
 }

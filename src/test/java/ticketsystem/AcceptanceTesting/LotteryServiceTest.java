@@ -34,10 +34,20 @@ import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.testutil.RecordingNotifier;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
+/**
+ * Acceptance tests for LotteryService using the production JPA-backed
+ * LotteryRepository with the embedded test database.
+ */
+@DataJpaTest
+@Import(LotteryRepository.class)
 public class LotteryServiceTest {
 
     private IUserRepository userRepo;
+    @Autowired
     private LotteryRepository lotteryRepo;
     private TokenService tokenService;
     private InMemoryNotificationsRepository notificationRepository;
@@ -76,7 +86,6 @@ public class LotteryServiceTest {
     @BeforeEach
     public void setUp() {
         userRepo = new InMemoryUserRepository();
-        lotteryRepo = new LotteryRepository();
         TokenRepository tokenRepository = new TokenRepository();
         logger = new LogbackSystemLogger();
         tokenService = new TokenService("manual_test_secret_32_chars_long", tokenRepository, logger);
