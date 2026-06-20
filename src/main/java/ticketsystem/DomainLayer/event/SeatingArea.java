@@ -17,7 +17,7 @@ public class SeatingArea extends Area {
 
     @OneToMany(mappedBy = "seatingArea", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @MapKey(name = "position")
-    private final Map<SeatPosition, Seat> seats = new HashMap<>();
+    private Map<SeatPosition, Seat> seats = new HashMap<>();
     private int rows;
     private int columns;
 
@@ -41,8 +41,11 @@ public class SeatingArea extends Area {
         super(other);
         this.rows = other.rows;
         this.columns = other.columns;
-        for (Map.Entry<SeatPosition, Seat> entry : other.seats.entrySet()) {
-            this.seats.put(entry.getKey(), new Seat(entry.getValue()));
+
+        for (Seat originalSeat : other.seats.values()) {
+            Seat copiedSeat = new Seat(originalSeat);
+            copiedSeat.setSeatingArea(this);
+            this.seats.put(copiedSeat.getPosition(), copiedSeat);
         }
     }
 
