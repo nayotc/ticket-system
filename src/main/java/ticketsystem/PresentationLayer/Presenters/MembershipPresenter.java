@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.CompanyService;
-import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.ApplicationLayer.EventService;
@@ -293,9 +292,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw presentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("Failed to remove owner assignment. Please try again later.");
+            throw presentationException(extractUsefulMessage(e));
         }
     }
 
@@ -447,6 +446,10 @@ public class MembershipPresenter {
 
         if (message.contains("permission")) {
             return "אין לך הרשאה לבצע את הפעולה הזו.";
+        }
+
+        if (message.contains("is the only active owner in the company")) {
+            return "לא ניתן להסיר: משתמש זה הוא הבעלים הפעיל היחיד שנותר בחברה.";
         }
 
         return message;
