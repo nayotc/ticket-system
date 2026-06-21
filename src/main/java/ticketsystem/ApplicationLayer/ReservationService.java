@@ -718,7 +718,6 @@ public class ReservationService {
             boolean guestOrder = order.getUserId() == null;
             if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
                 reservationDomeinService.expire(event, order);
-                System.out.print("relese pass");
                 
                 notifyOrderOwner(
                         order,
