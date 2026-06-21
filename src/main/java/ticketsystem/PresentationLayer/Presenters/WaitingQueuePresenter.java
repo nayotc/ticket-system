@@ -60,7 +60,11 @@ public class WaitingQueuePresenter implements WaitingQueue.WaitingQueuePresenter
     @Override
 public long getSelectionAccessSecondsLeft(long eventId, String sessionToken) {
     try {
+   
         validateSessionToken(sessionToken);
+             if (eventId <= 0) {
+            throw new IllegalArgumentException("Invalid event ID");
+        }
         return waitingQueueService.getSelectionAccessSecondsLeft(eventId, sessionToken);
 
     } catch (IllegalArgumentException e) {
@@ -75,6 +79,9 @@ public long getSelectionAccessSecondsLeft(long eventId, String sessionToken) {
 public boolean expireSelectionAccessIfNeeded(long eventId, String sessionToken) {
     try {
         validateSessionToken(sessionToken);
+        if (eventId <= 0) {
+            throw new IllegalArgumentException("Invalid event ID");
+        }
         return waitingQueueService.expireSelectionAccessIfNeeded(eventId, sessionToken);
 
     } catch (IllegalArgumentException e) {

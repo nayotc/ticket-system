@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.ClientCallable;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -72,6 +73,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     private final Span zoomValue = new Span("100%");
     private final ReservationTimer reservationTimer = new ReservationTimer();
     private final Span selectionAccessTimer = new Span();
+    //selectionAccessTimer.setId("selection-access-timer");
     private Registration selectionAccessPollRegistration;
     private boolean allowLeavingSelectionPage = false;
 
@@ -97,6 +99,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         Div mapSection = new Div();
         mapSection.addClassName("ticket-map-section");
         selectionAccessTimer.addClassName("selection-access-timer");
+        selectionAccessTimer.setId("selection-access-timer");
         selectionAccessTimer.setText("זמן לבחירת כרטיסים: --:--");
        mapSection.add(selectionAccessTimer, createMapToolbar(), createFloatingZoomControls(), mapCanvas);
 
@@ -397,7 +400,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         return summary;
     }
 
-    private void handleContinue() {
+   private void handleContinue() {
         if (eventId == null) {
             Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
             return;
@@ -407,43 +410,48 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             Notifications.error("יש לבחור לפחות כרטיס אחד לפני מעבר לתשלום");
             return;
         }
+
+        reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+
         allowLeavingSelectionPage = true;
 
-        UI.getCurrent().navigate(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(eventId)));
-        // UI.getCurrent().navigate(UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(eventId)));
+        UI.getCurrent().navigate(
+                UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(eventId))
+        );
     }
 
     @Override
-public void beforeLeave(BeforeLeaveEvent event) {
-    if (allowLeavingSelectionPage || eventId == null) {
-        return;
-    }
-
-    BeforeLeaveEvent.ContinueNavigationAction action = event.postpone();
-
-    ConfirmDialog dialog = new ConfirmDialog();
-    dialog.setHeader("עזיבת בחירת הכרטיסים");
-    dialog.setText("עזיבה של העמוד עלולה להחזיר אותך לסוף התור. האם להמשיך?");
-    dialog.setConfirmText("כן, לצאת");
-    dialog.setCancelText("להישאר");
-    dialog.setCancelable(true);
-
-    dialog.addConfirmListener(e -> {
-        try {
-            reservationPresenter.releaseQueueAccess(currentToken(), eventId);
-        } catch (Exception ignored) {
+    public void beforeLeave(BeforeLeaveEvent event) {
+        if (allowLeavingSelectionPage || eventId == null) {
+            return;
         }
 
-        allowLeavingSelectionPage = true;
-        action.proceed();
-    });
+        BeforeLeaveEvent.ContinueNavigationAction action = event.postpone();
 
-    dialog.addCancelListener(e -> {
-        allowLeavingSelectionPage = false;
-    });
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("עזיבת בחירת הכרטיסים");
+        dialog.setText("עזיבה של העמוד עלולה להחזיר אותך לסוף התור. האם להמשיך?");
+        dialog.setConfirmText("כן, לצאת");
+        dialog.setCancelText("להישאר");
+        dialog.setCancelable(true);
 
-    dialog.open();
-}
+        dialog.addConfirmListener(e -> {
+            try {
+    reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+        } catch (PresentationException ex) {
+            Notification.show(ex.getMessage());
+        }
+
+            allowLeavingSelectionPage = true;
+            action.proceed();
+        });
+
+        dialog.addCancelListener(e -> {
+            allowLeavingSelectionPage = false;
+        });
+
+        dialog.open();
+    }
 
     private void renderMap() {
         mapCanvas.removeAll();
@@ -1242,50 +1250,62 @@ private String findAreaNameById(Long areaId) {
     }
 
     private void refreshSelectionAccessTimer() {
-    if (eventId == null) {
-        selectionAccessTimer.setVisible(false);
-        return;
-    }
+    long secondsLeft = reservationPresenter.getSelectionAccessSecondsLeft(
+              currentToken(),eventId
+          
+    );
 
-    try {
-        long secondsLeft = reservationPresenter.getSelectionAccessSecondsLeft(currentToken(), eventId);
+    selectionAccessTimer.getElement()
+            .setAttribute("data-seconds-left", String.valueOf(secondsLeft));
 
-      if (secondsLeft <= 0) {
-    boolean expired = reservationPresenter.expireSelectionAccessIfNeeded(currentToken(), eventId);
-
-    if (expired) {
-        allowLeavingSelectionPage = true;
-
-        Notification notification = Notification.show(
-                "זמן בחירת הכרטיסים הסתיים. מכיוון שיש משתמשים שממתינים בתור, הגישה שלך שוחררה.",
-                5000,
-                Notification.Position.TOP_CENTER
-        );
-        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
-
-        UI.getCurrent().navigate(UiRoutes.HOME);
-        return;
-    }
-
-
-        secondsLeft = reservationPresenter.getSelectionAccessSecondsLeft(currentToken(), eventId);
-    }
-
-        selectionAccessTimer.setVisible(true);
-        selectionAccessTimer.setText("זמן לבחירת כרטיסים: " + formatSeconds(secondsLeft));
-
-    } catch (PresentationException e) {
-        if (e.isSessionTimeout()) {
-            UiSession.handleTimeoutRedirect();
-            return;
-        }
-
-        selectionAccessTimer.setVisible(false);
-
-    } catch (Exception e) {
-        selectionAccessTimer.setVisible(false);
-    }
+    selectionAccessTimer.setText(formatSeconds(secondsLeft));
 }
+
+//     private void refreshSelectionAccessTimer() {
+//     if (eventId == null) {
+//         selectionAccessTimer.setVisible(false);
+//         return;
+//     }
+
+//     try {
+//         long secondsLeft = reservationPresenter.getSelectionAccessSecondsLeft(currentToken(), eventId);
+
+//       if (secondsLeft <= 0) {
+//     boolean expired = reservationPresenter.expireSelectionAccessIfNeeded(currentToken(), eventId);
+
+//     if (expired) {
+//         allowLeavingSelectionPage = true;
+
+//         Notification notification = Notification.show(
+//                 "זמן בחירת הכרטיסים הסתיים. מכיוון שיש משתמשים שממתינים בתור, הגישה שלך שוחררה.",
+//                 5000,
+//                 Notification.Position.TOP_CENTER
+//         );
+//         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+
+//         UI.getCurrent().navigate(UiRoutes.HOME);
+//         return;
+//     }
+
+
+//         secondsLeft = reservationPresenter.getSelectionAccessSecondsLeft(currentToken(), eventId);
+//     }
+
+//         selectionAccessTimer.setVisible(true);
+//         selectionAccessTimer.setText("זמן לבחירת כרטיסים: " + formatSeconds(secondsLeft));
+
+//     } catch (PresentationException e) {
+//         if (e.isSessionTimeout()) {
+//             UiSession.handleTimeoutRedirect();
+//             return;
+//         }
+
+//         selectionAccessTimer.setVisible(false);
+
+//     } catch (Exception e) {
+//         selectionAccessTimer.setVisible(false);
+//     }
+// }
 
 private String formatSeconds(long seconds) {
     long safeSeconds = Math.max(0, seconds);
@@ -1299,22 +1319,12 @@ private String formatSeconds(long seconds) {
 protected void onAttach(AttachEvent attachEvent) {
     super.onAttach(attachEvent);
 
-    UI ui = attachEvent.getUI();
-    ui.setPollInterval(1000);
-
-    selectionAccessPollRegistration = ui.addPollListener(event -> {
-        refreshSelectionAccessTimer();
-    });
+    refreshSelectionAccessTimer();
+    startClientSideSelectionTimer();
 }
-
 @Override
 protected void onDetach(DetachEvent detachEvent) {
-    if (selectionAccessPollRegistration != null) {
-        selectionAccessPollRegistration.remove();
-        selectionAccessPollRegistration = null;
-    }
-
-    detachEvent.getUI().setPollInterval(-1);
+    stopClientSideSelectionTimer();
     super.onDetach(detachEvent);
 }
     private record SeatKey(Long areaId, int row, int number) {
@@ -1328,6 +1338,72 @@ protected void onDetach(DetachEvent detachEvent) {
             return new SelectedStandingArea(area.id(), area.name(), 0, price);
         }
     }
+
+    private void startClientSideSelectionTimer() {
+    getElement().executeJs("""
+        const root = this;
+
+        if (root.__selectionTimerInterval) {
+            clearInterval(root.__selectionTimerInterval);
+        }
+
+        root.__selectionTimerInterval = setInterval(() => {
+            const timer = root.querySelector('#selection-access-timer');
+
+            if (!timer) {
+                return;
+            }
+
+            let secondsLeft = Number(timer.dataset.secondsLeft || '0');
+
+            if (secondsLeft <= 0) {
+                timer.textContent = 'זמן לבחירת כרטיסים: 00:00';
+                clearInterval(root.__selectionTimerInterval);
+                root.$server.onSelectionAccessTimerExpired();
+                return;
+            }
+
+            secondsLeft--;
+            timer.dataset.secondsLeft = String(secondsLeft);
+
+            const minutes = Math.floor(secondsLeft / 60);
+            const seconds = secondsLeft % 60;
+
+            timer.textContent =
+                'זמן לבחירת כרטיסים: ' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0');
+        }, 1000);
+    """);
+}
+
+private void stopClientSideSelectionTimer() {
+    getElement().executeJs("""
+        if (this.__selectionTimerInterval) {
+            clearInterval(this.__selectionTimerInterval);
+            this.__selectionTimerInterval = null;
+        }
+    """);
+}
+
+@ClientCallable
+private void onSelectionAccessTimerExpired() {
+    boolean expired = reservationPresenter.expireSelectionAccessIfNeeded(
+            currentToken(),
+            eventId
+    );
+
+    if (expired) {
+        allowLeavingSelectionPage = true;
+        UI.getCurrent().navigate("waiting-queue/" + eventId);
+        return;
+    }
+
+    refreshSelectionAccessTimer();
+    startClientSideSelectionTimer();
+}
+
+
 
     private void refreshReservationTimer() {
         try {

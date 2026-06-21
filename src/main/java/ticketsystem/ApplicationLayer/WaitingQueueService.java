@@ -473,6 +473,10 @@ public class WaitingQueueService {
     }
 
     private void removeSelectionDeadline(long eventId, String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+
         Map<String, Instant> deadlines = selectionAccessDeadlines.get(eventId);
 
         if (deadlines == null) {
@@ -480,11 +484,8 @@ public class WaitingQueueService {
         }
 
         deadlines.remove(token);
-
-        if (deadlines.isEmpty()) {
-            selectionAccessDeadlines.remove(eventId);
-        }
     }
+
 
     private void approveSession(long eventId, Event event, String token) {
         if (getActiveSessions(eventId).add(token)) {
