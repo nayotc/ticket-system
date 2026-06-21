@@ -22,6 +22,7 @@ public final class UiSession {
     public static final String MEMBER_TOKEN = "memberToken";
     public static final String NOTIFICATION_TARGET_ID = "notificationTargetId";
     private static final String LOTTERY_CODE_PREFIX = "lotteryCode:";
+    private static final String COUPON_CODE_PREFIX = "couponCode:";
 
     /**
      * Starts a guest UI session.
@@ -251,5 +252,80 @@ public final class UiSession {
         }
 
         session.setAttribute(LOTTERY_CODE_PREFIX + eventId, null);
+    }
+
+    /**
+     * Stores the coupon code associated with a specific active order.
+     *
+     * <p>The code is stored only in the current Vaadin UI session. This method
+     * does not validate whether the coupon exists or was applied; callers should
+     * store the code only after a successful pricing calculation confirms that a
+     * coupon discount was applied.</p>
+     *
+     * @param orderId    active order identifier
+     * @param couponCode coupon code confirmed by the pricing calculation
+     */
+    public static void setCouponCode(Long orderId, String couponCode) {
+        if (orderId == null || couponCode == null || couponCode.isBlank()) {
+            return;
+        }
+
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return;
+        }
+
+        session.setAttribute(
+                COUPON_CODE_PREFIX + orderId,
+                couponCode.trim()
+        );
+    }
+
+    /**
+     * Returns the coupon code stored for a specific active order.
+     *
+     * @param orderId active order identifier
+     * @return stored non-blank coupon code, or {@code null} when none exists
+     */
+    public static String getCouponCode(Long orderId) {
+        if (orderId == null) {
+            return null;
+        }
+
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return null;
+        }
+
+        Object value = session.getAttribute(COUPON_CODE_PREFIX + orderId);
+
+        return value instanceof String code && !code.isBlank()
+                ? code
+                : null;
+    }
+
+    /**
+     * Removes the coupon code stored for a specific active order.
+     *
+     * <p>This should be called when the user clears the coupon input and applies
+     * the change, or when the associated order is completed and should no longer
+     * retain pricing input in the UI session.</p>
+     *
+     * @param orderId active order identifier
+     */
+    public static void clearCouponCode(Long orderId) {
+        if (orderId == null) {
+            return;
+        }
+
+        VaadinSession session = VaadinSession.getCurrent();
+
+        if (session == null) {
+            return;
+        }
+
+        session.setAttribute(COUPON_CODE_PREFIX + orderId, null);
     }
 }

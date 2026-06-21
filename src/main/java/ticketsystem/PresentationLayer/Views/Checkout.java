@@ -35,6 +35,7 @@ import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
 import ticketsystem.PresentationLayer.DTO.OrderPricing;
 import ticketsystem.DTO.MyAccountDTO;
+import ticketsystem.DomainLayer.discount.DiscountKind;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -159,6 +160,10 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             activeOrder = presenter.loadActiveOrder(token);
 
             if (activeOrder == null || tickets().isEmpty()) {
+                if (activeOrder != null) {
+                    UiSession.clearCouponCode(activeOrder.getOrderId());
+                }
+
                 ReservationTimer.clear();
                 renderEmptyCheckout();
                 return;
@@ -171,8 +176,12 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
-            eventInfo = presenter.loadActiveOrderEventInfo(token, activeOrder.getEventId());
-            pricing = presenter.calculatePricing(resolveSessionToken(), activeOrder, normalizedCouponCode());
+            eventInfo = presenter.loadActiveOrderEventInfo(
+                    token,
+                    activeOrder.getEventId()
+            );
+
+            loadPricingWithStoredCoupon();
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
@@ -572,25 +581,147 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         return section;
     }
 
+    /**
+     * Applies the coupon entered in Checkout to the current pricing preview.
+     *
+     * <p>A non-blank code is stored only when the resulting pricing confirms that
+     * a coupon discount was actually applied. An invalid code does not replace a
+     * previously confirmed coupon. A blank value removes the coupon from the
+     * current order after pricing without it succeeds.</p>
+     */
     private void applyCheckoutCoupon() {
         if (activeOrder == null) {
             return;
         }
 
-        try {
-            pricing = presenter.calculatePricing(resolveSessionToken(), activeOrder, normalizedCouponCode());
-            renderCheckout();
+        String enteredCouponCode = normalizedCouponCode();
 
-            if (isBlank(normalizedCouponCode())) {
+        try {
+            if (enteredCouponCode.isBlank()) {
+                OrderPricing pricingWithoutCoupon =
+                        presenter.calculatePricing(
+                                resolveSessionToken(),
+                                activeOrder,
+                                ""
+                        );
+
+                pricing = pricingWithoutCoupon;
+                UiSession.clearCouponCode(activeOrder.getOrderId());
+                couponCode.clear();
+
+                renderCheckout();
                 showSuccess("קוד הקופון נוקה");
-            } else if (pricing.discountTotal().compareTo(BigDecimal.ZERO) > 0 || !pricing.appliedDiscounts().isEmpty()) {
-                showSuccess("קוד הקופון הופעל");
-            } else {
-                 showError("קוד הקופון שגוי או שאינו בתוקף");
+                return;
             }
+
+            OrderPricing candidatePricing =
+                    presenter.calculatePricing(
+                            resolveSessionToken(),
+                            activeOrder,
+                            enteredCouponCode
+                    );
+
+            if (hasAppliedCoupon(candidatePricing)) {
+                pricing = candidatePricing;
+
+                UiSession.setCouponCode(
+                        activeOrder.getOrderId(),
+                        enteredCouponCode
+                );
+
+                couponCode.setValue(enteredCouponCode);
+
+                renderCheckout();
+                showSuccess("קוד הקופון הופעל");
+                return;
+            }
+
+            loadPricingWithStoredCoupon();
+            renderCheckout();
+            showError("קוד הקופון שגוי או שאינו בתוקף");
+
         } catch (Exception exception) {
+            String storedCouponCode =
+                    UiSession.getCouponCode(activeOrder.getOrderId());
+
+            couponCode.setValue(
+                    storedCouponCode == null ? "" : storedCouponCode
+            );
+
+            renderCheckout();
             showError(exception.getMessage());
         }
+    }
+
+    /**
+     * Loads Checkout pricing using the coupon stored for the active order.
+     *
+     * <p>If the stored code no longer produces an applied coupon discount, the
+     * code is removed and pricing is recalculated without a coupon.</p>
+     */
+    private void loadPricingWithStoredCoupon() {
+        String storedCouponCode =
+                UiSession.getCouponCode(activeOrder.getOrderId());
+
+        String couponToApply = storedCouponCode == null
+                ? ""
+                : storedCouponCode;
+
+        couponCode.setValue(couponToApply);
+
+        pricing = presenter.calculatePricing(
+                resolveSessionToken(),
+                activeOrder,
+                couponToApply
+        );
+
+        if (!couponToApply.isBlank() && !hasAppliedCoupon(pricing)) {
+            UiSession.clearCouponCode(activeOrder.getOrderId());
+            couponCode.clear();
+
+            pricing = presenter.calculatePricing(
+                    resolveSessionToken(),
+                    activeOrder,
+                    ""
+            );
+        }
+    }
+
+    /**
+     * Checks whether the pricing result contains a coupon discount that was
+     * actually applied.
+     *
+     * @param calculatedPricing pricing result returned by the presenter
+     * @return {@code true} when a coupon discount was applied
+     */
+    private boolean hasAppliedCoupon(OrderPricing calculatedPricing) {
+        return calculatedPricing != null
+                && calculatedPricing.appliedDiscounts() != null
+                && calculatedPricing.appliedDiscounts().stream()
+                .anyMatch(discount ->
+                        discount.kind() == DiscountKind.COUPON
+                );
+    }
+
+    /**
+     * Returns the coupon that was confirmed and stored for the active order.
+     *
+     * <p>The raw value currently typed into the field is intentionally ignored
+     * until the user applies it successfully.</p>
+     *
+     * @return confirmed coupon code, or an empty string when none is stored
+     */
+    private String confirmedCouponCode() {
+        if (activeOrder == null) {
+            return "";
+        }
+
+        String storedCouponCode =
+                UiSession.getCouponCode(activeOrder.getOrderId());
+
+        return storedCouponCode == null
+                ? ""
+                : storedCouponCode;
     }
 
     private Div createTicketSummaryRow(TicketDTO ticket) {
@@ -632,7 +763,12 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                     resolvePaymentMethodId(),
                     payerId.getValue().trim(),
                     birthDate.getValue(),cardNumber.getValue().trim(),null,null,cvv.getValue().trim(),payerId.getValue().trim(),DEFAULT_CURRENCY );
-            presenter.validateOrderPolicyBeforePayment(resolveSessionToken(), activeOrder.getEventId(), details, normalizedCouponCode());
+            presenter.validateOrderPolicyBeforePayment(
+                    resolveSessionToken(),
+                    activeOrder.getEventId(),
+                    details,
+                    confirmedCouponCode()
+            );
             currentStep = 2;
             renderCheckout();
         }catch (Exception exception) {
@@ -659,6 +795,10 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                 ? requestedRouteEventId
                 : activeOrder.getEventId();
 
+        Long completedOrderId = activeOrder == null
+                ? null
+                : activeOrder.getOrderId();
+
         try {
             PaymentDetails details = new PaymentDetails(
                     resolvePaymentMethodId(),
@@ -676,13 +816,14 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                     token,
                     completedEventId,
                     details,
-                    normalizedCouponCode()
+                    confirmedCouponCode()
             );
 
             if (!success) {
                 showError("התשלום לא הושלם");
                 return;
             }
+            UiSession.clearCouponCode(completedOrderId);
 
             /*
             * Checkout has completed successfully, so this user no longer occupies

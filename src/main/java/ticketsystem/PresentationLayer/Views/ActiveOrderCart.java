@@ -27,10 +27,10 @@ import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
 import ticketsystem.PresentationLayer.DTO.OrderPricing;
+import ticketsystem.DomainLayer.discount.DiscountKind;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
 
 
@@ -62,18 +62,29 @@ public class ActiveOrderCart extends VerticalLayout {
         loadCart();
     }
 
+    /**
+     * Loads the current active order and its pricing information.
+     *
+     * <p>When a coupon was previously confirmed for this order, the coupon is
+     * restored from the UI session and the pricing is recalculated. A stored
+     * coupon that no longer affects the order is removed automatically.</p>
+     */
     private void loadCart() {
         try {
             activeOrder = presenter.loadActiveOrder(resolveSessionToken());
 
             if (activeOrder == null || tickets().isEmpty()) {
+                if (activeOrder != null) {
+                    UiSession.clearCouponCode(activeOrder.getOrderId());
+                }
+
                 ReservationTimer.clear();
                 renderEmptyCart();
                 return;
             }
 
             eventInfo = loadEventInfo(activeOrder.getEventId());
-            pricing = presenter.calculatePricing(resolveSessionToken(), activeOrder, currentCouponCode);
+            loadPricingWithStoredCoupon();
             reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
 
             renderCart();
@@ -248,8 +259,11 @@ public class ActiveOrderCart extends VerticalLayout {
         applyButton.addClassName("cart-coupon-button");
 
         applyButton.addClickListener(event -> {
-            currentCouponCode = couponField.getValue() == null ? "" : couponField.getValue().trim();
-            applyCoupon();
+            String enteredCouponCode = couponField.getValue() == null
+                    ? ""
+                    : couponField.getValue().trim();
+
+            applyCoupon(enteredCouponCode);
         });
 
         wrapper.add(couponField, applyButton);
@@ -304,17 +318,123 @@ public class ActiveOrderCart extends VerticalLayout {
         return row;
     }
 
-    private void applyCoupon() {
+    /**
+     * Applies the coupon code entered by the user to the current pricing preview.
+     *
+     * <p>A non-blank code is stored in the UI session only when the resulting
+     * pricing contains an applied coupon discount. An invalid code does not
+     * replace a previously confirmed coupon. A blank value removes the stored
+     * coupon from the current order.</p>
+     *
+     * @param enteredCouponCode coupon code entered in the cart
+     */
+    private void applyCoupon(String enteredCouponCode) {
         if (activeOrder == null) {
             return;
         }
 
+        String normalizedCouponCode = enteredCouponCode == null
+                ? ""
+                : enteredCouponCode.trim();
+
         try {
-            pricing = presenter.applyCoupon(resolveSessionToken(), activeOrder, currentCouponCode);
+            if (normalizedCouponCode.isBlank()) {
+                OrderPricing pricingWithoutCoupon = presenter.calculatePricing(
+                        resolveSessionToken(),
+                        activeOrder,
+                        ""
+                );
+
+                currentCouponCode = "";
+                pricing = pricingWithoutCoupon;
+                UiSession.clearCouponCode(activeOrder.getOrderId());
+
+                renderCart();
+                return;
+            }
+
+            OrderPricing candidatePricing = presenter.applyCoupon(
+                    resolveSessionToken(),
+                    activeOrder,
+                    normalizedCouponCode
+            );
+
+            if (hasAppliedCoupon(candidatePricing)) {
+                currentCouponCode = normalizedCouponCode;
+                pricing = candidatePricing;
+
+                UiSession.setCouponCode(
+                        activeOrder.getOrderId(),
+                        currentCouponCode
+                );
+
+                renderCart();
+                return;
+            }
+
+            loadPricingWithStoredCoupon();
             renderCart();
+            showError("קוד הקופון לא הפעיל הנחה עבור ההזמנה הנוכחית");
+
         } catch (Exception exception) {
+            String storedCouponCode = UiSession.getCouponCode(
+                    activeOrder.getOrderId()
+            );
+
+            currentCouponCode = storedCouponCode == null
+                    ? ""
+                    : storedCouponCode;
+
+            renderCart();
             showError(exception.getMessage());
         }
+    }
+
+    /**
+     * Loads pricing using the coupon code previously stored for the active order.
+     *
+     * <p>If the stored code no longer produces an applied coupon discount, it is
+     * removed and the order is recalculated without a coupon.</p>
+     */
+    private void loadPricingWithStoredCoupon() {
+        String storedCouponCode = UiSession.getCouponCode(activeOrder.getOrderId());
+
+        currentCouponCode = storedCouponCode == null
+                ? ""
+                : storedCouponCode;
+
+        pricing = presenter.calculatePricing(
+                resolveSessionToken(),
+                activeOrder,
+                currentCouponCode
+        );
+
+        if (!currentCouponCode.isBlank() && !hasAppliedCoupon(pricing)) {
+            UiSession.clearCouponCode(activeOrder.getOrderId());
+            currentCouponCode = "";
+
+            pricing = presenter.calculatePricing(
+                    resolveSessionToken(),
+                    activeOrder,
+                    currentCouponCode
+            );
+        }
+    }
+
+    /**
+     * Checks whether the calculated pricing contains a coupon discount that
+     * actually affected the final price.
+     *
+     * @param calculatedPricing pricing result returned by the presenter
+     * @return {@code true} when a coupon discount was applied
+     */
+    private boolean hasAppliedCoupon(OrderPricing calculatedPricing) {
+        return calculatedPricing != null
+                && calculatedPricing.appliedDiscounts() != null
+                && calculatedPricing.appliedDiscounts().stream()
+                .anyMatch(discount ->
+                        discount.kind() == DiscountKind.COUPON
+                );
     }
 
     private void removeTicket(TicketDTO ticket) {
