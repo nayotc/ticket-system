@@ -4,6 +4,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
@@ -41,6 +42,7 @@ public class DevSystemAdminDataInitializer implements CommandLineRunner {
     }
 
     @Override
+    @Transactional
     public void run(String... args) {
         long adminId = createSystemAdmin();
         if (adminId != -1) {
@@ -49,43 +51,58 @@ public class DevSystemAdminDataInitializer implements CommandLineRunner {
     }
 
     private long createSystemAdmin() {
-        if (userRepository.isUsernameTaken(ADMIN_USERNAME)) {
-            System.out.println("Dev System Admin already exists: " + ADMIN_USERNAME);
-            Member existingAdmin = userRepository.getMemberByUsername(ADMIN_USERNAME);
-            return existingAdmin != null ? existingAdmin.getId() : -1;
+        Member adminMember = userRepository.getMemberByUsername(ADMIN_USERNAME);
+
+        if (adminMember == null) {
+            System.out.println("Generating test System Admin account...");
+
+            String guestToken = userService.visitSystem();
+
+            userService.signUp(
+                    guestToken,
+                    ADMIN_USERNAME,
+                    ADMIN_PASSWORD,
+                    ADMIN_FULLNAME,
+                    ADMIN_PHONE,
+                    ADMIN_BIRTH_DATE
+            );
+
+            adminMember = userRepository.getMemberByUsername(ADMIN_USERNAME);
         }
 
-        System.out.println("Generating test System Admin account...");
-
-        // 1. יצירת חשבון משתמש רגיל כדי שהמנהל יוכל לבצע Login לקבלת טוקן
-        String guestToken = userService.visitSystem();
-        userService.signUp(guestToken, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_FULLNAME, ADMIN_PHONE, ADMIN_BIRTH_DATE);
-
-        Member adminMember = userRepository.getMemberByUsername(ADMIN_USERNAME);
         if (adminMember == null) {
-            System.out.println("Failed to fetch the newly created admin member.");
+            System.out.println("Failed to create or load the System Admin member.");
             return -1;
         }
 
         long adminId = adminMember.getId();
+        String systemAdminId = String.valueOf(adminId);
 
-        // 2. רישום המשתמש כמנהל מערכת ב-Repository של ה-Admins
-        if (!systemAdminRepository.isSystemAdmin(String.valueOf(adminId))) {
-            SystemAdmin systemAdmin = new SystemAdmin(String.valueOf(adminId), ADMIN_USERNAME, true);
-            
-            // הערה: אם קראת לפונקציית השמירה ב-ISystemAdminRepository בשם אחר (כמו addAdmin או insert),
-            // תשני את המילה 'save' בהתאם למה שמוגדר אצלך בממשק.
+        SystemAdmin systemAdmin = systemAdminRepository
+                .findById(systemAdminId)
+                .orElse(null);
+
+        if (systemAdmin == null) {
+            systemAdminRepository.addAdmin(
+                    new SystemAdmin(
+                            systemAdminId,
+                            adminMember.getUserName(),
+                            true
+                    )
+            );
+        } else if (!systemAdmin.isActive()) {
+            systemAdmin.activate();
             systemAdminRepository.addAdmin(systemAdmin);
         }
 
         System.out.println("=========================================================================");
-        System.out.println("SYSTEM ADMIN ACCOUNT GENERATED SUCCESSFULLY");
+        System.out.println("SYSTEM ADMIN ACCOUNT IS READY");
         System.out.println("-------------------------------------------------------------------------");
         System.out.println("Username: " + ADMIN_USERNAME);
         System.out.println("Password: " + ADMIN_PASSWORD);
         System.out.println("Role: System Administrator [ID: " + adminId + "]");
         System.out.println("=========================================================================");
-        
+
         return adminId;
     }
 
