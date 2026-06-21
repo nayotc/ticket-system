@@ -18,6 +18,8 @@ public interface IUserRepository {
 
     Member getMemberByUsername(String username);
 
+    Member getMemberByUsernameIgnoreCase(String username);
+
     Member getMemberById(long id);
 
     String getHashedPasswordByUsername(String username);
@@ -29,4 +31,12 @@ public interface IUserRepository {
     boolean updateMember(Member member);
 
     List<Member> getAllMembers();
+
+    int countPendingRolesByCompanyId(Long companyId);
+
+    int countActiveOwnersByCompanyId(Long companyId);
+
+    List<Member> findMembersWithRolesInCompany(Long companyId);
+
+    List<Member> findSuspendedMembers();
 }

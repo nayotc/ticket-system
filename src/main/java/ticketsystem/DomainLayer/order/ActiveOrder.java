@@ -19,6 +19,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -29,7 +30,11 @@ import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.TicketDTO;
 
 @Entity
-@Table(name = "active_orders")
+@Table(name = "active_orders", indexes = {
+        @Index(name = "idx_active_orders_user_id", columnList = "user_id"),
+        @Index(name = "idx_active_orders_session_token", columnList = "session_token"),
+        @Index(name = "idx_active_orders_event_id", columnList = "event_id")
+})
 public class ActiveOrder {
 
     @Id
