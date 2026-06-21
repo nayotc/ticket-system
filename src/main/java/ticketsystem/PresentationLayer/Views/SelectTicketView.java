@@ -947,9 +947,6 @@ private Div createSelectedTicketRowFromOrder(TicketDTO ticket) {
 
     Div text = new Div();
     text.addClassName("selected-ticket-text");
-    // text.add(
-    //         new Span("כרטיס"),
-    //         new Span("שורה " + ticket.getRow() + " • מושב " + ticket.getChair())
     String areaName = findAreaNameById(ticket.getAreaId());
 
 text.add(

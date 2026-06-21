@@ -158,4 +158,18 @@ public class EventMap {
         throw new IllegalArgumentException("Area not found");
     }
 
+    public String getAreaName(Long areaId) {
+    if (areaId == null) {
+            return "אזור לא ידוע";
+        }
+
+        for (Element element : elements) {
+            if (areaId.equals(element.getId())) {
+                return element.getName();
+            }
+        }
+
+        return "אזור לא ידוע";
+    }
+
 }

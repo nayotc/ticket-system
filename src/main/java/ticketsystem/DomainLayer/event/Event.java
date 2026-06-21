@@ -615,6 +615,10 @@ public class Event {
         return discountPolicy.getDiscounts();
     }
 
+    public String getAreaName(Long areaId){
+        return map.getAreaName(areaId);
+    }
+
     @Override
     public String toString() {
         return "Event{"

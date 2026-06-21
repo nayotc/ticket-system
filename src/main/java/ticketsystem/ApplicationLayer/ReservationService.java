@@ -855,7 +855,7 @@ public OrderDTO toDTO(ActiveOrder order, Event event, BigDecimal total, Integer 
                 ticket.getTicketId(),
                 ticket.getRow(),
                 ticket.getChair(),
-                "",
+                event.getAreaName(ticket.getAreaId()),
                 ticket.getPrice(),
                 "ACTIVE",
                 ""
