@@ -1,5 +1,6 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -211,4 +212,49 @@ public class InMemoryOrderRepository implements IOrderRepository {
     private long nextTicketId() {
         return nextGeneratedTicketId++;
     }
+
+	@Override
+public List<ActiveOrder> findExpiredActiveOrders() {
+    LocalDateTime now = LocalDateTime.now();
+
+    synchronized (lock) {
+        return orders.values().stream()
+                .filter(order -> order.getStatus() == ActiveOrder.OrderStatus.ACTIVE)
+                .filter(order -> order.getExpiresAt() != null)
+                .filter(order -> !order.getExpiresAt().isAfter(now))
+                .map(ActiveOrder::copy)
+                .toList();
+    }
+}
+
+@Override
+public List<ActiveOrder> findExpiredActiveOrdersByEventId(Long eventId) {
+    LocalDateTime now = LocalDateTime.now();
+
+    synchronized (lock) {
+        return orders.values().stream()
+                .filter(order -> order.getStatus() == ActiveOrder.OrderStatus.ACTIVE)
+                .filter(order -> order.getEventId() != null && order.getEventId().equals(eventId))
+                .filter(order -> order.getExpiresAt() != null)
+                .filter(order -> !order.getExpiresAt().isAfter(now))
+                .map(ActiveOrder::copy)
+                .toList();
+    }
+}
+
+@Override
+public List<ActiveOrder> findOrdersAboutToExpire() {
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime warningThreshold = now.plusMinutes(1);
+
+    synchronized (lock) {
+        return orders.values().stream()
+                .filter(order -> order.getStatus() == ActiveOrder.OrderStatus.ACTIVE)
+                .filter(order -> order.getExpiresAt() != null)
+                .filter(order -> order.getExpiresAt().isAfter(now))
+                .filter(order -> !order.getExpiresAt().isAfter(warningThreshold))
+                .map(ActiveOrder::copy)
+                .toList();
+    }
+}
 }

@@ -1,5 +1,6 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -148,4 +149,30 @@ public class OrderRepository implements IOrderRepository {
                     });
         }
     }
+@Override
+@Transactional(readOnly = true)
+public List<ActiveOrder> findExpiredActiveOrders() {
+    return orderJpaRepository.findExpiredActiveOrders(LocalDateTime.now()).stream()
+            .map(ActiveOrder::copy)
+            .collect(Collectors.toList());
+}
+
+@Override
+@Transactional(readOnly = true)
+public List<ActiveOrder> findExpiredActiveOrdersByEventId(Long eventId) {
+    return orderJpaRepository.findExpiredActiveOrdersByEventId(eventId, LocalDateTime.now()).stream()
+            .map(ActiveOrder::copy)
+            .collect(Collectors.toList());
+}
+
+@Override
+@Transactional(readOnly = true)
+public List<ActiveOrder> findOrdersAboutToExpire() {
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime warningThreshold = now.plusMinutes(1);
+
+    return orderJpaRepository.findOrdersAboutToExpire(now, warningThreshold).stream()
+            .map(ActiveOrder::copy)
+            .collect(Collectors.toList());
+}
 }

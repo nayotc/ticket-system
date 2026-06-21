@@ -1,5 +1,6 @@
 package ticketsystem.ApplicationLayer;
 
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -96,7 +97,7 @@ public class ReservationService {
     // UC 2.5,2.4
     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position,
             String lotteryCode) {
-        expireOldOrders();
+        expireOldOrdersForEvent(eventId);;
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
@@ -129,7 +130,7 @@ public class ReservationService {
     }
 
     public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity, String lotteryCode) {
-        expireOldOrders();
+        expireOldOrdersForEvent(eventId);;
         try {
             tokenService.validateToken(token);
             Long memberId = tokenService.extractUserId(token);
@@ -166,7 +167,7 @@ public class ReservationService {
 
     // UC 2.7
     public boolean removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
-        expireOldOrders();
+        expireOldOrdersForEvent(eventId);;
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
@@ -189,7 +190,7 @@ public class ReservationService {
     }
 
     public boolean removeSeatTicketFromActiveOrder(String token, Long eventId, Long areaId, seatPositionDTO position) {
-        expireOldOrders();
+        expireOldOrdersForEvent(eventId);;
 
         try {
             tokenService.validateToken(token);
@@ -240,7 +241,7 @@ public class ReservationService {
     }
 
     public boolean removeStandingTicketsFromActiveOrder(String token, Long eventId, Long areaId, int quantity) {
-        expireOldOrders();
+        expireOldOrdersForEvent(eventId);;
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
@@ -264,36 +265,37 @@ public class ReservationService {
         }
     }
 
-    public ActiveOrderDTO viewActiveOrder(String token, Long orderId) {
-        expireOldOrders();
+    // public ActiveOrderDTO viewActiveOrder(String token, Long orderId) {
+    //     expireOldOrdersForEvent(eventId);;
 
-        try {
-            tokenService.validateToken(token);
+    //     try {
+    //         tokenService.validateToken(token);
 
-            ActiveOrder order = orderRepository.findOrderById(orderId);
+    //         ActiveOrder order = orderRepository.findOrderById(orderId);
 
-            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
-                throw new IllegalStateException("No active order found");
-            }
+    //         if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+    //             throw new IllegalStateException("No active order found");
+    //         }
 
-            if (!isOrderOwnedByToken(order, token)) {
-                throw new SecurityException("User is not allowed to view this order");
-            }
+    //         if (!isOrderOwnedByToken(order, token)) {
+    //             throw new SecurityException("User is not allowed to view this order");
+    //         }
 
-            ActiveOrderDTO activeOrderDTO = toDTO(order);
+           // ActiveOrderDTO activeOrderDTO = toDTO(order);
+    //         ActiveOrderDTO activeOrderDTO = order.toDTO();
 
-            logger.logEvent(
-                    "Active order viewed: orderId=" + order.getOrderId()
-                            + ", eventId=" + order.getEventId(),
-                    LogLevel.INFO);
+    //         logger.logEvent(
+    //                 "Active order viewed: orderId=" + order.getOrderId()
+    //                         + ", eventId=" + order.getEventId(),
+    //                 LogLevel.INFO);
 
-            return activeOrderDTO;
+    //         return activeOrderDTO;
 
-        } catch (Exception e) {
-            logger.logEvent("viewActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
-            throw e;
-        }
-    }
+    //     } catch (Exception e) {
+    //         logger.logEvent("viewActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
+    //         throw e;
+    //     }
+    // }
 
     /**
      * Returns the current active order for the given UI session token.
@@ -312,8 +314,6 @@ public class ReservationService {
      * @return active order DTO for the current session, or null if none exists
      */
     public ActiveOrderDTO viewCurrentActiveOrder(String token) {
-        expireOldOrders();
-
         try {
             tokenService.validateToken(token);
 
@@ -537,9 +537,87 @@ public class ReservationService {
         listeners.add(listener);
     }
 
+  @Scheduled(fixedRate = 60000)
     public void sweepExpiredAndExpiringOrders() {
-        expireOldOrders();
+
+        logger.logEvent(
+                "Running expired orders cleanup job",
+                LogLevel.INFO);
+
+        expireOldOrdersAndNotifyUsers();
     }
+
+private void expireOldOrdersAndNotifyUsers() {
+    List<ActiveOrder> expiredOrders =
+            orderRepository.findExpiredActiveOrders();
+
+    for (ActiveOrder order : expiredOrders) {
+        expireSingleOrder(order);
+    }
+
+    List<ActiveOrder> expiringOrders =
+            orderRepository.findOrdersAboutToExpire();
+
+    for (ActiveOrder order : expiringOrders) {
+        if (expirationWarningSentOrderIds.add(order.getOrderId())) {
+            notifyOrderOwner(
+                    order,
+                    "Your active order is about to expire. Please complete your purchase soon."
+            );
+
+            logger.logEvent(
+                    "Active order expiration warning sent: " + order.getOrderId(),
+                    LogLevel.INFO
+            );
+        }
+    }
+}
+private void expireSingleOrder(ActiveOrder order) {
+    try {
+        if (order == null) {
+            return;
+        }
+
+        Event event = eventRepository.getEventById(order.getEventId());
+
+        if (event == null) {
+            return;
+        }
+
+        reservationDomeinService.expire(event, order);
+
+        notifyOrderOwner(
+                order,
+                "Your active order has expired. The reserved tickets were released back to the inventory."
+        );
+
+        expirationWarningSentOrderIds.remove(order.getOrderId());
+
+        eventRepository.updateEvent(event);
+        orderRepository.deleteOrder(order.getOrderId());
+
+        logger.logEvent(
+                "Expired order cancelled: " + order.getOrderId(),
+                LogLevel.WARN
+        );
+
+    } catch (Exception e) {
+        logger.logEvent(
+                "Failed to expire orderId=" + order.getOrderId()
+                        + ", eventId=" + order.getEventId()
+                        + ", reason=" + e.getMessage(),
+                LogLevel.WARN
+        );
+    }
+}
+private void expireOldOrdersForEvent(Long eventId) {
+    List<ActiveOrder> expiredOrders =
+            orderRepository.findExpiredActiveOrdersByEventId(eventId);
+
+    for (ActiveOrder order : expiredOrders) {
+        expireSingleOrder(order);
+    }
+}
 
     private boolean notifyListeners(OrderDTO order) {
         try {

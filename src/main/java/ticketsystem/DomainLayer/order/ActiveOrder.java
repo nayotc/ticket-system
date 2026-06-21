@@ -209,6 +209,9 @@ public class ActiveOrder {
                 .toInstant()
                 .toEpochMilli();
     }
+    public LocalDateTime getExpiresAt() {
+    return expiresAt;
+}
 
     public boolean isAboutToExpire() {
         LocalDateTime now = LocalDateTime.now();
