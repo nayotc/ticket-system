@@ -1,12 +1,11 @@
 package ticketsystem.DomainLayer.event;
 
-import java.util.List;
-
-import ticketsystem.DomainLayer.event.Seat.SeatStatus;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
@@ -32,7 +31,8 @@ public class EventMap {
     @JoinColumn(name = "event_id")
     private List<Element> elements;
 
-    protected EventMap() {}
+    protected EventMap() {
+    }
 
     public EventMap(Pair<Integer, Integer> size) {
         this.size = size;
@@ -73,7 +73,7 @@ public class EventMap {
 
     public void reserveSeat(Long areaId, SeatPosition position) {
         for (Element element : elements) {
-            if (element instanceof SeatingArea && element.getId() == areaId) {
+            if (element instanceof SeatingArea && Objects.equals(element.getId(), areaId)) {
                 ((SeatingArea) element).reserveSeat(position);
                 return;
             }
@@ -83,7 +83,7 @@ public class EventMap {
 
     public void releaseSeat(Long areaId, SeatPosition position) {
         for (Element element : elements) {
-            if (element instanceof SeatingArea && element.getId() == areaId) {
+            if (element instanceof SeatingArea && Objects.equals(element.getId(), areaId)) {
                 ((SeatingArea) element).releaseSeat(position);
                 return;
             }
@@ -93,7 +93,7 @@ public class EventMap {
 
     public void sellSeat(Long areaId, SeatPosition position) {
         for (Element element : elements) {
-            if (element instanceof SeatingArea && element.getId() == areaId) {
+            if (element instanceof SeatingArea && Objects.equals(element.getId(), areaId)) {
                 ((SeatingArea) element).sellSeat(position);
                 return;
             }
@@ -103,7 +103,7 @@ public class EventMap {
 
     public void reserveSpot(Long areaId, int quantity) {
         for (Element element : elements) {
-            if (element instanceof StandingArea && element.getId() == areaId) {
+            if (element instanceof StandingArea && Objects.equals(element.getId(), areaId)) {
                 ((StandingArea) element).reserveSpot(quantity);
                 return;
             }
@@ -113,7 +113,7 @@ public class EventMap {
 
     public void releaseSpot(Long areaId, int quantity) {
         for (Element element : elements) {
-            if (element instanceof StandingArea && element.getId() == areaId) {
+            if (element instanceof StandingArea && Objects.equals(element.getId(), areaId)) {
                 ((StandingArea) element).releaseSpot(quantity);
                 return;
             }
@@ -123,7 +123,7 @@ public class EventMap {
 
     public void sellSpot(Long areaId, int quantity) {
         for (Element element : elements) {
-            if (element instanceof StandingArea && element.getId() == areaId) {
+            if (element instanceof StandingArea && Objects.equals(element.getId(), areaId)) {
                 ((StandingArea) element).sellSpot(quantity);
                 return;
             }
@@ -151,7 +151,7 @@ public class EventMap {
 
     public SeatStatus isSeatAvailable(Long areaId, SeatPosition position) {
         for (Element element : elements) {
-            if (element instanceof SeatingArea && element.getId() == areaId) {
+            if (element instanceof SeatingArea && Objects.equals(element.getId(), areaId)) {
                 return ((SeatingArea) element).isSeatAvailable(position);
             }
         }
