@@ -1,8 +1,18 @@
 package ticketsystem.DomainLayer.policy;
 
-public class MinTicketsRule implements PurchaseRule {
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
-    private final int minTickets;
+@Entity
+@DiscriminatorValue("MIN_TICKETS")
+public class MinTicketsRule extends PurchaseRule {
+
+    @Column(name = "min_tickets")
+    private int minTickets;
+
+    protected MinTicketsRule() {
+    }
 
     public MinTicketsRule(int minTickets) {
         if (minTickets < 0) {
@@ -15,9 +25,12 @@ public class MinTicketsRule implements PurchaseRule {
     public PolicyResult isValid(int quantity, int age) {
         if (quantity >= minTickets) {
             return PolicyResult.allowed();
-        } else {
-            return PolicyResult.denied("Insufficient tickets purchased, minimum required: " + minTickets);
         }
+
+        return PolicyResult.denied(
+                "Insufficient tickets purchased, minimum required: "
+                        + minTickets
+        );
     }
 
     public int getMinTickets() {

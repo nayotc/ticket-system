@@ -11,8 +11,6 @@ import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -20,14 +18,12 @@ import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-
 import java.time.LocalDate;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import ticketsystem.PresentationLayer.Presenters.AuthPresenter;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
-import ticketsystem.PresentationLayer.Components.ActionBar;
 import ticketsystem.PresentationLayer.Components.FormCard;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
@@ -186,17 +182,14 @@ public class Register extends PageContainer {
     }
 
     private void handleRegister() {
-        if (isBlank(fullName.getValue()) || isBlank(email.getValue()) || isBlank(phone.getValue())
-                || isBlank(password.getValue()) || isBlank(confirmPassword.getValue())) {
-            showError("יש למלא את כל שדות החובה");
-            return;
-        }
+        // Unified required fields validation
         if (isBlank(fullName.getValue()) || isBlank(email.getValue()) || isBlank(phone.getValue())
             || birthDate.getValue() == null
             || isBlank(password.getValue()) || isBlank(confirmPassword.getValue())) {
-        showError("יש למלא את כל שדות החובה");
-        return;
+            showError("יש למלא את כל שדות החובה");
+            return;
         }
+
         if (birthDate.getValue().isAfter(LocalDate.now())) {
             showError("תאריך לידה לא יכול להיות בעתיד");
             return;
@@ -213,6 +206,8 @@ public class Register extends PageContainer {
         }
 
         try {
+            // Ensures a valid guest token exists before proceeding. 
+            // If the previous token expired, this will fetch a fresh one.
             if (UiSession.getGuestToken() == null) {
                 authPresenter.visitSystem();
             }
@@ -221,15 +216,25 @@ public class Register extends PageContainer {
                     email.getValue(),
                     password.getValue(),
                     fullName.getValue(),
-                    phone.getValue(),birthDate.getValue()
+                    phone.getValue(),
+                    birthDate.getValue()
             );
 
             Notifications.success("ההרשמה נקלטה בהצלחה");
-
             UI.getCurrent().navigate(UiRoutes.LOGIN);
 
-        } catch (PresentationException e) {
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            // Handle timeout gracefully. Since the user is a guest, 
+            // handleTimeoutRedirect() will clear the stale token without reloading 
+            // the page, keeping the form data intact.
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
             showError(e.getMessage());
+            
+        } catch (Exception e) {
+            showError(e.getMessage() == null ? "שגיאה בהרשמה" : e.getMessage());
         }
     }
 

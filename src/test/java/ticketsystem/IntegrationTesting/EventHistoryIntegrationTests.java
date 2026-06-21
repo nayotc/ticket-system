@@ -451,7 +451,6 @@ class EventHistoryIntegrationTests {
 
     private Event createActiveEvent() {
         Event createdEvent = new Event(
-                EVENT_ID,
                 LocalDateTime.now().plusDays(10),
                 "Test Event",
                 COMPANY_ID,

@@ -3,7 +3,6 @@ package ticketsystem.ConcurrencyTesting;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -12,381 +11,385 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntConsumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.WaitingQueueService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.IRepository.ITokenRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.user.Guest;
-import ticketsystem.InfrastructureLayer.EventRepository;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.InfrastructureLayer.WaitingQueueRepository;
 
+@SpringBootTest
 public class QueueConcurrencyTest {
 
-    private final String TEST_SECRET = "manual_test_secret_key_for_jwt_must_be_at_least_32_bytes_long";
-    private LogbackSystemLogger logger = new LogbackSystemLogger();
+    private static final String TEST_SECRET =
+            "manual_test_secret_key_for_jwt_must_be_at_least_32_bytes_long";
 
-    /**
-     * Verifies that concurrent reservation attempts respect the event traffic
-     * threshold and place all excess users in the waiting queue.
-     *
-     * <p>The test submits 1,000 reservation attempts while limiting the number
-     * of platform threads used simultaneously. This preserves meaningful
-     * concurrency without depending on the machine's ability to create
-     * 1,000 native threads within a short timeout.</p>
-     */
-    @Test
-    public void testHighConcurrencyLoadOnQueue() throws InterruptedException {
-        IEventRepository eventRepo = new EventRepository();
-        INotifier fakeNotifications = createFakeNotifications();
-        TokenRepository tokenRepo = new TokenRepository();
-        TokenService tokenService =
-                new TokenService(TEST_SECRET, tokenRepo, logger);
-        WaitingQueueRepository queueRepo = new WaitingQueueRepository();
+    private static final int MAX_CONCURRENT_WORKERS = 200;
+    private static final int COMPLETION_TIMEOUT_SECONDS = 60;
+    private static final int TERMINATION_TIMEOUT_SECONDS = 10;
 
-        WaitingQueueService queueService =
-                new WaitingQueueService(
-                        eventRepo,
-                        queueRepo,
-                        fakeNotifications,
-                        tokenService,
-                        logger
+    @Autowired
+    private IEventRepository eventRepository;
+
+    private final List<Long> createdEventIds = new ArrayList<>();
+
+    private LogbackSystemLogger logger;
+    private TokenService tokenService;
+    private WaitingQueueRepository queueRepository;
+    private WaitingQueueService waitingQueueService;
+
+    @BeforeEach
+    void setUp() {
+        logger = new LogbackSystemLogger();
+        INotifier notifier = mock(INotifier.class);
+        TokenRepository tokenRepository = new TokenRepository();
+
+        tokenService = new TokenService(TEST_SECRET, tokenRepository, logger);
+        queueRepository = new WaitingQueueRepository();
+        waitingQueueService = new WaitingQueueService(
+                eventRepository,
+                queueRepository,
+                notifier,
+                tokenService,
+                logger
+        );
+    }
+
+    @AfterEach
+    void cleanUpPersistedEvents() {
+        for (Long eventId : createdEventIds) {
+            try {
+                Event persistedEvent = eventRepository.getEventById(eventId);
+
+                if (persistedEvent != null) {
+                    eventRepository.deleteEvent(
+                            eventId,
+                            persistedEvent.getVersion()
+                    );
+                }
+            } catch (Exception exception) {
+                logger.logError(
+                        "Failed to clean up event "
+                                + eventId
+                                + ": "
+                                + exception.getMessage(),
+                        exception
                 );
+            }
+        }
 
-        Event event = new Event(
-                1L,
+        createdEventIds.clear();
+    }
+
+    @Test
+    void Given1000UsersAndThreshold100_WhenTryReserveConcurrently_Then100ApprovedAnd900Queued()
+            throws InterruptedException {
+
+        // Arrange
+        Event event = createEvent("Music Festival", 100L);
+        saveEvent(event);
+
+        Long eventId = event.getId();
+        int numberOfUsers = 1000;
+
+        List<String> validTokens = createGuestTokens(numberOfUsers);
+
+        AtomicInteger approvedCount = new AtomicInteger();
+        AtomicInteger queuedCount = new AtomicInteger();
+
+        // Act
+        runConcurrently(
+                numberOfUsers,
+                index -> {
+                    String result = waitingQueueService.tryReserve(
+                            eventId,
+                            validTokens.get(index)
+                    );
+
+                    if ("APPROVED".equals(result)) {
+                        approvedCount.incrementAndGet();
+                    } else if ("QUEUED".equals(result)) {
+                        queuedCount.incrementAndGet();
+                    }
+                }
+        );
+
+        // Assert
+        Event updatedEvent = eventRepository.getEventById(eventId);
+
+        assertNotNull(updatedEvent);
+
+        assertEquals(
+                100,
+                approvedCount.get(),
+                "Exactly 100 users should be approved."
+        );
+
+        assertEquals(
+                900,
+                queuedCount.get(),
+                "Exactly 900 users should be queued."
+        );
+
+        assertEquals(
+                numberOfUsers,
+                approvedCount.get() + queuedCount.get(),
+                "Every request should result in either APPROVED or QUEUED."
+        );
+
+        assertEquals(
+                100,
+                updatedEvent.getActiveReservationsCount(),
+                "The event should reach its exact traffic threshold."
+        );
+
+        assertEquals(
+                900,
+                queueRepository.getQueueSize(eventId),
+                "The queue should contain exactly 900 users."
+        );
+    }
+
+    @Test
+    void GivenFullEvent_WhenSameSessionRequestsConcurrently_ThenSessionIsQueuedOnlyOnce()
+            throws InterruptedException {
+
+        // Arrange
+        Event event = createEvent("Music Festival 2", 100L);
+        fillEventToThreshold(event, 100);
+        saveEvent(event);
+
+        Long eventId = event.getId();
+        int numberOfDuplicateRequests = 100;
+
+        String duplicateSession = tokenService.addActiveSession(new Guest());
+
+        // Act
+        runConcurrently(
+                numberOfDuplicateRequests,
+                ignored -> waitingQueueService.tryReserve(
+                        eventId,
+                        duplicateSession
+                )
+        );
+
+        // Assert
+        Event updatedEvent = eventRepository.getEventById(eventId);
+
+        assertNotNull(updatedEvent);
+
+        assertEquals(
+                100,
+                updatedEvent.getActiveReservationsCount(),
+                "Duplicate requests must not increase active reservations."
+        );
+
+        assertEquals(
+                1,
+                queueRepository.getQueueSize(eventId),
+                "Concurrent requests from the same session should create only one queue entry."
+        );
+    }
+
+    @Test
+    void GivenFullEventAnd200QueuedUsers_When50SpotsReleasedConcurrently_ThenEventIsRefilledAnd150RemainQueued()
+            throws InterruptedException {
+
+        // Arrange
+        Event event = createEvent("Music Festival 3", 100L);
+        fillEventToThreshold(event, 100);
+        saveEvent(event);
+
+        Long eventId = event.getId();
+
+        List<String> queuedTokens = createGuestTokens(200);
+
+        for (String queuedToken : queuedTokens) {
+            queueRepository.enqueueUser(eventId, queuedToken);
+        }
+
+        assertEquals(
+                200,
+                queueRepository.getQueueSize(eventId),
+                "The test should begin with exactly 200 queued users."
+        );
+
+        int numberOfReleases = 50;
+        List<String> releasingUserTokens = createGuestTokens(numberOfReleases);
+
+        // Act
+        runConcurrently(
+                numberOfReleases,
+                index -> waitingQueueService.releaseSpot(
+                        eventId,
+                        releasingUserTokens.get(index)
+                )
+        );
+
+        // Assert
+        Event updatedEvent = eventRepository.getEventById(eventId);
+
+        assertNotNull(updatedEvent);
+
+        assertEquals(
+                100,
+                updatedEvent.getActiveReservationsCount(),
+                "Each released spot should be assigned to the next queued user."
+        );
+
+        assertEquals(
+                150,
+                queueRepository.getQueueSize(eventId),
+                "Fifty queued users should be approved, leaving exactly 150 users."
+        );
+    }
+
+    private Event createEvent(String name, long trafficThreshold) {
+        return new Event(
                 LocalDateTime.now().plusDays(1),
-                "Music Festival",
+                name,
                 1L,
                 1L,
                 EventLocation.NEW_YORK,
-                100L,
+                trafficThreshold,
                 EventCategory.CONCERT,
                 "Artist Name",
                 BigDecimal.valueOf(100),
                 new Pair<>(10, 10)
         );
+    }
 
-        eventRepo.addEvent(event);
+    private void saveEvent(Event event) {
+        eventRepository.addEvent(event);
 
-        int numberOfUsers = 1000;
-        int concurrentWorkers = 200;
+        assertNotNull(
+                event.getId(),
+                "The database should generate an Event ID."
+        );
 
-        List<String> validTokens = new ArrayList<>();
-        for (int i = 0; i < numberOfUsers; i++) {
-            validTokens.add(tokenService.addActiveSession(new Guest()));
+        createdEventIds.add(event.getId());
+    }
+
+    private void fillEventToThreshold(Event event, int amount) {
+        for (int i = 0; i < amount; i++) {
+            event.incrementActiveReservations();
+        }
+    }
+
+    private List<String> createGuestTokens(int amount) {
+        List<String> tokens = new ArrayList<>(amount);
+
+        for (int i = 0; i < amount; i++) {
+            tokens.add(tokenService.addActiveSession(new Guest()));
         }
 
+        return tokens;
+    }
+
+    private void runConcurrently(
+            int numberOfTasks,
+            IntConsumer task
+    ) throws InterruptedException {
+
+        int workerCount = Math.min(
+                numberOfTasks,
+                MAX_CONCURRENT_WORKERS
+        );
+
         ExecutorService executor =
-                Executors.newFixedThreadPool(concurrentWorkers);
+                Executors.newFixedThreadPool(workerCount);
 
-        CountDownLatch startSignal = new CountDownLatch(1);
+        CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch completionLatch =
-                new CountDownLatch(numberOfUsers);
+                new CountDownLatch(numberOfTasks);
 
-        List<Future<?>> futures = new ArrayList<>();
-
-        AtomicInteger approvedCount = new AtomicInteger(0);
-        AtomicInteger queuedCount = new AtomicInteger(0);
+        List<Future<?>> futures =
+                new ArrayList<>(numberOfTasks);
 
         try {
-            for (int i = 0; i < numberOfUsers; i++) {
-                final String sessionId = validTokens.get(i);
+            for (int i = 0; i < numberOfTasks; i++) {
+                final int taskIndex = i;
 
-                futures.add(executor.submit(() -> {
-                    try {
-                        /*
-                        * Wait until all tasks have been submitted.
-                        * There is intentionally no short timeout here because
-                        * thread-pool startup time is not part of the behavior
-                        * being tested.
-                        */
-                        startSignal.await();
+                futures.add(
+                        executor.submit(() -> {
+                            try {
+                                /*
+                                 * Tasks wait until all tasks have been submitted.
+                                 * No short start timeout is used because only
+                                 * MAX_CONCURRENT_WORKERS tasks can begin immediately.
+                                 */
+                                startLatch.await();
+                                task.accept(taskIndex);
+                            } catch (InterruptedException exception) {
+                                Thread.currentThread().interrupt();
 
-                        String result =
-                                queueService.tryReserve(1L, sessionId);
-
-                        if ("APPROVED".equals(result)) {
-                            approvedCount.incrementAndGet();
-                        } else if ("QUEUED".equals(result)) {
-                            queuedCount.incrementAndGet();
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException(
-                                "Reservation worker was interrupted",
-                                e
-                        );
-                    } finally {
-                        completionLatch.countDown();
-                    }
-                }));
+                                throw new IllegalStateException(
+                                        "Concurrent test task was interrupted.",
+                                        exception
+                                );
+                            } finally {
+                                completionLatch.countDown();
+                            }
+                        })
+                );
             }
 
-            startSignal.countDown();
+            startLatch.countDown();
 
-            boolean completed =
-                    completionLatch.await(30, TimeUnit.SECONDS);
+            boolean completed = completionLatch.await(
+                    COMPLETION_TIMEOUT_SECONDS,
+                    TimeUnit.SECONDS
+            );
 
             assertTrue(
                     completed,
-                    "Test timed out! One or more reservation tasks did not finish."
+                    "Concurrent test timed out because one or more tasks did not finish."
             );
 
-            for (Future<?> future : futures) {
-                try {
-                    future.get();
-                } catch (ExecutionException e) {
-                    throw new RuntimeException(
-                            "A reservation task failed",
-                            e.getCause()
-                    );
-                }
-            }
-
-            Event updatedEvent = eventRepo.getEventById(1L);
-
-            assertEquals(
-                    100,
-                    approvedCount.get(),
-                    "Exactly 100 users should be approved."
-            );
-
-            assertEquals(
-                    100,
-                    updatedEvent.getActiveReservationsCount(),
-                    "Event should be at exact maximum capacity."
-            );
-
-            assertEquals(
-                    900,
-                    queuedCount.get(),
-                    "Exactly 900 users should be queued."
-            );
-
-            assertEquals(
-                    900,
-                    queueRepo.getQueueSize(1L),
-                    "Queue repository should hold exactly 900 users."
-            );
+            assertTasksCompletedSuccessfully(futures);
         } finally {
-            /*
-            * Also releases waiting workers if an exception occurs while tasks
-            * are being submitted.
-            */
-            startSignal.countDown();
+            startLatch.countDown();
             executor.shutdownNow();
-            executor.awaitTermination(10, TimeUnit.SECONDS);
+
+            executor.awaitTermination(
+                    TERMINATION_TIMEOUT_SECONDS,
+                    TimeUnit.SECONDS
+            );
         }
     }
-    // test to ensure that duplicate requests from the same sessionId are handled
-    // correctly
-    @Test
-    public void testConcurrentDuplicateRequests_ShouldOnlyQueueOnce() throws InterruptedException {
-        IEventRepository fakeEventRepo = createFakeEventRepo();
-        INotifier fakeNotifications = createFakeNotifications();
-        ITokenRepository tokenRepo = new TokenRepository();
-        TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo, logger);
-        WaitingQueueRepository queueRepo = new WaitingQueueRepository();
 
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications,
-                TokenService, logger);
+    private void assertTasksCompletedSuccessfully(
+            List<Future<?>> futures
+    ) throws InterruptedException {
 
-        // create an event that is already at full capacity
-        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival2", 1L, 1L, EventLocation.NEW_YORK,
-                100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
-        for (int i = 0; i < 100; i++) {
-            event.incrementActiveReservations();
-        }
-        fakeEventRepo.addEvent(event);
-
-        // simulate 100 concurrent requests from the same sessionId
-        int numberOfDuplicates = 100;
-        ExecutorService executor = Executors.newFixedThreadPool(numberOfDuplicates);
-        CountDownLatch latch = new CountDownLatch(1);
-        CountDownLatch completionLatch = new CountDownLatch(numberOfDuplicates);
-
-        List<Future<?>> futures = new ArrayList<>();
-
-        final String duplicateSession = TokenService.addActiveSession(new Guest());
-        for (int i = 0; i < numberOfDuplicates; i++) {
-            futures.add(executor.submit(() -> {
-                try {
-                    // Thread will wait maximum 5 seconds to start
-                    if (!latch.await(5, TimeUnit.SECONDS)) {
-                        throw new RuntimeException("Timeout waiting for start signal");
-                    }
-                    queueService.tryReserve(1L, duplicateSession);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } finally {
-                    completionLatch.countDown();
-                }
-            }));
-        }
-
-        latch.countDown();
-        boolean completed = completionLatch.await(10, TimeUnit.SECONDS);
-        assertTrue(completed, "Test timed out! One or more threads got stuck and did not finish.");
-        executor.shutdown();
-
-        // Check for any exceptions that occurred inside the threads
         for (Future<?> future : futures) {
             try {
                 future.get();
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e);
+            } catch (ExecutionException exception) {
+                throw new AssertionError(
+                        "A concurrent task failed.",
+                        exception.getCause()
+                );
             }
         }
-        // ensure that only 1 entry for this sessionId is in the queue, not 100
-        assertEquals(1, queueRepo.getQueueSize(1L),
-                "Duplicate requests should result in exactly 1 entry in the queue.");
-    }
-
-    @Test
-    public void testConcurrentReleases_ShouldProcessBatchesCorrectly() throws InterruptedException {
-        IEventRepository fakeEventRepo = createFakeEventRepo();
-        INotifier fakeNotifications = createFakeNotifications();
-        TokenRepository tokenRepo = new TokenRepository();
-        TokenService TokenService = new TokenService(TEST_SECRET, tokenRepo, logger);
-        WaitingQueueRepository queueRepo = new WaitingQueueRepository();
-
-        WaitingQueueService queueService = new WaitingQueueService(fakeEventRepo, queueRepo, fakeNotifications,
-                TokenService, logger);
-
-        // full event with 100 active reservations and 200 people in the queue
-        var event = new Event(1L, LocalDateTime.now().plusDays(1), "Music Festival", 1L, 1L, EventLocation.NEW_YORK,
-                100L, EventCategory.CONCERT, "Artist Name", BigDecimal.valueOf(100), new Pair<>(10, 10));
-
-        for (int i = 0; i < 100; i++) {
-            event.incrementActiveReservations();
-        }
-        fakeEventRepo.addEvent(event);
-
-        // put 200 users in the queue
-        for (int i = 0; i < 200; i++) {
-            queueRepo.enqueueUser(1L, TokenService.addActiveSession(new Guest()));
-        }
-
-        // simulate 50 concurrent spots being released
-        int numberOfReleases = 50;
-        List<String> releasingUsersTokens = new ArrayList<>();
-        for (int i = 0; i < numberOfReleases; i++) {
-            releasingUsersTokens.add(TokenService.addActiveSession(new Guest()));
-        }
-
-        ExecutorService executor = Executors.newFixedThreadPool(numberOfReleases);
-        CountDownLatch latch = new CountDownLatch(1);
-        CountDownLatch completionLatch = new CountDownLatch(numberOfReleases);
-
-        List<Future<?>> futures = new ArrayList<>();
-        for (int i = 0; i < numberOfReleases; i++) {
-            final String finishingUserToken = releasingUsersTokens.get(i);
-            futures.add(executor.submit(() -> {
-                try {
-                    // Thread will wait maximum 5 seconds to start
-                    if (!latch.await(5, TimeUnit.SECONDS)) {
-                        throw new RuntimeException("Timeout waiting for start signal");
-                    }
-                    // every time a spot is released, the next user in the queue should be approved
-                    // and take that spot, so the event should remain at full capacity
-                    queueService.releaseSpot(1L, finishingUserToken);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } finally {
-                    completionLatch.countDown();
-                }
-            }));
-        }
-
-        latch.countDown();
-        boolean completed = completionLatch.await(10, TimeUnit.SECONDS);
-        assertTrue(completed, "Test timed out! One or more threads got stuck and did not finish.");
-        executor.shutdown();
-        // Check for any exceptions that occurred inside the threads
-        for (Future<?> future : futures) {
-            try {
-                future.get();
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        Event updatedEvent = fakeEventRepo.getEventById(1L);
-        assertEquals(100, updatedEvent.getActiveReservationsCount(),
-                "Event should be instantly refilled to max capacity.");
-
-        // originally there were 200 users in the queue, 50 should have been approved
-        // and removed, leaving 150 still waiting
-        assertEquals(150, queueRepo.getQueueSize(1L), "Queue should have exactly 150 users left.");
-    }
-
-    // Helper methods for fakes (mocks)
-    private IEventRepository createFakeEventRepo() {
-        return new IEventRepository() {
-            private Event savedEvent;
-
-            public void addEvent(Event event) {
-                this.savedEvent = event;
-            }
-
-            public Event getEventById(Long id) {
-                return savedEvent;
-            }
-
-            public void deleteEvent(Long eventId, long expectedVersion) {
-                /* no-op */
-            }
-
-            public void updateEvent(Event event) {
-                this.savedEvent = event;
-            }
-
-            public long getNextId() {
-                return 1L;
-            }
-
-            public List<Event> getEventsByCompanyId(Long companyId) {
-                return List.of(savedEvent);
-            }
-
-            public List<Event> getAllEvents() {
-                return List.of(savedEvent);
-            }
-        };
-    }
-
-    private INotifier createFakeNotifications() {
-        return new INotifier() {
-            @Override
-            public void notifyGuest(String sessionId, String message) {
-                // No-op for concurrency tests
-            }
-
-            @Override
-            public void notifyMember(Long memberId, String message) {
-                // No-op for concurrency tests
-            }
-
-            @Override
-            public void notifyMembers(Collection<Long> memberIds, String message) {
-                // No-op for concurrency tests
-            }
-
-            @Override
-            public void notifyGuests(Collection<String> guestTokens, String message) {
-                // No-op for concurrency tests
-            }
-        };
     }
 }

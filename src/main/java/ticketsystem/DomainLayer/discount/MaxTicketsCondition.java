@@ -1,8 +1,18 @@
 package ticketsystem.DomainLayer.discount;
 
-public class MaxTicketsCondition implements DiscountCondition {
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
-    private final int maxTickets;
+@Entity
+@DiscriminatorValue("MAX_TICKETS")
+public class MaxTicketsCondition extends DiscountCondition {
+
+    @Column(name = "max_tickets")
+    private int maxTickets;
+
+    protected MaxTicketsCondition() {
+    }
 
     public MaxTicketsCondition(int maxTickets) {
         if (maxTickets <= 0) {

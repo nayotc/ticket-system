@@ -34,18 +34,8 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
     private static final long COMPANY_ID = 1L;
     private static final long OWNER_ID = 1L;
 
-    /*
-     * eventId=1 is created by DevEventDataInitializer with a valid ticket-selection map,
-     * so it is the safest event for checking that a pre-sale winner can continue
-     * into the ticket selection page.
-     */
-    private static final long PRE_SALE_WINNER_EVENT_ID = 1L;
-
-    /*
-     * eventId=30 appears in the Home featured events as "פסטיבל אורות הלילה",
-     * so we use it to demonstrate lottery registration from the event card.
-     */
-    private static final long LOTTERY_REGISTRATION_EVENT_ID = 30L;
+    private static final String PRE_SALE_WINNER_EVENT_NAME = "אירוע בדיקת מכירה מוקדמת";
+    private static final String LOTTERY_REGISTRATION_EVENT_NAME = "פסטיבל אורות הלילה";
 
     private static final String REGISTRATION_TEST_USERNAME = "test@test.com";
     private static final String REGISTRATION_TEST_PASSWORD = "123456";
@@ -79,19 +69,19 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         try {
-            ensurePreSaleWinnerEvent();
-            ensureLotteryRegistrationEvent();
+            Event preSaleWinnerEvent = ensurePreSaleWinnerEvent();
+            Event lotteryRegistrationEvent = ensureLotteryRegistrationEvent();
 
-            long preSaleLotteryId = ensurePreSaleLotteryAndRunDraw();
-            ensureOpenRegistrationLottery();
+            long preSaleLotteryId = ensurePreSaleLotteryAndRunDraw(preSaleWinnerEvent.getId());
+            ensureOpenRegistrationLottery(lotteryRegistrationEvent.getId());
 
-            printWinnerCode(preSaleLotteryId);
+            printWinnerCode(preSaleWinnerEvent.getId(), preSaleLotteryId);
 
-        System.out.println("Registration test username: " + REGISTRATION_TEST_USERNAME);
-        System.out.println("Registration test password: " + REGISTRATION_TEST_PASSWORD);
-        System.out.println("Winner username: " + WINNER_USERNAME);
-        System.out.println("Winner password: " + WINNER_PASSWORD);
-        System.out.println("Use the printed/generated code from this run.");
+            System.out.println("Registration test username: " + REGISTRATION_TEST_USERNAME);
+            System.out.println("Registration test password: " + REGISTRATION_TEST_PASSWORD);
+            System.out.println("Winner username: " + WINNER_USERNAME);
+            System.out.println("Winner password: " + WINNER_PASSWORD);
+            System.out.println("Use the printed/generated code from this run.");
 
         } catch (Exception e) {
             System.out.println("Failed to initialize temporary lottery test data: " + e.getMessage());
@@ -99,8 +89,12 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
         }
     }
 
-    private void ensurePreSaleWinnerEvent() {
-        Event existing = eventRepository.getEventById(PRE_SALE_WINNER_EVENT_ID);
+    private Event ensurePreSaleWinnerEvent() {
+        Event existing = eventRepository.getAllEvents().stream()
+                .filter(event -> COMPANY_ID == event.getCompanyId())
+                .filter(event -> PRE_SALE_WINNER_EVENT_NAME.equals(event.getName()))
+                .findFirst()
+                .orElse(null);
 
         if (existing != null) {
             existing.setStatus(Event.eventStatus.ACTIVE);
@@ -109,14 +103,13 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
             existing.setRate(4.99);
             eventRepository.updateEvent(existing);
 
-            System.out.println("Updated pre-sale lottery test event: " + PRE_SALE_WINNER_EVENT_ID);
-            return;
+            System.out.println("Updated pre-sale lottery test event: " + existing.getId());
+            return existing;
         }
 
         Event event = new Event(
-                PRE_SALE_WINNER_EVENT_ID,
                 LocalDateTime.of(2026, 6, 5, 20, 45),
-                "אירוע בדיקת מכירה מוקדמת",
+                PRE_SALE_WINNER_EVENT_NAME,
                 COMPANY_ID,
                 OWNER_ID,
                 EventLocation.TEL_AVIV,
@@ -134,11 +127,16 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
 
         eventRepository.addEvent(event);
 
-        System.out.println("Created pre-sale lottery test event: " + PRE_SALE_WINNER_EVENT_ID);
+        System.out.println("Created pre-sale lottery test event: " + event.getId());
+        return event;
     }
 
-    private void ensureLotteryRegistrationEvent() {
-        Event existing = eventRepository.getEventById(LOTTERY_REGISTRATION_EVENT_ID);
+    private Event ensureLotteryRegistrationEvent() {
+        Event existing = eventRepository.getAllEvents().stream()
+                .filter(event -> LOTTERY_REGISTRATION_EVENT_NAME.equals(event.getName()))
+                .filter(event -> EventLocation.TEL_AVIV.equals(event.getLocation()))
+                .findFirst()
+                .orElse(null);
 
         if (existing != null) {
             existing.setStatus(Event.eventStatus.ACTIVE);
@@ -147,14 +145,13 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
             existing.setRate(5.0);
             eventRepository.updateEvent(existing);
 
-            System.out.println("Updated lottery registration test event: " + LOTTERY_REGISTRATION_EVENT_ID);
-            return;
+            System.out.println("Updated lottery registration test event: " + existing.getId());
+            return existing;
         }
 
         Event event = new Event(
-                LOTTERY_REGISTRATION_EVENT_ID,
                 LocalDateTime.of(2026, 10, 24, 21, 0),
-                "פסטיבל אורות הלילה",
+                LOTTERY_REGISTRATION_EVENT_NAME,
                 2L,
                 OWNER_ID,
                 EventLocation.TEL_AVIV,
@@ -172,23 +169,27 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
 
         eventRepository.addEvent(event);
 
-        System.out.println("Created lottery registration test event: " + LOTTERY_REGISTRATION_EVENT_ID);
+        System.out.println("Created lottery registration test event: " + event.getId());
+        return event;
     }
 
-    private long ensurePreSaleLotteryAndRunDraw() {
+    private long ensurePreSaleLotteryAndRunDraw(Long eventId) {
+        if (eventId == null) {
+            throw new IllegalStateException("Pre-sale event id was not generated");
+        }
+
         Member winner = userRepository.getMemberByUsername(WINNER_USERNAME);
 
         if (winner == null) {
             throw new IllegalStateException("Test winner user was not found: " + WINNER_USERNAME);
         }
 
-        Lottery lottery = lotteryRepository.findByEventId(PRE_SALE_WINNER_EVENT_ID);
+        Lottery lottery = lotteryRepository.findByEventId(eventId);
         boolean isNewLottery = false;
 
         if (lottery == null) {
             lottery = new Lottery(
-                    lotteryRepository.generateNextLotteryId(),
-                    PRE_SALE_WINNER_EVENT_ID,
+                    eventId,
                     1
             );
             isNewLottery = true;
@@ -200,10 +201,10 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
 
         if (isNewLottery) {
             lotteryRepository.addLottery(lottery);
-            System.out.println("Created pre-sale lottery for event: " + PRE_SALE_WINNER_EVENT_ID);
+            System.out.println("Created pre-sale lottery for event: " + eventId);
         } else {
             lotteryRepository.update(lottery);
-            System.out.println("Updated existing pre-sale lottery for event: " + PRE_SALE_WINNER_EVENT_ID);
+            System.out.println("Updated existing pre-sale lottery for event: " + eventId);
         }
 
         String founderToken = loginAsFounder();
@@ -211,19 +212,22 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
         lotteryService.closeLotteryRegistration(founderToken, lottery.getLotteryId(), COMPANY_ID);
         lotteryService.conductLotteryDraw(founderToken, lottery.getLotteryId(), COMPANY_ID);
 
-        System.out.println("Conducted lottery draw for event: " + PRE_SALE_WINNER_EVENT_ID);
+        System.out.println("Conducted lottery draw for event: " + eventId);
 
         return lottery.getLotteryId();
     }
 
-    private void ensureOpenRegistrationLottery() {
-        Lottery lottery = lotteryRepository.findByEventId(LOTTERY_REGISTRATION_EVENT_ID);
+    private void ensureOpenRegistrationLottery(Long eventId) {
+        if (eventId == null) {
+            throw new IllegalStateException("Lottery registration event id was not generated");
+        }
+
+        Lottery lottery = lotteryRepository.findByEventId(eventId);
         boolean isNewLottery = false;
 
         if (lottery == null) {
             lottery = new Lottery(
-                    lotteryRepository.generateNextLotteryId(),
-                    LOTTERY_REGISTRATION_EVENT_ID,
+                    eventId,
                     5
             );
             isNewLottery = true;
@@ -234,10 +238,10 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
 
         if (isNewLottery) {
             lotteryRepository.addLottery(lottery);
-            System.out.println("Created open registration lottery for event: " + LOTTERY_REGISTRATION_EVENT_ID);
+            System.out.println("Created open registration lottery for event: " + eventId);
         } else {
             lotteryRepository.update(lottery);
-            System.out.println("Updated open registration lottery for event: " + LOTTERY_REGISTRATION_EVENT_ID);
+            System.out.println("Updated open registration lottery for event: " + eventId);
         }
     }
 
@@ -254,7 +258,7 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
         }
     }
 
-    private void printWinnerCode(long lotteryId) {
+    private void printWinnerCode(Long eventId, long lotteryId) {
         Member winner = userRepository.getMemberByUsername(WINNER_USERNAME);
 
         if (winner == null) {
@@ -273,7 +277,7 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
             if (registration.getMemberId() == winner.getId() && registration.isWinner()) {
                 System.out.println("====================================================");
                 System.out.println("LOTTERY TEST WINNER CODE");
-                System.out.println("Event id: " + PRE_SALE_WINNER_EVENT_ID);
+                System.out.println("Event id: " + eventId);
                 System.out.println("Winner username: " + WINNER_USERNAME);
                 System.out.println("Winner code: " + registration.getAuthCode());
                 System.out.println("====================================================");
@@ -286,14 +290,12 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
 
     private void addValidTicketSelectionMap(Event event) {
         event.getMap().addElement(new Element(
-                1L,
                 "במה מרכזית",
                 new Pair<>(25, 4),
                 new Pair<>(20, 5)
         ));
 
         event.getMap().addElement(new SeatingArea(
-                2L,
                 "אזור ישיבה",
                 new Pair<>(30, 12),
                 new Pair<>(10, 5),
@@ -302,7 +304,6 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
         ));
 
         event.getMap().addElement(new StandingArea(
-                3L,
                 "אזור עמידה",
                 new Pair<>(25, 19),
                 new Pair<>(20, 10),
@@ -310,21 +311,18 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
         ));
 
         event.getMap().addElement(new Element(
-                4L,
                 "בר",
                 new Pair<>(44, 30),
                 new Pair<>(5, 4)
         ));
 
         event.getMap().addElement(new Element(
-                5L,
                 "יציאת חירום",
                 new Pair<>(15, 11),
                 new Pair<>(4, 3)
         ));
 
         event.getMap().addElement(new Element(
-                6L,
                 "עזרה ראשונה",
                 new Pair<>(38, 30),
                 new Pair<>(5, 4)
@@ -333,14 +331,12 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
 
     private void addDefaultCatalogMap(Event event) {
         event.getMap().addElement(new Element(
-                1L,
                 "במה מרכזית",
                 new Pair<>(8, 2),
                 new Pair<>(8, 3)
         ));
 
         event.getMap().addElement(new SeatingArea(
-                2L,
                 "יציע ישיבה",
                 new Pair<>(4, 7),
                 new Pair<>(10, 6),
@@ -349,7 +345,6 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
         ));
 
         event.getMap().addElement(new StandingArea(
-                3L,
                 "רחבת עמידה",
                 new Pair<>(16, 7),
                 new Pair<>(8, 8),
@@ -357,7 +352,6 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
         ));
 
         event.getMap().addElement(new Element(
-                4L,
                 "כניסה",
                 new Pair<>(1, 1),
                 new Pair<>(3, 3)

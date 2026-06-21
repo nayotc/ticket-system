@@ -181,6 +181,19 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
 
             renderSnapshot(snapshot);
 
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                if (UiSession.isLoggedIn()) {
+                    UiSession.handleTimeoutRedirect();
+                } else {
+                    UiSession.exit();
+                    Notification notification = Notification.show("זמן ההמתנה בתור פג עקב חוסר פעילות. אנא היכנסו לתור מחדש.", 5000, Notification.Position.TOP_CENTER);
+                    notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    UI.getCurrent().navigate(UiRoutes.HOME);
+                }
+                return;
+            }
+            renderSnapshot(WaitingQueueSnapshot.error("האירוע", "לא ניתן לטעון את מצב התור כרגע: " + e.getMessage()));
         } catch (Exception exception) {
             renderSnapshot(
                     WaitingQueueSnapshot.error(
@@ -243,6 +256,13 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
             presenter.leaveQueue(eventId, getCurrentSessionToken());
             UI.getCurrent().navigate(UiRoutes.HOME);
 
+        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+            if (e.isSessionTimeout()) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+            Notification notification = Notification.show("שגיאה ביציאה מהתור: " + e.getMessage(), 3500, Notification.Position.TOP_CENTER);
+            notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
         } catch (Exception exception) {
             navigationInProgress = false;
 

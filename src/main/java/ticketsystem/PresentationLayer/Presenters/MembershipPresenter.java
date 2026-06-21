@@ -43,13 +43,13 @@ public class MembershipPresenter {
 
     public CompanyManagementState loadCompanyManagement(String sessionToken, Long requestedCompanyId) {
         try {
-            // 1. אימות תקינות הטוקן ושליפת מזהה המשתמש הנוכחי
+            // 1. Validate token and extract current user ID
             Long currentUserId = tokenService.extractUserId(sessionToken);
             if (currentUserId == null) {
                 throw new PresentationException("פג תוקף החיבור של המשתמש. אנא התחבר מחדש.");
             }
 
-            // 2. שליפת רשימת החברות שהמשתמש הוא חבר בהן משכבת האפליקציה
+            // 2. Fetch companies the user is a member of from the application layer
             List<CompanyDTO> userCompanies = membershipService.getCompaniesByMember(sessionToken);
             
             if (userCompanies.isEmpty()) {
@@ -59,7 +59,7 @@ public class MembershipPresenter {
                 );
             }
 
-            // 3. קביעת החברה שנבחרה (אם לא נשלח מזהה ספציפי, נבחר בחברה הראשונה ברשימה)
+            // 3. Set selected company (if no specific ID is provided, default to the first in the list)
             CompanyDTO selectedCompanyDto = userCompanies.stream()
                     .filter(c -> requestedCompanyId != null && c.getId() == requestedCompanyId)
                     .findFirst()
@@ -69,7 +69,7 @@ public class MembershipPresenter {
 
             String founderName = userService.getUserNameById(selectedCompanyDto.getFounderId());
 
-            // המרת רשימת ה-DTOs של החברות ל-ManagedCompanyItem עבור התפריט במסך
+            // Convert company DTOs to ManagedCompanyItem list for the UI menu
             List<ManagedCompanyItem> managedCompanies = userCompanies.stream()
                     .map(dto -> new ManagedCompanyItem(
                             dto.getId(),
@@ -85,7 +85,7 @@ public class MembershipPresenter {
                     .findFirst()
                     .orElse(managedCompanies.get(0));
 
-            // 4. שליפת חברי הצוות של החברה הנבחרת משכבת האפליקציה (כעת מקבלים DTOs)
+            // 4. Fetch team members of the selected company from the application layer (now receiving DTOs)
             List<MemberDTO> teamMembersDto = membershipService.getCompanyTeamMembers(sessionToken, companyId);
             List<TeamMemberItem> uiTeamMembers = new ArrayList<>();
 
@@ -95,7 +95,7 @@ public class MembershipPresenter {
             boolean canManageEvents = false;
             boolean canManagePolicies = false;
 
-            // 5. מיפוי פולימורפי של חברי הצוות מתוך ה-DTO
+            // 5. Polymorphic mapping of team members from DTO
             for (MemberDTO member : teamMembersDto) {
                 CompanyRoleDTO role = member.getRoles().stream()
                         .filter(r -> r.getCompanyId().equals(companyId))
@@ -103,7 +103,7 @@ public class MembershipPresenter {
                         .orElse(null);
 
                 if (role == null || "CANCELLED".equals(role.getStatus())) {
-                    continue; // מדלגים על תפקידים שבוטלו
+                    continue; // Skip cancelled roles
                 }
 
                 RoleType uiRoleType;
@@ -120,32 +120,29 @@ public class MembershipPresenter {
                     uiRoleType = RoleType.MANAGER;
                     roleLabel = "Manager";
                     
-                    // --- התיקון: מיפוי חכם של הרשאות בעזרת המפתח ---
                     if (role.getPermissions() != null) {
                         uiPermissions = role.getPermissions().stream()
                                 .map(permStr -> {
-                                    // 1. חיפוש מדויק לפי המפתח הייחודי של הדומיין (לדוגמה: "reports:sales:generate")
                                     java.util.Optional<Permission> opt = Permission.fromKey(permStr);
                                     if (opt.isPresent()) {
                                         return opt.get();
                                     }
                                     
-                                    // 2. גיבוי: במקרה והגיע שם ה-Enum עצמו (לדוגמה: "GENERATE_SALES_REPORT")
                                     for (Permission p : Permission.values()) {
                                         if (p.name().equals(permStr) || p.toString().equals(permStr)) {
                                             return p;
                                         }
                                     }
-                                    return null; // במקרה שההרשאה לא זוהתה כלל
+                                    return null; // If the permission wasn't recognized at all
                                 })
-                                .filter(p -> p != null) // סינון כדי למנוע קריסות UI
+                                .filter(p -> p != null) // Filter out nulls to prevent UI crashes
                                 .collect(Collectors.toSet());
                     }
                 } else {
                     continue;
                 }
 
-                // בדיקת סטטוס המשתמש המחובר כעת לצורך קביעת דגלי הגישה (founder, owner, canManageTeam)
+                // Check current logged-in user status to set access flags (founder, owner, canManageTeam)
                 if (member.getMemberId().equals(currentUserId)) {
                     if (uiRoleType == RoleType.FOUNDER) {
                         isCurrentUserFounder = true;
@@ -159,14 +156,13 @@ public class MembershipPresenter {
                         canManageEvents = true;
                         canManagePolicies = true;
                     } else if (uiRoleType == RoleType.MANAGER) {
-                        // בדיקה נקודתית של הרשאות עבור מנהל
                         canManageEvents = uiPermissions.contains(Permission.MANAGE_EVENT_INVENTORY);
                         canManagePolicies = uiPermissions.contains(Permission.SET_PURCHASING_POLICY) || 
                                                         uiPermissions.contains(Permission.SET_DISCOUNT_POLICY);
                     }
                 }
 
-                // קביעה האם המשתמש הנוכחי הוא הממנה של חבר הצוות הזה (חוקי היררכיה להסרה)
+                // Determine if the current user is the appointer of this team member (hierarchy rules for removal)
                 boolean removable = false;
                 if (role.getAppointedByMemberId() != null && role.getAppointedByMemberId().equals(currentUserId)) {
                     removable = true;
@@ -182,7 +178,7 @@ public class MembershipPresenter {
                 ));
             }
 
-            // 6. שליפת רשימת אירועי החברה ומיפויים דרך EventService
+            // 6. Fetch company events and map them via EventService
             List<EventDTO> domainEvents = eventService.getEventsByCompany(sessionToken, companyId);
 
             List<EventManagementItem> uiEvents = domainEvents.stream()
@@ -193,9 +189,9 @@ public class MembershipPresenter {
                     )) 
                     .collect(Collectors.toList());
             
-            // 7. בניית הסטטיסטיקות ותמציות המדיניות
+            // 7. Build statistics and policy summaries
             int activeEventsCount = (int) domainEvents.stream()
-                    // בודקים אם שדה ה-status קיים ושווה למחרוזת "ACTIVE"
+                    // Check if the status field exists and equals the string "ACTIVE"
                     .filter(e -> e.status() != null && e.status().equals("ACTIVE")) 
                     .count();
                     
@@ -206,7 +202,7 @@ public class MembershipPresenter {
             String discountPolicy = companyService.getDiscountPolicySummary(companyId);
             PolicySummary uiPolicySummary = new PolicySummary(purchasePolicy, discountPolicy);
 
-            // 8. החזרת הסטייט המלא והמובנה ישירות ל-View
+            // 8. Return the complete, structured state directly to the View
             return new CompanyManagementState(
                     managedCompanies,
                     selectedCompanyItem,
@@ -222,7 +218,6 @@ public class MembershipPresenter {
             );
 
         } catch (PresentationException e) {
-            // שגיאות שכבר טופלו ועטפו בהצלחה ב-Presenter
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw presentationException(e.getMessage());
@@ -375,6 +370,18 @@ public class MembershipPresenter {
 
         if (cleanMessage == null || cleanMessage.isBlank()) {
             return "אירעה שגיאה. נסו שוב.";
+        }
+        
+        if (message != null && (
+                message.contains("JWT") ||
+                message.contains("expired") ||
+                message.contains("Invalid") ||
+                message.contains("Invalid session ID") ||
+                message.contains("Token is missing or null") ||
+                message.contains("Session is no longer active") ||
+                message.contains("Invalid or expired security token")
+        )) {
+            return message;
         }
 
         return switch (cleanMessage) {

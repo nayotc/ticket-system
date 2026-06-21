@@ -4,21 +4,35 @@ import java.util.HashMap;
 import java.util.Map;
 
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.MapKey;
+import jakarta.persistence.OneToMany;
 
+@Entity
+@DiscriminatorValue("SEATING")
 public class SeatingArea extends Area {
-    private final Map<SeatPosition, Seat> seats = new HashMap<>();
+
+    @OneToMany(mappedBy = "seatingArea", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @MapKey(name = "position")
+    private Map<SeatPosition, Seat> seats = new HashMap<>();
     private int rows;
     private int columns;
 
+    protected SeatingArea() {}
 
-    public SeatingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, int rows, int columns) {
-        super(id, name, location, size);
+    public SeatingArea(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, int rows, int columns) {
+        super(name, location, size);
         this.rows = rows;
         this.columns = columns;
         for (int row = 1; row <= rows; row++) {
             for (int col = 1; col <= columns; col++) {
                 SeatPosition position = new SeatPosition(row, col);
-                seats.put(position, new Seat(position));
+                Seat seat = new Seat(position);
+                seat.setSeatingArea(this);
+                seats.put(position, seat);
             }
         }
     }
@@ -27,8 +41,11 @@ public class SeatingArea extends Area {
         super(other);
         this.rows = other.rows;
         this.columns = other.columns;
-        for (Map.Entry<SeatPosition, Seat> entry : other.seats.entrySet()) {
-            this.seats.put(entry.getKey(), new Seat(entry.getValue()));
+
+        for (Seat originalSeat : other.seats.values()) {
+            Seat copiedSeat = new Seat(originalSeat);
+            copiedSeat.setSeatingArea(this);
+            this.seats.put(copiedSeat.getPosition(), copiedSeat);
         }
     }
 

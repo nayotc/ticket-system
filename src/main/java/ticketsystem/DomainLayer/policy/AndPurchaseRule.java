@@ -2,7 +2,15 @@ package ticketsystem.DomainLayer.policy;
 
 import java.util.List;
 
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+
+@Entity
+@DiscriminatorValue("AND")
 public class AndPurchaseRule extends CompositePurchaseRule {
+
+    protected AndPurchaseRule() {
+    }
 
     public AndPurchaseRule(List<PurchaseRule> rules) {
         super(rules);

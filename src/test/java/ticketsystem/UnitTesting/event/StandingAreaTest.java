@@ -15,7 +15,7 @@ class StandingAreaTest {
     }
 
     private StandingArea standingArea(long capacity) {
-        return new StandingArea(1L, "Standing", pair(0, 0), pair(10, 10), capacity);
+        return new StandingArea( "Standing", pair(0, 0), pair(10, 10), capacity);
     }
 
     @Test

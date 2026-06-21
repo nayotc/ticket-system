@@ -63,7 +63,7 @@ public class WaitingQueueService {
         // Validate the token
         if (!(tokenService.validateToken(tokenString))) {
             logger.logEvent("Invalid token provided for reservation attempt.", LogLevel.INFO);
-            return "ERROR: Invalid token";
+            return "ERROR: Invalid session ID";
         }
         int maxRetries = 3;
         for (int i = 0; i < maxRetries; i++) {
@@ -344,7 +344,7 @@ public class WaitingQueueService {
 
         if (!(tokenService.validateToken(tokenString))) {
             logger.logEvent("Invalid token provided for queue position request.", LogbackSystemLogger.LogLevel.INFO);
-            throw new IllegalArgumentException("Invalid token");
+            throw new IllegalArgumentException("Invalid session ID");
         }
 
         Event event = eventRepository.getEventById(eventId);

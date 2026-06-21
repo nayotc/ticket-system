@@ -9,8 +9,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
-
-
+import com.vaadin.flow.component.notification.Notification;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,11 +17,11 @@ import java.util.Map;
 
 import ticketsystem.PresentationLayer.Components.EmptyState;
 import ticketsystem.PresentationLayer.Components.EventCard;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.SearchPanel;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
-import com.vaadin.flow.component.notification.Notification;
 import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.EventCardViewModel;
@@ -246,22 +245,38 @@ public class CompanySearchResults extends PageContainer implements BeforeEnterOb
 
             @Override
             public void onLotteryRegistrationRequested(Long eventId) {
-                eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
-
-                Notification.show(
-                        "נרשמת להגרלה בהצלחה.",
-                        3000,
-                        Notification.Position.TOP_CENTER
-                );
+                try {
+                    eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
+                    Notification.show("נרשמת להגרלה בהצלחה.", 3000, Notification.Position.TOP_CENTER);
+                    
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                        return;
+                    }
+                    Notifications.error(e.getMessage());
+                    
+                } catch (Exception e) {
+                    Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
+                }
             }
 
             @Override
             public boolean isPreSaleCodeValid(Long eventId, String lotteryCode) {
-                return eventCardPresenter.isPreSaleCodeValid(
-                        UiSession.getMemberToken(),
-                        eventId,
-                        lotteryCode
-                );
+                try {
+                    return eventCardPresenter.isPreSaleCodeValid(UiSession.getMemberToken(), eventId, lotteryCode);
+                    
+                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+                    if (e.isSessionTimeout()) {
+                        UiSession.handleTimeoutRedirect();
+                    } else {
+                        Notifications.error(e.getMessage());
+                    }
+                    return false;
+                    
+                } catch (Exception e) {
+                    return false;
+                }
             }
 
             @Override

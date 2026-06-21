@@ -8,7 +8,6 @@ import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
-import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountPolicyDraftDTO;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountType;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.DiscountValueType;
@@ -21,13 +20,11 @@ import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseEx
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseNodeType;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.LogicalOperator;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseRuleField;
-import ticketsystem.PresentationLayer.Views.Management.EditEvent;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.ComparisonOperator;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Component
 public class PoliciesEditorPresenter {

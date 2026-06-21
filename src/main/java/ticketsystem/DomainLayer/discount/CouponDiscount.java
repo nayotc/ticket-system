@@ -1,11 +1,24 @@
 package ticketsystem.DomainLayer.discount;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public class CouponDiscount extends DiscountTypes{
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+
+@Entity
+@DiscriminatorValue("COUPON")
+public class CouponDiscount extends DiscountTypes {
+
+    @Column(name = "coupon_code")
     private String couponCode;
+
+    @Column(name = "coupon_end_time")
     private LocalDateTime endTime;
-    
+
+    protected CouponDiscount() {
+    }
 
     public CouponDiscount(String name,
                           String couponCode,

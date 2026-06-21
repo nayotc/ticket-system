@@ -1,9 +1,16 @@
 package ticketsystem.DomainLayer.discount;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
+import java.math.BigDecimal;
+
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+
+@Entity
+@DiscriminatorValue("VISIBLE")
 public class VisibleDiscount extends DiscountTypes {
-    
+
+    protected VisibleDiscount() {
+    }
 
     public VisibleDiscount(String name,
                            BigDecimal percentage
@@ -28,3 +35,4 @@ public class VisibleDiscount extends DiscountTypes {
         return DiscountKind.VISIBLE;
     }
 }
+
