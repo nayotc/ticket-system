@@ -355,8 +355,7 @@ public class SystemAdminService {
                         LogbackSystemLogger.LogLevel.WARN);
                 throw new IllegalArgumentException("Unauthorized access. Invalid admin credentials.");
             }
-            List<SuspentionUserDTO> suspendedUsersDTOs = userRepository.getAllMembers().stream()
-                    .filter(Member::isSuspended)
+            List<SuspentionUserDTO> suspendedUsersDTOs = userRepository.findSuspendedMembers().stream()
                     .map(member -> {
                         Suspension suspension = member.getSuspension();
                         LocalDateTime start = suspension.getStartDate();

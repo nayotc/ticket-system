@@ -6,7 +6,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
+import ticketsystem.DomainLayer.user.CompanyRole;
 import ticketsystem.DomainLayer.user.Member;
+import ticketsystem.DomainLayer.user.Owner;
+import ticketsystem.DomainLayer.user.RoleStatus;
 
 /**
  * In-memory implementation used by acceptance/unit tests that construct repositories manually.
@@ -67,6 +70,19 @@ public class InMemoryUserRepository implements IUserRepository {
             return null;
         }
         return getMemberById(id);
+    }
+
+    @Override
+    public Member getMemberByUsernameIgnoreCase(String username) {
+        if (username == null) {
+            return null;
+        }
+        for (var entry : usernameToIdMap.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(username)) {
+                return getMemberById(entry.getValue());
+            }
+        }
+        return null;
     }
 
     @Override
@@ -158,6 +174,52 @@ public class InMemoryUserRepository implements IUserRepository {
             membersCopy.add(new Member(member));
         }
         return membersCopy;
+    }
+
+    @Override
+    public int countPendingRolesByCompanyId(Long companyId) {
+        int count = 0;
+        for (Member member : registeredMembersMap.values()) {
+            CompanyRole role = member.getRoleInCompany(companyId);
+            if (role != null && role.getStatus() == RoleStatus.PENDING) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Override
+    public int countActiveOwnersByCompanyId(Long companyId) {
+        int count = 0;
+        for (Member member : registeredMembersMap.values()) {
+            CompanyRole role = member.getRoleInCompany(companyId);
+            if (role instanceof Owner && role.getStatus() == RoleStatus.ACTIVE) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Override
+    public List<Member> findMembersWithRolesInCompany(Long companyId) {
+        List<Member> members = new ArrayList<>();
+        for (Member member : registeredMembersMap.values()) {
+            if (member.getRoleInCompany(companyId) != null) {
+                members.add(new Member(member));
+            }
+        }
+        return members;
+    }
+
+    @Override
+    public List<Member> findSuspendedMembers() {
+        List<Member> members = new ArrayList<>();
+        for (Member member : registeredMembersMap.values()) {
+            if (member.isSuspended()) {
+                members.add(new Member(member));
+            }
+        }
+        return members;
     }
 
     private long resolveMemberId(long id, Member member) {

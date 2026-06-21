@@ -122,13 +122,9 @@ public class MembershipService {
             userAccessService.validateCanPerformNonViewAction(appointerId);
             
             // Find the target member by name securely using the repository
-            Member targetMember = userRepository.getAllMembers().stream()
-                    .filter(m -> m.getUserName() != null && m.getUserName().equalsIgnoreCase(targetName))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Target member with name '" + targetName + "' not found."));
-            
+            Member targetMember = userRepository.getMemberByUsernameIgnoreCase(targetName);
             if (targetMember == null) {
-                throw new IllegalArgumentException("Target Member not found.");
+                throw new IllegalArgumentException("Target member with name '" + targetName + "' not found.");
             }
 
             Long targetMemberId = targetMember.getId();
@@ -196,13 +192,9 @@ public class MembershipService {
             userAccessService.validateCanPerformNonViewAction(appointerId);
 
             // Find the target member by name securely using the repository
-            Member targetMember = userRepository.getAllMembers().stream()
-                    .filter(m -> m.getUserName() != null && m.getUserName().equalsIgnoreCase(targetName))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Target member with name '" + targetName + "' not found."));
-            
+            Member targetMember = userRepository.getMemberByUsernameIgnoreCase(targetName);
             if (targetMember == null) {
-                throw new IllegalArgumentException("Target Member not found.");
+                throw new IllegalArgumentException("Target member with name '" + targetName + "' not found.");
             }
 
             Long targetMemberId = targetMember.getId();
@@ -414,13 +406,9 @@ public class MembershipService {
              userAccessService.validateCanPerformNonViewAction(appointerId);
             
              // Find the manager by name securely using the repository
-            Member managerMember = userRepository.getAllMembers().stream()
-                    .filter(m -> m.getUserName() != null && m.getUserName().equalsIgnoreCase(managerName))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Manager with name '" + managerName + "' not found."));
-            
+             Member managerMember = userRepository.getMemberByUsernameIgnoreCase(managerName);
             if (managerMember == null) {
-                throw new IllegalArgumentException("Target Manager not found.");
+                throw new IllegalArgumentException("Manager with name '" + managerName + "' not found.");
             }
 
             logger.logEvent(
@@ -994,17 +982,7 @@ public class MembershipService {
      */
     public int getPendingAssignmentsCount(Long companyId) {
         try {
-            int count = 0;
-
-            for (Member member : userRepository.getAllMembers()) {
-                CompanyRole role = member.getRoleInCompany(companyId);
-                
-                if (role != null && role.getStatus() == ticketsystem.DomainLayer.user.RoleStatus.PENDING) {
-                    count++;
-                }
-            }
-            
-            return count;
+            return userRepository.countPendingRolesByCompanyId(companyId);
         } catch (Exception e) {
             logger.logError("Failed to get pending assignments count for companyId=" + companyId, e);
             return 0; 

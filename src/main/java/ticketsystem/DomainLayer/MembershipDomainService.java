@@ -402,14 +402,7 @@ public class MembershipDomainService {
     }
 
     private int ownerCountInCompany(Long companyId) {
-        int count = 0;
-        for (Member member : userRepository.getAllMembers()) {
-            CompanyRole role = member.getRoleInCompany(companyId);
-            if (role instanceof Owner && role.getStatus() == RoleStatus.ACTIVE) {
-                count++;
-            }
-        }
-        return count;
+        return userRepository.countActiveOwnersByCompanyId(companyId);
     }
 
     public boolean validateRemoveManagerAssignment(Member appointer, Member appointee, Long companyId) throws Exception {
@@ -524,7 +517,7 @@ public class MembershipDomainService {
     }
 
     public void cancelAllRolesForCompany(Long companyId) {
-        for (Member member : userRepository.getAllMembers()) {
+        for (Member member : userRepository.findMembersWithRolesInCompany(companyId)) {
             CompanyRole role = member.getRoleInCompany(companyId);
 
             if (role != null && role.getStatus() != RoleStatus.CANCELLED) {
