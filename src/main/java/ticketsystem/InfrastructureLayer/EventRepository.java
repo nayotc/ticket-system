@@ -22,11 +22,15 @@ import org.springframework.data.jpa.domain.Specification;
 
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.EventSearchResultView;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
 public class EventRepository implements IEventRepository {
 
     private final EventJpaRepository eventJpaRepository;
+
+    private final ConcurrentHashMap<Long, Integer> activeReservationsCounts =
+            new ConcurrentHashMap<>();
 
     public EventRepository(EventJpaRepository eventJpaRepository) {
         this.eventJpaRepository = eventJpaRepository;
@@ -44,13 +48,14 @@ public class EventRepository implements IEventRepository {
         }
 
         eventJpaRepository.saveAndFlush(event);
+        rememberRuntimeState(event);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Event getEventById(Long eventId) {
         return eventJpaRepository.findByIdWithMap(eventId)
-                .map(Event::copy)
+                .map(this::copyWithRuntimeState)
                 .orElse(null);
     }
 
@@ -69,6 +74,7 @@ public class EventRepository implements IEventRepository {
 
         try {
             eventJpaRepository.saveAndFlush(event);
+            rememberRuntimeState(event);
         } catch (OptimisticLockingFailureException exception) {
             throw new OptimisticLockException(
                     "Event was modified by another request.\nEvent id: " + event.getId()
@@ -91,6 +97,7 @@ public class EventRepository implements IEventRepository {
         try {
             eventJpaRepository.delete(event);
             eventJpaRepository.flush();
+            activeReservationsCounts.remove(eventId);
         } catch (OptimisticLockingFailureException exception) {
             throw new OptimisticLockException(
                     "Event was modified by another request.\nEvent id: " + eventId
@@ -102,7 +109,7 @@ public class EventRepository implements IEventRepository {
     @Transactional(readOnly = true)
     public List<Event> getEventsByCompanyId(Long companyId) {
         return eventJpaRepository.findByCompanyIdWithMap(companyId).stream()
-                .map(Event::copy)
+                .map(this::copyWithRuntimeState)
                 .toList();
     }
 
@@ -325,5 +332,35 @@ public class EventRepository implements IEventRepository {
         }
 
         return normalized;
+    }
+
+    private Event copyWithRuntimeState(Event persistedEvent) {
+        Event copy = persistedEvent.copy();
+
+        int activeReservations = activeReservationsCounts.getOrDefault(
+                persistedEvent.getId(),
+                0
+        );
+
+        copy.restoreActiveReservationsCount(activeReservations);
+        return copy;
+    }
+
+    private void rememberRuntimeState(Event event) {
+        if (event == null || event.getId() == null) {
+            return;
+        }
+
+        int activeReservations = event.getActiveReservationsCount();
+
+        if (activeReservations == 0) {
+            activeReservationsCounts.remove(event.getId());
+            return;
+        }
+
+        activeReservationsCounts.put(
+                event.getId(),
+                activeReservations
+        );
     }
 }

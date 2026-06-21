@@ -351,14 +351,14 @@ public class Event {
         return activeReservationsCount.get();
     }
 
-    @Access(AccessType.PROPERTY)
-    @Column(name = "active_reservations_count")
-    protected int getActiveReservationsCountValue() {
-        return activeReservationsCount == null ? 0 : activeReservationsCount.get();
-    }
+    public void restoreActiveReservationsCount(int count) {
+        if (count < 0) {
+            throw new IllegalArgumentException(
+                    "Active reservations count cannot be negative"
+            );
+        }
 
-    protected void setActiveReservationsCountValue(int value) {
-        this.activeReservationsCount = new AtomicInteger(value);
+        this.activeReservationsCount.set(count);
     }
 
     // use case: search and filtering
