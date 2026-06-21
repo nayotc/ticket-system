@@ -166,6 +166,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
 
             renderMap();
             refreshSummary();
+            refreshReservationTimer();
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
@@ -197,51 +198,54 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
         syncSelectedStandingFromActiveOrder();
         renderMap();
         refreshSummary();
+        refreshReservationTimer();
     }
 
     private void syncSelectedSeatsFromActiveOrder() {
-        try {
-            ActiveOrderDTO order = reservationPresenter.loadActiveOrder(currentToken());
+    try {
+        ActiveOrderDTO order = loadCurrentEventActiveOrder();
 
-            if (order == null || order.getTickets() == null || mapDTO == null || mapDTO.elements() == null) {
-                return;
+        if (order == null || order.getTickets() == null || mapDTO == null || mapDTO.elements() == null) {
+            return;
+        }
+
+        for (TicketDTO ticket : order.getTickets()) {
+            if (ticket.getEventId() == null || !ticket.getEventId().equals(eventId)) {
+                continue;
             }
 
-            for (TicketDTO ticket : order.getTickets()) {
-                
-                for (IMapElementDTO element : mapDTO.elements()) {
-                    if (!(element instanceof SeatingAreaDTO area)) {
-                        continue;
-                    }
+            for (IMapElementDTO element : mapDTO.elements()) {
+                if (!(element instanceof SeatingAreaDTO area)) {
+                    continue;
+                }
 
-                    SeatDTO seat = findSeat(area, ticket.getRow(), ticket.getChair());
+                SeatDTO seat = findSeat(area, ticket.getRow(), ticket.getChair());
 
-                    if (seatRow(seat) == ticket.getRow() && seatNumber(seat) == ticket.getChair()) {
-                        SeatKey key = new SeatKey(area.id(), ticket.getRow(), ticket.getChair());
+                if (seatRow(seat) == ticket.getRow() && seatNumber(seat) == ticket.getChair()) {
+                    SeatKey key = new SeatKey(area.id(), ticket.getRow(), ticket.getChair());
 
-                        selectedSeats.put(
-                                key,
-                                new SelectedSeat(
-                                        area.id(),
-                                        safeText(area.name(), "אזור ישיבה"),
-                                        ticket.getRow(),
-                                        ticket.getChair(),
-                                        ticket.getPrice() == null ? ticketPrice() : ticket.getPrice()
-                                )
-                        );
+                    selectedSeats.put(
+                            key,
+                            new SelectedSeat(
+                                    area.id(),
+                                    safeText(area.name(), "אזור ישיבה"),
+                                    ticket.getRow(),
+                                    ticket.getChair(),
+                                    ticket.getPrice() == null ? ticketPrice() : ticket.getPrice()
+                            )
+                    );
 
-                        break;
-                    }
+                    break;
                 }
             }
-        } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
-                UiSession.handleTimeoutRedirect();
-                return; 
-            }
-        } catch (Exception e) {
-        } 
+        }
+    } catch (PresentationException e) {
+        if (e.isSessionTimeout()) {
+            UiSession.handleTimeoutRedirect();
+        }
+    } catch (Exception ignored) {
     }
+}
 
     private Div createMapToolbar() {
         Div toolbar = new Div();
@@ -660,18 +664,13 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
                 reloadTicketSelectionEventDataKeepingSelection();
                 return;
 
-            } else if (isSeatAvailable(seat)) {
-                reservationPresenter.selectSeatTicket(token, eventId, area.id(), row, number, currentLotteryCode());
-                refreshReservationTimer();
+          } else if (isSeatAvailable(seat)) {
+            reservationPresenter.selectSeatTicket(token, eventId, area.id(), row, number, currentLotteryCode());
+            refreshReservationTimer();
 
-                selectedSeats.put(
-                        key,
-                        new SelectedSeat(area.id(), safeText(area.name(), "אזור ישיבה"), row, number, ticketPrice())
-                );
-
-                renderMap();
-                refreshSummary();
-            }
+            reloadTicketSelectionEventDataKeepingSelection();
+            return;
+        }
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
@@ -703,6 +702,9 @@ public class SelectTicketView extends Div implements BeforeEnterObserver {
             }
 
             for (TicketDTO ticket : order.getTickets()) {
+                if (ticket.getEventId() == null || !ticket.getEventId().equals(eventId)) {
+                        continue;
+                    }
                 if (ticket.getRow() == row && ticket.getChair() == chair) {
 
                     reservationPresenter.removeTicketFromActiveOrder(

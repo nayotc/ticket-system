@@ -453,7 +453,7 @@ public class ReservationService {
                 order.paymentFailed();
                 saveAll(order, event);
                 notifyOrderOwner(
-                        token,
+                        order,
                         "Payment failed. No purchase was completed.");
                 throw new IllegalStateException("Payment failed");
             }
@@ -476,7 +476,7 @@ public class ReservationService {
                 saveAll(order, event);
 
                 notifyOrderOwner(
-                        token,
+                        order,
                         "Your purchase was completed successfully. Your tickets are now available.");
 
                 notifyEventManagersIfBecameSoldOut(event, wasSoldOutBeforeCheckout);
@@ -509,9 +509,10 @@ public class ReservationService {
             throw e;
         }
     }
+
     private void expireCurrentOrder(String token, ActiveOrder order, Event event) {
         notifyOrderOwner(
-                token,
+                order,
                 "Your active order has expired. Please select tickets again."
         );
 
@@ -596,7 +597,7 @@ public class ReservationService {
         order.paymentFailed();
         saveAll(order, event);
         notifyOrderOwner(
-                order.getSessionToken(),
+                order,
                 "The purchase was canceled because ticket issuing failed. A refund was issued.");
 
         if (refundResult) {
@@ -700,17 +701,29 @@ public class ReservationService {
         List<ActiveOrder> allOrders = orderRepository.getAll();
 
         for (ActiveOrder order : allOrders) {
+            try{
             Event event = eventRepository.getEventById(order.getEventId());
 
-            if (event == null) {
+            if (event == null || order == null) {
                 continue;
             }
-
-            if (reservationDomeinService.timeExpire(event, order)) {
+            String token= order.getSessionToken();
+            boolean tokenExpired =false;
+            try{
+                tokenService.validateToken(token);
+            }
+            catch (Exception e){
+                tokenExpired = true;
+            }
+            boolean guestOrder = order.getUserId() == null;
+            if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
+                reservationDomeinService.expire(event, order);
+                System.out.print("relese pass");
+                
                 notifyOrderOwner(
-                        order.getSessionToken(),
+                        order,
                         "Your active order has expired. The reserved tickets were released back to the inventory.");
-
+                
                 expirationWarningSentOrderIds.remove(order.getOrderId());
                 eventRepository.updateEvent(event);
                 orderRepository.deleteOrder(order.getOrderId());
@@ -722,11 +735,10 @@ public class ReservationService {
                 continue;
             }
 
-            if (reservationDomeinService.timeAboutToExpire(event, order)
-                    && expirationWarningSentOrderIds.add(order.getOrderId())) {
+            if (reservationDomeinService.timeAboutToExpire(event, order) && expirationWarningSentOrderIds.add(order.getOrderId())) {
 
                 notifyOrderOwner(
-                        order.getSessionToken(),
+                        order,
                         "Your active order is about to expire. Please complete your purchase soon.");
 
                 logger.logEvent(
@@ -734,7 +746,16 @@ public class ReservationService {
                         LogLevel.INFO);
             }
         }
+        catch (Exception e){
+                          logger.logEvent(
+                    "Failed to expire orderId=" + order.getOrderId()
+                            + ", eventId=" + order.getEventId()
+                            + ", reason=" + e.getMessage(),
+                    LogLevel.WARN
+            );
+        }
     }
+}
 
     private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutBefore) {
         if (event == null || notificationsService == null || companyRepository == null || membershipDomain == null) {
@@ -794,19 +815,56 @@ public class ReservationService {
         }
     }
 
-    private void notifyOrderOwner(String sessionToken, String message) {
-        if (sessionToken == null || message == null || message.isBlank()) {
+    private void notifyOrderOwner(ActiveOrder order, String message) {
+    if (order == null || message == null || message.isBlank()) {
+        return;
+    }
+
+    try {
+        if (order.getUserId() != null) {
+            notificationsService.notifyMember(order.getUserId(), message);
             return;
         }
-        if (tokenService.isMemberToken(sessionToken)) {
-            Long memberId = tokenService.extractUserId(sessionToken);
-            if (memberId != null) {
-                notificationsService.notifyMember(memberId, message);
-                return;
-            }
+
+        String sessionToken = order.getSessionToken();
+        if (sessionToken == null) {
+            return;
         }
-        notificationsService.notifyGuest(sessionToken, message);
+
+        try {
+            tokenService.validateToken(sessionToken);
+            notificationsService.notifyGuest(sessionToken, message);
+        } catch (Exception ignored) {
+            // אורח לא מחובר / טוקן פג — אין למי לשלוח התראה
+        }
+
+    } catch (Exception e) {
+        logger.logEvent("Failed to notify order owner. reason=" + e.getMessage(), LogLevel.WARN);
     }
+}
+
+    // private void notifyOrderOwner(String sessionToken, String message) {
+    //     if (sessionToken == null || message == null || message.isBlank()) {
+    //         return;
+    //     }
+        
+    //     try{
+    //         tokenService.validateToken(sessionToken);
+    //     }
+    //     catch (Exception e){
+    //         return;
+    //     }
+        
+    //     if (tokenService.isMemberToken(sessionToken)) {
+    //         Long memberId = tokenService.extractUserId(sessionToken);
+    //         if (memberId != null) {
+    //             notificationsService.notifyMember(memberId, message);
+    //             return;
+    //         }
+    //     }
+
+    //     notificationsService.notifyGuest(sessionToken, message);
+    // }
 
     private TicketIssueRequest createTicketIssueRequest(PurchaseDTO purchesDTO, OrderDTO orderDTO) {
         {

@@ -136,7 +136,6 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
     public boolean timeExpire(Event event , ActiveOrder order) {
         if ((order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT && order.isExpired()) ||
                     (order.getStatus() == ActiveOrder.OrderStatus.CANCELLED)) {
-                        expire(event, order);
                         return true;
                     }
                 return false;

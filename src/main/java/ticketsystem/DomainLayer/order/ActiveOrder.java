@@ -34,6 +34,7 @@ public class ActiveOrder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "order_id")
     private Long orderId;
 
     @Column(name = "session_token", nullable = false, length = 512)
