@@ -1,5 +1,6 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -191,6 +192,36 @@ public class InMemoryOrderRepository implements IOrderRepository {
                 }
             }
             return activeOrders;
+        }
+    }
+
+    @Override
+    public List<ActiveOrder> findExpiredOrders(LocalDateTime now) {
+        synchronized (lock) {
+            List<ActiveOrder> expiredOrders = new ArrayList<>();
+            for (ActiveOrder order : orders.values()) {
+                boolean expired = order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT
+                        && order.isExpired();
+                if (expired || order.getStatus() == ActiveOrder.OrderStatus.CANCELLED) {
+                    expiredOrders.add(order.copy());
+                }
+            }
+            return expiredOrders;
+        }
+    }
+
+    @Override
+    public List<ActiveOrder> findOrdersExpiringBetween(LocalDateTime now, LocalDateTime warningCutoff) {
+        synchronized (lock) {
+            List<ActiveOrder> expiringOrders = new ArrayList<>();
+            for (ActiveOrder order : orders.values()) {
+                if (order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT
+                        && !order.isExpired()
+                        && order.isAboutToExpire()) {
+                    expiringOrders.add(order.copy());
+                }
+            }
+            return expiringOrders;
         }
     }
 

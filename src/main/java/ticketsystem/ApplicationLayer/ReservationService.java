@@ -3,20 +3,17 @@ package ticketsystem.ApplicationLayer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -38,7 +35,6 @@ import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
-import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.discount.PricingQuote;
 import ticketsystem.DTO.PricingQuoteDTO;
@@ -63,6 +59,7 @@ public class ReservationService {
     private final Set<Long> expirationWarningSentOrderIds = ConcurrentHashMap.newKeySet();
     private final Set<Long> soldOutNotificationSentEventIds = ConcurrentHashMap.newKeySet();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final long EXPIRATION_WARNING_BEFORE_MINUTES = 2;
 
     public ReservationService(
             IOrderRepository orderRepository,
@@ -700,31 +697,27 @@ public class ReservationService {
     }
 
     private void expireOldOrders() {
-        List<ActiveOrder> allOrders = orderRepository.getAll();
+        LocalDateTime now = LocalDateTime.now();
+        List<ActiveOrder> expiredOrders = orderRepository.findExpiredOrders(now);
 
-        for (ActiveOrder order : allOrders) {
-            try{
-            Event event = eventRepository.getEventById(order.getEventId());
+        for (ActiveOrder order : expiredOrders) {
+            try {
+                if (order == null) {
+                    continue;
+                }
 
-            if (event == null || order == null) {
-                continue;
-            }
-            String token= order.getSessionToken();
-            boolean tokenExpired =false;
-            try{
-                tokenService.validateToken(token);
-            }
-            catch (Exception e){
-                tokenExpired = true;
-            }
-            boolean guestOrder = order.getUserId() == null;
-            if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
+                Event event = eventRepository.getEventById(order.getEventId());
+
+                if (event == null) {
+                    continue;
+                }
+
                 reservationDomeinService.expire(event, order);
-                
+
                 notifyOrderOwner(
                         order,
                         "Your active order has expired. The reserved tickets were released back to the inventory.");
-                
+
                 expirationWarningSentOrderIds.remove(order.getOrderId());
                 eventRepository.updateEvent(event);
                 orderRepository.deleteOrder(order.getOrderId());
@@ -732,12 +725,23 @@ public class ReservationService {
                 logger.logEvent(
                         "Expired order cancelled: " + order.getOrderId(),
                         LogLevel.WARN);
-
-                continue;
+            } catch (Exception e) {
+                logger.logEvent(
+                        "Failed to expire orderId=" + order.getOrderId()
+                                + ", eventId=" + order.getEventId()
+                                + ", reason=" + e.getMessage(),
+                        LogLevel.WARN
+                );
             }
+        }
 
-            if (reservationDomeinService.timeAboutToExpire(event, order) && expirationWarningSentOrderIds.add(order.getOrderId())) {
+        List<ActiveOrder> expiringOrders = orderRepository.findOrdersExpiringBetween(
+                now,
+                now.plusMinutes(EXPIRATION_WARNING_BEFORE_MINUTES)
+        );
 
+        for (ActiveOrder order : expiringOrders) {
+            if (expirationWarningSentOrderIds.add(order.getOrderId())) {
                 notifyOrderOwner(
                         order,
                         "Your active order is about to expire. Please complete your purchase soon.");
@@ -747,16 +751,7 @@ public class ReservationService {
                         LogLevel.INFO);
             }
         }
-        catch (Exception e){
-                          logger.logEvent(
-                    "Failed to expire orderId=" + order.getOrderId()
-                            + ", eventId=" + order.getEventId()
-                            + ", reason=" + e.getMessage(),
-                    LogLevel.WARN
-            );
-        }
     }
-}
 
     private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutBefore) {
         if (event == null || notificationsService == null || companyRepository == null || membershipDomain == null) {
