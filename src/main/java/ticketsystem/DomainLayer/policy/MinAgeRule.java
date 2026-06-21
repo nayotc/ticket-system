@@ -1,8 +1,18 @@
 package ticketsystem.DomainLayer.policy;
 
-public class MinAgeRule implements PurchaseRule {
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
-    private final int minAge;
+@Entity
+@DiscriminatorValue("MIN_AGE")
+public class MinAgeRule extends PurchaseRule {
+
+    @Column(name = "min_age")
+    private int minAge;
+
+    protected MinAgeRule() {
+    }
 
     public MinAgeRule(int minAge) {
         if (minAge < 0) {

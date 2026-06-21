@@ -94,7 +94,7 @@ class AndDiscountConditionTest {
         assertEquals(1, andCondition.getConditions().size());
     }
 
-    private static class FakeDiscountCondition implements DiscountCondition {
+    private static class FakeDiscountCondition extends DiscountCondition {
         private final boolean satisfied;
         private int callCount = 0;
 

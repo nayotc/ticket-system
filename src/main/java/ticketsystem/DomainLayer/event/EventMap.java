@@ -4,10 +4,35 @@ import java.util.List;
 
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+
+@Embeddable
 public class EventMap {
 
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "first", column = @Column(name = "map_width")),
+            @AttributeOverride(name = "second", column = @Column(name = "map_height"))
+    })
     private Pair<Integer, Integer> size;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id")
     private List<Element> elements;
+
+    protected EventMap() {}
 
     public EventMap(Pair<Integer, Integer> size) {
         this.size = size;
@@ -19,7 +44,7 @@ public class EventMap {
         this.size = other.size.copy();
         this.elements = other.elements.stream()
                 .map(Element::copy)
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     public Pair<Integer, Integer> getSize() {

@@ -2,14 +2,27 @@ package ticketsystem.DomainLayer.discount;
 
 import java.time.LocalDateTime;
 
-public class DateRangeCondition implements DiscountCondition {
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
-    private final LocalDateTime startTime;
-    private final LocalDateTime endTime;
+@Entity
+@DiscriminatorValue("DATE_RANGE")
+public class DateRangeCondition extends DiscountCondition {
 
-    public DateRangeCondition(LocalDateTime startTime,
-                              LocalDateTime endTime) {
+    @Column(name = "start_time")
+    private LocalDateTime startTime;
 
+    @Column(name = "end_time")
+    private LocalDateTime endTime;
+
+    protected DateRangeCondition() {
+    }
+
+    public DateRangeCondition(
+            LocalDateTime startTime,
+            LocalDateTime endTime
+    ) {
         if (startTime == null || endTime == null) {
             throw new IllegalArgumentException(
                     "Start time and end time are required");

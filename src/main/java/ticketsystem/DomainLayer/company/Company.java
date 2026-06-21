@@ -21,6 +21,11 @@ import ticketsystem.DomainLayer.discount.DiscountCondition;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.DiscountTypes;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
+import ticketsystem.DomainLayer.discount.DiscountCalculationResult;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import ticketsystem.DomainLayer.policy.PolicyResult;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
@@ -42,14 +47,12 @@ public class Company {
     @Column(name = "active", nullable = false)
     private boolean active;
 
-    /*
-     * Temporary for the Company DB branch:
-     * purchasePolicy and discountPolicy persistence are handled separately.
-     */
-    @Transient
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "purchase_policy_id", nullable = false, unique = true)
     private PurchasePolicy purchasePolicy;
 
-    @Transient
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "discount_policy_id", nullable = false, unique = true)
     private DiscountPolicy discountPolicy;
 
     @Column(name = "rate", nullable = false)
@@ -86,6 +89,7 @@ public class Company {
         ensureDefaultPolicies();
     }
 
+    // Copy Constructor
     public Company(Company other) {
         this.id = other.id;
         this.name = other.name;

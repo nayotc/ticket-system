@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
-import static java.util.Collections.synchronizedList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -13,18 +12,21 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static java.util.Collections.synchronizedList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.IPaymentService;
-import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.ApplicationLayer.ReservationService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
@@ -36,52 +38,34 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
+import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.event.Event;
-import ticketsystem.DomainLayer.event.EventCategory;
-import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.DomainLayer.event.SeatingArea;
-import ticketsystem.DomainLayer.event.StandingArea;
+import ticketsystem.DomainLayer.event.*;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
-import ticketsystem.InfrastructureLayer.EventRepository;
+import ticketsystem.InfrastructureLayer.CompanyRepository;
+import ticketsystem.InfrastructureLayer.InMemoryEventRepository;
 import ticketsystem.InfrastructureLayer.LotteryRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
 import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.PaymentServiceProxy;
 import ticketsystem.InfrastructureLayer.TokenRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
 
-import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.persistence.CompanyJpaRepository;
 import ticketsystem.InfrastructureLayer.persistence.LotteryJpaRepository;
-
 
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-@DataJpaTest(
-        properties = {
-                "spring.jpa.hibernate.ddl-auto=create-drop"
-        }
-)
-@AutoConfigureTestDatabase(
-        replace = AutoConfigureTestDatabase.Replace.ANY
-)
-@Import({
-        CompanyRepository.class,
-        LotteryRepository.class
-})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
+@SpringBootTest
 public class ReservationServiceTest {
     private ReservationService reservationService;
-
+    private ReservationService policyAwareReservationService;
     private IOrderRepository orderRepository;
+
+    @Autowired
     private IEventRepository eventRepository;
 
     @Autowired
@@ -96,8 +80,8 @@ public class ReservationServiceTest {
     @Autowired
     private CompanyJpaRepository companyJpaRepository;
 
+    private IEventRepository policyRepository;
     private IUserRepository userRepository;
-
     private IPaymentService paymentService;
     private TestSecureBarcode secureBarcode;
     private TokenService tokenService;
@@ -105,13 +89,13 @@ public class ReservationServiceTest {
     private EventCatalogDomainService eventCatalogDomainService;
     private MembershipDomainService membershipDomain;
     private UserAccessService userAccessService;
-
     private ISystemLogger logger;
     private FakeNotifier fakeNotifier;
-
     private String[] memberTokens;
 
     private Long companyId;
+
+    private final List<Long> createdEventIds = new ArrayList<>();
 
     private static final Long COMPANY_FOUNDER_ID = 1L;
 
@@ -119,20 +103,19 @@ public class ReservationServiceTest {
     void setUp() {
         companyJpaRepository.deleteAll();
         orderRepository = new InMemoryOrderRepository();
-        eventRepository = new EventRepository();
-
-
+        policyRepository = new InMemoryEventRepository();
         userRepository = new InMemoryUserRepository();
         membershipDomain = new MembershipDomainService(userRepository);
-
         paymentService = new PaymentServiceProxy();
         secureBarcode = new TestSecureBarcode();
         logger = new NoOpSystemLogger();
         fakeNotifier = new FakeNotifier();
         userAccessService = new UserAccessService(userRepository);
+
         tokenService = new TokenService(
                 "manual_test_secret_32_chars_long",
-                new TokenRepository(), logger
+                new TokenRepository(),
+                logger
         );
 
         userService = new UserService(userRepository, tokenService, logger);
@@ -146,6 +129,7 @@ public class ReservationServiceTest {
 
         companyRepository.save(company);
 
+        eventCatalogDomainService = new EventCatalogDomainService((CompanyRepository) companyRepository);
         companyId = company.getId();
 
         assertNotNull(
@@ -163,45 +147,46 @@ public class ReservationServiceTest {
                 );
         resetPaymentProxy();
 
-        reservationService = new ReservationService(
-                orderRepository,
-                eventRepository,
-                companyRepository,
-                membershipDomain,
-                tokenService,
-                paymentService,
-                secureBarcode,
-                lotteryRepository,
-                eventCatalogDomainService,
-                logger,
-                fakeNotifier, userAccessService
+        reservationService = createReservationService(eventRepository);
+        policyAwareReservationService = createReservationService(
+                new PolicyAwareEventRepository(eventRepository, policyRepository)
         );
 
         memberTokens = new String[40];
+
         for (int i = 0; i < memberTokens.length; i++) {
             memberTokens[i] = createLoggedInMember("user" + i, "password123");
         }
     }
 
+    @AfterEach
+    void cleanUpPersistedEvents() {
+        for (Long eventId : createdEventIds) {
+            Event persistedEvent = eventRepository.getEventById(eventId);
+
+            if (persistedEvent != null) {
+                eventRepository.deleteEvent(eventId, persistedEvent.getVersion());
+            }
+        }
+
+        createdEventIds.clear();
+    }
+
     @Test
     void ConcurrencyTest_SelectSameSeat_WhenManyUsersTrySameSeat_ThenOnlyOneUserSucceeds()
             throws InterruptedException {
+        Event event = createActiveEventWithSingleSeat();
+        saveEvent(event);
 
-        Long eventId = 100L;
-        Long areaId = 1L;
-
-        Event event = createActiveEventWithSingleSeat(eventId);
-        eventRepository.addEvent(event);
-
+        Long eventId = event.getId();
+        Long areaId = getSeatingAreaId(event);
         int numberOfThreads = 20;
 
         ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(numberOfThreads);
-
         AtomicInteger successCount = new AtomicInteger(0);
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
-
         seatPositionDTO position = new seatPositionDTO(1, 1);
 
         for (int i = 0; i < numberOfThreads; i++) {
@@ -222,9 +207,8 @@ public class ReservationServiceTest {
                     if (result) {
                         successCount.incrementAndGet();
                     }
-
-                } catch (Throwable t) {
-                    exceptions.add(t);
+                } catch (Throwable throwable) {
+                    exceptions.add(throwable);
                 } finally {
                     doneLatch.countDown();
                 }
@@ -242,32 +226,37 @@ public class ReservationServiceTest {
     @Test
     void ConcurrencyTest_CheckoutSameOrder_WhenManyThreadsCheckoutSameOrder_ThenOnlyOneCheckoutSucceeds()
             throws InterruptedException {
-
-        Long eventId = 101L;
-        Long areaId = 1L;
         String token = tokenForUserIndex(1);
+        Event event = createActiveStandingEvent();
 
-        Event event = createActiveStandingEvent(eventId);
-        eventRepository.addEvent(event);
+        saveEventWithPolicies(event);
+
+        Long eventId = event.getId();
+        Long areaId = getStandingAreaId(event);
 
         reservationService.selectStandingTicket(token, eventId, areaId, 1, null);
-        reservationService.validateActiveOrderPolicy(token, eventId, createPaymentDetails(), null);
+
+        policyAwareReservationService.validateActiveOrderPolicy(
+                token,
+                eventId,
+                createPaymentDetails(),
+                null
+        );
 
         int numberOfThreads = 10;
 
         ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(numberOfThreads);
-
         AtomicInteger successCount = new AtomicInteger(0);
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
-        
+
         for (int i = 0; i < numberOfThreads; i++) {
             executor.submit(() -> {
                 try {
                     startLatch.await();
 
-                    boolean result = reservationService.checkout(
+                    boolean result = policyAwareReservationService.checkout(
                             token,
                             eventId,
                             createPaymentDetails(),
@@ -277,9 +266,8 @@ public class ReservationServiceTest {
                     if (result) {
                         successCount.incrementAndGet();
                     }
-
-                } catch (Throwable t) {
-                    exceptions.add(t);
+                } catch (Throwable throwable) {
+                    exceptions.add(throwable);
                 } finally {
                     doneLatch.countDown();
                 }
@@ -293,22 +281,20 @@ public class ReservationServiceTest {
         assertTrue(completed, "Test timed out");
         assertEquals(1, successCount.get(), "Only one checkout should complete the same order");
     }
+
     @Test
     void ConcurrencyTest_SelectStandingTickets_WhenManyUsersSelectTickets_ThenSystemStaysConsistent()
             throws InterruptedException {
+        Event event = createActiveStandingEvent();
+        saveEvent(event);
 
-        Long eventId = 102L;
-        Long areaId = 1L;
-
-        Event event = createActiveStandingEvent(eventId);
-        eventRepository.addEvent(event);
-
+        Long eventId = event.getId();
+        Long areaId = getStandingAreaId(event);
         int numberOfThreads = 30;
 
         ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(numberOfThreads);
-
         AtomicInteger successCount = new AtomicInteger(0);
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
 
@@ -330,9 +316,8 @@ public class ReservationServiceTest {
                     if (result) {
                         successCount.incrementAndGet();
                     }
-
-                } catch (Throwable t) {
-                    exceptions.add(t);
+                } catch (Throwable throwable) {
+                    exceptions.add(throwable);
                 } finally {
                     doneLatch.countDown();
                 }
@@ -350,11 +335,15 @@ public class ReservationServiceTest {
                 .toList()
                 .size();
 
-        assertTrue(successCount.get() <= 20,
-                "Successful standing reservations must not exceed standing area capacity");
+        assertTrue(
+                successCount.get() <= 20,
+                "Successful standing reservations must not exceed standing area capacity"
+        );
 
-        assertTrue(activeOrdersForEvent >= successCount.get(),
-                "There should be at least one active order for every successful reservation");
+        assertTrue(
+                activeOrdersForEvent >= successCount.get(),
+                "There should be at least one active order for every successful reservation"
+        );
 
         assertTrue(successCount.get() <= numberOfThreads);
     }
@@ -362,26 +351,23 @@ public class ReservationServiceTest {
     @Test
     void ConcurrencyTest_ManyUsersSelectDifferentSeats_ThenPartOfUsersSucceed()
             throws InterruptedException {
+        Event event = createActiveEventWithManySeats(5, 5);
+        saveEvent(event);
 
-        Long eventId = 103L;
-        Long areaId = 1L;
-
-        Event event = createActiveEventWithManySeats(eventId, 5, 5);
-        eventRepository.addEvent(event);
-
+        Long eventId = event.getId();
+        Long areaId = getSeatingAreaId(event);
         int numberOfUsers = 20;
 
         ExecutorService executor = Executors.newFixedThreadPool(numberOfUsers);
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(numberOfUsers);
-
         AtomicInteger successCount = new AtomicInteger(0);
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
 
         for (int i = 0; i < numberOfUsers; i++) {
             final int userIndex = i + 1;
             final int row = (i / 5) + 1;
-            final int col = (i % 5) + 1;
+            final int column = (i % 5) + 1;
 
             executor.submit(() -> {
                 try {
@@ -391,16 +377,15 @@ public class ReservationServiceTest {
                             tokenForUserIndex(userIndex),
                             eventId,
                             areaId,
-                            new seatPositionDTO(row, col),
+                            new seatPositionDTO(row, column),
                             null
                     );
 
                     if (result) {
                         successCount.incrementAndGet();
                     }
-
-                } catch (Throwable t) {
-                    exceptions.add(t);
+                } catch (Throwable throwable) {
+                    exceptions.add(throwable);
                 } finally {
                     doneLatch.countDown();
                 }
@@ -412,26 +397,25 @@ public class ReservationServiceTest {
         executor.shutdown();
 
         assertTrue(completed, "Test timed out");
-
         assertTrue(successCount.get() > 0, "At least some users should succeed");
+        assertTrue(successCount.get() <= numberOfUsers, "Success count cannot exceed number of users");
 
-        assertTrue(successCount.get() <= numberOfUsers,
-                "Success count cannot exceed number of users");
-
-        assertEquals(numberOfUsers, successCount.get() + exceptions.size(),
-                "Every thread should either succeed or fail safely");
+        assertEquals(
+                numberOfUsers,
+                successCount.get() + exceptions.size(),
+                "Every thread should either succeed or fail safely"
+        );
     }
 
     @Test
     void ConcurrencyTest_ManyUsersCheckoutDifferentOrders_ThenAllCheckoutsSucceed()
             throws InterruptedException {
+        Event event = createActiveStandingEvent();
 
-        Long eventId = 104L;
-        Long areaId = 1L;
+        saveEventWithPolicies(event);
 
-        Event event = createActiveStandingEvent(eventId);
-        eventRepository.addEvent(event);
-
+        Long eventId = event.getId();
+        Long areaId = getStandingAreaId(event);
         int numberOfUsers = 10;
 
         for (int i = 0; i < numberOfUsers; i++) {
@@ -449,7 +433,6 @@ public class ReservationServiceTest {
         ExecutorService executor = Executors.newFixedThreadPool(numberOfUsers);
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(numberOfUsers);
-
         AtomicInteger successCount = new AtomicInteger(0);
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
 
@@ -458,7 +441,7 @@ public class ReservationServiceTest {
 
             executor.submit(() -> {
                 try {
-                    reservationService.validateActiveOrderPolicy(
+                    policyAwareReservationService.validateActiveOrderPolicy(
                             tokenForUserIndex(userIndex),
                             eventId,
                             createPaymentDetails(),
@@ -467,19 +450,18 @@ public class ReservationServiceTest {
 
                     startLatch.await();
 
-                    boolean result = reservationService.checkout(
+                    boolean result = policyAwareReservationService.checkout(
                             tokenForUserIndex(userIndex),
                             eventId,
                             createPaymentDetails(),
-                            null 
+                            null
                     );
 
                     if (result) {
                         successCount.incrementAndGet();
                     }
-
-                } catch (Throwable t) {
-                    exceptions.add(t);
+                } catch (Throwable throwable) {
+                    exceptions.add(throwable);
                 } finally {
                     doneLatch.countDown();
                 }
@@ -491,37 +473,36 @@ public class ReservationServiceTest {
         executor.shutdown();
 
         assertTrue(completed, "Test timed out");
+        assertTrue(successCount.get() > 0, "At least one checkout should succeed");
+        assertTrue(successCount.get() <= numberOfUsers, "Success count cannot exceed number of users");
 
-        assertTrue(successCount.get() > 0,
-                "At least one checkout should succeed");
+        assertEquals(
+                numberOfUsers,
+                successCount.get() + exceptions.size(),
+                "Every checkout attempt should either succeed or fail safely"
+        );
 
-        assertTrue(successCount.get() <= numberOfUsers,
-                "Success count cannot exceed number of users");
-
-        assertEquals(numberOfUsers, successCount.get() + exceptions.size(),
-                "Every checkout attempt should either succeed or fail safely");
-
-        assertTrue(orderRepository.getAll().size() <= numberOfUsers,
-                "Repository should remain in a consistent state");
+        assertTrue(
+                orderRepository.getAll().size() <= numberOfUsers,
+                "Repository should remain in a consistent state"
+        );
     }
+
     @Test
     void ConcurrencyTest_ManyUsersSelectStandingTickets_OverCapacity_ThenOnlyCapacityUsersSucceed()
             throws InterruptedException {
-
-        Long eventId = 105L;
-        Long areaId = 1L;
-
         int capacity = 5;
+        Event event = createActiveStandingEventWithCapacity(capacity);
 
-        Event event = createActiveStandingEventWithCapacity(eventId, capacity);
-        eventRepository.addEvent(event);
+        saveEvent(event);
 
+        Long eventId = event.getId();
+        Long areaId = getStandingAreaId(event);
         int numberOfUsers = 20;
 
         ExecutorService executor = Executors.newFixedThreadPool(numberOfUsers);
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(numberOfUsers);
-
         AtomicInteger successCount = new AtomicInteger(0);
         List<Throwable> exceptions = synchronizedList(new ArrayList<>());
 
@@ -543,9 +524,8 @@ public class ReservationServiceTest {
                     if (result) {
                         successCount.incrementAndGet();
                     }
-
-                } catch (Throwable t) {
-                    exceptions.add(t);
+                } catch (Throwable throwable) {
+                    exceptions.add(throwable);
                 } finally {
                     doneLatch.countDown();
                 }
@@ -558,15 +538,60 @@ public class ReservationServiceTest {
 
         assertTrue(completed, "Test timed out");
 
-        assertTrue(successCount.get() <= capacity,
-                "Successful reservations must not exceed standing capacity");
+        assertTrue(
+                successCount.get() <= capacity,
+                "Successful reservations must not exceed standing capacity"
+        );
     }
 
-    private Event createActiveEventWithManySeats(Long eventId, int rows, int columns) {
-        Event event = createBaseEvent(eventId, "Concurrency Many Seats Test Event");
+    private ReservationService createReservationService(IEventRepository repository) {
+        return new ReservationService(
+                orderRepository,
+                repository,
+                companyRepository,
+                membershipDomain,
+                tokenService,
+                paymentService,
+                secureBarcode,
+                lotteryRepository,
+                eventCatalogDomainService,
+                logger,
+                fakeNotifier,
+                userAccessService
+        );
+    }
+
+    private void saveEvent(Event event) {
+        eventRepository.addEvent(event);
+        assertNotNull(event.getId(), "The database should generate an event ID");
+        createdEventIds.add(event.getId());
+    }
+
+    private void saveEventWithPolicies(Event event) {
+        saveEvent(event);
+        policyRepository.addEvent(event);
+    }
+
+    private Long getSeatingAreaId(Event event) {
+        return event.getMap().getElements().stream()
+                .filter(SeatingArea.class::isInstance)
+                .map(Element::getId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Seating area was not found"));
+    }
+
+    private Long getStandingAreaId(Event event) {
+        return event.getMap().getElements().stream()
+                .filter(StandingArea.class::isInstance)
+                .map(Element::getId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Standing area was not found"));
+    }
+
+    private Event createActiveEventWithManySeats(int rows, int columns) {
+        Event event = createBaseEvent("Concurrency Many Seats Test Event");
 
         SeatingArea seatingArea = new SeatingArea(
-                1L,
                 "Seating Area",
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
@@ -580,11 +605,10 @@ public class ReservationServiceTest {
         return event;
     }
 
-    private Event createActiveStandingEventWithCapacity(Long eventId, int capacity) {
-        Event event = createBaseEvent(eventId, "Concurrency Standing Capacity Test Event");
+    private Event createActiveStandingEventWithCapacity(int capacity) {
+        Event event = createBaseEvent("Concurrency Standing Capacity Test Event");
 
         StandingArea standingArea = new StandingArea(
-                1L,
                 "Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
@@ -597,11 +621,10 @@ public class ReservationServiceTest {
         return event;
     }
 
-    private Event createActiveStandingEvent(Long eventId) {
-        Event event = createBaseEvent(eventId, "Concurrency Standing Test Event");
+    private Event createActiveStandingEvent() {
+        Event event = createBaseEvent("Concurrency Standing Test Event");
 
         StandingArea standingArea = new StandingArea(
-                1L,
                 "Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
@@ -614,11 +637,10 @@ public class ReservationServiceTest {
         return event;
     }
 
-    private Event createActiveEventWithSingleSeat(Long eventId) {
-        Event event = createBaseEvent(eventId, "Concurrency Seat Test Event");
+    private Event createActiveEventWithSingleSeat() {
+        Event event = createBaseEvent("Concurrency Seat Test Event");
 
         SeatingArea seatingArea = new SeatingArea(
-                1L,
                 "Seating Area",
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
@@ -632,9 +654,8 @@ public class ReservationServiceTest {
         return event;
     }
 
-    private Event createBaseEvent(Long eventId, String name) {
+    private Event createBaseEvent(String name) {
         return new Event(
-                eventId,
                 LocalDateTime.now().plusDays(10),
                 name,
                 companyId,
@@ -650,16 +671,16 @@ public class ReservationServiceTest {
 
     private PaymentDetails createPaymentDetails() {
         return new PaymentDetails(
-        "VISA",
-        "Yosi Cohen",
-        LocalDate.of(2001, 1, 1),
-        "4580458045804580",
-        12,
-        2030,
-        "123",
-        "123456789",
-        "ILS"
-);
+            "VISA",
+            "Yosi Cohen",
+            LocalDate.of(2001, 1, 1),
+            "4580458045804580",
+            12,
+            2030,
+            "123",
+            "123456789",
+            "ILS"
+        );
     }
 
     private String createLoggedInMember(String username, String password) {
@@ -670,11 +691,14 @@ public class ReservationServiceTest {
                 username,
                 password,
                 "Test User",
-                "0500000000",LocalDate.of(2001, 1, 1)
+                "0500000000",
+                LocalDate.of(2001, 1, 1)
         );
+
         assertTrue(signedUp);
 
         String token = userService.login(guest, username, password);
+
         assertNotNull(token);
 
         return token;
@@ -688,15 +712,90 @@ public class ReservationServiceTest {
         PaymentServiceProxy.isConnectionSuccessful = true;
         PaymentServiceProxy.isPaymentSuccessful = true;
         PaymentServiceProxy.isRefundSuccessful = true;
-
         PaymentServiceProxy.wasConnectCalled = false;
         PaymentServiceProxy.wasPayCalled = false;
         PaymentServiceProxy.wasRefundCalled = false;
     }
 
+    private static class PolicyAwareEventRepository implements IEventRepository {
+
+        private final IEventRepository realRepository;
+        private final IEventRepository policyRepository;
+
+        private PolicyAwareEventRepository(
+                IEventRepository realRepository,
+                IEventRepository policyRepository
+        ) {
+            this.realRepository = realRepository;
+            this.policyRepository = policyRepository;
+        }
+
+        @Override
+        public void addEvent(Event event) {
+            realRepository.addEvent(event);
+        }
+
+        @Override
+        public Event getEventById(Long eventId) {
+            Event persistedEvent = realRepository.getEventById(eventId);
+
+            if (persistedEvent == null) {
+                return null;
+            }
+
+            Event policyEvent;
+
+            try {
+                policyEvent = policyRepository.getEventById(eventId);
+            } catch (Exception ignored) {
+                return persistedEvent;
+            }
+
+            if (policyEvent != null) {
+                persistedEvent.setPurchasePolicy(policyEvent.getPurchasePolicy());
+                persistedEvent.setDiscountPolicy(policyEvent.getDiscountPolicy());
+            }
+
+            return persistedEvent;
+        }
+
+        @Override
+        public void updateEvent(Event event) {
+            realRepository.updateEvent(event);
+        }
+
+        @Override
+        public void deleteEvent(Long eventId, long expectedVersion) {
+            realRepository.deleteEvent(eventId, expectedVersion);
+        }
+
+        @Override
+        public List<Event> getEventsByCompanyId(Long companyId) {
+            return realRepository.getEventsByCompanyId(companyId);
+        }
+
+        @Override
+        public List<Event> getAllEvents() {
+            return realRepository.getAllEvents();
+        }
+
+        @Override
+        public List<EventSearchResultView> getFeaturedEvents(int limit) {
+            return realRepository.getFeaturedEvents(limit);
+        }
+
+        @Override
+        public List<EventSearchResultView> searchEvents(SearchCriteria criteria, List<Long> companyIds
+        ) {
+            return realRepository.searchEvents(criteria, companyIds);
+        }
+
+
+    }
+
     private static class TestSecureBarcode implements ITicketIssuingService {
 
-        AtomicInteger generateCalls = new AtomicInteger(0);
+        private final AtomicInteger generateCalls = new AtomicInteger(0);
 
         @Override
         public boolean handshake() {
@@ -706,14 +805,13 @@ public class ReservationServiceTest {
         @Override
         public String issueTicket(ticketsystem.DTO.TicketIssueRequest request) {
             generateCalls.incrementAndGet();
-            return "SECURE_BARCODE_"  + request.getEventId() + "_" + request.getCustomerId();
+            return "SECURE_BARCODE_" + request.getEventId() + "_" + request.getCustomerId();
         }
 
-		@Override
-		public boolean cancelTicket(String ticketId) {
-			// TODO Auto-generated method stub
-			return true;
-		}
+        @Override
+        public boolean cancelTicket(String ticketId) {
+            return true;
+        }
     }
 
     private static class NoOpSystemLogger implements ISystemLogger {
@@ -729,7 +827,7 @@ public class ReservationServiceTest {
 
     private static class FakeNotifier implements INotifier {
 
-        private final List<String> messages = new ArrayList<>();
+        private final List<String> messages = synchronizedList(new ArrayList<>());
 
         @Override
         public void notifyMember(Long memberId, String message) {
@@ -768,8 +866,7 @@ public class ReservationServiceTest {
         }
 
         boolean containsMessage(String text) {
-            return messages.stream()
-                    .anyMatch(message -> message.contains(text));
+            return messages.stream().anyMatch(message -> message.contains(text));
         }
     }
 }

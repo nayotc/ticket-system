@@ -1,26 +1,57 @@
 package ticketsystem.DomainLayer.discount;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.Comparator;
+import java.util.List;
 
-import ticketsystem.DomainLayer.discount.DiscountCompositionType;
-import ticketsystem.DomainLayer.discount.DiscountTypes;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.Table;
 
+@Entity
+@Table(name = "discount_policies")
 public class DiscountPolicy {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToMany(
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.EAGER
+    )
+    @JoinColumn(name = "discount_policy_id")
+    @OrderColumn(name = "discount_order")
     private List<DiscountTypes> discounts = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "composition_type", nullable = false, length = 16)
     private DiscountCompositionType compositionType;
+
+    protected DiscountPolicy() {
+    }
 
     public DiscountPolicy(DiscountCompositionType compositionType) {
         if (compositionType == null) {
              throw new IllegalArgumentException("Discount composition type cannot be null");
         }
              this.compositionType = compositionType;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public void addDiscount(DiscountTypes discount) {

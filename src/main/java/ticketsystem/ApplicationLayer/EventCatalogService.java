@@ -16,6 +16,7 @@ import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
 import ticketsystem.DTO.Event.EventSearchResultDTO;
 import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.EventSearchResultView;
 
 @Service
 public class EventCatalogService {
@@ -45,19 +46,13 @@ public class EventCatalogService {
             if (criteria == null) {
                 throw new IllegalArgumentException("Search criteria cannot be null");
             }
-            List<Event> events = eventRepository.getAllEvents();
             List<Long> companiesIds = companyRepository.getCompanyIdsByCriteria(criteria);
 
-            logger.logEvent(
-                    "Loaded data - globalSearch. eventsCount=" + events.size()
-                            + ", CompanyCount=" + companiesIds.size(),
-                    LogLevel.DEBUG);
+            logger.logEvent("Loaded data - globalSearch." + ", CompanyCount=" + companiesIds.size(), LogLevel.DEBUG);
 
-            List<Event> results = domainService.globalSearch(events, companiesIds, criteria);
+            List<EventSearchResultView> results = eventRepository.searchEvents(criteria, companiesIds);
 
-            logger.logEvent(
-                    "Completed - globalSearch. resultsCount=" + results.size(),
-                    LogLevel.INFO);
+            logger.logEvent("Completed - globalSearch. resultsCount=" + results.size(), LogLevel.INFO);
 
             return results.stream().map(EventSearchResultDTO::from).toList();
         }
@@ -82,11 +77,10 @@ public class EventCatalogService {
             if (criteria == null) {
                 throw new IllegalArgumentException("Search criteria cannot be null");
             }
-            List<Event> events = eventRepository.getEventsByCompanyId(companyId);
-
-            logger.logEvent("Loaded data - SearchByCompany. companyId=" + companyId
-                            + ", companyEventsCount=" + events.size(),LogLevel.DEBUG);
-            List<Event> results = domainService.searchByCompany(events, criteria);
+            if (criteria.getCompanyRate() != null) {
+                throw new IllegalArgumentException("Company rating criteria is not applicable for company-specific search");
+            }
+            List<EventSearchResultView> results = eventRepository.searchEvents(criteria, List.of(companyId));
 
             logger.logEvent("Completed - SearchByCompany. resultsCount=" + results.size(),LogLevel.INFO);
 
@@ -118,14 +112,8 @@ public class EventCatalogService {
                 throw new IllegalArgumentException("Limit must be greater than zero");
             }
 
-            List<Event> events = eventRepository.getAllEvents();
-
-            return events.stream()
-                    .sorted((first, second) -> Double.compare(
-                            second.getRate() == null ? 0.0 : second.getRate(),
-                            first.getRate() == null ? 0.0 : first.getRate()
-                    ))
-                    .limit(limit)
+            return eventRepository.getFeaturedEvents(limit)
+                    .stream()
                     .map(EventSearchResultDTO::from)
                     .toList();
 

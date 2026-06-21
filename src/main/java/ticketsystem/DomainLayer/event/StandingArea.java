@@ -1,12 +1,20 @@
 package ticketsystem.DomainLayer.event;
 
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+
+@Entity
+@DiscriminatorValue("STANDING")
 public class StandingArea extends Area {
     private long capacity;
     private long reserved;
     private long sold;
 
-    public StandingArea(Long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, long capacity) {
-        super(id, name, location, size);
+    protected StandingArea() {
+    }
+
+    public StandingArea(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, long capacity) {
+        super(name, location, size);
 
         if (capacity < 0) {
             throw new IllegalArgumentException("Capacity cannot be negative");

@@ -1,13 +1,47 @@
 package ticketsystem.DomainLayer.event;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "event_elements")
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "element_type")
 public class Element {
-    private final long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "name")
     private String name;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "first", column = @Column(name = "location_x")),
+            @AttributeOverride(name = "second", column = @Column(name = "location_y"))
+    })
     private Pair<Integer, Integer> location;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "first", column = @Column(name = "size_width")),
+            @AttributeOverride(name = "second", column = @Column(name = "size_height"))
+    })
     private Pair<Integer, Integer> size;
 
-    public Element(long id, String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size) {
-        this.id = id;
+    protected Element() {}
+
+    public Element(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size) {
         this.name = name;
         this.location = location;
         this.size = size;
@@ -24,7 +58,7 @@ public class Element {
         return new Element(this);
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
