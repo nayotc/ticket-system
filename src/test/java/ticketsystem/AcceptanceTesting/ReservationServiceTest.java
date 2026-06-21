@@ -52,7 +52,6 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
-import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
@@ -666,45 +665,7 @@ public class ReservationServiceTest {
         assertEquals(1, order.getTickets().size());
     }
 
-    @Test
-    void AcceptanceTest_ViewActiveOrder_WhenActiveOrderExists_ThenReturnActiveOrderDTO() {
-        Event event = createActiveEvent();
-        eventRepository.addEvent(event);
-        Long eventId = event.getId();
-        Long areaId = getStandingAreaId(eventId);
 
-        reservationService.selectStandingTicket(
-                memberToken,
-                eventId,
-                areaId,
-                2,
-                null
-        );
-
-        ActiveOrder order = orderRepository.getActiveOrderByUserId(memberId);
-
-        ActiveOrderDTO dto = reservationService.viewActiveOrder(
-                memberToken,
-                order.getOrderId()
-        );
-
-        assertNotNull(dto);
-        assertEquals(order.getOrderId(), dto.getOrderId());
-        assertEquals(eventId, dto.getEventId());
-        assertEquals(2, dto.getTickets().size());
-    }
-
-    @Test
-    void AcceptanceTest_ViewActiveOrder_WhenOrderDoesNotExist_ThenThrowException() {
-        Long nonExistingOrderId = 999L;
-
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
-                () -> reservationService.viewActiveOrder(memberToken, nonExistingOrderId)
-        );
-
-        assertEquals("No active order found", exception.getMessage());
-    }
 
     @Test
     void AcceptanceTest_Checkout_WhenPaymentAndTicketIssuingSucceed_ThenOrderIsCompletedAndBarcodeIssued() {
@@ -1009,34 +970,6 @@ public class ReservationServiceTest {
     }
 
     @Test
-    void AcceptanceTest_ViewActiveOrder_WhenOrderBelongsToAnotherMember_ThenThrowsSecurityException() {
-        Event event = createActiveEvent();
-        eventRepository.addEvent(event);
-        Long eventId = event.getId();
-        Long areaId = getStandingAreaId(eventId);
-
-        reservationService.selectStandingTicket(
-                memberToken,
-                eventId,
-                areaId,
-                1,
-                null
-        );
-
-        ActiveOrder order = orderRepository.getActiveOrderByUserId(memberId);
-
-        SecurityException exception = assertThrows(
-                SecurityException.class,
-                () -> reservationService.viewActiveOrder(
-                        guestToken,
-                        order.getOrderId()
-                )
-        );
-
-        assertEquals("User is not allowed to view this order", exception.getMessage());
-    }
-
-    @Test
     void AcceptanceTest_SelectStandingTicket_WhenQuantityIsZero_ThenThrowsException() {
         Event event = createActiveEvent();
         eventRepository.addEvent(event);
@@ -1226,11 +1159,11 @@ public class ReservationServiceTest {
 
         assertTrue(result);
     }
-
     @Test
-    void GivenAboutToExpireOrder_WhenAnyActionOccurs_ThenExpirationWarningNotificationIsSent() {
+        void AcceptanceTest_ViewCurrentActiveOrder_WhenMemberHasActiveOrder_ThenReturnsActiveOrderDTO() {
         Event event = createActiveEvent();
         eventRepository.addEvent(event);
+
         Long eventId = event.getId();
         Long areaId = getStandingAreaId(eventId);
 
@@ -1238,27 +1171,24 @@ public class ReservationServiceTest {
                 memberToken,
                 eventId,
                 areaId,
-                1,
+                2,
                 null
         );
 
-        ActiveOrder order = orderRepository.getActiveOrderByUserId(memberId);
-        order.setExpiresAt(LocalDateTime.now().plusMinutes(2));
-        orderRepository.updateOrder(order);
+        ActiveOrderDTO result =
+                reservationService.viewCurrentActiveOrder(memberToken);
 
-        reservationService.viewActiveOrder(
-                memberToken,
-                order.getOrderId()
-        );
+        assertNotNull(result);
+        assertEquals(eventId, result.getEventId());
+        assertEquals(2, result.getTickets().size());
+        }
 
-        recordingNotifier.assertNotifiedMember(memberId, "about to expire");
-        recordingNotifier.assertNotificationCount(1);
-    }
 
-    @Test
-    void TestGuestOrderAboutToExpire_ThenUserIsNotified() {
+        @Test
+        void AcceptanceTest_ViewCurrentActiveOrder_WhenGuestHasActiveOrder_ThenReturnsActiveOrderDTO() {
         Event event = createActiveEvent();
         eventRepository.addEvent(event);
+
         Long eventId = event.getId();
         Long areaId = getStandingAreaId(eventId);
 
@@ -1270,19 +1200,76 @@ public class ReservationServiceTest {
                 null
         );
 
-        ActiveOrder order = orderRepository.getActiveOrderBySessionToken(guestToken);
-        order.setExpiresAt(LocalDateTime.now().plusMinutes(2));
-        orderRepository.updateOrder(order);
+        ActiveOrderDTO result =
+                reservationService.viewCurrentActiveOrder(guestToken);
 
-        reservationService.viewActiveOrder(
-                guestToken,
-                order.getOrderId()
+        assertNotNull(result);
+        assertEquals(eventId, result.getEventId());
+        assertEquals(1, result.getTickets().size());
+        }
+
+
+        @Test
+        void AcceptanceTest_ViewCurrentActiveOrder_WhenMemberHasNoActiveOrder_ThenReturnsNull() {
+        ActiveOrderDTO result =
+                reservationService.viewCurrentActiveOrder(memberToken);
+
+        assertNull(result);
+        }
+
+
+        @Test
+        void AcceptanceTest_ViewCurrentActiveOrder_WhenGuestHasNoActiveOrder_ThenReturnsNull() {
+        ActiveOrderDTO result =
+                reservationService.viewCurrentActiveOrder(guestToken);
+
+        assertNull(result);
+        }
+
+
+        @Test
+        void AcceptanceTest_ViewCurrentActiveOrder_WhenOrderWasRemoved_ThenReturnsNull() {
+        Event event = createActiveEventWithSeatingArea();
+        eventRepository.addEvent(event);
+
+        Long eventId = event.getId();
+        Long areaId = getSeatingAreaId(eventId);
+
+        reservationService.selectSeatTicket(
+                memberToken,
+                eventId,
+                areaId,
+                new seatPositionDTO(1, 1),
+                null
         );
 
-        recordingNotifier.assertNotifiedGuest(guestToken, "about to expire");
-        recordingNotifier.assertNotificationCount(1);
-    }
+        ActiveOrder order =
+                orderRepository.getActiveOrderByUserId(memberId);
 
+        Long ticketId = order.getTickets().get(0).getTicketId();
+
+        reservationService.removeTicketFromActiveOrder(
+                memberToken,
+                eventId,
+                ticketId
+        );
+
+        ActiveOrderDTO result =
+                reservationService.viewCurrentActiveOrder(memberToken);
+
+        assertNull(result);
+        }
+
+
+        @Test
+        void AcceptanceTest_ViewCurrentActiveOrder_WhenTokenIsInvalid_ThenThrowsException() {
+        String invalidToken = "invalid-token";
+
+        assertThrows(
+                Exception.class,
+                () -> reservationService.viewCurrentActiveOrder(invalidToken)
+        );
+        }
     private void addActiveOwnerAndManagerUnderCompanyFounder(Long ownerId, Long managerId) {
         Member founder = userRepository.getMemberById(COMPANY_FOUNDER_ID);
         assertNotNull(founder, "Founder member must exist in test setup");
