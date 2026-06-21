@@ -10,6 +10,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
@@ -23,6 +25,8 @@ import ticketsystem.DomainLayer.policy.PurchasePolicy;
 
 @Entity
 @Table(name = "events")
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 public class Event {
 
     public enum eventStatus {
@@ -613,6 +617,10 @@ public class Event {
 
     public List<DiscountTypes> getDiscounts() {
         return discountPolicy.getDiscounts();
+    }
+
+    public String getAreaName(Long areaId){
+        return map.getAreaName(areaId);
     }
 
     @Override

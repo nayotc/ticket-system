@@ -43,11 +43,11 @@
         </dependency>
 
          <!-- Provides native OS integration required by Vaadin dev-mode file watching. -->
-        <dependency>
+        <!--<dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
             <version>5.14.0</version>
-        </dependency>
+        </dependency>-->
 
         <!-- JWT -->
         <dependency>
@@ -126,6 +126,17 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Hibernate second-level cache -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-jcache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ehcache</groupId>
+            <artifactId>ehcache</artifactId>
+            <classifier>jakarta</classifier>
         </dependency>
 
         <!-- Logging -->

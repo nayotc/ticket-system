@@ -395,7 +395,7 @@ public class SystemAdminServiceTest {
         Purchase purchase1 = new Purchase(
                 List.of(
                         new PurchasedTicket(
-                                401L,
+                                401L,"VIP",
                                 1,
                                 1,
                                 new BigDecimal("200.00"),
@@ -415,7 +415,7 @@ public class SystemAdminServiceTest {
         Purchase purchase2 = new Purchase(
                 List.of(
                         new PurchasedTicket(
-                                402L,
+                                402L,"VIP",
                                 1,
                                 2,
                                 new BigDecimal("200.00"),
@@ -435,7 +435,7 @@ public class SystemAdminServiceTest {
         Purchase purchase3 = new Purchase(
                 List.of(
                         new PurchasedTicket(
-                                403L,
+                                403L,"VIP",
                                 5,
                                 5,
                                 new BigDecimal("150.00"),
@@ -550,7 +550,7 @@ public class SystemAdminServiceTest {
         Purchase purchase1 = new Purchase(
                 List.of(
                         new PurchasedTicket(
-                                301L,
+                                301L,"VIP",
                                 10,
                                 5,
                                 new BigDecimal("400.00"),
@@ -570,7 +570,7 @@ public class SystemAdminServiceTest {
         Purchase purchase2 = new Purchase(
                 List.of(
                         new PurchasedTicket(
-                                302L,
+                                302L,"VIP",
                                 10,
                                 6,
                                 new BigDecimal("400.00"),
@@ -590,7 +590,7 @@ public class SystemAdminServiceTest {
         Purchase purchase3 = new Purchase(
                 List.of(
                         new PurchasedTicket(
-                                303L,
+                                303L,"VIP",
                                 1,
                                 1,
                                 new BigDecimal("200.00"),

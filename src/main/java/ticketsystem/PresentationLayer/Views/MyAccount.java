@@ -739,10 +739,18 @@ private String generateQrCodeDataUrl(String value) {
 
 
 private String formatTicketLocation(PurchaseDTO ticket) {
-    if (ticket.getRow() == 0 && ticket.getChair() == 0) {
-        return "עמידה · אזור כללי";
+    String area = ticket.getAreaName() == null
+            ? "אזור לא ידוע"
+            : "אזור #" + ticket.getAreaName();
+
+    if (ticket.getRow() == null || ticket.getChair() == null
+            || (ticket.getRow() == 0 && ticket.getChair() == 0)) {
+        return area + " · עמידה";
     }
-    return "שורה " + ticket.getRow() + " · כיסא " + ticket.getChair();
+
+    return area
+            + " · שורה " + ticket.getRow()
+            + " · כיסא " + ticket.getChair();
 }
 
 private String shortBarcode(String barcode) {

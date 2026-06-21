@@ -7,34 +7,39 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "notifications")
+@Table(
+        name = "notifications",
+        indexes = @Index(name = "idx_notifications_target_id", columnList = "target_id")
+)
 public class Notification {
 
     public enum Type {
         INFO,
         ACTION
     }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "target_id", nullable = false)
+    @Column(name = "target_id", nullable = false, length = 512)
     private String targetId;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(name = "message", columnDefinition = "TEXT", nullable = false)
     private String message;
 
     @Column(name = "company_id")
     private Long companyId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "type", nullable = false)
     private Type type;
 
-    public Notification() {
+    protected Notification() {
     }
 
     public Notification(String targetId, String message, Long companyId, Type type) {
@@ -45,10 +50,15 @@ public class Notification {
     }
 
     public Notification(String targetId, String message, Type type) {
-        this.targetId = targetId;
-        this.message = message;
-        this.companyId = null;
-        this.type = type;
+        this(targetId, message, null, type);
+    }
+
+    public Notification(Notification other) {
+        this.id = other.id;
+        this.targetId = other.targetId;
+        this.message = other.message;
+        this.companyId = other.companyId;
+        this.type = other.type;
     }
 
     public Long getId() {

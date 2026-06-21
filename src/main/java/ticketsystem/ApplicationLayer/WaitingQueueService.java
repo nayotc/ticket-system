@@ -1,8 +1,11 @@
 package ticketsystem.ApplicationLayer;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -43,6 +46,10 @@ public class WaitingQueueService {
     private final ConcurrentHashMap<Long, Object> eventLocks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Set<String>> activeReservationSessions = new ConcurrentHashMap<>();
     private final ISystemLogger logger;
+    private static final Duration SELECTION_ACCESS_DURATION = Duration.ofMinutes(2);
+
+    private final ConcurrentHashMap<Long, Map<String, Instant>> selectionAccessDeadlines =
+        new ConcurrentHashMap<>();
 
     public WaitingQueueService(IEventRepository eventRepository,
             IWaitingQueueRepository queueRepository,
@@ -209,6 +216,7 @@ public class WaitingQueueService {
             Set<String> activeSessions = activeReservationSessions.get(eventId);
 
             boolean hadTrackedActiveSpot = activeSessions != null && activeSessions.remove(sessionId);
+            removeSelectionDeadline(eventId, sessionId);
             int trackedActiveCountAfterRemoval = activeSessions == null ? 0 : activeSessions.size();
 
             /*
@@ -409,11 +417,85 @@ public class WaitingQueueService {
         return event.getActiveReservationsCount() < event.getTrafficThreshold();
     }
 
+    // private void approveSession(long eventId, Event event, String token) {
+    //     if (getActiveSessions(eventId).add(token)) {
+    //         event.incrementActiveReservations();
+    //         eventRepository.updateEvent(event);
+    //     }
+    // }
+
+    public boolean isSelectionAccessExpired(long eventId, String token) {
+        if (token == null || token.isBlank()) {
+            return true;
+        }
+
+        Map<String, Instant> deadlines = selectionAccessDeadlines.get(eventId);
+        if (deadlines == null || !deadlines.containsKey(token)) {
+            return true;
+        }
+
+        return Instant.now().isAfter(deadlines.get(token));
+    }
+
+    public long getSelectionAccessSecondsLeft(long eventId, String token) {
+        Map<String, Instant> deadlines = selectionAccessDeadlines.get(eventId);
+
+        if (deadlines == null || !deadlines.containsKey(token)) {
+            return 0;
+        }
+
+        long seconds = Duration.between(Instant.now(), deadlines.get(token)).getSeconds();
+        return Math.max(0, seconds);
+    }
+
+    public boolean expireSelectionAccessIfNeeded(long eventId, String token) {
+        synchronized (getEventLock(eventId)) {
+            if (!isSelectionAccessExpired(eventId, token)) {
+                return false;
+            }
+
+            boolean hasWaitingUsers = queueRepository.getQueueSize(eventId) > 0;
+
+            if (!hasWaitingUsers) {
+                refreshSelectionAccess(eventId, token);
+                return false;
+            }
+
+            expireUserSession(eventId, token);
+            removeSelectionDeadline(eventId, token);
+            return true;
+        }
+    }
+    private void refreshSelectionAccess(long eventId, String token) {
+        selectionAccessDeadlines
+                .computeIfAbsent(eventId, k -> new ConcurrentHashMap<>())
+                .put(token, Instant.now().plus(SELECTION_ACCESS_DURATION));
+    }
+
+    private void removeSelectionDeadline(long eventId, String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+
+        Map<String, Instant> deadlines = selectionAccessDeadlines.get(eventId);
+
+        if (deadlines == null) {
+            return;
+        }
+
+        deadlines.remove(token);
+    }
+
+
     private void approveSession(long eventId, Event event, String token) {
         if (getActiveSessions(eventId).add(token)) {
             event.incrementActiveReservations();
             eventRepository.updateEvent(event);
         }
+
+        selectionAccessDeadlines
+                .computeIfAbsent(eventId, k -> new ConcurrentHashMap<>())
+                .put(token, Instant.now().plus(SELECTION_ACCESS_DURATION));
     }
 
     private void cleanupActiveSessionsIfPossible(long eventId) {

@@ -16,7 +16,7 @@ public class PurchasedTicketTest {
         // Arrange & Act (Setup & Invocation)
         PurchasedTicket ticket =
         new PurchasedTicket(
-                1L,
+                1L,"VIP",
                 1,
                 1,
                 new BigDecimal("150.00"),

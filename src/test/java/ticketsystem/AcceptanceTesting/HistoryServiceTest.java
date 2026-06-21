@@ -153,7 +153,7 @@ public class HistoryServiceTest {
         long userId = tokenService.extractUserId(validToken);
 
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
+        ticketDTOs.add(new PurchaseDTO(10L, 1, 1,"VIP", new BigDecimal("150.0"), "ACTIVE", ""));
         OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Taylor Swift Tour", "HaYarkon Park", userId, 50L, userId,
                 20L, new BigDecimal(100), 111111,false);
 
@@ -210,7 +210,7 @@ public class HistoryServiceTest {
         long userId = tokenService.extractUserId(validToken);
 
         List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-        ticketDTOs.add(new PurchaseDTO(10L, 1, 1, new BigDecimal("150.0"), "ACTIVE", ""));
+        ticketDTOs.add(new PurchaseDTO(10L, 1, 1,"VIP", new BigDecimal("150.0"), "ACTIVE", ""));
         OrderDTO orderDto = new OrderDTO(0L, ticketDTOs, "Rock Concert", "Barby", userId, 5L, userId, 20L, new BigDecimal(100), 111111,false);
 
         // --- Act ---
@@ -246,7 +246,7 @@ public class HistoryServiceTest {
         purchases.add(new PurchaseDTO(
                 10L,
                 1,
-                1,
+                1,"VIP",
                 new BigDecimal("150.0"),
                 "ACTIVE",
                 ""));
@@ -320,7 +320,7 @@ public class HistoryServiceTest {
             purchases.add(new PurchaseDTO(
                     ticketId++,
                     1,
-                    1,
+                    1,"VIP",
                     price,
                     "ACTIVE",
                     ""));
@@ -527,14 +527,14 @@ public class HistoryServiceTest {
         tickets.add(new PurchaseDTO(
                 10L,
                 1,
-                1,
+                1,"VIP",
                 new BigDecimal("100.0"),
                 "ACTIVE",
                 ""));
         tickets.add(new PurchaseDTO(
                 11L,
                 1,
-                2,
+                2,"VIP",
                 new BigDecimal("150.0"),
                 "ACTIVE",
                 ""));

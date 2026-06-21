@@ -19,6 +19,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -29,7 +30,11 @@ import ticketsystem.DTO.PurchaseDTO;
 import ticketsystem.DTO.TicketDTO;
 
 @Entity
-@Table(name = "active_orders")
+@Table(name = "active_orders", indexes = {
+        @Index(name = "idx_active_orders_user_id", columnList = "user_id"),
+        @Index(name = "idx_active_orders_session_token", columnList = "session_token"),
+        @Index(name = "idx_active_orders_event_id", columnList = "event_id")
+})
 public class ActiveOrder {
 
     @Id
@@ -236,35 +241,6 @@ public class ActiveOrder {
         this.version = (version == null ? 0 : version) + 1;
     }
 
-    public OrderDTO toDTO(String eventName, String location, Long companyId, Long managedByMemberId,
-                          Long eventId, BigDecimal total, Integer transactionId) {
-        List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-        for (Ticket ticket : tickets) {
-            ticketDTOs.add(new PurchaseDTO(
-                    ticket.getTicketId(),
-                    ticket.getRow(),
-                    ticket.getChair(),
-                    ticket.getPrice(),
-                    "ACTIVE",
-                    ""
-            ));
-        }
-        if (getUserId() != null) {
-            return new OrderDTO(0L, ticketDTOs, eventName, location, getUserId(), companyId,
-                    managedByMemberId, eventId, total,transactionId,false);
-        }
-        return new OrderDTO(0L, ticketDTOs, eventName, location, null, companyId,
-                managedByMemberId, eventId, total, transactionId,false);
-    }
-
-    public ActiveOrderDTO toDTO() {
-        List<TicketDTO> ticketDTOs = new ArrayList<>();
-        for (Ticket ticket : tickets) {
-            ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(),
-                    ticket.getRow(), ticket.getChair(), ticket.getPrice()));
-        }
-        return new ActiveOrderDTO(orderId, getUserId(), eventId, ticketDTOs, getExpiresAtEpochMillis());
-    }
 
     public ActiveOrder(Long orderId, String sessionToken, Long userId, Long eventId, LocalDateTime expiresAt) {
         if (orderId != null) {

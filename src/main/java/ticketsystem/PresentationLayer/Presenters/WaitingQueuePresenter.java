@@ -57,6 +57,41 @@ public class WaitingQueuePresenter implements WaitingQueue.WaitingQueuePresenter
             throw new PresentationException("לא ניתן לצאת מהתור כרגע.");
         }
     }
+    @Override
+public long getSelectionAccessSecondsLeft(long eventId, String sessionToken) {
+    try {
+   
+        validateSessionToken(sessionToken);
+             if (eventId <= 0) {
+            throw new IllegalArgumentException("Invalid event ID");
+        }
+        return waitingQueueService.getSelectionAccessSecondsLeft(eventId, sessionToken);
+
+    } catch (IllegalArgumentException e) {
+        throw new PresentationException(translateQueueError(e.getMessage()));
+
+    } catch (Exception e) {
+        throw new PresentationException("לא ניתן לטעון את זמן הגישה לבחירת הכרטיסים.");
+    }
+}
+
+@Override
+public boolean expireSelectionAccessIfNeeded(long eventId, String sessionToken) {
+    try {
+        validateSessionToken(sessionToken);
+        if (eventId <= 0) {
+            throw new IllegalArgumentException("Invalid event ID");
+        }
+        return waitingQueueService.expireSelectionAccessIfNeeded(eventId, sessionToken);
+
+    } catch (IllegalArgumentException e) {
+        throw new PresentationException(translateQueueError(e.getMessage()));
+
+    } catch (Exception e) {
+        throw new PresentationException("לא ניתן לבדוק את תוקף הגישה לבחירת הכרטיסים.");
+    }
+}
+
 
     private void validateSessionToken(String sessionToken) {
         if (sessionToken == null || sessionToken.isBlank()) {

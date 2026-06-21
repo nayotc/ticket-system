@@ -75,6 +75,14 @@ public class UserRepository implements IUserRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public Member getMemberByUsernameIgnoreCase(String username) {
+        return userJpaRepository.findMemberByUserNameIgnoreCase(username)
+                .map(Member::new)
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Member getMemberById(long id) {
         return userJpaRepository.findById(id)
                 .filter(Member.class::isInstance)
@@ -146,6 +154,34 @@ public class UserRepository implements IUserRepository {
     @Transactional(readOnly = true)
     public List<Member> getAllMembers() {
         return userJpaRepository.findAllMembers().stream()
+                .map(Member::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countPendingRolesByCompanyId(Long companyId) {
+        return userJpaRepository.countPendingRolesByCompanyId(companyId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countActiveOwnersByCompanyId(Long companyId) {
+        return userJpaRepository.countActiveOwnersByCompanyId(companyId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Member> findMembersWithRolesInCompany(Long companyId) {
+        return userJpaRepository.findMembersWithRolesInCompany(companyId).stream()
+                .map(Member::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Member> findSuspendedMembers() {
+        return userJpaRepository.findSuspendedMembers().stream()
                 .map(Member::new)
                 .collect(Collectors.toList());
     }
