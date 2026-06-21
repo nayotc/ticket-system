@@ -129,7 +129,6 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
     
     public BigDecimal calculateTotalPrice(ActiveOrder order, Event event) {
         BigDecimal total = order.calculateTotalPrice();
-        //EVENT?
         return total;
     }
 

@@ -339,6 +339,10 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
         WaitingQueueSnapshot getQueueSnapshot(long eventId, String sessionToken) throws Exception;
 
         void leaveQueue(long eventId, String sessionToken) throws Exception;
+        long getSelectionAccessSecondsLeft(long eventId, String sessionToken) throws Exception;
+
+        boolean expireSelectionAccessIfNeeded(long eventId, String sessionToken) throws Exception;
+
     }
     @Override
     protected void onAttach(AttachEvent attachEvent) {

@@ -25,7 +25,7 @@ public class ReservationTimer extends Div {
         icon.add(VaadinIcon.CLOCK.create());
         icon.addClassName("reservation-timer-icon");
 
-        Span label = new Span("הזמן שנותר לסיום ההזמנה:");
+        Span label = new Span("הזמן שנותר לשריון הכרטיסים");
         label.addClassName("reservation-timer-label");
 
         time.addClassName("reservation-timer-time");

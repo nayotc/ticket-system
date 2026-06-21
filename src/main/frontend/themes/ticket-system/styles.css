@@ -2803,6 +2803,22 @@ vaadin-button.message-popup-secondary-button:hover {
     font-weight: 800;
 }
 
+.selection-access-timer {
+    position: absolute;
+    top: 28px;
+    right: 24px;
+    z-index: 30;
+
+    padding: 8px 14px;
+    border-radius: 999px;
+
+    background: rgba(15, 23, 42, 0.85);
+    color: white;
+
+    font-weight: 700;
+    font-size: 14px;
+}
+
 .ticket-summary-total {
     padding: 24px;
     background: var(--tn-surface-lowest);

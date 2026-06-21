@@ -76,14 +76,14 @@ import ticketsystem.InfrastructureLayer.HistoryRepository;
     Purchase purchase = new Purchase(
     List.of(
     new PurchasedTicket(
-    1001L,
+    1001L,"VIP",
     3,
     7,
     new BigDecimal("150.00"),
     "BARCODE-1001"
     ),
     new PurchasedTicket(
-    1002L,
+    1002L,"VIP",
     3,
     8,
     new BigDecimal("100.00"),
@@ -634,7 +634,7 @@ import ticketsystem.InfrastructureLayer.HistoryRepository;
     return new Purchase(
     List.of(
     new PurchasedTicket(
-    ticketId,
+    ticketId,"VIP",
     1,
     1,
     price,

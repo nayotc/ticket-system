@@ -24,6 +24,7 @@ import ticketsystem.DTO.ActiveOrderDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.PurchaseDTO;
+import ticketsystem.DTO.TicketDTO;
 import ticketsystem.DTO.TicketIssueRequest;
 import ticketsystem.DTO.seatPositionDTO;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
@@ -279,7 +280,7 @@ public class ReservationService {
                 throw new SecurityException("User is not allowed to view this order");
             }
 
-            ActiveOrderDTO activeOrderDTO = order.toDTO();
+            ActiveOrderDTO activeOrderDTO = toDTO(order);
 
             logger.logEvent(
                     "Active order viewed: orderId=" + order.getOrderId()
@@ -329,7 +330,7 @@ public class ReservationService {
                 return null;
             }
 
-            ActiveOrderDTO activeOrderDTO = order.toDTO();
+            ActiveOrderDTO activeOrderDTO = toDTO(order);
 
             logger.logEvent(
                     "Current active order viewed: orderId=" + order.getOrderId()
@@ -619,8 +620,7 @@ public class ReservationService {
 
     // secure barcode logic
     private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event, BigDecimal total, Integer transactionId) {
-        OrderDTO orderDTO = order.toDTO(event.getName(), event.getLocation().toString(), event.getCompanyId(),
-                event.getOpenedBy(), event.getId(), total, transactionId);
+        OrderDTO orderDTO = toDTO(order, event,total, transactionId);
 
         for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
             TicketIssueRequest request = createTicketIssueRequest(purchesDTO, orderDTO);
@@ -843,29 +843,69 @@ public class ReservationService {
         logger.logEvent("Failed to notify order owner. reason=" + e.getMessage(), LogLevel.WARN);
     }
 }
+public OrderDTO toDTO(ActiveOrder order, Event event, BigDecimal total, Integer transactionId) {
+    if (order == null) {
+        throw new IllegalArgumentException("Order cannot be null");
+    }
 
-    // private void notifyOrderOwner(String sessionToken, String message) {
-    //     if (sessionToken == null || message == null || message.isBlank()) {
-    //         return;
-    //     }
-        
-    //     try{
-    //         tokenService.validateToken(sessionToken);
-    //     }
-    //     catch (Exception e){
-    //         return;
-    //     }
-        
-    //     if (tokenService.isMemberToken(sessionToken)) {
-    //         Long memberId = tokenService.extractUserId(sessionToken);
-    //         if (memberId != null) {
-    //             notificationsService.notifyMember(memberId, message);
-    //             return;
-    //         }
-    //     }
+    List<PurchaseDTO> ticketDTOs = new ArrayList<>();
 
-    //     notificationsService.notifyGuest(sessionToken, message);
-    // }
+    for (Ticket ticket : order.getTickets()) {
+        ticketDTOs.add(new PurchaseDTO(
+                ticket.getTicketId(),
+                ticket.getRow(),
+                ticket.getChair(),
+                "",
+                ticket.getPrice(),
+                "ACTIVE",
+                ""
+        ));
+    }
+
+    Long eventId = order.getEventId();
+    Long memberId = order.getUserId();
+
+    String eventName = event == null ? "אירוע" : event.getName();
+    String location = event == null ? "" : event.getLocation().toString();
+
+    Long companyId = event == null ? null : event.getCompanyId();
+
+    return new OrderDTO(
+            0L,
+            ticketDTOs,
+            eventName,
+            location,
+            memberId,
+            companyId,
+            null,
+            eventId,
+            total == null ? BigDecimal.ZERO : total,
+            transactionId,
+            false
+    );
+}
+    public ActiveOrderDTO toDTO(ActiveOrder order) {
+        List<TicketDTO> ticketDTOs = new ArrayList<>();
+
+        for (Ticket ticket : order.getTickets()) {
+            ticketDTOs.add(new TicketDTO(
+                    ticket.getTicketId(),
+                    ticket.getEventId(),
+                    ticket.getAreaId(),
+                    ticket.getRow(),
+                    ticket.getChair(),
+                    ticket.getPrice()
+            ));
+        }
+
+    return new ActiveOrderDTO(
+            order.getOrderId(),
+            order.getUserId(),
+            order.getEventId(),
+            ticketDTOs,
+            order.getExpiresAtEpochMillis()
+    );
+}
 
     private TicketIssueRequest createTicketIssueRequest(PurchaseDTO purchesDTO, OrderDTO orderDTO) {
         {
