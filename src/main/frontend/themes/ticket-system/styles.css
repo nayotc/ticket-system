@@ -2709,8 +2709,12 @@ vaadin-button.message-popup-secondary-button:hover {
 .ticket-summary-section {
     min-width: 0;
     height: 100%;
+    min-height: 0;
+    overflow: hidden;
+
     display: flex;
     flex-direction: column;
+
     background: rgba(19, 27, 46, 0.92);
     border-right: 1px solid rgba(73, 68, 84, 0.45);
     box-shadow: -14px 0 40px rgba(0, 0, 0, 0.30);
@@ -2730,8 +2734,12 @@ vaadin-button.message-popup-secondary-button:hover {
 }
 
 .selected-tickets-list {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+
     overflow-y: auto;
+    overflow-x: hidden;
+
     padding: 20px;
     display: flex;
     flex-direction: column;
