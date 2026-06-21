@@ -11,6 +11,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 
+import org.hibernate.annotations.BatchSize;
+
 @Entity
 public abstract class CompositePurchaseRule extends PurchaseRule {
 
@@ -21,6 +23,7 @@ public abstract class CompositePurchaseRule extends PurchaseRule {
     )
     @JoinColumn(name = "parent_rule_id")
     @OrderColumn(name = "rule_order")
+    @BatchSize(size = 50)
     protected List<PurchaseRule> rules = new ArrayList<>();
 
     protected CompositePurchaseRule() {

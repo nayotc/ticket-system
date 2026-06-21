@@ -22,6 +22,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.EventSearchResultView;
+import ticketsystem.DomainLayer.event.SeatingArea;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
@@ -117,7 +118,7 @@ public class EventRepository implements IEventRepository {
     @Transactional(readOnly = true)
     public List<Event> getAllEvents() {
         return eventJpaRepository.findAllWithMap().stream()
-                .map(Event::copy)
+                .map(this::copyWithRuntimeState)
                 .toList();
     }
 
@@ -335,6 +336,8 @@ public class EventRepository implements IEventRepository {
     }
 
     private Event copyWithRuntimeState(Event persistedEvent) {
+        initializeSeatMaps(persistedEvent);
+
         Event copy = persistedEvent.copy();
 
         int activeReservations = activeReservationsCounts.getOrDefault(
@@ -344,6 +347,17 @@ public class EventRepository implements IEventRepository {
 
         copy.restoreActiveReservationsCount(activeReservations);
         return copy;
+    }
+
+    private void initializeSeatMaps(Event event) {
+        if (event == null || event.getMap() == null || event.getMap().getElements() == null) {
+            return;
+        }
+
+        event.getMap().getElements().stream()
+                .filter(SeatingArea.class::isInstance)
+                .map(SeatingArea.class::cast)
+                .forEach(seatingArea -> seatingArea.getSeats().size());
     }
 
     private void rememberRuntimeState(Event event) {

@@ -1,7 +1,5 @@
 package ticketsystem.DomainLayer.event;
 
-import java.util.List;
-
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 import java.util.ArrayList;
@@ -18,6 +16,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 
+import org.hibernate.annotations.BatchSize;
+
 @Embeddable
 public class EventMap {
 
@@ -30,6 +30,7 @@ public class EventMap {
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id")
+    @BatchSize(size = 50)
     private List<Element> elements;
 
     protected EventMap() {}

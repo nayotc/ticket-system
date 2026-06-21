@@ -14,6 +14,9 @@ public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecif
     @Query("""
             SELECT DISTINCT e
             FROM Event e
+            LEFT JOIN FETCH e.purchasePolicy pp
+            LEFT JOIN FETCH pp.rootRule
+            LEFT JOIN FETCH e.discountPolicy dp
             LEFT JOIN FETCH e.map.elements
             WHERE e.id = :eventId
             """)
@@ -22,6 +25,9 @@ public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecif
     @Query("""
             SELECT DISTINCT e
             FROM Event e
+            LEFT JOIN FETCH e.purchasePolicy pp
+            LEFT JOIN FETCH pp.rootRule
+            LEFT JOIN FETCH e.discountPolicy dp
             LEFT JOIN FETCH e.map.elements
             WHERE e.companyId = :companyId
             """)
@@ -30,6 +36,9 @@ public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecif
     @Query("""
             SELECT DISTINCT e
             FROM Event e
+            LEFT JOIN FETCH e.purchasePolicy pp
+            LEFT JOIN FETCH pp.rootRule
+            LEFT JOIN FETCH e.discountPolicy dp
             LEFT JOIN FETCH e.map.elements
             """)
     List<Event> findAllWithMap();

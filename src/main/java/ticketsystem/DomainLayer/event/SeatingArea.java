@@ -11,12 +11,15 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.MapKey;
 import jakarta.persistence.OneToMany;
 
+import org.hibernate.annotations.BatchSize;
+
 @Entity
 @DiscriminatorValue("SEATING")
 public class SeatingArea extends Area {
 
     @OneToMany(mappedBy = "seatingArea", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @MapKey(name = "position")
+    @BatchSize(size = 50)
     private Map<SeatPosition, Seat> seats = new HashMap<>();
     private int rows;
     private int columns;
