@@ -66,5 +66,18 @@ public class ConditionalDiscount extends VisibleDiscount {
                 couponCode);
     }
 
+    /**
+     * Identifies this rule as a conditional discount.
+     *
+     * <p>This override is required because ConditionalDiscount inherits from
+     * VisibleDiscount, but represents a different business discount type.</p>
+     *
+     * @return {@link DiscountKind#CONDITIONAL}
+     */
+    @Override
+    public DiscountKind getKind() {
+        return DiscountKind.CONDITIONAL;
+    }
+
     
 }

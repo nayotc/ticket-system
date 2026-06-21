@@ -307,14 +307,17 @@ public class ReservationPresenter {
     /**
      * Maps application-layer applied discount DTOs into presentation DTOs.
      *
-     * The application DTO describes the pricing result returned by the service.
-     * The presentation DTO contains the text and amount that order-related views
-     * know how to display.
+     * <p>The application DTO describes the business result returned by the
+     * pricing service. The presentation DTO preserves the discount kind and adds
+     * text formatted for display in order-related views.</p>
      *
-     * @param dtoDiscounts discounts applied during application-service pricing calculation
+     * @param dtoDiscounts discounts applied during application-service pricing
+     *                     calculation
      * @return presentation discounts ready for UI display
      */
-    private List<AppliedDiscount> mapAppliedDiscounts(List<AppliedDiscountDTO> dtoDiscounts) {
+    private List<AppliedDiscount> mapAppliedDiscounts(
+            List<AppliedDiscountDTO> dtoDiscounts
+    ) {
         List<AppliedDiscount> discounts = new ArrayList<>();
 
         if (dtoDiscounts == null || dtoDiscounts.isEmpty()) {
@@ -324,6 +327,7 @@ public class ReservationPresenter {
         for (AppliedDiscountDTO discount : dtoDiscounts) {
             discounts.add(new AppliedDiscount(
                     discount.name(),
+                    discount.kind(),
                     formatDiscountDescription(discount.percentage()),
                     discount.amount()
             ));

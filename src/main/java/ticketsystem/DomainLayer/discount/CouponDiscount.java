@@ -72,4 +72,15 @@ public class CouponDiscount extends DiscountTypes {
                 .multiply(getPercentage())
                 .divide(BigDecimal.valueOf(100));
     }
+
+
+    /**
+     * Identifies this rule as a coupon-based discount.
+     *
+     * @return {@link DiscountKind#COUPON}
+     */
+    @Override
+    public DiscountKind getKind() {
+        return DiscountKind.COUPON;
+    }
 }

@@ -24,4 +24,15 @@ public class VisibleDiscount extends DiscountTypes {
             .multiply(getPercentage())
             .divide(BigDecimal.valueOf(100));
     }
+
+    /**
+     * Identifies this rule as a visible discount.
+     *
+     * @return {@link DiscountKind#VISIBLE}
+     */
+    @Override
+    public DiscountKind getKind() {
+        return DiscountKind.VISIBLE;
+    }
 }
+
