@@ -56,7 +56,7 @@ public class ExternalTicketIssuingService implements ITicketIssuingService {
             body.add("action_type", "issue_ticket");
             body.add("customer_id", requestDto.getCustomerId());
             body.add("event_id", requestDto.getEventId());
-            body.add("zone", requestDto.getZoneType().name());
+            body.add("zone", requestDto.getZoneType());
 
             if (requestDto.isSeating()) {
                 body.add("is_seating", "true");

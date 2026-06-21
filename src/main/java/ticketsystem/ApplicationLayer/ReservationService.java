@@ -711,15 +711,6 @@ private void expireOldOrdersForEvent(Long eventId) {
         return orderDTO;
     }
 
-    // Helper methods
-    private boolean isOrderOwnedByToken(ActiveOrder order, String token) {
-        if (tokenService.isGuestToken(token)) {
-            return order.getSessionToken().equals(token);
-        }
-
-        Long userId = tokenService.extractUserId(token);
-        return order.getUserId() != null && order.getUserId().equals(userId);
-    }
 
     private ActiveOrder getOrCreateOrder(String token, Long eventId) {
         ActiveOrder order = findActiveOrder(token, eventId);
@@ -777,65 +768,7 @@ private void expireOldOrdersForEvent(Long eventId) {
         }
     }
 
-    private void expireOldOrders() {
-        List<ActiveOrder> allOrders = orderRepository.getAll();
-
-        for (ActiveOrder order : allOrders) {
-            try{
-            Event event = eventRepository.getEventById(order.getEventId());
-
-            if (event == null || order == null) {
-                continue;
-            }
-            String token= order.getSessionToken();
-            boolean tokenExpired =false;
-            try{
-                tokenService.validateToken(token);
-            }
-            catch (Exception e){
-                tokenExpired = true;
-            }
-            boolean guestOrder = order.getUserId() == null;
-            if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
-                reservationDomeinService.expire(event, order);
-                
-                notifyOrderOwner(
-                        order,
-                        "Your active order has expired. The reserved tickets were released back to the inventory.");
-                
-                expirationWarningSentOrderIds.remove(order.getOrderId());
-                eventRepository.updateEvent(event);
-                orderRepository.deleteOrder(order.getOrderId());
-
-                logger.logEvent(
-                        "Expired order cancelled: " + order.getOrderId(),
-                        LogLevel.WARN);
-
-                continue;
-            }
-
-            if (reservationDomeinService.timeAboutToExpire(event, order) && expirationWarningSentOrderIds.add(order.getOrderId())) {
-
-                notifyOrderOwner(
-                        order,
-                        "Your active order is about to expire. Please complete your purchase soon.");
-
-                logger.logEvent(
-                        "Active order expiration warning sent: " + order.getOrderId(),
-                        LogLevel.INFO);
-            }
-        }
-        catch (Exception e){
-                          logger.logEvent(
-                    "Failed to expire orderId=" + order.getOrderId()
-                            + ", eventId=" + order.getEventId()
-                            + ", reason=" + e.getMessage(),
-                    LogLevel.WARN
-            );
-        }
-    }
-}
-
+   
     private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutBefore) {
         if (event == null || notificationsService == null || companyRepository == null || membershipDomain == null) {
             return;
@@ -996,9 +929,7 @@ public OrderDTO toDTO(ActiveOrder order, Event event, BigDecimal total, Integer 
             return new TicketIssueRequest(
                     String.valueOf(orderDTO.getMemberId()),
                     String.valueOf(orderDTO.getEventId()),
-                    seating
-                            ? TicketIssueRequest.TicketZoneType.SEATING
-                            : TicketIssueRequest.TicketZoneType.STANDING,
+                    purchesDTO.getAreaName(),
                     seating ? null : 1,
                     seating,
                     seatsJson);

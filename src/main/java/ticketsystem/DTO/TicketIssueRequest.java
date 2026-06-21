@@ -4,14 +4,14 @@ public class TicketIssueRequest {
 
     private String customerId;
     private String eventId;
-    private TicketZoneType zone;
+    private String zone;
 
     private Integer quantity;
 
     private boolean seating;
     private String seatsJson;
 
-    public TicketIssueRequest(String customerId, String eventId, TicketZoneType zone, Integer quantity, boolean seating, String seatsJson) {
+    public TicketIssueRequest(String customerId, String eventId, String zone, Integer quantity, boolean seating, String seatsJson) {
         this.customerId = customerId;
         this.eventId = eventId;
         this.zone = zone;
@@ -38,11 +38,11 @@ public class TicketIssueRequest {
         this.eventId = eventId;
     }
 
-    public TicketZoneType getZoneType() {
+    public String getZoneType() {
         return zone;
     }
 
-    public void setZone(TicketZoneType zone) {
+    public void setZone(String zone) {
         this.zone = zone;
     }
 
@@ -70,8 +70,4 @@ public class TicketIssueRequest {
         this.seatsJson = seatsJson;
     }
 
-    public enum TicketZoneType {
-    STANDING,
-    SEATING
-}
 }

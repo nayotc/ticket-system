@@ -62,7 +62,7 @@ public class ExternalSystemsIntegrationTest {
         TicketIssueRequest request = new TicketIssueRequest(
                 "849302",
                 "EVT-9923",
-                TicketIssueRequest.TicketZoneType.STANDING,
+                "VIP",
                 2,
                 false,
                 null
@@ -81,7 +81,7 @@ public class ExternalSystemsIntegrationTest {
         TicketIssueRequest request = new TicketIssueRequest(
                 "849302",
                 "EVT-9923",
-                TicketIssueRequest.TicketZoneType.STANDING,
+                "VIP",
                 1,
                 false,
                 null
@@ -118,7 +118,7 @@ public class ExternalSystemsIntegrationTest {
         TicketIssueRequest request = new TicketIssueRequest(
                 "849302",
                 "EVT-9923",
-                TicketIssueRequest.TicketZoneType.STANDING,
+                "VIP",
                 0,
                 false,
                 null
@@ -142,7 +142,7 @@ public class ExternalSystemsIntegrationTest {
         TicketIssueRequest request = new TicketIssueRequest(
                 "849302",
                 "EVT-9923",
-                TicketIssueRequest.TicketZoneType.SEATING,
+                "VIP",
                 null,
                 true,
                 null
