@@ -53,10 +53,10 @@ import ticketsystem.InfrastructureLayer.SecureBarcodeProxy;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
 import ticketsystem.InfrastructureLayer.TokenRepository;
 import ticketsystem.testutil.RecordingNotifier;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Acceptance tests for system-administrator use cases.
@@ -77,6 +77,7 @@ import org.springframework.context.annotation.Import;
         HistoryRepository.class,
         SystemAdminRepository.class
 })
+@Transactional
 public class SystemAdminServiceTest {
     private SystemAdminService systemAdminService;
     @Autowired

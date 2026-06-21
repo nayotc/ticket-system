@@ -14,6 +14,11 @@ import org.springframework.context.annotation.Import;
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.InfrastructureLayer.SystemAdminRepository;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @DataJpaTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create-drop"
@@ -133,5 +138,70 @@ class SystemAdminPersistenceTest {
 
         assertTrue(systemAdminRepository.findById("106").isEmpty());
         assertFalse(systemAdminRepository.isSystemAdmin("106"));
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void GivenTwoCopiesOfSystemAdmin_WhenStaleCopyIsSaved_ThenOptimisticLockingFailureIsTranslated() {
+        String adminId = "107";
+
+        try {
+            systemAdminRepository.addAdmin(
+                    new SystemAdmin(
+                            adminId,
+                            "admin107@test.com",
+                            false
+                    )
+            );
+
+            SystemAdmin firstCopy = systemAdminRepository
+                    .findById(adminId)
+                    .orElseThrow();
+
+            SystemAdmin staleCopy = systemAdminRepository
+                    .findById(adminId)
+                    .orElseThrow();
+
+            long staleVersion = staleCopy.getVersion();
+
+            firstCopy.activate();
+            systemAdminRepository.addAdmin(firstCopy);
+
+            SystemAdmin stateAfterFirstUpdate = systemAdminRepository
+                    .findById(adminId)
+                    .orElseThrow();
+
+            assertTrue(stateAfterFirstUpdate.isActive());
+            assertTrue(stateAfterFirstUpdate.getVersion() > staleVersion);
+
+            staleCopy.deactivate();
+
+            RuntimeException exception = assertThrows(
+                    RuntimeException.class,
+                    () -> systemAdminRepository.addAdmin(staleCopy)
+            );
+
+            assertTrue(
+                    exception.getCause() instanceof OptimisticLockingFailureException,
+                    "The repository should translate the optimistic-locking failure"
+            );
+
+            SystemAdmin reloadedAdmin = systemAdminRepository
+                    .findById(adminId)
+                    .orElseThrow();
+
+            assertTrue(
+                    reloadedAdmin.isActive(),
+                    "The successful first update should remain persisted"
+            );
+
+            assertEquals(
+                    stateAfterFirstUpdate.getVersion(),
+                    reloadedAdmin.getVersion(),
+                    "The stale update must not modify the persisted version"
+            );
+        } finally {
+            systemAdminRepository.deleteById(adminId);
+        }
     }
 }

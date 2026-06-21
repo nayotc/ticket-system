@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.dao.DataAccessException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
 import ticketsystem.DomainLayer.IRepository.ISystemAdminRepository;
@@ -27,8 +27,8 @@ public class SystemAdminRepository implements ISystemAdminRepository {
         }
 
         try {
-            systemAdminJpaRepository.save(systemAdmin);
-        } catch (ObjectOptimisticLockingFailureException e) {
+            systemAdminJpaRepository.saveAndFlush(systemAdmin);
+        } catch (OptimisticLockingFailureException e) {
             throw new RuntimeException(
                     "OptimisticLockingFailureException: System admin "
                             + systemAdmin.getAdminId()
