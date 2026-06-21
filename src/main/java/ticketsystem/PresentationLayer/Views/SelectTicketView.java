@@ -1261,51 +1261,6 @@ private String findAreaNameById(Long areaId) {
     selectionAccessTimer.setText(formatSeconds(secondsLeft));
 }
 
-//     private void refreshSelectionAccessTimer() {
-//     if (eventId == null) {
-//         selectionAccessTimer.setVisible(false);
-//         return;
-//     }
-
-//     try {
-//         long secondsLeft = reservationPresenter.getSelectionAccessSecondsLeft(currentToken(), eventId);
-
-//       if (secondsLeft <= 0) {
-//     boolean expired = reservationPresenter.expireSelectionAccessIfNeeded(currentToken(), eventId);
-
-//     if (expired) {
-//         allowLeavingSelectionPage = true;
-
-//         Notification notification = Notification.show(
-//                 "זמן בחירת הכרטיסים הסתיים. מכיוון שיש משתמשים שממתינים בתור, הגישה שלך שוחררה.",
-//                 5000,
-//                 Notification.Position.TOP_CENTER
-//         );
-//         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
-
-//         UI.getCurrent().navigate(UiRoutes.HOME);
-//         return;
-//     }
-
-
-//         secondsLeft = reservationPresenter.getSelectionAccessSecondsLeft(currentToken(), eventId);
-//     }
-
-//         selectionAccessTimer.setVisible(true);
-//         selectionAccessTimer.setText("זמן לבחירת כרטיסים: " + formatSeconds(secondsLeft));
-
-//     } catch (PresentationException e) {
-//         if (e.isSessionTimeout()) {
-//             UiSession.handleTimeoutRedirect();
-//             return;
-//         }
-
-//         selectionAccessTimer.setVisible(false);
-
-//     } catch (Exception e) {
-//         selectionAccessTimer.setVisible(false);
-//     }
-// }
 
 private String formatSeconds(long seconds) {
     long safeSeconds = Math.max(0, seconds);
