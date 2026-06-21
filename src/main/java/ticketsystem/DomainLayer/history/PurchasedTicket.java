@@ -48,6 +48,9 @@ public class PurchasedTicket {
     @Column(name = "seat_chair")
     private Integer chair;
 
+    @Column(name = "area_name")
+private String areaName;
+
     /**
      * Price paid for this ticket.
      *
@@ -96,17 +99,19 @@ public class PurchasedTicket {
      * @param secureBarcode barcode issued for the purchased ticket
      */
     public PurchasedTicket(
-            Long ticketId,
-            Integer row,
-            Integer chair,
-            BigDecimal price,
-            String secureBarcode
-    ) {
-        this.ticketId = Objects.requireNonNull(
+        Long ticketId,
+        String areaName,
+        Integer row,
+        Integer chair,
+        BigDecimal price,
+        String secureBarcode
+) {
+       this.ticketId = Objects.requireNonNull(
                 ticketId,
                 "Ticket ID cannot be null."
         );
 
+        this.areaName = areaName;
         this.row = row;
         this.chair = chair;
 
@@ -247,4 +252,13 @@ public class PurchasedTicket {
     public void setSecureBarcode(String secureBarcode) {
         this.secureBarcode = secureBarcode;
     }
+
+    public String getAreaName() {
+        return areaName;
+    }
+
+    public void setAreaName(String areaName) {
+        this.areaName = areaName;
+    }
+
 }

@@ -8,18 +8,19 @@ public class TicketDTO {
     private int row;
     private int chair;
     private BigDecimal price;
-  
+    private Long areaId;
 
     //for json
     public TicketDTO() {}
 
-    public TicketDTO(Long ticketId, Long eventId, int row, int chair, BigDecimal price) {
-        this.ticketId = ticketId;
-        this.eventId = eventId;
-        this.row = row;
-        this.chair = chair;
-        this.price = price;
-    }
+   public TicketDTO(Long ticketId, Long eventId, Long areaId, int row, int chair, BigDecimal price) {
+    this.ticketId = ticketId;
+    this.eventId = eventId;
+    this.areaId = areaId;
+    this.row = row;
+    this.chair = chair;
+    this.price = price;
+}
 
     public Long getTicketId() { return ticketId; }
     public void setTicketId(Long ticketId) { this.ticketId = ticketId; }
@@ -35,5 +36,7 @@ public class TicketDTO {
     
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
+    public Long getAreaId() { return areaId; }
+public void setAreaId(Long areaId) { this.areaId = areaId; }
    
 }

@@ -935,6 +935,11 @@ public class ReservationPresenter {
                     "שירות התשלום אינו זמין כרגע. יש לנסות שוב מאוחר יותר.";
             case "Ticket issuing service is unavailable" ->
                     "שירות הנפקת הכרטיסים אינו זמין כרגע. יש לנסות שוב מאוחר יותר.";
+            case "Selection access time could not be loaded." ->
+                    "לא ניתן לטעון את זמן הגישה לבחירת הכרטיסים.";
+
+            case "Selection access could not be checked." ->
+                    "לא ניתן לבדוק את תוקף הגישה לבחירת הכרטיסים.";
 
             default ->
                     "בחירת הכרטיסים נכשלה!!. יש לנסות שוב.";
@@ -1049,4 +1054,44 @@ public class ReservationPresenter {
             */
         }
     }
+    public long getSelectionAccessSecondsLeft(String token, Long eventId) {
+    try {
+        if (token == null || token.isBlank()) {
+            throw presentationError("No active session found. Please refresh and try again.");
+        }
+
+        if (eventId == null || eventId <= 0) {
+            throw presentationError("Event id is invalid.");
+        }
+
+        return waitingQueueService.getSelectionAccessSecondsLeft(eventId, token);
+
+    } catch (PresentationException e) {
+        throw e;
+
+    } catch (Exception e) {
+        throw presentationError("Selection access time could not be loaded.");
+    }
+}
+
+public boolean expireSelectionAccessIfNeeded(String token, Long eventId) {
+    try {
+        if (token == null || token.isBlank()) {
+            throw presentationError("No active session found. Please refresh and try again.");
+        }
+
+        if (eventId == null || eventId <= 0) {
+            throw presentationError("Event id is invalid.");
+        }
+
+        return waitingQueueService.expireSelectionAccessIfNeeded(eventId, token);
+
+    } catch (PresentationException e) {
+        throw e;
+
+    } catch (Exception e) {
+        throw presentationError("Selection access could not be checked.");
+    }
+}
+
 }

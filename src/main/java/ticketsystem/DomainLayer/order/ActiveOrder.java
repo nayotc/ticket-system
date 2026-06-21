@@ -236,35 +236,6 @@ public class ActiveOrder {
         this.version = (version == null ? 0 : version) + 1;
     }
 
-    public OrderDTO toDTO(String eventName, String location, Long companyId, Long managedByMemberId,
-                          Long eventId, BigDecimal total, Integer transactionId) {
-        List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-        for (Ticket ticket : tickets) {
-            ticketDTOs.add(new PurchaseDTO(
-                    ticket.getTicketId(),
-                    ticket.getRow(),
-                    ticket.getChair(),
-                    ticket.getPrice(),
-                    "ACTIVE",
-                    ""
-            ));
-        }
-        if (getUserId() != null) {
-            return new OrderDTO(0L, ticketDTOs, eventName, location, getUserId(), companyId,
-                    managedByMemberId, eventId, total,transactionId,false);
-        }
-        return new OrderDTO(0L, ticketDTOs, eventName, location, null, companyId,
-                managedByMemberId, eventId, total, transactionId,false);
-    }
-
-    public ActiveOrderDTO toDTO() {
-        List<TicketDTO> ticketDTOs = new ArrayList<>();
-        for (Ticket ticket : tickets) {
-            ticketDTOs.add(new TicketDTO(ticket.getTicketId(), ticket.getEventId(),
-                    ticket.getRow(), ticket.getChair(), ticket.getPrice()));
-        }
-        return new ActiveOrderDTO(orderId, getUserId(), eventId, ticketDTOs, getExpiresAtEpochMillis());
-    }
 
     public ActiveOrder(Long orderId, String sessionToken, Long userId, Long eventId, LocalDateTime expiresAt) {
         if (orderId != null) {

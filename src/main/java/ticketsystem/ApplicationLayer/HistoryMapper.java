@@ -114,7 +114,7 @@ public final class HistoryMapper {
         );
 
         PurchasedTicket ticket = new PurchasedTicket(
-                ticketDTO.getTicketId(),
+                ticketDTO.getTicketId(),ticketDTO.getAreaName(),
                 ticketDTO.getRow(),
                 ticketDTO.getChair(),
                 ticketDTO.getPrice(),
@@ -143,13 +143,13 @@ public final class HistoryMapper {
         );
 
         return new PurchaseDTO(
-                ticket.getTicketId(),
-                ticket.getRow(),
-                ticket.getChair(),
-                ticket.getPrice(),
-                ticket.getStatus().name(),
-                ticket.getSecureBarcode()
-        );
+        ticket.getTicketId(),
+        ticket.getRow(),
+        ticket.getChair(),ticket.getAreaName(),
+        ticket.getPrice(),
+        ticket.getStatus().name(),
+        ticket.getSecureBarcode()
+);
     }
 
     /**

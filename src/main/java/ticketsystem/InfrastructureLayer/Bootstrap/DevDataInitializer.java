@@ -502,14 +502,14 @@ public class DevDataInitializer implements CommandLineRunner {
         long ownerId = owner.getId();
 
         // Transaction 1: 2 Tickets bought by the regular test member, managed by the Founder
-        PurchaseDTO ticket1 = new PurchaseDTO(100L, 1, 12, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-123");
-        PurchaseDTO ticket2 = new PurchaseDTO(101L, 1, 13, BigDecimal.valueOf(180), "ACTIVE", "BARCODE-124");
+        PurchaseDTO ticket1 = new PurchaseDTO(100L, 1, 12,"VIP", BigDecimal.valueOf(180), "ACTIVE", "BARCODE-123");
+        PurchaseDTO ticket2 = new PurchaseDTO(101L, 1, 13,"SEAT", BigDecimal.valueOf(180), "ACTIVE", "BARCODE-124");
 
         OrderDTO order1 = new OrderDTO(8492L, List.of(ticket1, ticket2), "פסטיבל אורות הלילה", "תל אביב", buyerId, getTestCompanyId(), founderId, 91L, new BigDecimal(100), 111111,false);
         historyService.onOrderCompleted(order1);
 
         // Transaction 2: 1 Ticket bought by the regular test member, managed by the Founder
-        PurchaseDTO ticket3 = new PurchaseDTO(102L, 2, 5, BigDecimal.valueOf(120), "ACTIVE", "BARCODE-125");
+        PurchaseDTO ticket3 = new PurchaseDTO(102L, 2, 5,"VIP", BigDecimal.valueOf(120), "ACTIVE", "BARCODE-125");
         OrderDTO order2 = new OrderDTO(8491L, List.of(ticket3), "הופעת רוק במדבר", "באר שבע", buyerId, getTestCompanyId(), founderId, 92L, new BigDecimal(120), 222222,false);
         historyService.onOrderCompleted(order2);
         // ==========================================
@@ -517,14 +517,14 @@ public class DevDataInitializer implements CommandLineRunner {
         // ==========================================
 
         // Transaction 3: 2 Tickets for "Sunset Festival" managed by Owner
-        PurchaseDTO ticket4 = new PurchaseDTO(103L, 3, 1, BigDecimal.valueOf(150), "ACTIVE", "BARCODE-126");
-        PurchaseDTO ticket5 = new PurchaseDTO(104L, 3, 2, BigDecimal.valueOf(150), "ACTIVE", "BARCODE-127");
+        PurchaseDTO ticket4 = new PurchaseDTO(103L, 3, 1,"VIP", BigDecimal.valueOf(150), "ACTIVE", "BARCODE-126");
+        PurchaseDTO ticket5 = new PurchaseDTO(104L, 3, 2,"VIP", BigDecimal.valueOf(150), "ACTIVE", "BARCODE-127");
         
         OrderDTO order3 = new OrderDTO(8493L, List.of(ticket4, ticket5), "פסטיבל שקיעה", "תל אביב", buyerId, getTestCompanyId(), ownerId, 101L, new BigDecimal(300),111111,false);
         historyService.onOrderCompleted(order3);
 
         // Transaction 4: 1 Ticket for "Jazz Concert" managed by Owner
-        PurchaseDTO ticket6 = new PurchaseDTO(105L, 4, 1, BigDecimal.valueOf(200), "ACTIVE", "BARCODE-128");
+        PurchaseDTO ticket6 = new PurchaseDTO(105L, 4, 1,"VIP", BigDecimal.valueOf(200), "ACTIVE", "BARCODE-128");
         OrderDTO order4 = new OrderDTO(8494L, List.of(ticket6), "הופעת ג'אז", "באר שבע", buyerId, getTestCompanyId(), ownerId, 102L, new BigDecimal(200), 111111,false);
         historyService.onOrderCompleted(order4);
 

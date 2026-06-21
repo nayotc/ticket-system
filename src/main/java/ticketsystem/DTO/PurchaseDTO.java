@@ -6,6 +6,7 @@ public class PurchaseDTO {
     private Long ticketId;
     private Integer row;
     private Integer chair;
+    private String areaName;
     private BigDecimal price;
     private String status;
     private String secureBarcode;
@@ -13,10 +14,11 @@ public class PurchaseDTO {
     //for json
     public PurchaseDTO() {}
 
-    public PurchaseDTO(Long ticketId, Integer row, Integer chair, BigDecimal price, String status, String secureBarcode) {
+    public PurchaseDTO(Long ticketId, Integer row, Integer chair,String areaName, BigDecimal price, String status, String secureBarcode) {
         this.ticketId = ticketId;
         this.row = row;
         this.chair = chair;
+        this.areaName=areaName;
         this.price = price;
         this.status = status;
         this.secureBarcode = secureBarcode;
@@ -39,5 +41,12 @@ public class PurchaseDTO {
 
     public String getSecureBarcode() { return secureBarcode; }
     public void setSecureBarcode(String secureBarcode) { this.secureBarcode = secureBarcode; }
+    public String getAreaName() {
+            return areaName;
+        }
+
+        public void setAreaName(String areaName) {
+            this.areaName = areaName;
+        }
 
 }

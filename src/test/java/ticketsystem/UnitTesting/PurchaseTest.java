@@ -20,7 +20,7 @@ public class PurchaseTest {
         // Arrange (Setup)
         List<PurchasedTicket> originalList = new ArrayList<>();
         PurchasedTicket ticket = new PurchasedTicket(
-                1L,
+                1L,"VIP",
                 1,
                 1,
                 new BigDecimal("150.00"),
@@ -44,7 +44,7 @@ public class PurchaseTest {
         // Arrange (Setup)
         List<PurchasedTicket> originalList = new ArrayList<>();
         originalList.add(new PurchasedTicket(
-                1L,
+                1L,"VIP",
                 1,
                 1,
                 new BigDecimal("150.00"),
