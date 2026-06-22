@@ -144,8 +144,6 @@ public class Event {
         this.discountPolicy = other.discountPolicy;
         this.activeReservationsCount = new AtomicInteger(other.getActiveReservationsCount());
         this.version = other.version;
-
-
     }
 
     public Event copy() {
@@ -233,11 +231,15 @@ public class Event {
     }
 
     public BigDecimal getTicketPrice() {
-        return ticketPrice;
-    }
+        if (map != null) {
+            BigDecimal minimumAreaPrice = map.getMinimumAreaPrice();
 
-    public void setTicketPrice(BigDecimal ticketPrice) {
-        this.ticketPrice = ticketPrice;
+            if (minimumAreaPrice != null) {
+                return minimumAreaPrice;
+            }
+        }
+
+        return ticketPrice;
     }
 
     public Double getRate() {
@@ -433,20 +435,22 @@ public class Event {
         return requestedLocation == this.location;
     }
 
-    private boolean matchesPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
-        if (minPrice == null && maxPrice == null) {
-            return true;  // event matches any price if no specific price range is requested
+    public boolean matchesPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
+        if (map != null && map.getMinimumAreaPrice() != null) {
+            return map.hasAreaInPriceRange(minPrice, maxPrice);
         }
-        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
-            throw new IllegalArgumentException("Minimum price cannot be greater than maximum price");
+
+        if (minPrice != null
+                && maxPrice != null
+                && minPrice.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException(
+                    "Minimum price cannot be greater than maximum price"
+            );
         }
-        if (minPrice != null && this.ticketPrice.compareTo(minPrice) < 0) {  // event price is less than the minimum price
-            return false;
-        }
-        if (maxPrice != null && this.ticketPrice.compareTo(maxPrice) > 0) {  // event price is greater than the maximum price
-            return false;
-        }
-        return true; // the event price is within the specified range
+
+        return ticketPrice != null
+                && (minPrice == null || ticketPrice.compareTo(minPrice) >= 0)
+                && (maxPrice == null || ticketPrice.compareTo(maxPrice) <= 0);
     }
 
     private boolean matchesRate(Double requestedRate) {
@@ -621,6 +625,11 @@ public class Event {
 
     public String getAreaName(Long areaId){
         return map.getAreaName(areaId);
+    }
+
+    public BigDecimal getAreaPrice(Long areaId) {
+        BigDecimal areaPrice = map == null ? null : map.getAreaPrice(areaId);
+        return areaPrice != null ? areaPrice : ticketPrice;
     }
 
     @Override

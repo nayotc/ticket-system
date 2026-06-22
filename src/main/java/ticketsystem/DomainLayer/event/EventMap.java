@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer.event;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -170,6 +171,57 @@ public class EventMap {
         }
 
         return "אזור לא ידוע";
+    }
+
+    public BigDecimal getAreaPrice(Long areaId) {
+        if (areaId == null) {
+            return BigDecimal.ZERO;
+        }
+
+        for (Element element : elements) {
+            if (areaId.equals(element.getId()) && element instanceof Area) {
+                return ((Area) element).getPrice();
+            }
+        }
+        return BigDecimal.ZERO;
+    }
+
+    public BigDecimal getMinimumAreaPrice() {
+        if (elements == null) {
+            return null;
+        }
+
+        return elements.stream()
+                .filter(Area.class::isInstance)
+                .map(Area.class::cast)
+                .map(Area::getPrice)
+                .filter(Objects::nonNull)
+                .min(BigDecimal::compareTo)
+                .orElse(null);
+    }
+
+    public boolean hasAreaInPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
+        if (minPrice != null
+                && maxPrice != null
+                && minPrice.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException(
+                    "Minimum price cannot be greater than maximum price"
+            );
+        }
+
+        if (elements == null) {
+            return false;
+        }
+
+        return elements.stream()
+                .filter(Area.class::isInstance)
+                .map(Area.class::cast)
+                .map(Area::getPrice)
+                .filter(Objects::nonNull)
+                .anyMatch(price ->
+                        (minPrice == null || price.compareTo(minPrice) >= 0)
+                                && (maxPrice == null || price.compareTo(maxPrice) <= 0)
+                );
     }
 
 }
