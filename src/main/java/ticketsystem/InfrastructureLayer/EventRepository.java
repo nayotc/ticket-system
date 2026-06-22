@@ -386,9 +386,20 @@ public class EventRepository implements IEventRepository {
         }
         }
 
-        // @Override
-        // public void markStandingTicketsAsSold(Long eventId, Long areaId, int quantity) {
-        //         // TODO Auto-generated method stub
-        //         throw new UnsupportedOperationException("Unimplemented method 'markStandingTicketsAsSold'");
-        // }
+        @Override
+        @Transactional
+        public void markStandingTicketsAsSold(
+                        Long eventId,
+                        Long areaId,
+                        int quantity) {
+                int updatedRows = eventJpaRepository.markStandingTicketsAsSold(
+                                areaId,
+                                quantity);
+
+                if (updatedRows == 0) {
+                        throw new IllegalStateException(
+                                        "Failed to mark standing tickets as sold. eventId="
+                                                        + eventId + ", areaId=" + areaId);
+                }
+        }
 }

@@ -17,5 +17,5 @@ public interface IEventRepository {
     List<EventSearchResultView> getFeaturedEvents(int limit);
     void updateSeatStatus(Long eventId, Long areaId, int row, int number, SeatStatus newStatus); 
     void updateStandingAreaReservedCount(Long eventId, Long areaId, int reservedDelta); 
-    //void markStandingTicketsAsSold(Long eventId, Long areaId, int quantity);
+    void markStandingTicketsAsSold(Long eventId, Long areaId, int quantity);
 }

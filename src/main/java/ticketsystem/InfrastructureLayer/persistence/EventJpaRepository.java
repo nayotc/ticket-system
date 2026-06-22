@@ -56,4 +56,19 @@ public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecif
                 """)
         int updateStandingAreaReservedCount(@Param("areaId") Long areaId, @Param("reservedDelta") int reservedDelta);
 
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query("""
+                update StandingArea a
+                set a.reserved = a.reserved - :quantity,
+                a.sold = a.sold + :quantity
+                where a.id = :areaId
+                and a.reserved >= :quantity
+                and a.sold + :quantity <= a.capacity
+                """)
+        int markStandingTicketsAsSold(
+                @Param("areaId") Long areaId,
+                @Param("quantity") int quantity
+        );
+
+
 }

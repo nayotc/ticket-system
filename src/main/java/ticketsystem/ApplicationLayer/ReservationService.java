@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -37,6 +38,7 @@ import ticketsystem.DomainLayer.Reservation;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.SaleStatus;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.order.Ticket;
@@ -103,11 +105,14 @@ public class ReservationService {
             if (eventRepository.getEventById(eventId) == null) {
                 throw new IllegalArgumentException("Event not found");
             }
-            Lottery lottery = lotteryRepository.findByEventId(eventId);
             Event event = eventRepository.getEventById(eventId);
-            if (lottery != null && event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
-                Long userId = tokenService.extractUserId(token);
-                reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
+            if (event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
+                Lottery lottery = lotteryRepository.findByEventId(eventId);
+
+                if (lottery != null && event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
+                    Long userId = tokenService.extractUserId(token);
+                    reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
+                }
             }
 
             ActiveOrder order = getOrCreateOrder(token, eventId);
@@ -117,7 +122,8 @@ public class ReservationService {
 
             reservationDomeinService.selectSeatTicket(order, event, areaId, position);
 
-            saveAll(order, event);
+            saveOrder(order);
+            eventRepository.updateSeatStatus(eventId, areaId, position.getRow(), position.getChair(),SeatStatus.RESERVED);
             logger.logEvent("Seat ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId="
                     + areaId + ", position=" + position, LogLevel.INFO);
             return true;
@@ -138,11 +144,13 @@ public class ReservationService {
                 throw new IllegalArgumentException("Event not found");
             }
 
-            Lottery lottery = lotteryRepository.findByEventId(eventId);
             Event event = eventRepository.getEventById(eventId);
-            if (lottery != null && event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
-                Long userId = tokenService.extractUserId(token);
-                reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
+            if (event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
+                Lottery lottery = lotteryRepository.findByEventId(eventId);
+                if (lottery != null && event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
+                    Long userId = tokenService.extractUserId(token);
+                    reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
+                }
             }
 
             if (quantity <= 0) {
@@ -154,7 +162,8 @@ public class ReservationService {
             }
 
             reservationDomeinService.selectStandingTicket(order, event, areaId, quantity);
-            saveAll(order, event);
+            saveOrder(order);
+            eventRepository.updateStandingAreaReservedCount(eventId, areaId, quantity);
             logger.logEvent("Standing ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId
                     + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
             return true;
@@ -175,9 +184,11 @@ public class ReservationService {
                 throw new IllegalStateException("No active order found for this event");
             }
             Event event = eventRepository.getEventById(eventId);
-            reservationDomeinService.removeTicketFromActiveOrder(order, event, ticketId);
-
-            saveAll(order, event);
+            Ticket ticket = reservationDomeinService.removeTicketFromActiveOrder(order, event, ticketId);
+           
+            updateRemoveTicket(eventId, ticket.getAreaId(), ticket, 1);
+            saveOrder(order);
+            
             logger.logEvent("Ticket removed from active order: orderId=" + order.getOrderId() + ", eventId=" + eventId
                     + ", ticketId=" + ticketId, LogLevel.INFO);
             return true;
@@ -219,9 +230,10 @@ public class ReservationService {
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Ticket not found in active order"));
 
-            reservationDomeinService.removeTicketFromActiveOrder(order, event, ticketId);
-
-            saveAll(order, event);
+           Ticket ticket= reservationDomeinService.removeTicketFromActiveOrder(order, event, ticketId);
+            updateRemoveTicket(eventId, areaId, ticket, 1);
+            saveOrder(order);
+          
 
             logger.logEvent(
                     "Seat ticket removed from active order: orderId=" + order.getOrderId()
@@ -253,7 +265,8 @@ public class ReservationService {
             Event event = eventRepository.getEventById(eventId);
             reservationDomeinService.removeStandingTicketsFromActiveOrder(order, event, areaId, quantity);
 
-            saveAll(order, event);
+            saveOrder(order);
+            updateRemoveTicket(eventId, areaId, null, quantity);
             logger.logEvent("Standing tickets removed from active order: orderId=" + order.getOrderId() + ", eventId="
                     + eventId + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
             return true;
@@ -414,7 +427,7 @@ public class ReservationService {
             BigDecimal amount = reservationDomeinService.calculatePrice(order, event);
             BigDecimal amountAfterDiscount = eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event,
                     amount, order.getTickets().size(), couponCode);
-            saveAll(order, event);
+            
             return true;
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to validate active order policy: " + e.getMessage());
@@ -456,7 +469,7 @@ public class ReservationService {
 
             if (transactionId == -1) {
                 order.paymentFailed();
-                saveAll(order, event);
+                saveOrder(order);
                 notifyOrderOwner(
                         order,
                         "Payment failed. No purchase was completed.");
@@ -478,7 +491,8 @@ public class ReservationService {
                 boolean wasSoldOutBeforeCheckout = event.isSoldOut();
 
                 reservationDomeinService.completeCheckout(order, event);
-                saveAll(order, event);
+                completeOrderInventory(order);
+                saveOrder(order);
 
                 notifyOrderOwner(
                         order,
@@ -523,6 +537,7 @@ public class ReservationService {
 
         expirationWarningSentOrderIds.remove(order.getOrderId());
         eventRepository.updateEvent(event);
+        releaseTicketInEvent(order.getTickets());
         orderRepository.deleteOrder(order.getOrderId());
 
         logger.logEvent(
@@ -598,7 +613,7 @@ public class ReservationService {
         boolean refundResult = paymentService.refund(transactionId);
 
         order.paymentFailed();
-        saveAll(order, event);
+        saveOrder(order);
         notifyOrderOwner(
                 order,
                 "The purchase was canceled because ticket issuing failed. A refund was issued.");
@@ -685,19 +700,59 @@ public class ReservationService {
         return order;
     }
 
-    private void saveAll(ActiveOrder order, Event event) {
+    private void saveOrder(ActiveOrder order) {
         if (order.getStatus() == ActiveOrder.OrderStatus.COMPLETED) {
             expirationWarningSentOrderIds.remove(order.getOrderId());
             orderRepository.deleteOrder(order.getOrderId());
         } else {
             orderRepository.updateOrder(order);
         }
+        // eventRepository.updateMap(event);
+        // if (event != null && !event.isSoldOut()) {
+        // soldOutNotificationSentEventIds.remove(event.getId());
+        // }
+    }
 
-        eventRepository.updateEvent(event);
-        if (event != null && !event.isSoldOut()) {
-            soldOutNotificationSentEventIds.remove(event.getId());
+        private void updateRemoveTicket(Long eventId, Long areaId, Ticket ticket, Integer quantity) {
+        if (ticket != null && ticket.isSeat()) {
+            eventRepository.updateSeatStatus(eventId, ticket.getAreaId(), ticket.getRow(), ticket.getChair(),
+                    SeatStatus.AVAILABLE);
+        } else {
+            if (quantity != null)
+                eventRepository.updateStandingAreaReservedCount(eventId, areaId, -quantity);
         }
     }
+
+    private void completeOrderInventory(ActiveOrder order) {
+        Map<Long, Integer> standingByArea = new HashMap<>();
+
+        for (Ticket ticket : order.getTickets()) {
+            if (ticket.isSeat()) {
+                eventRepository.updateSeatStatus(order.getEventId(), ticket.getAreaId(), ticket.getRow(),
+                        ticket.getChair(), SeatStatus.SOLD);
+            } else {
+                standingByArea.merge(ticket.getAreaId(), 1, Integer::sum);
+            }
+        }
+
+        for (Map.Entry<Long, Integer> entry : standingByArea.entrySet()) {
+            eventRepository.markStandingTicketsAsSold(order.getEventId(), entry.getKey(), entry.getValue());
+        }
+    }
+    
+    // private void saveAll(ActiveOrder order, Event event) {
+    //     if (order.getStatus() == ActiveOrder.OrderStatus.COMPLETED) {
+    //         expirationWarningSentOrderIds.remove(order.getOrderId());
+    //         orderRepository.deleteOrder(order.getOrderId());
+    //     } else {
+    //         orderRepository.updateOrder(order);
+    //     }
+
+    //     
+    //     if (event != null && !event.isSoldOut()) {
+    //         soldOutNotificationSentEventIds.remove(event.getId());
+    //     }
+    // }
 
     private void expireOldOrders() {
         List<ActiveOrder> allOrders = orderRepository.getAll();
@@ -719,14 +774,14 @@ public class ReservationService {
             }
             boolean guestOrder = order.getUserId() == null;
             if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
-                reservationDomeinService.expire(event, order);
+                List<Ticket> tickets= reservationDomeinService.expire(event, order);
                 
                 notifyOrderOwner(
                         order,
                         "Your active order has expired. The reserved tickets were released back to the inventory.");
                 
                 expirationWarningSentOrderIds.remove(order.getOrderId());
-                eventRepository.updateEvent(event);
+                releaseTicketInEvent(tickets);
                 orderRepository.deleteOrder(order.getOrderId());
 
                 logger.logEvent(
@@ -757,8 +812,15 @@ public class ReservationService {
         }
     }
 }
+ 
 
-    private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutBefore) {
+    private void releaseTicketInEvent(List<Ticket> tickets) {
+		for(Ticket ticket: tickets){
+            updateRemoveTicket(ticket.getEventId(), ticket.getAreaId(), ticket, 1);
+        }
+	}
+
+	private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutBefore) {
         if (event == null || notificationsService == null || companyRepository == null || membershipDomain == null) {
             return;
         }
