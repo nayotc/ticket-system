@@ -257,6 +257,7 @@ public class EventService {
             validateMapHasAtLeastOneTicketArea(mapDTO);
             validateMapElementsInsideMapBounds(mapDTO);
             validateMapElementsDoNotOverlap(mapDTO);
+            validateAreaPrices(mapDTO);
 
             logger.logEvent(
                     "Map DTO validated - defineEventMap. " + mapDTOLogContext(mapDTO),
@@ -791,6 +792,28 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
             }
 
             existingBounds.add(currentBounds);
+        }
+    }
+
+    private void validateAreaPrices(EventMapDTO map) {
+        if (map == null || map.elements() == null) {
+            return;
+        }
+
+        for (IMapElementDTO element : map.elements()) {
+            if (element instanceof SeatingAreaDTO area) {
+                validateAreaPrice(area.price());
+            } else if (element instanceof StandingAreaDTO area) {
+                validateAreaPrice(area.price());
+            }
+        }
+    }
+
+    private void validateAreaPrice(BigDecimal price) {
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(
+                    "Every seating or standing area must have a non-negative price"
+            );
         }
     }
 
