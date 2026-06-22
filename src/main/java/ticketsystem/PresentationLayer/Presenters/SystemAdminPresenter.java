@@ -47,7 +47,7 @@ public class SystemAdminPresenter {
     public List<AdminUserRow> loadActiveUsers(String token) throws PresentationException {
         try {
             if (!systemAdminService.isSystemAdmin(token)) {
-                throw new PresentationException("Unauthorized access.");
+                throw new PresentationException("גישה נדחתה: הפעולה מורשית למנהלי מערכת בלבד.");
             }
 
             return userService.getAllUsers().stream()
@@ -71,7 +71,7 @@ public class SystemAdminPresenter {
     public List<CompanyDTO> loadActiveCompanies(String token) throws PresentationException {
         try {
             if (!systemAdminService.isSystemAdmin(token)) {
-                throw new PresentationException("Unauthorized access.");
+                throw new PresentationException("גישה נדחתה: הפעולה מורשית למנהלי מערכת בלבד.");
             }
 
             return companyService.getAllCompanies();
@@ -87,7 +87,7 @@ public class SystemAdminPresenter {
     public void deleteUser(String token, long memberId) throws PresentationException {
         try {
             if (!systemAdminService.isSystemAdmin(token)) {
-                throw new PresentationException("Unauthorized access.");
+                throw new PresentationException("גישה נדחתה: הפעולה מורשית למנהלי מערכת בלבד.");
             }
 
             String result = systemAdminService.deleteMemberByAdmin(token, memberId);
@@ -108,7 +108,7 @@ public class SystemAdminPresenter {
     public void removeUserFromAllCompanies(String token, long memberId) throws PresentationException {
         try {
             if (!systemAdminService.isSystemAdmin(token)) {
-                throw new PresentationException("Unauthorized access.");
+                throw new PresentationException("גישה נדחתה: הפעולה מורשית למנהלי מערכת בלבד.");
             }
 
             systemAdminService.removeUserFromAllCompanies(memberId);
