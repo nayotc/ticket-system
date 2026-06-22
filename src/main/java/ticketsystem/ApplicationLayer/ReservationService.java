@@ -98,14 +98,15 @@ public class ReservationService {
     // UC 2.5,2.4
     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position,
             String lotteryCode) {
-        expireOldOrders();
+          
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
+             Event event = eventRepository.getEventById(eventId);
             if (eventRepository.getEventById(eventId) == null) {
                 throw new IllegalArgumentException("Event not found");
             }
-            Event event = eventRepository.getEventById(eventId);
+
             if (event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
                 Lottery lottery = lotteryRepository.findByEventId(eventId);
 
@@ -126,6 +127,9 @@ public class ReservationService {
             eventRepository.updateSeatStatus(eventId, areaId, position.getRow(), position.getChair(),SeatStatus.RESERVED);
             logger.logEvent("Seat ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId="
                     + areaId + ", position=" + position, LogLevel.INFO);
+            if (event != null && !event.isSoldOut()) {
+            soldOutNotificationSentEventIds.remove(event.getId());
+            }
             return true;
 
         } catch (Exception e) {
@@ -135,7 +139,7 @@ public class ReservationService {
     }
 
     public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity, String lotteryCode) {
-        expireOldOrders();
+          
         try {
             tokenService.validateToken(token);
             Long memberId = tokenService.extractUserId(token);
@@ -166,6 +170,10 @@ public class ReservationService {
             eventRepository.updateStandingAreaReservedCount(eventId, areaId, quantity);
             logger.logEvent("Standing ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId
                     + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
+            
+            if (event != null && !event.isSoldOut()) {
+            soldOutNotificationSentEventIds.remove(event.getId());
+            }
             return true;
         } catch (Exception e) {
             logger.logEvent("selectStandingTicket failed: " + e.getMessage(), LogLevel.WARN);
@@ -175,7 +183,7 @@ public class ReservationService {
 
     // UC 2.7
     public boolean removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
-        expireOldOrders();
+          
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
@@ -191,6 +199,9 @@ public class ReservationService {
             
             logger.logEvent("Ticket removed from active order: orderId=" + order.getOrderId() + ", eventId=" + eventId
                     + ", ticketId=" + ticketId, LogLevel.INFO);
+            if (event != null && !event.isSoldOut()) {
+            soldOutNotificationSentEventIds.remove(event.getId());
+            }
             return true;
 
         } catch (Exception e) {
@@ -200,7 +211,7 @@ public class ReservationService {
     }
 
     public boolean removeSeatTicketFromActiveOrder(String token, Long eventId, Long areaId, seatPositionDTO position) {
-        expireOldOrders();
+          
 
         try {
             tokenService.validateToken(token);
@@ -242,7 +253,9 @@ public class ReservationService {
                             + ", row=" + position.getRow()
                             + ", chair=" + position.getChair(),
                     LogLevel.INFO);
-
+            if (event != null && !event.isSoldOut()) {
+                soldOutNotificationSentEventIds.remove(event.getId());
+            }
             return true;
 
         } catch (Exception e) {
@@ -252,7 +265,7 @@ public class ReservationService {
     }
 
     public boolean removeStandingTicketsFromActiveOrder(String token, Long eventId, Long areaId, int quantity) {
-        expireOldOrders();
+          
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
@@ -269,6 +282,10 @@ public class ReservationService {
             updateRemoveTicket(eventId, areaId, null, quantity);
             logger.logEvent("Standing tickets removed from active order: orderId=" + order.getOrderId() + ", eventId="
                     + eventId + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
+            
+            if (event != null && !event.isSoldOut()) {
+                soldOutNotificationSentEventIds.remove(event.getId());
+            }
             return true;
 
         } catch (Exception e) {
@@ -278,7 +295,7 @@ public class ReservationService {
     }
 
     public ActiveOrderDTO viewActiveOrder(String token, Long orderId) {
-        expireOldOrders();
+          
 
         try {
             tokenService.validateToken(token);
@@ -325,7 +342,7 @@ public class ReservationService {
      * @return active order DTO for the current session, or null if none exists
      */
     public ActiveOrderDTO viewCurrentActiveOrder(String token) {
-        expireOldOrders();
+          
 
         try {
             tokenService.validateToken(token);
@@ -707,11 +724,7 @@ public class ReservationService {
         } else {
             orderRepository.updateOrder(order);
         }
-        // eventRepository.updateMap(event);
-        // if (event != null && !event.isSoldOut()) {
-        // soldOutNotificationSentEventIds.remove(event.getId());
-        // }
-    }
+    } 
 
         private void updateRemoveTicket(Long eventId, Long areaId, Ticket ticket, Integer quantity) {
         if (ticket != null && ticket.isSeat()) {
@@ -740,19 +753,6 @@ public class ReservationService {
         }
     }
     
-    // private void saveAll(ActiveOrder order, Event event) {
-    //     if (order.getStatus() == ActiveOrder.OrderStatus.COMPLETED) {
-    //         expirationWarningSentOrderIds.remove(order.getOrderId());
-    //         orderRepository.deleteOrder(order.getOrderId());
-    //     } else {
-    //         orderRepository.updateOrder(order);
-    //     }
-
-    //     
-    //     if (event != null && !event.isSoldOut()) {
-    //         soldOutNotificationSentEventIds.remove(event.getId());
-    //     }
-    // }
 
     private void expireOldOrders() {
         List<ActiveOrder> allOrders = orderRepository.getAll();
