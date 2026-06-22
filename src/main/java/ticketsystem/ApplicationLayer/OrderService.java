@@ -76,7 +76,7 @@ public class OrderService implements UserLoginListener, EventUpdatesListener,Use
 
         try {
             ActiveOrder guestOrder = orderRepository.getActiveOrderBySessionToken(guestToken);
-            if (guestOrder == null) {
+            if (guestOrder == null || guestOrder.getUserId()!= null) {
                 return;
             }
             guestOrder.cancelOrder();
