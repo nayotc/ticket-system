@@ -536,7 +536,7 @@ public class ReservationService {
         );
 
         expirationWarningSentOrderIds.remove(order.getOrderId());
-        eventRepository.updateEvent(event);
+        //eventRepository.updateEvent(event);
         releaseTicketInEvent(order.getTickets());
         orderRepository.deleteOrder(order.getOrderId());
 
