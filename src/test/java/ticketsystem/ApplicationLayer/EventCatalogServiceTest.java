@@ -640,7 +640,7 @@ public class EventCatalogServiceTest {
         when(view.getLocation()).thenReturn(event.getLocation());
         when(view.getCategory()).thenReturn(event.getCategory());
         when(view.getArtistName()).thenReturn(event.getArtistName());
-        when(view.getTicketPrice()).thenReturn(event.getTicketPrice());
+        when(view.getTicketPrice()).thenReturn(event.getMinimalTicketPrice());
         when(view.getRate()).thenReturn(event.getRate());
         when(view.getSaleStatus()).thenReturn(event.getSaleStatus());
 

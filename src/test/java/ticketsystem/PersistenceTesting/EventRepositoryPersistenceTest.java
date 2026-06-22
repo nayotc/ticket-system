@@ -41,7 +41,6 @@ import ticketsystem.DomainLayer.policy.MaxTicketsRule;
 import ticketsystem.DomainLayer.policy.MinAgeRule;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.EventRepository;
-import ticketsystem.DomainLayer.discount.*;
 
 @DataJpaTest
 @Import(EventRepository.class)
@@ -72,7 +71,7 @@ public class EventRepositoryPersistenceTest {
         assertEquals(EventLocation.TEL_AVIV, loadedEvent.getLocation());
         assertEquals(EventCategory.CONCERT, loadedEvent.getCategory());
         assertEquals("Test Artist", loadedEvent.getArtistName());
-        assertEquals(0, new BigDecimal("100.00").compareTo(loadedEvent.getTicketPrice()));
+        assertEquals(0, new BigDecimal("100.00").compareTo(loadedEvent.getMinimalTicketPrice()));
         assertEquals(new Pair<>(20, 15), loadedEvent.getMap().getSize());
         assertEquals(2, loadedEvent.getMap().getElements().size());
 
@@ -167,7 +166,7 @@ public class EventRepositoryPersistenceTest {
         assertEquals(
                 0,
                 new BigDecimal("175.50")
-                        .compareTo(updatedEvent.getTicketPrice())
+                        .compareTo(updatedEvent.getMinimalTicketPrice())
         );
         assertEquals(originalVersion + 1, updatedEvent.getVersion());
     }

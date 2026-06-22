@@ -192,7 +192,7 @@ public class EventService {
                 }
                 ticketPrice = eventDTO.ticketPrice();
             } else {
-                ticketPrice = existingEvent.getTicketPrice();
+                ticketPrice = existingEvent.getMinimalTicketPrice();
             }
             Long trafficThreshold = eventDTO.trafficThreshold() != null ? eventDTO.trafficThreshold() : existingEvent.getTrafficThreshold();
             EventCategory category = eventDTO.category() != null ? EventMapper.toEventCategory(eventDTO.category()) : existingEvent.getCategory();

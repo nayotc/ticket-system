@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +49,7 @@ public class ReservationTest {
         when(position.getRow()).thenReturn(3);
         when(position.getChair()).thenReturn(7);
         when(event.getId()).thenReturn(eventId);
-        when(event.getTicketPrice()).thenReturn(price);
+        when(event.getMinimalTicketPrice()).thenReturn(price);
 
         // Act
         reservation.selectSeatTicket(order, event, areaId, position);
@@ -79,7 +78,7 @@ public class ReservationTest {
         BigDecimal price = BigDecimal.valueOf(80);
 
         when(event.getId()).thenReturn(eventId);
-        when(event.getTicketPrice()).thenReturn(price);
+        when(event.getMinimalTicketPrice()).thenReturn(price);
 
         // Act
         reservation.selectStandingTicket(order, event, areaId, quantity);

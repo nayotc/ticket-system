@@ -6,7 +6,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import jakarta.persistence.*;
 
@@ -230,7 +229,7 @@ public class Event {
         this.map = map;
     }
 
-    public BigDecimal getTicketPrice() {
+    public BigDecimal getMinimalTicketPrice() {
         if (map != null) {
             BigDecimal minimumAreaPrice = map.getMinimumAreaPrice();
 
