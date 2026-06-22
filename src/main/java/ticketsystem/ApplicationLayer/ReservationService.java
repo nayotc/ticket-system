@@ -551,7 +551,7 @@ public class ReservationService {
     public void addOrderListener(OrderCompletedListener listener) {
         listeners.add(listener);
     }
-
+    @Transactional
     public void sweepExpiredAndExpiringOrders() {
         expireOldOrders();
     }

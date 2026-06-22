@@ -24,6 +24,7 @@ public interface IOrderRepository {
 
     ActiveOrder getActiveOrderBySessionToken(String sessionToken);
     ActiveOrder getActiveOrderByUserId(Long userId);
+    
     List<ActiveOrder> getActiveOrdersByEventId(Long eventId);
     
 }
