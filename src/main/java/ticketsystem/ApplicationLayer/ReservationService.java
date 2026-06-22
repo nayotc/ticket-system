@@ -103,7 +103,7 @@ public class ReservationService {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
              Event event = eventRepository.getEventById(eventId);
-            if (eventRepository.getEventById(eventId) == null) {
+            if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
 
@@ -144,11 +144,11 @@ public class ReservationService {
             tokenService.validateToken(token);
             Long memberId = tokenService.extractUserId(token);
             userAccessService.validateCanPerformNonViewAction(memberId);
-            if (eventRepository.getEventById(eventId) == null) {
+               Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
-
-            Event event = eventRepository.getEventById(eventId);
+         
             if (event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
                 Lottery lottery = lotteryRepository.findByEventId(eventId);
                 if (lottery != null && event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
@@ -192,6 +192,9 @@ public class ReservationService {
                 throw new IllegalStateException("No active order found for this event");
             }
             Event event = eventRepository.getEventById(eventId);
+            if(event == null){
+                throw new IllegalArgumentException("Event not found");
+            }
             Ticket ticket = reservationDomeinService.removeTicketFromActiveOrder(order, event, ticketId);
            
             updateRemoveTicket(eventId, ticket.getAreaId(), ticket, 1);
