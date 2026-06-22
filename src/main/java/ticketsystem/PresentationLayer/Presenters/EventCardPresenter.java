@@ -126,7 +126,11 @@ public class EventCardPresenter {
 
                 validateEventId(eventId);
 
+                long t0 = System.currentTimeMillis();
+
                 String result = waitingQueueService.tryReserve(eventId, sessionToken);
+
+                System.out.println("tryReserve TOTAL = " + (System.currentTimeMillis() - t0) + " ms");
 
                 if ("APPROVED".equals(result)) {
                     return new PurchaseRequestResult(

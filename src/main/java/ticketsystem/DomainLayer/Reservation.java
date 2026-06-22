@@ -37,7 +37,7 @@ public class Reservation {
     }
 
   // UC 2.7
-public void removeTicketFromActiveOrder(ActiveOrder order, Event event, Long ticketId) {
+public Ticket removeTicketFromActiveOrder(ActiveOrder order, Event event, Long ticketId) {
     Ticket ticket = order.getTickets().stream()
             .filter(t -> Objects.equals(t.getTicketId(), ticketId))
             .findFirst()
@@ -49,6 +49,7 @@ public void removeTicketFromActiveOrder(ActiveOrder order, Event event, Long tic
 
     // Only after event release succeeded, mutate the order.
     order.deleteTicket(ticketId);
+    return ticket;
 }
 
 public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event, Long areaId, int quantity) {

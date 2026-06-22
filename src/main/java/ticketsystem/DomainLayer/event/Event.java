@@ -619,6 +619,30 @@ public class Event {
         return map.getAreaName(areaId);
     }
 
+    public Element getAreaById(Long areaId) {
+        if (areaId == null) {
+            throw new IllegalArgumentException("Area id cannot be null");
+        }
+
+        return map.getElements()
+                .stream()
+                .filter(element -> areaId.equals(element.getId()))
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Area not found: " + areaId));
+    }
+
+    public SeatingArea getSeatingAreaById(Long areaId) {
+    Element area = getAreaById(areaId);
+
+    if (!(area instanceof SeatingArea seatingArea)) {
+        throw new IllegalArgumentException(
+                "Area " + areaId + " is not a seating area");
+    }
+
+    return seatingArea;
+}
+
     @Override
     public String toString() {
         return "Event{"

@@ -392,6 +392,13 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             Notifications.error("יש לבחור לפחות כרטיס אחד לפני מעבר לתשלום");
             return;
         }
+        ActiveOrderDTO order = loadCurrentEventActiveOrder();
+
+        if (order == null || order.getTickets() == null || order.getTickets().isEmpty()) {
+            Notifications.error("ההזמנה כבר לא זמינה. יש לבחור כרטיסים מחדש");
+            reloadTicketSelectionEventDataKeepingSelection();
+            return;
+        }
 
         reservationPresenter.releaseQueueAccess(currentToken(), eventId);
 
@@ -596,6 +603,9 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         boolean available = isSeatAvailable(seat);
 
         Div seatBox = new Div();
+        seatBox.getElement().setAttribute("data-area-id", String.valueOf(area.id()));
+        seatBox.getElement().setAttribute("data-row", String.valueOf(row));
+        seatBox.getElement().setAttribute("data-seat", String.valueOf(number));
         seatBox.addClassName("map-seat");
         seatBox.getElement().setAttribute("title",
                 safeText(area.name(), "אזור ישיבה") + " שורה " + row + " מושב " + number);
@@ -685,45 +695,98 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     }
 
     private void toggleSeat(SeatingAreaDTO area, SeatDTO seat) {
-        if (eventId == null) {
-            Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+    if (eventId == null) {
+        Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+        return;
+    }
+
+    int row = seatRow(seat);
+    int number = seatNumber(seat);
+    SeatKey key = new SeatKey(area.id(), row, number);
+    String token = currentToken();
+
+    try {
+        if (selectedSeats.containsKey(key)) {
+            removeSeatFromOrderByPosition(area.id(), row, number);
+            selectedSeats.remove(key);
+            markSeatAsAvailable(area, row, number);
+        } else if (isSeatAvailable(seat)) {
+            reservationPresenter.selectSeatTicket(
+                    token,
+                    eventId,
+                    area.id(),
+                    row,
+                    number,
+                    currentLotteryCode()
+            );
+
+            selectedSeats.put(
+                    key,
+                    new SelectedSeat(
+                            area.id(),
+                            safeText(area.name(), "אזור ישיבה"),
+                            row,
+                            number,
+                            ticketPrice()
+                    )
+            );
+
+            markSeatAsSelected(area, row, number);
+            refreshReservationTimer();
+        }
+
+        // refreshSummary();
+        refreshSummaryFromLocalSelection();
+
+    } catch (PresentationException e) {
+        if (e.isSessionTimeout()) {
+            handleSelectionSessionTimeout();
             return;
         }
 
-        int row = seatRow(seat);
-        int number = seatNumber(seat);
-        SeatKey key = new SeatKey(area.id(), row, number);
-        String token = currentToken();
+        Notifications.error(e.getMessage());
+        reloadTicketSelectionEventDataKeepingSelection();
 
-        try {
-            if (selectedSeats.containsKey(key)) {
-                removeSeatFromOrderByPosition(area.id(), row, number);
-                selectedSeats.remove(key);
-
-                reloadTicketSelectionEventDataKeepingSelection();
-                return;
-
-            } else if (isSeatAvailable(seat)) {
-                reservationPresenter.selectSeatTicket(token, eventId, area.id(), row, number, currentLotteryCode());
-                refreshReservationTimer();
-
-                reloadTicketSelectionEventDataKeepingSelection();
-                return;
-            }
-
-        } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
-                handleSelectionSessionTimeout();
-                return;
-            }
-            Notifications.error(e.getMessage());
-            reloadTicketSelectionEventDataKeepingSelection();
-
-        } catch (Exception e) {
-            Notifications.error("לא ניתן לעדכן את בחירת המושב. יש לנסות שוב");
-            reloadTicketSelectionEventDataKeepingSelection();
-        }
+    } catch (Exception e) {
+        Notifications.error("לא ניתן לעדכן את בחירת המושב. יש לנסות שוב");
+        reloadTicketSelectionEventDataKeepingSelection();
     }
+}
+private void markSeatAsSelected(SeatingAreaDTO area, int row, int number) {
+    updateSeatVisual(area.id(), row, number, true);
+}
+
+private void markSeatAsAvailable(SeatingAreaDTO area, int row, int number) {
+    updateSeatVisual(area.id(), row, number, false);
+}
+
+private void updateSeatVisual(Long areaId, int row, int number, boolean selected) {
+    String selector = String.format(
+            "[data-area-id='%d'][data-row='%d'][data-seat='%d']",
+            areaId,
+            row,
+            number
+    );
+
+    mapCanvas.getElement().executeJs("""
+            const seat = this.querySelector($0);
+            if (!seat) return;
+
+            seat.classList.remove('seat-selected', 'seat-available', 'seat-occupied');
+            seat.textContent = '';
+
+            if ($1) {
+                seat.classList.add('seat-selected');
+                seat.textContent = '✓';
+            } else {
+                seat.classList.add('seat-available');
+            }
+            """,
+            selector,
+            selected
+    );
+}
+
 
     private void removeSeatFromOrderByPosition(Long areaId, int row, int chair) {
         try {
@@ -933,33 +996,109 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         remove.addClassName("selected-ticket-remove");
 
         remove.addClickListener(event -> {
-            try {
-                reservationPresenter.removeTicketFromActiveOrder(
-                        currentToken(),
-                        eventId,
-                        ticket.getTicketId());
+    try {
+        reservationPresenter.removeTicketFromActiveOrder(
+                currentToken(),
+                eventId,
+                ticket.getTicketId());
 
-                reloadTicketSelectionEventDataKeepingSelection();
-                refreshSummary();
+        SeatKey key = new SeatKey(
+                ticket.getAreaId(),
+                ticket.getRow(),
+                ticket.getChair()
+        );
 
-            } catch (PresentationException e) {
-                if (e.isSessionTimeout()) {
-                    handleSelectionSessionTimeout();
-                    return;
-                }
+        selectedSeats.remove(key);
+        updateSeatVisual(
+                ticket.getAreaId(),
+                ticket.getRow(),
+                ticket.getChair(),
+                false
+        );
 
-                Notifications.error(e.getMessage());
-                reloadTicketSelectionEventDataKeepingSelection();
+        refreshSummary();
 
-            } catch (Exception e) {
-                Notifications.error("לא ניתן להסיר את המושב מההזמנה. יש לנסות שוב");
-                reloadTicketSelectionEventDataKeepingSelection();
-            }
-        });
+    } catch (PresentationException e) {
+        if (e.isSessionTimeout()) {
+            handleSelectionSessionTimeout();
+            return;
+        }
+
+        Notifications.error(e.getMessage());
+        reloadTicketSelectionEventDataKeepingSelection();
+
+    } catch (Exception e) {
+        Notifications.error("לא ניתן להסיר את המושב מההזמנה. יש לנסות שוב");
+        reloadTicketSelectionEventDataKeepingSelection();
+    }
+});
 
         row.add(text, price, remove);
         return row;
     }
+    private void refreshSummaryFromLocalSelection() {
+    selectedTicketsList.removeAll();
+
+    if (selectedSeats.isEmpty() && selectedStandingAreas.isEmpty()) {
+        emptySelection.setVisible(true);
+        selectedTicketsList.setVisible(false);
+        totalTickets.setText("0 כרטיסים");
+        totalPrice.setText("₪0");
+        continueButton.setEnabled(false);
+        return;
+    }
+
+    int count = 0;
+    BigDecimal total = BigDecimal.ZERO;
+
+    for (SelectedSeat seat : selectedSeats.values()) {
+        selectedTicketsList.add(createSelectedSeatRowFromLocal(seat));
+        count++;
+        total = total.add(seat.price());
+    }
+
+    for (SelectedStandingArea area : selectedStandingAreas.values()) {
+        count += area.quantity();
+        total = total.add(area.price().multiply(BigDecimal.valueOf(area.quantity())));
+    }
+
+    totalTickets.setText(count + " כרטיסים");
+    totalPrice.setText(formatMoney(total));
+    emptySelection.setVisible(false);
+    selectedTicketsList.setVisible(true);
+    continueButton.setEnabled(count > 0);
+}
+private Div createSelectedSeatRowFromLocal(SelectedSeat seat) {
+    Div row = new Div();
+    row.addClassName("selected-ticket-row");
+
+    Div text = new Div();
+    text.addClassName("selected-ticket-text");
+    text.add(
+            new Span(seat.areaName()),
+            new Span("שורה " + seat.row() + " • כיסא " + seat.number())
+    );
+
+    Span price = new Span(formatMoney(seat.price()));
+    price.addClassName("selected-ticket-price");
+
+    Button remove = new Button("הסר");
+    remove.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+    remove.addClassName("selected-ticket-remove");
+
+    remove.addClickListener(event -> {
+        removeSeatFromOrderByPosition(seat.areaId(), seat.row(), seat.number());
+
+        SeatKey key = new SeatKey(seat.areaId(), seat.row(), seat.number());
+        selectedSeats.remove(key);
+
+        updateSeatVisual(seat.areaId(), seat.row(), seat.number(), false);
+        refreshSummaryFromLocalSelection();
+    });
+
+    row.add(text, price, remove);
+    return row;
+}
 
     private String findAreaNameById(Long areaId) {
         if (areaId == null || mapDTO == null || mapDTO.elements() == null) {
