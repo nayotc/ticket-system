@@ -22,6 +22,8 @@ import org.springframework.data.jpa.domain.Specification;
 
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.EventSearchResultView;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
@@ -363,4 +365,30 @@ public class EventRepository implements IEventRepository {
                 activeReservations
         );
     }
+
+         @Override
+        @Transactional
+        public void updateSeatStatus(Long eventId, Long areaId, int row, int number, SeatStatus newStatus) {
+        int updatedRows = eventJpaRepository.updateSeatStatus(areaId, row, number, newStatus);
+
+        if (updatedRows == 0) {
+                throw new OptimisticLockException("Seat was already changed by another request. eventId=" + eventId + ", areaId=" + areaId + ", row=" + row + ", number=" + number);
+        }
+        }
+
+        @Override
+        @Transactional
+        public void updateStandingAreaReservedCount(Long eventId, Long areaId, int reservedDelta) {
+        int updatedRows = eventJpaRepository.updateStandingAreaReservedCount(areaId, reservedDelta);
+
+        if (updatedRows == 0) {
+                throw new IllegalStateException("Standing area update failed");
+        }
+        }
+
+        // @Override
+        // public void markStandingTicketsAsSold(Long eventId, Long areaId, int quantity) {
+        //         // TODO Auto-generated method stub
+        //         throw new UnsupportedOperationException("Unimplemented method 'markStandingTicketsAsSold'");
+        // }
 }

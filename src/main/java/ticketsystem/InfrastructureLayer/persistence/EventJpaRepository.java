@@ -5,10 +5,12 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecificationExecutor<Event>  {
     @Query("""
@@ -33,5 +35,25 @@ public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecif
             LEFT JOIN FETCH e.map.elements
             """)
     List<Event> findAllWithMap();
+
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query("""
+                update Seat s
+                set s.status = :newStatus
+                where s.seatingArea.id = :areaId
+                and s.position.row = :row
+                and s.position.number = :number
+                """)
+        int updateSeatStatus(@Param("areaId") Long areaId, @Param("row") int row, @Param("number") int number, @Param("newStatus") SeatStatus newStatus);
+
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query("""
+                update StandingArea a
+                set a.reserved = a.reserved + :reservedDelta
+                where a.id = :areaId
+                and a.reserved + :reservedDelta >= 0
+                and a.reserved + :reservedDelta + a.sold <= a.capacity
+                """)
+        int updateStandingAreaReservedCount(@Param("areaId") Long areaId, @Param("reservedDelta") int reservedDelta);
 
 }
