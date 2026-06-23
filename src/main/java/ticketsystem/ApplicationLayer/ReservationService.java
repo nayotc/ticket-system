@@ -106,7 +106,7 @@ public class ReservationService {
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
-
+            expireOldOrdersForEvent(event);
             if (event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
                 Lottery lottery = lotteryRepository.findByEventId(eventId);
 
@@ -148,7 +148,7 @@ public class ReservationService {
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
-         
+            expireOldOrdersForEvent(event);
             if (event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
                 Lottery lottery = lotteryRepository.findByEventId(eventId);
                 if (lottery != null) {
@@ -195,6 +195,7 @@ public class ReservationService {
             if(event == null){
                 throw new IllegalArgumentException("Event not found");
             }
+            expireOldOrdersForEvent(event);
             Ticket ticket = reservationDomeinService.removeTicketFromActiveOrder(order, event, ticketId);
            
             updateRemoveTicket(eventId, ticket.getAreaId(), ticket, 1);
@@ -235,7 +236,7 @@ public class ReservationService {
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
-
+            expireOldOrdersForEvent(event);
             Long ticketId = order.getTickets().stream()
                     .filter(ticket -> areaId.equals(ticket.getAreaId()))
                     .filter(ticket -> ticket.getRow() == position.getRow())
@@ -279,6 +280,10 @@ public class ReservationService {
             }
 
             Event event = loadEventForReservation(eventId);
+            if(event==null){
+                throw new IllegalArgumentException("Event not found");
+            }
+            expireOldOrdersForEvent(event);
             reservationDomeinService.removeStandingTicketsFromActiveOrder(order, event, areaId, quantity);
 
             saveOrder(order);
@@ -817,7 +822,58 @@ public class ReservationService {
         }
     }
 }
- 
+    private void expireOldOrdersForEvent(Event event) {
+
+        if (event == null) {
+            return;
+        }
+
+        List<ActiveOrder> orders =
+                orderRepository.getActiveOrdersByEventId(event.getId());
+
+        for (ActiveOrder order : orders) {
+            try {
+                String token = order.getSessionToken();
+
+                boolean tokenExpired = false;
+                try {
+                    tokenService.validateToken(token);
+                } catch (Exception e) {
+                    tokenExpired = true;
+                }
+
+                boolean guestOrder = order.getUserId() == null;
+
+                if (reservationDomeinService.timeExpire(event, order)
+                        || (tokenExpired && guestOrder)) {
+
+                    List<Ticket> tickets = reservationDomeinService.expire(event, order);
+
+                    notifyOrderOwner(
+                            order,
+                            "Your active order has expired. The reserved tickets were released back to the inventory."
+                    );
+
+                    expirationWarningSentOrderIds.remove(order.getOrderId());
+                    releaseTicketInEvent(tickets);
+                    orderRepository.deleteOrder(order.getOrderId());
+
+                    logger.logEvent(
+                            "Expired order cancelled: " + order.getOrderId(),
+                            LogLevel.WARN
+                    );
+                }
+
+            } catch (Exception e) {
+                logger.logEvent(
+                        "Failed to expire orderId=" + order.getOrderId()
+                                + ", eventId=" + order.getEventId()
+                                + ", reason=" + e.getMessage(),
+                        LogLevel.WARN
+                );
+            }
+        }
+    }
 
     private void releaseTicketInEvent(List<Ticket> tickets) {
 		for(Ticket ticket: tickets){
