@@ -38,7 +38,6 @@ import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 
 /**
@@ -232,6 +231,17 @@ public class InitialStateFileInitializer implements CommandLineRunner {
         return eventId;
     }
 
+    /**
+     * Defines the event map required by the Version 3 initial-state scenario.
+     *
+     * <p>The map contains one standing area with 30 available tickets and one
+     * seating area with a 10x10 layout. Each area receives its own ticket price,
+     * according to the updated area-pricing model.</p>
+     *
+     * @param u2Token token of u2, who owns the production company
+     * @param eventId ID of the created event
+     * @param eventConfig event configuration loaded from the initial-state file
+     */
     private void defineEventMap(String u2Token, Long eventId, EventConfig eventConfig) {
         List<IMapElementDTO> elements = new ArrayList<>();
 
@@ -243,6 +253,7 @@ public class InitialStateFileInitializer implements CommandLineRunner {
                 new PairDTO<>(6, 5),
                 "StandingArea",
                 false,
+                BigDecimal.valueOf(standingZone.price()),
                 standingZone.capacity(),
                 0L,
                 0L
@@ -256,6 +267,7 @@ public class InitialStateFileInitializer implements CommandLineRunner {
                 new PairDTO<>(10, 10),
                 "SeatingArea",
                 false,
+                BigDecimal.valueOf(seatingZone.price()),
                 seatingZone.rows(),
                 seatingZone.columns(),
                 List.<SeatDTO>of()
@@ -272,7 +284,9 @@ public class InitialStateFileInitializer implements CommandLineRunner {
         System.out.println(
                 "Initial-state event map defined for eventId=" + eventId
                         + ". Standing capacity=" + standingZone.capacity()
+                        + ", standing price=" + standingZone.price()
                         + ", seating layout=" + seatingZone.rows() + "x" + seatingZone.columns()
+                        + ", seating price=" + seatingZone.price()
         );
     }
 
@@ -358,14 +372,16 @@ public class InitialStateFileInitializer implements CommandLineRunner {
 
     private record StandingZoneConfig(
             String name,
-            long capacity
+            long capacity,
+            int price
     ) {
     }
 
     private record SeatingZoneConfig(
             String name,
             int rows,
-            int columns
+            int columns,
+            int price
     ) {
     }
 

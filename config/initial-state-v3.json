@@ -1,38 +1,38 @@
 {
-"users": [
-  {
-    "id": "u1",
-    "username": "u1@example.com",
-    "password": "123456",
-    "fullName": "User One",
-    "phone": "0500000001",
-    "birthDate": "2001-01-01"
-  },
-  {
-    "id": "u2",
-    "username": "u2@example.com",
-    "password": "123456",
-    "fullName": "User Two",
-    "phone": "0500000002",
-    "birthDate": "2001-01-01"
-  },
-  {
-    "id": "u3",
-    "username": "u3@example.com",
-    "password": "123456",
-    "fullName": "User Three",
-    "phone": "0500000003",
-    "birthDate": "2001-01-01"
-  },
-  {
-    "id": "u4",
-    "username": "u4@example.com",
-    "password": "123456",
-    "fullName": "User Four",
-    "phone": "0500000004",
-    "birthDate": "2001-01-01"
-  }
-],
+  "users": [
+    {
+      "id": "u1",
+      "username": "u1@example.com",
+      "password": "123456",
+      "fullName": "User One",
+      "phone": "0500000001",
+      "birthDate": "2001-01-01"
+    },
+    {
+      "id": "u2",
+      "username": "u2@example.com",
+      "password": "123456",
+      "fullName": "User Two",
+      "phone": "0500000002",
+      "birthDate": "2001-01-01"
+    },
+    {
+      "id": "u3",
+      "username": "u3@example.com",
+      "password": "123456",
+      "fullName": "User Three",
+      "phone": "0500000003",
+      "birthDate": "2001-01-01"
+    },
+    {
+      "id": "u4",
+      "username": "u4@example.com",
+      "password": "123456",
+      "fullName": "User Four",
+      "phone": "0500000004",
+      "birthDate": "2001-01-01"
+    }
+  ],
   "company": {
     "name": "p1"
   },
@@ -43,17 +43,19 @@
     "location": "TEL_AVIV",
     "category": "CONCERT",
     "trafficThreshold": 1000,
-    "eventBasePrice": 100,
+    "eventBasePrice": 50,
     "mapHeight": 20,
     "mapWidth": 20,
     "standingZone": {
       "name": "Standing Zone",
-      "capacity": 30
+      "capacity": 30,
+      "price": 50
     },
     "seatingZone": {
       "name": "Seating Zone",
       "rows": 10,
-      "columns": 10
+      "columns": 10,
+      "price": 100
     }
   },
   "couponDiscount": {
