@@ -221,7 +221,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
     private void syncSelectedSeatsFromActiveOrder(ActiveOrderDTO order) {
     try {
-        //ActiveOrderDTO order = loadCurrentEventActiveOrder();
+          
 
         if (order == null || order.getTickets() == null || mapDTO == null || mapDTO.elements() == null) {
             return;
@@ -592,13 +592,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             }
         }
 
-        // for (int row = 1; row <= area.rows(); row++) {
-        //     for (int number = 1; number <= area.columns(); number++) {
-        //         SeatDTO seat = findSeat(area, row, number);
-        //         seatsGrid.add(createSeat(area, seat));
-        //     }
-        // }
-
         areaCard.add(header, seatsGrid);
         return areaCard;
     }
@@ -891,7 +884,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         selectedTicketsList.removeAll();
 
         try {
-            //ActiveOrderDTO order = loadCurrentEventActiveOrder();
             if (order == null || order.getTickets() == null || order.getTickets().isEmpty()) {
                 emptySelection.setVisible(true);
                 selectedTicketsList.setVisible(false);
@@ -939,7 +931,7 @@ private ActiveOrderDTO loadCurrentEventActiveOrder() {
 
     private void syncSelectedStandingFromActiveOrder(ActiveOrderDTO order) {
         try {
-            //ActiveOrderDTO order = loadCurrentEventActiveOrder();
+              
         
             if (order == null || order.getTickets() == null || mapDTO == null || mapDTO.elements() == null) {
                 return;
