@@ -4,6 +4,7 @@ import java.util.List;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.EventSearchResultView;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 public interface IEventRepository {
@@ -18,4 +19,5 @@ public interface IEventRepository {
     void updateSeatStatus(Long eventId, Long areaId, int row, int number, SeatStatus newStatus); 
     void updateStandingAreaReservedCount(Long eventId, Long areaId, int reservedDelta); 
     void markStandingTicketsAsSold(Long eventId, Long areaId, int quantity);
+    void updateSaleStatus(Long eventId, SaleStatus saleStatus);
 }

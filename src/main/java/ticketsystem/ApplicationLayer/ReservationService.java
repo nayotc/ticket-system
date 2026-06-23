@@ -513,7 +513,9 @@ public class ReservationService {
                 reservationDomeinService.completeCheckout(order, event);
                 completeOrderInventory(order);
                 saveOrder(order);
-
+                if (event.isSoldOut()) {
+                    eventRepository.updateSaleStatus(eventId, SaleStatus.SOLD_OUT);
+                }
                 notifyOrderOwner(
                         order,
                         "Your purchase was completed successfully. Your tickets are now available.");

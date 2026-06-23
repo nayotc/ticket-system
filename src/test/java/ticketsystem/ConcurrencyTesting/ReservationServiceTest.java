@@ -806,6 +806,12 @@ public class ReservationServiceTest {
 			realRepository.markStandingTicketsAsSold(eventId, areaId, quantity);
 		}
 
+		@Override
+		public void updateSaleStatus(Long eventId, SaleStatus saleStatus) {
+			// TODO Auto-generated method stub
+			throw new UnsupportedOperationException("Unimplemented method 'updateSaleStatus'");
+		}
+
 
     }
 

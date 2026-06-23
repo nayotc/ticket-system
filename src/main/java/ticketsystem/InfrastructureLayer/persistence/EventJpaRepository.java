@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecificationExecutor<Event>  {
@@ -82,5 +83,14 @@ public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecif
                 @Param("quantity") int quantity
         );
 
-
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query("""
+                update Event e
+                set e.saleStatus = :saleStatus
+                where e.id = :eventId
+                """)
+        int updateSaleStatus(
+                @Param("eventId") Long eventId,
+                @Param("saleStatus") SaleStatus saleStatus
+        );
 }

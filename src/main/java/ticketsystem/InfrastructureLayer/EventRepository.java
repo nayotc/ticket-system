@@ -22,6 +22,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.EventSearchResultView;
+import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -401,5 +402,15 @@ public class EventRepository implements IEventRepository {
                                         "Failed to mark standing tickets as sold. eventId="
                                                         + eventId + ", areaId=" + areaId);
                 }
+        }
+
+        @Override
+        @Transactional
+        public void updateSaleStatus(Long eventId, SaleStatus saleStatus) {
+        int updatedRows = eventJpaRepository.updateSaleStatus(eventId, saleStatus);
+
+        if (updatedRows == 0) {
+                throw new IllegalStateException("Failed to update sale status for eventId=" + eventId);
+        }
         }
 }
