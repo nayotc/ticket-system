@@ -27,4 +27,6 @@ public interface IOrderRepository {
     
     List<ActiveOrder> getActiveOrdersByEventId(Long eventId);
     
+    List<ActiveOrder> getExpiredAndGuestOrders();
+    
 }

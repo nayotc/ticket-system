@@ -1,5 +1,6 @@
 package ticketsystem.InfrastructureLayer.persistence;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,4 +34,16 @@ public interface OrderJpaRepository extends JpaRepository<ActiveOrder, Long> {
 
     @Query("SELECT DISTINCT o FROM ActiveOrder o LEFT JOIN FETCH o.tickets WHERE o.eventId = :eventId")
     List<ActiveOrder> findByEventIdWithTickets(@Param("eventId") Long eventId);
+
+        @Query("""
+        SELECT o
+        FROM ActiveOrder o
+        WHERE o.userId IS NULL
+        OR o.status = ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus.CANCELLED
+        OR (
+                o.status <> ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus.PENDING_CHECKOUT
+                AND o.expiresAt <= :now
+                )
+        """)
+        List<ActiveOrder> findExpiredAndGuestOrders(@Param("now") LocalDateTime now);
 }
