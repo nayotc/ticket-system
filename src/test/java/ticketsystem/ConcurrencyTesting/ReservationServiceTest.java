@@ -816,6 +816,11 @@ public class ReservationServiceTest {
 			throw new UnsupportedOperationException("Unimplemented method 'updateSaleStatus'");
 		}
 
+		@Override
+        public Event getEventForReservation(Long eventId) {
+            return getEventById(eventId);
+        }
+
 
     }
 

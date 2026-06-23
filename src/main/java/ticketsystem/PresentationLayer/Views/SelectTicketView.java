@@ -141,7 +141,8 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
         try {
             EventDTO loadedEvent = reservationPresenter.loadEvent(token, eventId);
-            EventMapDTO loadedMap = reservationPresenter.loadEventMap(token, eventId);
+            EventMapDTO loadedMap= loadedEvent.map();
+           // EventMapDTO loadedMap = reservationPresenter.loadEventMap(token, eventId);
             setEventData(loadedEvent, loadedMap);
 
         } catch (PresentationException e) {
@@ -169,18 +170,19 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
         try {
             this.eventDTO = reservationPresenter.loadEvent(token, eventId);
-            this.mapDTO = reservationPresenter.loadEventMap(token, eventId);
+            this.mapDTO=eventDTO.map();
+            //this.mapDTO = reservationPresenter.loadEventMap(token, eventId);
 
             selectedSeats.clear();
             selectedStandingAreas.clear();
             standingQuantityFields.clear();
-
-            syncSelectedSeatsFromActiveOrder();
-            syncSelectedStandingFromActiveOrder();
+            ActiveOrderDTO order= loadCurrentEventActiveOrder();
+            syncSelectedSeatsFromActiveOrder(order);
+            syncSelectedStandingFromActiveOrder(order);
 
             renderMap();
-            refreshSummary();
-            refreshReservationTimer();
+            refreshSummary(order);
+            refreshReservationTimer(order);
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
@@ -208,17 +210,18 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         selectedSeats.clear();
         selectedStandingAreas.clear();
         standingQuantityFields.clear();
-        syncSelectedSeatsFromActiveOrder();
-        syncSelectedStandingFromActiveOrder();
+        ActiveOrderDTO order = loadCurrentEventActiveOrder();
+        syncSelectedSeatsFromActiveOrder(order);
+        syncSelectedStandingFromActiveOrder(order);
         renderMap();
-        refreshSummary();
-        refreshReservationTimer();
+        refreshSummary(order);
+        refreshReservationTimer(order);
         refreshSelectionAccessTimer();
     }
 
-    private void syncSelectedSeatsFromActiveOrder() {
+    private void syncSelectedSeatsFromActiveOrder(ActiveOrderDTO order) {
     try {
-        ActiveOrderDTO order = loadCurrentEventActiveOrder();
+          
 
         if (order == null || order.getTickets() == null || mapDTO == null || mapDTO.elements() == null) {
             return;
@@ -576,10 +579,17 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         seatsGrid.addClassName("seat-grid");
         seatsGrid.getStyle().set("grid-template-columns", "repeat(" + Math.max(area.columns(), 1) + ", minmax(0, 1fr))");
         seatsGrid.getStyle().set("grid-template-rows", "repeat(" + Math.max(area.rows(), 1) + ", minmax(0, 1fr))");
+        Map<SeatKey, SeatDTO> seatLookup = buildSeatLookup(area);
 
         for (int row = 1; row <= area.rows(); row++) {
             for (int number = 1; number <= area.columns(); number++) {
-                SeatDTO seat = findSeat(area, row, number);
+                SeatKey key = new SeatKey(area.id(), row, number);
+                SeatDTO seat = seatLookup.get(key);
+
+                if (seat == null) {
+                    seat = soldSeat(row, number);
+                }
+
                 seatsGrid.add(createSeat(area, seat));
             }
         }
@@ -600,6 +610,25 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
                 .findFirst()
                 .orElseGet(() -> soldSeat(row, number));
     }
+
+    private Map<SeatKey, SeatDTO> buildSeatLookup(SeatingAreaDTO area) {
+    Map<SeatKey, SeatDTO> lookup = new HashMap<>();
+
+    if (area.seats() == null) {
+        return lookup;
+    }
+
+    for (SeatDTO seat : area.seats()) {
+        if (seat != null && seat.position() != null) {
+            lookup.put(
+                    new SeatKey(area.id(), seat.position().row(), seat.position().number()),
+                    seat
+            );
+        }
+    }
+
+    return lookup;
+}
 
     private SeatDTO soldSeat(int row, int number) {
         return new SeatDTO(new SeatPositionDTO(row, number), "SOLD");
@@ -723,7 +752,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
           } else if (isSeatAvailable(seat)) {
             reservationPresenter.selectSeatTicket(token, eventId, area.id(), row, number, currentLotteryCode());
-            refreshReservationTimer();
 
             reloadTicketSelectionEventDataKeepingSelection();
             return;
@@ -802,11 +830,10 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         int delta = safeQuantity - currentQuantity;
 
         String token = currentToken();
-
         try {
             if (delta > 0) {
                 reservationPresenter.selectStandingTicket(token, eventId, area.id(), delta, currentLotteryCode());
-                refreshReservationTimer();
+                
             } else if (delta < 0) {
                 reservationPresenter.removeStandingTicketsFromActiveOrder(token, eventId, area.id(), -delta);
             }
@@ -822,7 +849,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
                 field.setValue(safeQuantity);
             }
 
-            refreshSummary();
+            reloadTicketSelectionEventDataKeepingSelection();
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
@@ -854,11 +881,10 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         }
     }
 
-    private void refreshSummary() {
+    private void refreshSummary(ActiveOrderDTO order) {
         selectedTicketsList.removeAll();
 
         try {
-            ActiveOrderDTO order = loadCurrentEventActiveOrder();
             if (order == null || order.getTickets() == null || order.getTickets().isEmpty()) {
                 emptySelection.setVisible(true);
                 selectedTicketsList.setVisible(false);
@@ -904,9 +930,9 @@ private ActiveOrderDTO loadCurrentEventActiveOrder() {
     return order;
 }
 
-    private void syncSelectedStandingFromActiveOrder() {
+    private void syncSelectedStandingFromActiveOrder(ActiveOrderDTO order) {
         try {
-            ActiveOrderDTO order = loadCurrentEventActiveOrder();
+              
         
             if (order == null || order.getTickets() == null || mapDTO == null || mapDTO.elements() == null) {
                 return;
@@ -984,7 +1010,6 @@ private Div createSelectedTicketRowFromOrder(TicketDTO ticket) {
             ticket.getTicketId());
 
             reloadTicketSelectionEventDataKeepingSelection();
-            refreshSummary();
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
@@ -1046,10 +1071,11 @@ private String findAreaNameById(Long areaId) {
             try {
                 String token = currentToken();
                 reservationPresenter.removeSeatTicketFromActiveOrder(token, eventId, selectedSeat.areaId(), selectedSeat.row(), selectedSeat.number());
-
+                
                 selectedSeats.remove(new SeatKey(selectedSeat.areaId(), selectedSeat.row(), selectedSeat.number()));
+                ActiveOrderDTO order= loadCurrentEventActiveOrder();
                 renderMap();
-                refreshSummary();
+                refreshSummary(order);
 
             } catch (PresentationException e) {
                 if (e.isSessionTimeout()) {
@@ -1101,8 +1127,8 @@ private String findAreaNameById(Long areaId) {
                 if (field != null) {
                     field.setValue(0);
                 }
-
-                refreshSummary();
+                ActiveOrderDTO order= loadCurrentEventActiveOrder();
+                refreshSummary(order);
             
             } catch (PresentationException e) {
                 if (e.isSessionTimeout()) {
@@ -1364,9 +1390,9 @@ private void onSelectionAccessTimerExpired() {
 
 
 
-    private void refreshReservationTimer() {
+    private void refreshReservationTimer(ActiveOrderDTO order) {
         try {
-            ActiveOrderDTO order = reservationPresenter.loadActiveOrder(currentToken());
+            //ActiveOrderDTO order = reservationPresenter.loadActiveOrder(currentToken());
 
             if (order == null || order.getTickets() == null || order.getTickets().isEmpty()) {
                 reservationTimer.setVisible(false);

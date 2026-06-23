@@ -343,4 +343,9 @@ public final class InMemoryEventRepository implements IEventRepository {
         event.setSaleStatus(saleStatus);
         storedEvent.update(event);
     }
+
+	@Override
+        public Event getEventForReservation(Long eventId) {
+            return getEventById(eventId);
+        }
 }

@@ -20,4 +20,5 @@ public interface IEventRepository {
     void updateStandingAreaReservedCount(Long eventId, Long areaId, int reservedDelta); 
     void markStandingTicketsAsSold(Long eventId, Long areaId, int quantity);
     void updateSaleStatus(Long eventId, SaleStatus saleStatus);
+    Event getEventForReservation(Long eventId);
 }
