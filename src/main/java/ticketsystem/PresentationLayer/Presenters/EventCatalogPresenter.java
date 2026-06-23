@@ -334,13 +334,8 @@ public class EventCatalogPresenter {
         if (companyId == null) {
             return "";
         }
-
-        try {
             String companyName = companyService.getCompanyName(sessionToken, companyId);
             return companyName == null ? "" : companyName;
-        } catch (Exception e) {
-            return "";
-        }
     }
 
     private String formatDate(LocalDateTime date) {
