@@ -225,7 +225,7 @@ public class WaitingQueueServiceTest {
 
         EventMap map = new EventMap(new Pair<>(10, 10));
 
-        StandingArea standingArea = new StandingArea( "Sold Out Standing Area", new Pair<>(0, 0), new Pair<>(5, 5), 1);
+        StandingArea standingArea = new StandingArea( "Sold Out Standing Area", new Pair<>(0, 0), new Pair<>(5, 5), 1, BigDecimal.valueOf(100));
 
         map.addElement(standingArea);
         event.setMap(map);

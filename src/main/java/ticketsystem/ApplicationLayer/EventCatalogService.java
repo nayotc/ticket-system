@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
 import ticketsystem.DomainLayer.EventCatalogDomainService;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
@@ -36,6 +37,7 @@ public class EventCatalogService {
         this.logger = logger;
     }
 
+    @Transactional(readOnly = true)
     public List<EventSearchResultDTO> globalSearch(String sessionId, SearchCriteria criteria){
         String context = "criteria=" + String.valueOf(criteria);
         logger.logEvent("started - globalSearch. " + context, LogLevel.INFO);
@@ -67,6 +69,7 @@ public class EventCatalogService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<EventSearchResultDTO> SearchByCompany(String sessionId, long companyId, SearchCriteria criteria){
         String context = "companyId=" + companyId + ", criteria=" + String.valueOf(criteria);
         logger.logEvent("Started - SearchByCompany. " + context, LogLevel.INFO);
@@ -100,6 +103,7 @@ public class EventCatalogService {
     /**
      * Used by the UI home page to display a small list of featured events.
      */
+    @Transactional(readOnly = true)
     public List<EventSearchResultDTO> getFeaturedEvents(String sessionId, int limit) {
         String context = "limit=" + limit;
 

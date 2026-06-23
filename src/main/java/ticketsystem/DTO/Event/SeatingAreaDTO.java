@@ -1,5 +1,6 @@
 package ticketsystem.DTO.Event;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -12,6 +13,7 @@ public record SeatingAreaDTO(
         PairDTO<Integer, Integer> size,
         String type,
         boolean soldOut,
+        BigDecimal price,
         int rows,
         int columns,
         List<SeatDTO> seats
@@ -29,6 +31,7 @@ public record SeatingAreaDTO(
                 PairDTO.from(area.getSize()),
                 "SeatingArea",
                 area.isSoldOut(),
+                area.getPrice(),
                 area.getRows(),
                 area.getColumns(),
                 area.getSeats()

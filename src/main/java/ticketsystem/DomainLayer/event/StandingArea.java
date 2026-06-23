@@ -3,6 +3,8 @@ package ticketsystem.DomainLayer.event;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
+import java.math.BigDecimal;
+
 @Entity
 @DiscriminatorValue("STANDING")
 public class StandingArea extends Area {
@@ -13,8 +15,8 @@ public class StandingArea extends Area {
     protected StandingArea() {
     }
 
-    public StandingArea(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, long capacity) {
-        super(name, location, size);
+    public StandingArea(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, long capacity, BigDecimal price) {
+        super(name, location, size, price);
 
         if (capacity < 0) {
             throw new IllegalArgumentException("Capacity cannot be negative");

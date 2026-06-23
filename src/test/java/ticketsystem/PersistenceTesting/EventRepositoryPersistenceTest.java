@@ -40,8 +40,9 @@ import ticketsystem.DomainLayer.policy.AndPurchaseRule;
 import ticketsystem.DomainLayer.policy.MaxTicketsRule;
 import ticketsystem.DomainLayer.policy.MinAgeRule;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
+import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.event.EventSearchResultView;
 import ticketsystem.InfrastructureLayer.EventRepository;
-import ticketsystem.DomainLayer.discount.*;
 
 @DataJpaTest
 @Import(EventRepository.class)
@@ -72,7 +73,7 @@ public class EventRepositoryPersistenceTest {
         assertEquals(EventLocation.TEL_AVIV, loadedEvent.getLocation());
         assertEquals(EventCategory.CONCERT, loadedEvent.getCategory());
         assertEquals("Test Artist", loadedEvent.getArtistName());
-        assertEquals(0, new BigDecimal("100.00").compareTo(loadedEvent.getTicketPrice()));
+        assertEquals(0, new BigDecimal("80.00").compareTo(loadedEvent.getMinimalTicketPrice()));
         assertEquals(new Pair<>(20, 15), loadedEvent.getMap().getSize());
         assertEquals(2, loadedEvent.getMap().getElements().size());
 
@@ -84,6 +85,7 @@ public class EventRepositoryPersistenceTest {
         assertEquals(2, seatingArea.getRows());
         assertEquals(2, seatingArea.getColumns());
         assertEquals(4, seatingArea.getSeats().size());
+        assertEquals(0, new BigDecimal("150.00").compareTo(seatingArea.getPrice()));
         assertEquals(
                 Seat.SeatStatus.AVAILABLE,
                 seatingArea.getSeats()
@@ -96,6 +98,7 @@ public class EventRepositoryPersistenceTest {
         assertEquals(100, standingArea.getCapacity());
         assertEquals(0, standingArea.getReserved());
         assertEquals(0, standingArea.getSold());
+        assertEquals(0, new BigDecimal("80.00").compareTo(standingArea.getPrice()));
     }
 
     @Test
@@ -154,7 +157,6 @@ public class EventRepositoryPersistenceTest {
 
         eventToUpdate.setName("Updated Event");
         eventToUpdate.setArtistName("Updated Artist");
-        eventToUpdate.setTicketPrice(new BigDecimal("175.50"));
 
         eventRepository.updateEvent(eventToUpdate);
         flushAndClear();
@@ -164,11 +166,6 @@ public class EventRepositoryPersistenceTest {
         assertNotNull(updatedEvent);
         assertEquals("Updated Event", updatedEvent.getName());
         assertEquals("Updated Artist", updatedEvent.getArtistName());
-        assertEquals(
-                0,
-                new BigDecimal("175.50")
-                        .compareTo(updatedEvent.getTicketPrice())
-        );
         assertEquals(originalVersion + 1, updatedEvent.getVersion());
     }
 
@@ -400,6 +397,92 @@ public class EventRepositoryPersistenceTest {
 
         assertThrows(PersistenceException.class, () -> {
             entityManager.persist(duplicateSeat);
+            entityManager.flush();
+        });
+    }
+
+    @Test
+    void GivenAreasWithDifferentPrices_WhenPersistedAndReloaded_ThenEachPriceIsRestored() {
+        Event event = createEvent(1L, "Area Price Event");
+
+        eventRepository.addEvent(event);
+        Long eventId = event.getId();
+
+        assertNotNull(eventId);
+
+        flushAndClear();
+
+        Event loadedEvent = eventRepository.getEventById(eventId);
+
+        assertNotNull(loadedEvent);
+
+        SeatingArea seatingArea = getSeatingArea(loadedEvent);
+        StandingArea standingArea = getStandingArea(loadedEvent);
+
+        assertEquals(0, new BigDecimal("150.00").compareTo(seatingArea.getPrice()));
+        assertEquals(0, new BigDecimal("80.00").compareTo(standingArea.getPrice()));
+    }
+
+    @Test
+    void GivenOneAreaMatchesPriceRange_WhenSearchEvents_ThenEventIsReturned() {
+        Event matchingEvent = createEvent(1L, "Matching Event");
+        matchingEvent.setStatus(Event.eventStatus.ACTIVE);
+
+        Event expensiveEvent = createEvent(1L, "Expensive Event");
+        expensiveEvent.setStatus(Event.eventStatus.ACTIVE);
+
+        getSeatingArea(expensiveEvent).setPrice(new BigDecimal("200.00"));
+        getStandingArea(expensiveEvent).setPrice(new BigDecimal("250.00"));
+
+        eventRepository.addEvent(matchingEvent);
+        eventRepository.addEvent(expensiveEvent);
+
+        Long matchingEventId = matchingEvent.getId();
+
+        flushAndClear();
+
+        SearchCriteria criteria = new SearchCriteria();
+        criteria.setMinPrice(new BigDecimal("70.00"));
+        criteria.setMaxPrice(new BigDecimal("100.00"));
+
+        List<EventSearchResultView> results =
+                eventRepository.searchEvents(
+                        criteria,
+                        List.of(1L)
+                );
+
+        assertEquals(1, results.size());
+        assertEquals(matchingEventId, results.get(0).getId());
+        assertEquals(0, new BigDecimal("80.00").compareTo(results.get(0).getTicketPrice()));
+    }
+
+    @Test
+    void GivenAreaRowWithoutPrice_WhenPersisted_ThenDatabaseRejectsIt() {
+        assertThrows(PersistenceException.class, () -> {
+            entityManager
+                    .getEntityManager()
+                    .createNativeQuery("""
+                    INSERT INTO event_elements (
+                        element_type,
+                        name,
+                        location_x,
+                        location_y,
+                        size_width,
+                        size_height,
+                        price
+                    )
+                    VALUES (
+                        'SEATING',
+                        'Invalid seating area',
+                        0,
+                        0,
+                        10,
+                        10,
+                        NULL
+                    )
+                    """)
+                    .executeUpdate();
+
             entityManager.flush();
         });
     }
@@ -654,7 +737,8 @@ public class EventRepositoryPersistenceTest {
                         new Pair<>(0, 0),
                         new Pair<>(10, 10),
                         2,
-                        2
+                        2,
+                        new BigDecimal("150.00")
                 )
         );
 
@@ -663,7 +747,8 @@ public class EventRepositoryPersistenceTest {
                         "Main Standing Area",
                         new Pair<>(10, 0),
                         new Pair<>(10, 10),
-                        100
+                        100,
+                        new BigDecimal("80.00")
                 )
         );
 

@@ -674,12 +674,12 @@ public class ReservationPresenter {
                 new EventMapDto(
                         safeInt(map.size(), true, 1),  // rows = height
                         safeInt(map.size(), false, 1), // columns = width
-                        toMapElements(map, event.ticketPrice())
+                        toMapElements(map)
                 )
         );
     }
 
-    private List<MapElementDto> toMapElements(EventMapDTO map, BigDecimal defaultTicketPrice) {
+    private List<MapElementDto> toMapElements(EventMapDTO map) {
         if (map == null || map.elements() == null) {
             return List.of();
         }
@@ -688,10 +688,10 @@ public class ReservationPresenter {
 
         for (IMapElementDTO element : map.elements()) {
             if (element instanceof SeatingAreaDTO seatingArea) {
-                elements.add(toSeatingAreaDto(seatingArea, defaultTicketPrice));
+                elements.add(toSeatingAreaDto(seatingArea, seatingArea.price()));
 
             } else if (element instanceof StandingAreaDTO standingArea) {
-                elements.add(toStandingAreaDto(standingArea, defaultTicketPrice));
+                elements.add(toStandingAreaDto(standingArea, standingArea.price()));
 
             } else if (element instanceof ElementDTO plainElement) {
                 elements.add(toPlainMapElementDto(plainElement));

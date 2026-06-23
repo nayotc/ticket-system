@@ -24,16 +24,17 @@ public class Reservation {
       
         SeatPosition seatPosition = new SeatPosition(position.getRow(), position.getChair());
        event.reserveSeat(areaId, seatPosition);
-       Ticket ticket = new Ticket(null, event.getId(), areaId, position.getRow(), position.getChair(), event.getTicketPrice());
+       Ticket ticket = new Ticket(null, event.getId(), areaId, position.getRow(), position.getChair(), event.getAreaPrice(areaId));
         order.addTicket(ticket);
     } 
 
     public void selectStandingTicket(ActiveOrder order, Event event,Long areaId, int quantity) {
-      event.reserveSpot(areaId, quantity);
+        event.reserveSpot(areaId, quantity);
+        BigDecimal areaPrice = event.getAreaPrice(areaId);
         for(int i=0; i<quantity; i++) {
-            Ticket ticket = new Ticket(null, event.getId(), areaId, 0, 0, event.getTicketPrice());
+            Ticket ticket = new Ticket(null, event.getId(), areaId, 0, 0, areaPrice);
             order.addTicket(ticket);
-      }
+        }
     }
 
   // UC 2.7

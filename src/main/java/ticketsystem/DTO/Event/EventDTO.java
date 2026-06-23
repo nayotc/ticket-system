@@ -42,7 +42,7 @@ public record EventDTO(
                 event.getStatus() == null ? null : event.getStatus().name(),
                 event.getCategory() == null ? null : event.getCategory().name(),
                 event.getArtistName(),
-                event.getTicketPrice(),
+                event.getMinimalTicketPrice(),
                 event.getMap() == null ? null : new PairDTO<>(event.getMap().getSize().getFirst(), event.getMap().getSize().getSecond()),
                 event.getRate(),
                 event.getSaleStatus() == null ? null : event.getSaleStatus().name(),

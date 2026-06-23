@@ -45,7 +45,6 @@ import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.ClientCallable;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.router.BeforeLeaveObserver;
@@ -250,7 +249,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
                                     safeText(area.name(), "אזור ישיבה"),
                                     ticket.getRow(),
                                     ticket.getChair(),
-                                    ticket.getPrice() == null ? ticketPrice() : ticket.getPrice()
+                                    ticket.getPrice() == null ? area.price() : ticket.getPrice()
                             )
                     );
 
@@ -571,7 +570,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
         Div header = new Div();
         header.addClassName("map-area-header");
-        header.add(new Span(safeText(area.name(), "אזור ישיבה")), new Span(formatMoney(ticketPrice())));
+        header.add(new Span(safeText(area.name(), "אזור ישיבה")), new Span(formatMoney(area.price())));
 
         Div seatsGrid = new Div();
         seatsGrid.addClassName("seat-grid");
@@ -640,7 +639,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         areaCard.addClassName("map-standing-area");
 
         int selectedQuantity = selectedStandingAreas
-                .getOrDefault(area.id(), SelectedStandingArea.empty(area, ticketPrice()))
+                .getOrDefault(area.id(), SelectedStandingArea.empty(area, area.price()))
                 .quantity();
 
         int available = availableCapacity(area);
@@ -657,7 +656,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         header.addClassName("map-area-header");
         header.add(
                 new Span(safeText(area.name(), "אזור עמידה")),
-                new Span(formatMoney(ticketPrice()))
+                new Span(formatMoney(area.price()))
         );
 
         IntegerField quantity = new IntegerField();
@@ -795,7 +794,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         }
 
         int currentQuantity = selectedStandingAreas
-                .getOrDefault(area.id(), SelectedStandingArea.empty(area, ticketPrice()))
+                .getOrDefault(area.id(), SelectedStandingArea.empty(area, area.price()))
                 .quantity();
 
         int maxSelectable = availableCapacity(area) + currentQuantity;
@@ -815,7 +814,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             if (safeQuantity == 0) {
                 selectedStandingAreas.remove(area.id());
             } else {
-                selectedStandingAreas.put(area.id(), new SelectedStandingArea(area.id(), safeText(area.name(), "אזור עמידה"), safeQuantity, ticketPrice()));
+                selectedStandingAreas.put(area.id(), new SelectedStandingArea(area.id(), safeText(area.name(), "אזור עמידה"), safeQuantity, area.price()));
             }
 
             IntegerField field = standingQuantityFields.get(area.id());
@@ -932,7 +931,7 @@ private ActiveOrderDTO loadCurrentEventActiveOrder() {
                                     area.id(),
                                     safeText(area.name(), "אזור עמידה"),
                                     quantity,
-                                    ticketPrice()
+                                    area.price()
                             )
                     );
                 }
@@ -957,10 +956,18 @@ private Div createSelectedTicketRowFromOrder(TicketDTO ticket) {
     text.addClassName("selected-ticket-text");
     String areaName = findAreaNameById(ticket.getAreaId());
 
-text.add(
-        new Span(areaName),
-        new Span("שורה " + ticket.getRow() + " • כיסא " + ticket.getChair())
-    );
+    if (ticket.getChair() == 0 && ticket.getRow() == 0) {
+        text.add(
+            new Span(areaName),
+            new Span("כרטיס עמידה")
+        );
+    }
+    else {
+        text.add(
+            new Span(areaName),
+            new Span("שורה " + ticket.getRow() + " • כיסא " + ticket.getChair())
+        );
+    }
 
     Span price = new Span(formatMoney(ticket.getPrice()));
     price.addClassName("selected-ticket-price");
@@ -1209,10 +1216,6 @@ private String findAreaNameById(Long areaId) {
         return element == null || element.type() == null
                 ? ""
                 : element.type().replace(" ", "_").replace("-", "_").trim().toUpperCase();
-    }
-
-    private BigDecimal ticketPrice() {
-        return eventDTO == null || eventDTO.ticketPrice() == null ? BigDecimal.ZERO : eventDTO.ticketPrice();
     }
 
     private int positive(Integer value, int fallback) {

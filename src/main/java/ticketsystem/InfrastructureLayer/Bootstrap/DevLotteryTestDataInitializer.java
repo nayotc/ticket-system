@@ -300,14 +300,16 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
                 new Pair<>(30, 12),
                 new Pair<>(10, 5),
                 10,
-                20
+                20,
+                new BigDecimal("350.00")
         ));
 
         event.getMap().addElement(new StandingArea(
                 "אזור עמידה",
                 new Pair<>(25, 19),
                 new Pair<>(20, 10),
-                500
+                500,
+                new BigDecimal("250.00")
         ));
 
         event.getMap().addElement(new Element(
@@ -341,14 +343,16 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
                 new Pair<>(4, 7),
                 new Pair<>(10, 6),
                 6,
-                10
+                10,
+                new BigDecimal("200.00")
         ));
 
         event.getMap().addElement(new StandingArea(
                 "רחבת עמידה",
                 new Pair<>(16, 7),
                 new Pair<>(8, 8),
-                120
+                120,
+                new BigDecimal("150.00")
         ));
 
         event.getMap().addElement(new Element(

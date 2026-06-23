@@ -39,7 +39,6 @@ import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.discount.VisibleDiscount;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.SearchCriteria;
-import ticketsystem.DomainLayer.discount.ConditionalDiscount;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 
@@ -81,7 +80,7 @@ public class EventTest {
         assertEquals(Event.eventStatus.DRAFT, event.getStatus());
         assertEquals(EventCategory.CONCERT, event.getCategory());
         assertEquals("Famous Artist", event.getArtistName());
-        assertEquals(new BigDecimal("99.99"), event.getTicketPrice());
+        assertEquals(new BigDecimal("99.99"), event.getMinimalTicketPrice());
         assertEquals(0.0, event.getRate(), 0.0001);
 
         assertNotNull(event.getMap());
@@ -148,15 +147,6 @@ public class EventTest {
         event.setMap(mockMap);
 
         assertSame(mockMap, event.getMap());
-    }
-
-    @Test
-    void givenEvent_whenSetTicketPrice_thenTicketPriceIsUpdated() {
-        BigDecimal newPrice = new BigDecimal("149.90");
-
-        event.setTicketPrice(newPrice);
-
-        assertEquals(newPrice, event.getTicketPrice());
     }
 
     @Test

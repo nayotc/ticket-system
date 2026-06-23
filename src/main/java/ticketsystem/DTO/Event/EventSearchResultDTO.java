@@ -33,7 +33,7 @@ public record EventSearchResultDTO(
                 event.getLocation() == null ? null : event.getLocation().name(),
                 event.getCategory() == null ? null : event.getCategory().name(),
                 event.getArtistName(),
-                event.getTicketPrice(),
+                event.getMinimalTicketPrice(),
                 event.getRate(),
                 event.getSaleStatus() == null ? null : event.getSaleStatus().name()
         );

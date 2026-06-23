@@ -15,8 +15,6 @@ import static org.mockito.Mockito.*;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +34,6 @@ import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.*;
 import ticketsystem.DomainLayer.user.Permission;
-import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 
 public class EventServiceTest {
 
@@ -175,6 +172,7 @@ public class EventServiceTest {
                                 new PairDTO<>(3, 3),
                                 "StandingArea",
                                 false,
+                                BigDecimal.valueOf(80.00),
                                 100L,
                                 0L,
                                 0L
@@ -233,7 +231,7 @@ public class EventServiceTest {
         assertEquals(EventLocation.NEW_YORK, createdEvent.getLocation());
         assertEquals(EventCategory.CONCERT, createdEvent.getCategory());
         assertEquals("Test Artist", createdEvent.getArtistName());
-        assertEquals(0, BigDecimal.valueOf(50).compareTo(createdEvent.getTicketPrice()));
+        assertEquals(0, BigDecimal.valueOf(50).compareTo(createdEvent.getMinimalTicketPrice()));
         assertEquals(Event.eventStatus.DRAFT, createdEvent.getStatus());
 
         verify(mockTokenService).validateToken(validSessionId);
@@ -654,7 +652,7 @@ public class EventServiceTest {
         assertEquals(200L, updatedEvent.getTrafficThreshold());
         assertEquals(EventCategory.CONCERT, updatedEvent.getCategory());
         assertEquals("Updated Artist", updatedEvent.getArtistName());
-        assertEquals(0, BigDecimal.valueOf(80).compareTo(updatedEvent.getTicketPrice()));
+        assertEquals(0, BigDecimal.valueOf(80).compareTo(updatedEvent.getMinimalTicketPrice()));
 
         verify(mockTokenService).validateToken(validSessionId);
         verify(mockTokenService).extractUserId(validSessionId);

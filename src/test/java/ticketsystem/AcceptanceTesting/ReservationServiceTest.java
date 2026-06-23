@@ -1347,7 +1347,8 @@ public class ReservationServiceTest {
                 "Single Ticket Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(5, 5),
-                1
+                1,
+                new BigDecimal("100.00")
         );
 
         map.addElement(standingArea);
@@ -1377,7 +1378,8 @@ public class ReservationServiceTest {
                 "Main Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(5, 5),
-                100
+                100,
+                new BigDecimal("80.00")
         );
 
         map.addElement(standingArea);
@@ -1408,7 +1410,8 @@ public class ReservationServiceTest {
                 new Pair<>(0, 0),
                 new Pair<>(5, 5),
                 5,
-                5
+                5,
+                new BigDecimal("120.00")
         );
 
         map.addElement(seatingArea);

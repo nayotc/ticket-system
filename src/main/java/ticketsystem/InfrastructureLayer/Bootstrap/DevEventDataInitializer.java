@@ -88,14 +88,16 @@ public class DevEventDataInitializer implements CommandLineRunner {
                 new Pair<>(30, 12),
                 new Pair<>(10, 5),
                 10,
-                20
+                20,
+                new BigDecimal("120.00")
         ));
 
         event.getMap().addElement(new StandingArea(
                 "אזור עמידה",
                 new Pair<>(25, 19),
                 new Pair<>(20, 10),
-                500
+                500,
+                new BigDecimal("80.00")
         ));
 
         event.getMap().addElement(new Element(

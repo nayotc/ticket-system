@@ -13,6 +13,7 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.SeatPosition;
 
 import static org.junit.jupiter.api.Assertions.*;
+import java.math.BigDecimal;
 
 class EventMapTest {
 
@@ -29,13 +30,13 @@ class EventMapTest {
     }
 
     private SeatingArea seatingArea( int rows, int columns) {
-        SeatingArea area = new SeatingArea( "Seating", pair(0, 0), pair(10, 10), rows, columns);
+        SeatingArea area = new SeatingArea( "Seating", pair(0, 0), pair(10, 10), rows, columns, new BigDecimal("120.00"));
         setElementId(area, 1L);
         return area;
     }
 
     private StandingArea standingArea(long capacity) {
-        StandingArea area = new StandingArea( "Standing", pair(20, 20), pair(10, 10), capacity);
+        StandingArea area = new StandingArea( "Standing", pair(20, 20), pair(10, 10), capacity, new BigDecimal("80.00"));
         setElementId(area, 2L);
         return area;
     }
@@ -216,5 +217,53 @@ class EventMapTest {
         assertNotSame(original.getElements().get(0), copy.getElements().get(0));
         assertEquals(SeatStatus.RESERVED, original.isSeatAvailable(seatingArea.getId(), position(1, 1)));
         assertEquals(SeatStatus.SOLD, copy.isSeatAvailable(seatingArea.getId(), position(1, 1)));
+    }
+
+    @Test
+    void GivenExistingArea_WhenGetAreaPrice_ThenReturnItsPrice() {
+        EventMap map = eventMap();
+        StandingArea area = standingArea(10);
+
+        map.addElement(area);
+
+        assertEquals(0, new BigDecimal("80.00").compareTo(map.getAreaPrice(area.getId())));
+    }
+
+    @Test
+    void GivenAreasWithDifferentPrices_WhenGetMinimumAreaPrice_ThenReturnLowestPrice() {
+        EventMap map = eventMap();
+
+        map.addElement(seatingArea(2, 2));
+        map.addElement(standingArea(10));
+
+        assertEquals(0, new BigDecimal("80.00").compareTo(map.getMinimumAreaPrice()));
+    }
+
+    @Test
+    void GivenOneAreaInsidePriceRange_WhenHasAreaInPriceRange_ThenReturnTrue() {
+        EventMap map = eventMap();
+
+        map.addElement(seatingArea(2, 2));
+        map.addElement(standingArea(10));
+
+        assertTrue(map.hasAreaInPriceRange(new BigDecimal("70.00"), new BigDecimal("100.00")));
+    }
+
+    @Test
+    void GivenNoAreaInsidePriceRange_WhenHasAreaInPriceRange_ThenReturnFalse() {
+        EventMap map = eventMap();
+
+        map.addElement(seatingArea(2, 2));
+        map.addElement(standingArea(10));
+
+        assertFalse(map.hasAreaInPriceRange(new BigDecimal("200.00"), new BigDecimal("300.00")));
+    }
+
+    @Test
+    void GivenUnknownAreaId_WhenGetAreaPrice_ThenThrowException() {
+        EventMap map = eventMap();
+        map.addElement(seatingArea(2, 2));
+
+        assertThrows(IllegalArgumentException.class, () -> map.getAreaPrice(999L));
     }
 }

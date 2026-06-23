@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer.event;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -16,6 +17,8 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import java.math.BigDecimal;
+import java.util.Objects;
 
 @Embeddable
 public class EventMap {
@@ -170,6 +173,69 @@ public class EventMap {
         }
 
         return "אזור לא ידוע";
+    }
+
+    public BigDecimal getAreaPrice(Long areaId) {
+        return findArea(areaId).getPrice();
+    }
+
+    public BigDecimal getMinimumAreaPrice() {
+        if (elements == null) {
+            return null;
+        }
+
+        return elements.stream()
+                .filter(Area.class::isInstance)
+                .map(Area.class::cast)
+                .map(Area::getPrice)
+                .filter(Objects::nonNull)
+                .min(BigDecimal::compareTo)
+                .orElse(null);
+    }
+
+    public boolean hasAreaInPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
+        if (minPrice != null
+                && maxPrice != null
+                && minPrice.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException(
+                    "Minimum price cannot be greater than maximum price"
+            );
+        }
+
+        if (elements == null) {
+            return false;
+        }
+
+        return elements.stream()
+                .filter(Area.class::isInstance)
+                .map(Area.class::cast)
+                .map(Area::getPrice)
+                .filter(Objects::nonNull)
+                .anyMatch(price ->
+                        (minPrice == null || price.compareTo(minPrice) >= 0)
+                                && (maxPrice == null || price.compareTo(maxPrice) <= 0)
+                );
+    }
+
+    private Area findArea(Long areaId) {
+        if (areaId == null) {
+            throw new IllegalArgumentException("Area ID cannot be null");
+        }
+
+        if (elements == null) {
+            throw new IllegalArgumentException("Area not found");
+        }
+
+        return elements.stream()
+                .filter(Area.class::isInstance)
+                .map(Area.class::cast)
+                .filter(area -> Objects.equals(area.getId(), areaId))
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Area not found: " + areaId
+                        )
+                );
     }
 
 }

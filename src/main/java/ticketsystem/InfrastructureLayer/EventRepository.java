@@ -27,6 +27,17 @@ import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import java.math.BigDecimal;
+
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.ListJoin;
+
+import ticketsystem.DomainLayer.event.Area;
+import ticketsystem.DomainLayer.event.Element;
+import ticketsystem.DomainLayer.event.EventMap;
+
 @Repository
 public class EventRepository implements IEventRepository {
 
@@ -230,22 +241,35 @@ public class EventRepository implements IEventRepository {
                 );
             }
 
-            if (criteria.getMinPrice() != null) {
-                predicates.add(
-                        criteriaBuilder.greaterThanOrEqualTo(
-                                root.get("ticketPrice"),
-                                criteria.getMinPrice()
-                        )
-                );
-            }
+            if (criteria.getMinPrice() != null || criteria.getMaxPrice() != null) {
+                /*
+                 * One event may have several matching areas.
+                 * DISTINCT prevents the same event from appearing more than once.
+                 */
+                query.distinct(true);
 
-            if (criteria.getMaxPrice() != null) {
-                predicates.add(
-                        criteriaBuilder.lessThanOrEqualTo(
-                                root.get("ticketPrice"),
-                                criteria.getMaxPrice()
-                        )
-                );
+                Join<Event, EventMap> mapJoin = root.join("map", JoinType.INNER);
+                ListJoin<EventMap, Element> elementJoin = mapJoin.joinList("elements", JoinType.INNER);
+                ListJoin<EventMap, Area> areaJoin = criteriaBuilder.treat(elementJoin, Area.class);
+                Path<BigDecimal> areaPrice = areaJoin.get("price");
+
+                if (criteria.getMinPrice() != null) {
+                    predicates.add(
+                            criteriaBuilder.greaterThanOrEqualTo(
+                                    areaPrice,
+                                    criteria.getMinPrice()
+                            )
+                    );
+                }
+
+                if (criteria.getMaxPrice() != null) {
+                    predicates.add(
+                            criteriaBuilder.lessThanOrEqualTo(
+                                    areaPrice,
+                                    criteria.getMaxPrice()
+                            )
+                    );
+                }
             }
 
             if (criteria.getEventRate() != null) {
