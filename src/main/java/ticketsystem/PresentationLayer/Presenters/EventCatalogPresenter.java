@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Presenter for event catalog UI actions.
@@ -157,10 +158,10 @@ public class EventCatalogPresenter {
      * @return featured event card data for the Home page
      */
     public List<EventCardViewModel> getFeaturedHomeEvents(String sessionToken) {
-        return eventCatalogService.getFeaturedEvents(sessionToken, 3)
-                .stream()
-                .map(event -> toEventCardViewModel(sessionToken, event))
-                .toList();
+        return toEventCards(
+                sessionToken,
+                eventCatalogService.getFeaturedEvents(sessionToken, 3)
+        );
     }
 
     /**
@@ -178,18 +179,17 @@ public class EventCatalogPresenter {
      * @param parameters query parameters from the current route
      * @return event card data matching the global search criteria
      */
-    public List<EventCardViewModel> getGlobalSearchResultEvents(
-            String sessionToken,
-            Map<String, List<String>> parameters
-    ) {
-        SearchCriteria criteria = buildSearchCriteria(parameters);
+  public List<EventCardViewModel> getGlobalSearchResultEvents(
+                String sessionToken,
+                Map<String, List<String>> parameters
+        ) {
+            SearchCriteria criteria = buildSearchCriteria(parameters);
 
-        return eventCatalogService.globalSearch(sessionToken, criteria)
-                .stream()
-                .map(event -> toEventCardViewModel(sessionToken, event))
-                .toList();
-    }
-
+            return toEventCards(
+                    sessionToken,
+                    eventCatalogService.globalSearch(sessionToken, criteria)
+            );
+        }
     /**
      * Loads company-specific event search results from URL query parameters.
      *
@@ -216,12 +216,15 @@ public class EventCatalogPresenter {
 
         SearchCriteria criteria = buildCompanySearchCriteria(parameters);
 
-        return eventCatalogService.SearchByCompany(sessionToken, companyId, criteria)
-                .stream()
-                .map(event -> toEventCardViewModel(sessionToken, event))
-                .toList();
+        return toEventCards(
+                sessionToken,
+                eventCatalogService.SearchByCompany(
+                        sessionToken,
+                        companyId,
+                        criteria
+                )
+        );
     }
-
     /**
      * View model used by EventCard-based screens.
      *
@@ -247,8 +250,11 @@ public class EventCatalogPresenter {
 
     /**
      * Converts an application-layer event search DTO into UI card data.
-     */
-    private EventCardViewModel toEventCardViewModel(String sessionToken, EventSearchResultDTO event) {
+     */ private EventCardViewModel toEventCardViewModel(
+        String sessionToken,
+        EventSearchResultDTO event,
+        Set<Long> lotteryEventIds
+)  {
         String companyName = resolveCompanyName(sessionToken, event.companyId());
 
         return new EventCardViewModel(
@@ -263,10 +269,11 @@ public class EventCatalogPresenter {
                 event.companyId(),
                 event.id(),
                 parseSaleStatus(event.saleStatus()),
-                lotteryService.hasLotteryForEvent(sessionToken, event.id())
-        );
+                lotteryEventIds.contains(event.id())
+            );
     }
 
+   
     /**
      * Converts route query parameters into domain search criteria.
      *
@@ -329,8 +336,8 @@ public class EventCatalogPresenter {
         }
 
         try {
-            CompanyDTO company = companyService.getCompanyDetails(sessionToken, companyId);
-            return company == null ? "" : company.getName();
+            String companyName = companyService.getCompanyName(sessionToken, companyId);
+            return companyName == null ? "" : companyName;
         } catch (Exception e) {
             return "";
         }
@@ -532,4 +539,24 @@ public class EventCatalogPresenter {
             default -> location;
         };
     }
+
+    private List<EventCardViewModel> toEventCards(
+                String sessionToken,
+                List<EventSearchResultDTO> events
+        ) {
+            Set<Long> lotteryEventIds =
+                    lotteryService.findEventIdsWithLottery(
+                            sessionToken,
+                            events.stream()
+                                    .map(EventSearchResultDTO::id)
+                                    .toList()
+                    );
+
+            return events.stream()
+                    .map(event -> toEventCardViewModel(
+                            sessionToken,
+                            event,
+                            lotteryEventIds))
+                    .toList();
+        }
 }

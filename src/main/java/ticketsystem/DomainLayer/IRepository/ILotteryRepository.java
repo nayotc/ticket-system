@@ -1,5 +1,8 @@
 package ticketsystem.DomainLayer.IRepository;
 
+import java.util.List;
+import java.util.Set;
+
 import ticketsystem.DomainLayer.lottery.Lottery;
 
 /**
@@ -39,4 +42,6 @@ public interface ILotteryRepository {
      * @return associated lottery, or null when the event has no lottery
      */
     Lottery findByEventId(long eventId);
+
+    Set<Long> findEventIdsWithLottery(List<Long> eventIds);
 }

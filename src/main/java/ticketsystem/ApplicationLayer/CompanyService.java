@@ -708,4 +708,14 @@ private int countDiscounts(Company company) {
         }
     }
 
+    @Transactional(readOnly = true)
+    public String getCompanyName(String sessionToken, Long companyId) throws Exception {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new Exception("Error: Invalid or expired session token.");
+        }
+
+        return companyRepository.findCompanyNameById(companyId);
+    }
+
+
 }
