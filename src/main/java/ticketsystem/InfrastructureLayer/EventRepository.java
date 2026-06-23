@@ -437,4 +437,11 @@ public class EventRepository implements IEventRepository {
                 throw new IllegalStateException("Failed to update sale status for eventId=" + eventId);
         }
         }
+
+        @Override
+        @Transactional(readOnly = true)
+        public Event getEventForReservation(Long eventId) {
+        return eventJpaRepository.findEventForReservation(eventId)
+                .orElse(null);
+        }
 }

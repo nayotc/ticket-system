@@ -102,7 +102,7 @@ public class ReservationService {
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
-             Event event = eventRepository.getEventById(eventId);
+             Event event = loadEventForReservation(eventId);
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
@@ -127,8 +127,8 @@ public class ReservationService {
             eventRepository.updateSeatStatus(eventId, areaId, position.getRow(), position.getChair(),SeatStatus.RESERVED);
             logger.logEvent("Seat ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId + ", areaId="
                     + areaId + ", position=" + position, LogLevel.INFO);
-            if (event != null && !event.isSoldOut()) {
-            soldOutNotificationSentEventIds.remove(event.getId());
+            if (event != null && event.getSaleStatus()!=SaleStatus.SOLD_OUT) {
+                soldOutNotificationSentEventIds.remove(event.getId());
             }
             return true;
 
@@ -144,7 +144,7 @@ public class ReservationService {
             tokenService.validateToken(token);
             Long memberId = tokenService.extractUserId(token);
             userAccessService.validateCanPerformNonViewAction(memberId);
-               Event event = eventRepository.getEventById(eventId);
+               Event event = loadEventForReservation(eventId);
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
             }
@@ -171,8 +171,8 @@ public class ReservationService {
             logger.logEvent("Standing ticket selected: orderId=" + order.getOrderId() + ", eventId=" + eventId
                     + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
             
-            if (event != null && !event.isSoldOut()) {
-            soldOutNotificationSentEventIds.remove(event.getId());
+            if (event != null && event.getSaleStatus()!=SaleStatus.SOLD_OUT) {
+             soldOutNotificationSentEventIds.remove(event.getId());
             }
             return true;
         } catch (Exception e) {
@@ -191,7 +191,7 @@ public class ReservationService {
             if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 throw new IllegalStateException("No active order found for this event");
             }
-            Event event = eventRepository.getEventById(eventId);
+            Event event = loadEventForReservation(eventId);
             if(event == null){
                 throw new IllegalArgumentException("Event not found");
             }
@@ -202,7 +202,7 @@ public class ReservationService {
             
             logger.logEvent("Ticket removed from active order: orderId=" + order.getOrderId() + ", eventId=" + eventId
                     + ", ticketId=" + ticketId, LogLevel.INFO);
-            if (event != null && !event.isSoldOut()) {
+            if (event != null && event.getSaleStatus()!=SaleStatus.SOLD_OUT) {
             soldOutNotificationSentEventIds.remove(event.getId());
             }
             return true;
@@ -230,7 +230,7 @@ public class ReservationService {
                 throw new IllegalStateException("No active order found for this event");
             }
 
-            Event event = eventRepository.getEventById(eventId);
+            Event event = loadEventForReservation(eventId);
 
             if (event == null) {
                 throw new IllegalArgumentException("Event not found");
@@ -256,7 +256,7 @@ public class ReservationService {
                             + ", row=" + position.getRow()
                             + ", chair=" + position.getChair(),
                     LogLevel.INFO);
-            if (event != null && !event.isSoldOut()) {
+            if (event != null && event.getSaleStatus()!=SaleStatus.SOLD_OUT) {
                 soldOutNotificationSentEventIds.remove(event.getId());
             }
             return true;
@@ -278,7 +278,7 @@ public class ReservationService {
                 throw new IllegalStateException("No active order found for this event");
             }
 
-            Event event = eventRepository.getEventById(eventId);
+            Event event = loadEventForReservation(eventId);
             reservationDomeinService.removeStandingTicketsFromActiveOrder(order, event, areaId, quantity);
 
             saveOrder(order);
@@ -286,7 +286,7 @@ public class ReservationService {
             logger.logEvent("Standing tickets removed from active order: orderId=" + order.getOrderId() + ", eventId="
                     + eventId + ", areaId=" + areaId + ", quantity=" + quantity, LogLevel.INFO);
             
-            if (event != null && !event.isSoldOut()) {
+            if (event != null && event.getSaleStatus()!=SaleStatus.SOLD_OUT) {
                 soldOutNotificationSentEventIds.remove(event.getId());
             }
             return true;
@@ -508,19 +508,17 @@ public class ReservationService {
             }
 
             try {
-                boolean wasSoldOutBeforeCheckout = event.isSoldOut();
 
                 reservationDomeinService.completeCheckout(order, event);
                 completeOrderInventory(order);
                 saveOrder(order);
-                if (event.isSoldOut()) {
-                    eventRepository.updateSaleStatus(eventId, SaleStatus.SOLD_OUT);
-                }
+                event.isSoldOut();
+                 
                 notifyOrderOwner(
                         order,
                         "Your purchase was completed successfully. Your tickets are now available.");
 
-                notifyEventManagersIfBecameSoldOut(event, wasSoldOutBeforeCheckout);
+                notifyEventManagersIfBecameSoldOut(event);
 
             } catch (Exception completeCheckoutException) {
                 handleRefundAfterCheckoutFailure(order, event, amountAfterDiscount, transactionId,
@@ -721,6 +719,9 @@ public class ReservationService {
 
         return order;
     }
+    private Event loadEventForReservation(Long eventId) {
+        return eventRepository.getEventById(eventId);
+    }
 
     private void saveOrder(ActiveOrder order) {
         if (order.getStatus() == ActiveOrder.OrderStatus.COMPLETED) {
@@ -824,12 +825,12 @@ public class ReservationService {
         }
 	}
 
-	private void notifyEventManagersIfBecameSoldOut(Event event, boolean wasSoldOutBefore) {
+	private void notifyEventManagersIfBecameSoldOut(Event event) {
         if (event == null || notificationsService == null || companyRepository == null || membershipDomain == null) {
             return;
         }
 
-        if (wasSoldOutBefore || !event.isSoldOut()) {
+        if (event.getSaleStatus()!=SaleStatus.SOLD_OUT) {
             return;
         }
 

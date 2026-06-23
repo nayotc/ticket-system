@@ -274,7 +274,11 @@ public class Event {
     }
 
     public boolean isSoldOut() {
-        return map.isSoldOut();
+        boolean isSoldOut= map.isSoldOut();
+        if(isSoldOut)
+            saleStatus=SaleStatus.SOLD_OUT;
+       
+        return isSoldOut;
     }
 
     public SaleStatus getSaleStatus() {

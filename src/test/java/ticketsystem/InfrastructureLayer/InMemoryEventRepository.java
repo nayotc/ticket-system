@@ -343,4 +343,10 @@ public final class InMemoryEventRepository implements IEventRepository {
         event.setSaleStatus(saleStatus);
         storedEvent.update(event);
     }
+
+	@Override
+	public Event getEventForReservation(Long eventId) {
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'getEventForReservation'");
+	}
 }

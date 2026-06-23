@@ -93,4 +93,11 @@ public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecif
                 @Param("eventId") Long eventId,
                 @Param("saleStatus") SaleStatus saleStatus
         );
+
+        @Query("""
+                SELECT e
+                FROM Event e
+                WHERE e.id = :eventId
+                """)
+                Optional<Event> findEventForReservation(@Param("eventId") Long eventId);
 }
