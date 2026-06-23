@@ -1005,4 +1005,11 @@ public class MembershipService {
 
         return member.getUserName();
     }
+
+    public Long getCurrentUserId(String sessionToken) {
+        if (!tokenService.validateToken(sessionToken)) {
+            throw new IllegalArgumentException("Invalid session ID");
+        }
+        return tokenService.extractUserId(sessionToken);
+    }
 }

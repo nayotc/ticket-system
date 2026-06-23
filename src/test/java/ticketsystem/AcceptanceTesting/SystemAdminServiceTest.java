@@ -122,10 +122,20 @@ public class SystemAdminServiceTest {
                 barcodeProxy,
                 userRepo,
                 orderRepo,
-                tokenService,
-                companyRepo, logger, historyRepo,
-                membershipDomain, notifier
+                companyRepo,
+                logger,
+                historyRepo,
+                membershipDomain,
+                notifier,
+                tokenService
         );
+    }
+
+    private String createAdminSessionToken(long adminId) {
+        // Add the admin to the UserRepo so that the TokenService can create a session for him
+        Member adminMember = new Member(adminId, "adminUser", "Admin User", "0500000000", LocalDate.of(1990, 1, 1));
+        userRepo.addRegisteredMember(adminId, adminMember, "password123");
+        return tokenService.addActiveSession(adminMember);
     }
 
     // Use Case: System Initialization
@@ -194,19 +204,24 @@ public class SystemAdminServiceTest {
 
     // Use case: delete member by admin
     @Test
-    public void givenInvalidAdminId_whenDeleteMember_thenReturnsUnauthorizedError() {
+    public void givenInvalidAdminId_whenDeleteMember_thenReturnsUnauthorizedError() throws Exception {
+        // Arrange
         FailureStateSnapshot beforeState = captureStateSnapshot();
+        String invalidToken = "invalid_token_string";
 
-        String result = systemAdminService.deleteMemberByAdmin(-5L, 1L);
+        // Act
+        String result = systemAdminService.deleteMemberByAdmin(invalidToken, 1L);
         FailureStateSnapshot afterState = captureStateSnapshot();
 
+        // Assert
         assertTrue(result.startsWith("ERROR: Unauthorized access"), "Should reject invalid token.");
         assertStateUnchanged(beforeState, afterState, "Delete member with invalid admin");
     }
 
     @Test
-    public void givenNonExistentMember_whenDeleteMember_thenReturnsNotFoundError() {
+    public void givenNonExistentMember_whenDeleteMember_thenReturnsNotFoundError() throws Exception {
         // Arrange
+        String adminToken = createAdminSessionToken(1L);
         SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
         realAdminRepo.addAdmin(admin);
         long nonExistentMemberId = 99L;
@@ -214,7 +229,7 @@ public class SystemAdminServiceTest {
         FailureStateSnapshot beforeState = captureStateSnapshot();
 
         // Act
-        String result = systemAdminService.deleteMemberByAdmin(1L, nonExistentMemberId);
+        String result = systemAdminService.deleteMemberByAdmin(adminToken, nonExistentMemberId);
         FailureStateSnapshot afterState = captureStateSnapshot();
 
         // Assert
@@ -223,8 +238,9 @@ public class SystemAdminServiceTest {
     }
 
     @Test
-    public void givenValidRequest_whenDeleteMember_thenMemberIsDeletedAndCleanupPerformed() {
+    public void givenValidRequest_whenDeleteMember_thenMemberIsDeletedAndCleanupPerformed() throws Exception {
         // Arrange
+        String adminToken = createAdminSessionToken(1L);
         SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
         realAdminRepo.addAdmin(admin);
         long memberId = 1L;
@@ -233,14 +249,14 @@ public class SystemAdminServiceTest {
         userRepo.addRegisteredMember(memberId, member, "hashedPassword123");
 
         // Act
-        String result = systemAdminService.deleteMemberByAdmin(1L, memberId);
+        String result = systemAdminService.deleteMemberByAdmin(adminToken, memberId);
 
         // Assert
         assertEquals("SUCCESS: Member deactivated and associated records cleaned up.", result);
 
         User deletedUser = userRepo.getMemberById(memberId);
         assertTrue(deletedUser == null, "Member should be removed from UserRepository.");
-    }
+    }    
 
    @Test
         void GivenActiveSystemAdminAndActiveCompany_WhenCloseProductionCompanyByAdmin_ThenCompanyIsClosedAndRolesAreCancelled()
@@ -251,6 +267,7 @@ public class SystemAdminServiceTest {
         long ownerId = 3L;
         long managerId = 4L;
 
+        String adminToken = createAdminSessionToken(adminId);
         realAdminRepo.addAdmin(new SystemAdmin(String.valueOf(adminId), "admin", true));
 
         Member founder = new Member(
@@ -313,7 +330,7 @@ public class SystemAdminServiceTest {
         );
 
         // Act
-        CompanyDTO closedCompany = systemAdminService.closeProductionCompanyByAdmin(adminId, companyId);
+        CompanyDTO closedCompany = systemAdminService.closeProductionCompanyByAdmin(adminToken, companyId);
 
         // Assert
         assertNotNull(closedCompany);
@@ -350,7 +367,7 @@ public class SystemAdminServiceTest {
     @Test
     void GivenNonAdminMember_WhenCloseProductionCompanyByAdmin_ThenThrowsExceptionAndCompanyRemainsActive() throws Exception {
         // Arrange
-        long nonAdminId = 10L;
+        String invalidToken = "invalid_token_string";
         long founderId = 20L;
         Member founder = new Member(founderId, "founder", "Founder User", "0500000005", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(founderId, founder, "password123");
@@ -358,9 +375,10 @@ public class SystemAdminServiceTest {
 
         CompanyDTO createdCompany = companyService.createProductionCompany(founderSessionId, "Test Company");
         FailureStateSnapshot beforeState = captureStateSnapshot();
+        
         // Act + Assert
         Exception exception = assertThrows(Exception.class, ()
-                -> systemAdminService.closeProductionCompanyByAdmin(nonAdminId, createdCompany.getId())
+                -> systemAdminService.closeProductionCompanyByAdmin(invalidToken, createdCompany.getId())
         );
 
         FailureStateSnapshot afterState = captureStateSnapshot();
@@ -386,6 +404,7 @@ public class SystemAdminServiceTest {
         void AcceptanceTest_ViewPurchaseHistoryByBuyer_Successful() {
         // --- 1. Preparation: create an active system administrator ---
         long adminId = 1L;
+        String adminToken = createAdminSessionToken(adminId);
         realAdminRepo.addAdmin(admin);
 
         // --- 2. Create purchase history for two different buyers ---
@@ -463,7 +482,7 @@ public class SystemAdminServiceTest {
 
         // --- 3. Action ---
         Map<Long, List<OrderDTO>> historyResult =
-                systemAdminService.getPurchaseHistoryByBuyer(adminId);
+                systemAdminService.getPurchaseHistoryByBuyer(adminToken);
 
         // --- 4. Assertions ---
         assertNotNull(
@@ -516,12 +535,13 @@ public class SystemAdminServiceTest {
     void AcceptanceTest_ViewPurchaseHistoryByBuyer_Failure_UnauthorizedAccess() {
         // --- 1. Preparation (Simulating an unauthorized request) ---
         long unauthorizedAdminId = 999L;
+        String invalidToken = "invalid_token_string";
 
         // --- 2 & 3 & 4. Action & Assertions ---
         FailureStateSnapshot beforeState = captureStateSnapshot();
 
         Exception exception = assertThrows(SecurityException.class, () -> {
-            systemAdminService.getPurchaseHistoryByBuyer(unauthorizedAdminId);
+            systemAdminService.getPurchaseHistoryByBuyer(invalidToken);
         });
         FailureStateSnapshot afterState = captureStateSnapshot();
 
@@ -540,6 +560,7 @@ public class SystemAdminServiceTest {
         void AcceptanceTest_ViewHistoryByCompanyAndEvent_Successful() {
         // --- 1. Preparation: create an active system administrator ---
         long adminId = 1L;
+        String adminToken = createAdminSessionToken(adminId);
         realAdminRepo.addAdmin(admin);
 
         // --- 2. Create history for one company and two different events ---
@@ -618,8 +639,7 @@ public class SystemAdminServiceTest {
 
         // --- 3. Action ---
         Map<Long, Map<String, List<OrderDTO>>> historyResult =
-                systemAdminService
-                        .getPurchaseHistoryByCompanyAndEvent(adminId);
+                systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminToken);
 
         // --- 4. Assertions ---
         assertNotNull(
@@ -673,6 +693,7 @@ public class SystemAdminServiceTest {
     void AcceptanceTest_ViewHistoryByCompanyAndEvent_Failure_NoHistory() {
         // --- 1. Preparation ---
         long adminId = 1L;
+        String adminToken = createAdminSessionToken(adminId);
         realAdminRepo.addAdmin(admin);
 
         // --- 2. NO PURCHASE HISTORY EXISTS ---
@@ -681,7 +702,7 @@ public class SystemAdminServiceTest {
         FailureStateSnapshot beforeState = captureStateSnapshot();
 
         Exception exception = assertThrows(IllegalStateException.class, () -> {
-            systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
+            systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminToken);
         });
         FailureStateSnapshot afterState = captureStateSnapshot();
 
@@ -695,12 +716,13 @@ public class SystemAdminServiceTest {
     void AcceptanceTest_ViewHistoryByCompanyAndEvent_Failure_UnauthorizedAccess() {
         // --- 1. Preparation ---
         long unauthorizedAdminId = 999L; // ID that does not correspond to any real admin in the repository
+        String invalidToken = "invalid_token_string";
 
         // --- 2 & 3 & 4. Action & Assertions ---
         FailureStateSnapshot beforeState = captureStateSnapshot();
 
         Exception exception = assertThrows(SecurityException.class, () -> {
-            systemAdminService.getPurchaseHistoryByCompanyAndEvent(unauthorizedAdminId);
+            systemAdminService.getPurchaseHistoryByCompanyAndEvent(invalidToken);
         });
         FailureStateSnapshot afterState = captureStateSnapshot();
 
@@ -713,8 +735,9 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndExistingMember_WhenSuspendMemberTemporarily_ThenMemberIsSuspendedAndSaved() {
         long adminId = 1L;
-        long memberId = 100L;
+        String adminToken = createAdminSessionToken(adminId);
 
+        long memberId = 100L;
         realAdminRepo.addAdmin(admin);
 
         Member member = new Member(memberId, "baduser", "Bad User", "0501112222", LocalDate.of(2001, 1, 1));
@@ -725,7 +748,7 @@ public class SystemAdminServiceTest {
         String reason = "Violation of terms";
 
         boolean result = systemAdminService.suspendMemberByAdmin(
-                adminId,
+                adminToken,
                 memberId,
                 start,
                 end,
@@ -750,8 +773,9 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndExistingMember_WhenSuspendMemberPermanently_ThenMemberHasPermanentSuspension() {
         long adminId = 1L;
-        long memberId = 101L;
+        String adminToken = createAdminSessionToken(adminId);
 
+        long memberId = 101L;
         realAdminRepo.addAdmin(admin);
 
         Member member = new Member(memberId, "permanentuser", "Permanent User", "0502223333", LocalDate.of(2001, 1, 1));
@@ -761,7 +785,7 @@ public class SystemAdminServiceTest {
         String reason = "Permanent suspension";
 
         boolean result = systemAdminService.suspendMemberByAdmin(
-                adminId,
+                adminToken,
                 memberId,
                 start,
                 null,
@@ -782,7 +806,7 @@ public class SystemAdminServiceTest {
 
     @Test
     void GivenInvalidAdmin_WhenSuspendMember_ThenThrowsUnauthorizedAndMemberIsNotSuspended() {
-        long invalidAdminId = 999L;
+        String invalidToken = "invalid_token_string";
         long memberId = 102L;
 
         Member member = new Member(memberId, "regularuser", "Regular User", "0503334444", LocalDate.of(2001, 1, 1));
@@ -793,7 +817,7 @@ public class SystemAdminServiceTest {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> systemAdminService.suspendMemberByAdmin(
-                        invalidAdminId,
+                        invalidToken,
                         memberId,
                         LocalDateTime.now(),
                         LocalDateTime.now().plusDays(7),
@@ -816,6 +840,7 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndMissingMember_WhenSuspendMember_ThenThrowsMemberNotFound() {
         long adminId = 1L;
+        String adminToken = createAdminSessionToken(adminId);
         long missingMemberId = 999L;
 
         realAdminRepo.addAdmin(admin);
@@ -824,7 +849,7 @@ public class SystemAdminServiceTest {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> systemAdminService.suspendMemberByAdmin(
-                        adminId,
+                        adminToken,
                         missingMemberId,
                         LocalDateTime.now(),
                         LocalDateTime.now().plusDays(7),
@@ -841,6 +866,7 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndInvalidSuspensionDates_WhenSuspendMember_ThenThrowsAndMemberIsNotSuspended() {
         long adminId = 1L;
+        String adminToken = createAdminSessionToken(adminId);
         long memberId = 103L;
 
         realAdminRepo.addAdmin(admin);
@@ -856,7 +882,7 @@ public class SystemAdminServiceTest {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> systemAdminService.suspendMemberByAdmin(
-                        adminId,
+                        adminToken,
                         memberId,
                         start,
                         end,
@@ -877,6 +903,7 @@ public class SystemAdminServiceTest {
     @Test
     void GivenAlreadySuspendedMember_WhenSuspendMemberAgain_ThenThrowsAndOriginalSuspensionRemains() {
         long adminId = 1L;
+        String adminToken = createAdminSessionToken(adminId);
         long memberId = 104L;
 
         realAdminRepo.addAdmin(admin);
@@ -885,7 +912,7 @@ public class SystemAdminServiceTest {
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         systemAdminService.suspendMemberByAdmin(
-                adminId,
+                adminToken,
                 memberId,
                 LocalDateTime.now().minusMinutes(1),
                 LocalDateTime.now().plusDays(5),
@@ -895,7 +922,7 @@ public class SystemAdminServiceTest {
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
                 () -> systemAdminService.suspendMemberByAdmin(
-                        adminId,
+                        adminToken,
                         memberId,
                         LocalDateTime.now(),
                         LocalDateTime.now().plusDays(10),
@@ -914,6 +941,7 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndSuspendedMember_WhenRevokeSuspension_ThenMemberIsNoLongerSuspended() {
         long adminId = 1L;
+        String adminToken = createAdminSessionToken(adminId);
         long memberId = 200L;
 
         realAdminRepo.addAdmin(admin);
@@ -922,14 +950,14 @@ public class SystemAdminServiceTest {
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         systemAdminService.suspendMemberByAdmin(
-                adminId,
+                adminToken,
                 memberId,
                 LocalDateTime.now().minusDays(1),
                 LocalDateTime.now().plusDays(7),
                 "Temporary suspension"
         );
 
-        boolean result = systemAdminService.revokeMemberByAdmin(adminId, memberId);
+        boolean result = systemAdminService.revokeMemberByAdmin(adminToken, memberId);
 
         Member savedMember = userRepo.getMemberById(memberId);
 
@@ -945,7 +973,9 @@ public class SystemAdminServiceTest {
     @Test
     void GivenInvalidAdmin_WhenRevokeSuspension_ThenThrowsUnauthorizedAndSuspensionRemainsActive() {
         long adminId = 1L;
+        String adminToken = createAdminSessionToken(adminId);
         long invalidAdminId = 999L;
+        String invalidToken = "invalid_token_string";
         long memberId = 201L;
 
         realAdminRepo.addAdmin(admin);
@@ -955,7 +985,7 @@ public class SystemAdminServiceTest {
 
         FailureStateSnapshot beforeState = captureStateSnapshot();
         systemAdminService.suspendMemberByAdmin(
-                adminId,
+                adminToken,
                 memberId,
                 LocalDateTime.now().minusDays(1),
                 LocalDateTime.now().plusDays(7),
@@ -964,7 +994,7 @@ public class SystemAdminServiceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> systemAdminService.revokeMemberByAdmin(invalidAdminId, memberId)
+                () -> systemAdminService.revokeMemberByAdmin(invalidToken, memberId)
         );
         FailureStateSnapshot afterState = captureStateSnapshot();
 
@@ -978,6 +1008,7 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndMissingMember_WhenRevokeSuspension_ThenThrowsMemberNotFound() {
         long adminId = 1L;
+        String adminToken = createAdminSessionToken(adminId);
         long missingMemberId = 999L;
 
         realAdminRepo.addAdmin(admin);
@@ -985,7 +1016,7 @@ public class SystemAdminServiceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> systemAdminService.revokeMemberByAdmin(adminId, missingMemberId)
+                () -> systemAdminService.revokeMemberByAdmin(adminToken, missingMemberId)
         );
         FailureStateSnapshot afterState = captureStateSnapshot();
 
@@ -996,17 +1027,17 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndMemberIsNotSuspended_WhenRevokeSuspension_ThenThrowsMemberIsNotSuspended() {
         long adminId = 1L;
-        long memberId = 202L;
-
+        String adminToken = createAdminSessionToken(adminId);
         realAdminRepo.addAdmin(admin);
 
+        long memberId = 202L;
         Member member = new Member(memberId, "regularmember", "Regular Member", "0508889999", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         FailureStateSnapshot beforeState = captureStateSnapshot();
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> systemAdminService.revokeMemberByAdmin(adminId, memberId)
+                () -> systemAdminService.revokeMemberByAdmin(adminToken, memberId)
         );
         FailureStateSnapshot afterState = captureStateSnapshot();
 
@@ -1020,7 +1051,7 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndSuspendedMembers_WhenViewSuspendedMembers_ThenOnlyActiveSuspensionsAreReturned() {
         long adminId = 1L;
-
+        String adminToken = createAdminSessionToken(adminId);
         realAdminRepo.addAdmin(admin);
 
         Member normalMember = new Member(300L, "normal", "Normal User", "0500000001", LocalDate.of(2001, 1, 1));
@@ -1038,7 +1069,7 @@ public class SystemAdminServiceTest {
         LocalDateTime start = LocalDateTime.now().minusDays(1);
 
         systemAdminService.suspendMemberByAdmin(
-                adminId,
+                adminToken,
                 301L,
                 start,
                 start.plusDays(10),
@@ -1046,7 +1077,7 @@ public class SystemAdminServiceTest {
         );
 
         systemAdminService.suspendMemberByAdmin(
-                adminId,
+                adminToken,
                 302L,
                 start,
                 null,
@@ -1054,15 +1085,15 @@ public class SystemAdminServiceTest {
         );
 
         systemAdminService.suspendMemberByAdmin(
-                adminId,
+                adminToken,
                 303L,
                 start,
                 start.plusDays(10),
                 "Revoked reason"
         );
-        systemAdminService.revokeMemberByAdmin(adminId, 303L);
+        systemAdminService.revokeMemberByAdmin(adminToken, 303L);
 
-        List<SuspentionUserDTO> result = systemAdminService.viewSuspendedMembersByAdmin(adminId);
+        List<SuspentionUserDTO> result = systemAdminService.viewSuspendedMembersByAdmin(adminToken);
 
         assertNotNull(result);
         assertEquals(2, result.size());
@@ -1097,7 +1128,7 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndNoSuspendedMembers_WhenViewSuspendedMembers_ThenThrowsNoSuspendedMembersFound() {
         long adminId = 1L;
-
+        String adminToken = createAdminSessionToken(adminId);
         realAdminRepo.addAdmin(admin);
 
         Member normalMember = new Member(304L, "happy", "Happy User", "0500000005", LocalDate.of(2001, 1, 1));
@@ -1105,7 +1136,7 @@ public class SystemAdminServiceTest {
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> systemAdminService.viewSuspendedMembersByAdmin(adminId)
+                () -> systemAdminService.viewSuspendedMembersByAdmin(adminToken)
         );
 
         assertTrue(exception.getMessage().contains("No suspended members found"));
@@ -1113,11 +1144,11 @@ public class SystemAdminServiceTest {
 
     @Test
     void GivenInvalidAdmin_WhenViewSuspendedMembers_ThenThrowsUnauthorizedAccess() {
-        long invalidAdminId = 999L;
-
+        String invalidToken = "invalid_token_string";
+        
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> systemAdminService.viewSuspendedMembersByAdmin(invalidAdminId)
+                () -> systemAdminService.viewSuspendedMembersByAdmin(invalidToken)
         );
 
         assertTrue(exception.getMessage().contains("Unauthorized access"));
@@ -1126,16 +1157,16 @@ public class SystemAdminServiceTest {
     @Test
     void GivenActiveSystemAdminAndExpiredSuspension_WhenViewSuspendedMembers_ThenExpiredSuspensionIsNotReturned() {
         long adminId = 1L;
-        long memberId = 305L;
-
+        String adminToken = createAdminSessionToken(adminId);
         realAdminRepo.addAdmin(admin);
 
+        long memberId = 305L;
         Member member = new Member(memberId, "expired", "Expired Suspension", "0500000006", LocalDate.of(2001, 1, 1));
         userRepo.addRegisteredMember(memberId, member, "password123");
 
         FailureStateSnapshot beforeState = captureStateSnapshot();
         systemAdminService.suspendMemberByAdmin(
-                adminId,
+                adminToken,
                 memberId,
                 LocalDateTime.now().minusDays(10),
                 LocalDateTime.now().minusDays(1),
@@ -1144,7 +1175,7 @@ public class SystemAdminServiceTest {
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> systemAdminService.viewSuspendedMembersByAdmin(adminId)
+                () -> systemAdminService.viewSuspendedMembersByAdmin(adminToken)
         );
         FailureStateSnapshot afterState = captureStateSnapshot();
 
