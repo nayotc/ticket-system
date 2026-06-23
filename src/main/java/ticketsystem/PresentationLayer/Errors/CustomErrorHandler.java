@@ -48,6 +48,27 @@ public class CustomErrorHandler implements ErrorHandler {
                     handleSessionTimeout();
                     return; 
                 }
+
+                boolean isDbError = 
+                    msg.contains("CannotCreateTransactionException") ||
+                    msg.contains("JDBCConnectionException") ||
+                    msg.contains("Communications link failure") ||
+                    msg.contains("Connection refused") ||
+                    msg.contains("DataAccessResourceFailureException");
+
+                if (isDbError) {
+                    UI ui = UI.getCurrent();
+                    if (ui != null) {
+                        ui.access(() -> {
+                            Notification.show(
+                                "השירות אינו זמין זמנית עקב בעיית תקשורת. נסו שוב עוד מספר רגעים.", 
+                                5000, 
+                                Notification.Position.TOP_CENTER
+                            );
+                        });
+                    }
+                    return;
+                }
             }
             cause = cause.getCause();
         }
