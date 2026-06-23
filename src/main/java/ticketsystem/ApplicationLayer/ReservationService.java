@@ -517,7 +517,8 @@ public class ReservationService {
                 reservationDomeinService.completeCheckout(order, event);
                 completeOrderInventory(order);
                 saveOrder(order);
-                event.isSoldOut();
+                
+                event.SoldOut();
                  
                 notifyOrderOwner(
                         order,

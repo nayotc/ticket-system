@@ -345,8 +345,7 @@ public final class InMemoryEventRepository implements IEventRepository {
     }
 
 	@Override
-	public Event getEventForReservation(Long eventId) {
-		// TODO Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'getEventForReservation'");
-	}
+        public Event getEventForReservation(Long eventId) {
+            return getEventById(eventId);
+        }
 }

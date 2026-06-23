@@ -817,10 +817,9 @@ public class ReservationServiceTest {
 		}
 
 		@Override
-		public Event getEventForReservation(Long eventId) {
-			// TODO Auto-generated method stub
-			throw new UnsupportedOperationException("Unimplemented method 'getEventForReservation'");
-		}
+        public Event getEventForReservation(Long eventId) {
+            return getEventById(eventId);
+        }
 
 
     }
