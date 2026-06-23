@@ -359,7 +359,7 @@ public class ReservationService {
                 order = orderRepository.getActiveOrderByUserId(userId);
             }
 
-            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE ) {
                 return null;
             }
 
@@ -786,7 +786,6 @@ public class ReservationService {
                 expirationWarningSentOrderIds.remove(order.getOrderId());
                 releaseTicketInEvent(tickets);
                 orderRepository.deleteOrder(order.getOrderId());
-
                 logger.logEvent(
                         "Expired order cancelled: " + order.getOrderId(),
                         LogLevel.WARN);

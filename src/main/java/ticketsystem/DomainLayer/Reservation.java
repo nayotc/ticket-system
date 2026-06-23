@@ -150,16 +150,17 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
             && order.isAboutToExpire();
 }
     //expire order and release tickets back to event
-    public List<Ticket> expire(Event event , ActiveOrder order) {
-        List<Ticket> tickets= order.getTickets();
-        for (Ticket ticket : new ArrayList<>(order.getTickets())) {
-        releaseTicket(ticket, event);
-        order.deleteTicket(ticket.getTicketId());
+    public List<Ticket> expire(Event event, ActiveOrder order) {
+        List<Ticket> tickets = new ArrayList<>(order.getTickets());
+
+        for (Ticket ticket : tickets) {
+            releaseTicket(ticket, event);
+            order.deleteTicket(ticket.getTicketId());
         }
+
         order.cancelOrder();
         return tickets;
     }
-
 
 
     public void releaseTicket(Ticket ticket, Event event) {

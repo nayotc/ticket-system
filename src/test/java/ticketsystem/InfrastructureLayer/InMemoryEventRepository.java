@@ -16,6 +16,7 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.EventSearchResultView;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 
 /**
  * Test-only in-memory implementation of IEventRepository.
@@ -279,4 +280,22 @@ public final class InMemoryEventRepository implements IEventRepository {
             );
         }
     }
+
+	@Override
+	public void updateSeatStatus(Long eventId, Long areaId, int row, int number, SeatStatus newStatus) {
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'updateSeatStatus'");
+	}
+
+	@Override
+	public void updateStandingAreaReservedCount(Long eventId, Long areaId, int reservedDelta) {
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'updateStandingAreaReservedCount'");
+	}
+
+	@Override
+	public void markStandingTicketsAsSold(Long eventId, Long areaId, int quantity) {
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'markStandingTicketsAsSold'");
+	}
 }

@@ -36,6 +36,16 @@ public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecif
             """)
     List<Event> findAllWithMap();
 
+        // @Modifying(clearAutomatically = true, flushAutomatically = true)
+        // @Query("""
+        //         update Seat s
+        //         set s.status = :newStatus
+        //         where s.seatingArea.id = :areaId
+        //         and s.position.row = :row
+        //         and s.position.number = :number
+        //         """)
+        // int updateSeatStatus(@Param("areaId") Long areaId, @Param("row") int row, @Param("number") int number, @Param("newStatus") SeatStatus newStatus);
+
         @Modifying(clearAutomatically = true, flushAutomatically = true)
         @Query("""
                 update Seat s
@@ -43,6 +53,8 @@ public interface EventJpaRepository extends JpaRepository<Event,Long>, JpaSpecif
                 where s.seatingArea.id = :areaId
                 and s.position.row = :row
                 and s.position.number = :number
+                and (:newStatus <> ticketsystem.DomainLayer.event.Seat.SeatStatus.RESERVED
+                or s.status = ticketsystem.DomainLayer.event.Seat.SeatStatus.AVAILABLE)
                 """)
         int updateSeatStatus(@Param("areaId") Long areaId, @Param("row") int row, @Param("number") int number, @Param("newStatus") SeatStatus newStatus);
 
