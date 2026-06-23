@@ -1245,9 +1245,9 @@ public class ReservationServiceTest {
 
         ActiveOrder order = orderRepository.getActiveOrderByUserId(memberId);
         order.setExpiresAt(LocalDateTime.now().plusMinutes(2));
-        reservationService.sweepExpiredAndExpiringOrders();
+       
         orderRepository.updateOrder(order);
-
+        reservationService.sweepExpiredAndExpiringOrders();
         reservationService.viewActiveOrder(
                 memberToken,
                 order.getOrderId()
