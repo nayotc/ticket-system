@@ -187,15 +187,16 @@ public class ReservationService {
         try {
             tokenService.validateToken(token);
             userAccessService.validateCanPerformNonViewAction(tokenService.extractUserId(token));
-            ActiveOrder order = findActiveOrder(token, eventId);
-            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
-                throw new IllegalStateException("No active order found for this event");
-            }
+
             Event event = loadEventForReservation(eventId);
             if(event == null){
                 throw new IllegalArgumentException("Event not found");
             }
             expireOldOrdersForEvent(event);
+            ActiveOrder order = findActiveOrder(token, eventId);
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+                throw new IllegalStateException("No active order found for this event");
+            }
             Ticket ticket = reservationDomeinService.removeTicketFromActiveOrder(order, event, ticketId);
            
             updateRemoveTicket(eventId, ticket.getAreaId(), ticket, 1);
@@ -225,11 +226,6 @@ public class ReservationService {
                 throw new IllegalArgumentException("Seat removal details are incomplete");
             }
 
-            ActiveOrder order = findActiveOrder(token, eventId);
-
-            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
-                throw new IllegalStateException("No active order found for this event");
-            }
 
             Event event = loadEventForReservation(eventId);
 
@@ -237,6 +233,12 @@ public class ReservationService {
                 throw new IllegalArgumentException("Event not found");
             }
             expireOldOrdersForEvent(event);
+                      ActiveOrder order = findActiveOrder(token, eventId);
+
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+                throw new IllegalStateException("No active order found for this event");
+            }
+
             Long ticketId = order.getTickets().stream()
                     .filter(ticket -> areaId.equals(ticket.getAreaId()))
                     .filter(ticket -> ticket.getRow() == position.getRow())

@@ -583,10 +583,12 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
         for (int row = 1; row <= area.rows(); row++) {
             for (int number = 1; number <= area.columns(); number++) {
-                SeatDTO seat = seatLookup.getOrDefault(
-                        new SeatKey(area.id(), row, number),
-                        soldSeat(row, number)
-                );
+                SeatKey key = new SeatKey(area.id(), row, number);
+                SeatDTO seat = seatLookup.get(key);
+
+                if (seat == null) {
+                    seat = soldSeat(row, number);
+                }
 
                 seatsGrid.add(createSeat(area, seat));
             }
@@ -828,7 +830,6 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         int delta = safeQuantity - currentQuantity;
 
         String token = currentToken();
-        ActiveOrderDTO order= loadCurrentEventActiveOrder();
         try {
             if (delta > 0) {
                 reservationPresenter.selectStandingTicket(token, eventId, area.id(), delta, currentLotteryCode());
