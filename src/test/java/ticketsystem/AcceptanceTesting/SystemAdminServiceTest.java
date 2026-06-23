@@ -204,7 +204,7 @@ public class SystemAdminServiceTest {
 
     // Use case: delete member by admin
     @Test
-    public void givenInvalidAdminId_whenDeleteMember_thenReturnsUnauthorizedError() {
+    public void givenInvalidAdminId_whenDeleteMember_thenReturnsUnauthorizedError() throws Exception {
         // Arrange
         FailureStateSnapshot beforeState = captureStateSnapshot();
         String invalidToken = "invalid_token_string";
@@ -219,7 +219,7 @@ public class SystemAdminServiceTest {
     }
 
     @Test
-    public void givenNonExistentMember_whenDeleteMember_thenReturnsNotFoundError() {
+    public void givenNonExistentMember_whenDeleteMember_thenReturnsNotFoundError() throws Exception {
         // Arrange
         String adminToken = createAdminSessionToken(1L);
         SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
@@ -238,7 +238,7 @@ public class SystemAdminServiceTest {
     }
 
     @Test
-    public void givenValidRequest_whenDeleteMember_thenMemberIsDeletedAndCleanupPerformed() {
+    public void givenValidRequest_whenDeleteMember_thenMemberIsDeletedAndCleanupPerformed() throws Exception {
         // Arrange
         String adminToken = createAdminSessionToken(1L);
         SystemAdmin admin = new SystemAdmin("1", "Admin123", true);
@@ -256,7 +256,7 @@ public class SystemAdminServiceTest {
 
         User deletedUser = userRepo.getMemberById(memberId);
         assertTrue(deletedUser == null, "Member should be removed from UserRepository.");
-    }
+    }    
 
    @Test
         void GivenActiveSystemAdminAndActiveCompany_WhenCloseProductionCompanyByAdmin_ThenCompanyIsClosedAndRolesAreCancelled()
