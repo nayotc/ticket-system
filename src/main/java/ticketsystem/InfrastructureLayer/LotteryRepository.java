@@ -1,6 +1,10 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.util.List;
+import java.util.Set;
+
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.DomainLayer.IRepository.ILotteryRepository;
 import ticketsystem.DomainLayer.lottery.Lottery;
@@ -90,4 +94,10 @@ public class LotteryRepository implements ILotteryRepository {
                 .findByEventId(eventId)
                 .orElse(null);
     }
+   
+	@Override
+     @Transactional(readOnly = true)
+	public Set<Long> findEventIdsWithLottery(List<Long> eventIds) {
+		return lotteryJpaRepository.findEventIdsWithLottery(eventIds);
+	}
 }

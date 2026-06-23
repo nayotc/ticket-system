@@ -3,6 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -353,6 +354,17 @@ public class LotteryService {
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw e;
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Long> findEventIdsWithLottery(String token, List<Long> eventIds) {
+        tokenService.validateToken(token);
+
+        if (eventIds == null || eventIds.isEmpty()) {
+            return Set.of();
+        }
+
+        return lotteryRepository.findEventIdsWithLottery(eventIds);
     }
 
 }

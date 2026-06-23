@@ -1,9 +1,13 @@
 package ticketsystem.InfrastructureLayer.persistence;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import ticketsystem.DomainLayer.lottery.Lottery;
 
@@ -34,4 +38,12 @@ public interface LotteryJpaRepository extends JpaRepository<Lottery, Long> {
      */
     @EntityGraph(attributePaths = "registrations")
     Optional<Lottery> findByEventId(Long eventId);
+
+    
+        @Query("""
+        select l.eventId
+        from Lottery l
+        where l.eventId in :eventIds
+        """)
+    Set<Long> findEventIdsWithLottery(@Param("eventIds") List<Long> eventIds);
 }

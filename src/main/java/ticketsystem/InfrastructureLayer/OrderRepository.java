@@ -1,5 +1,6 @@
 package ticketsystem.InfrastructureLayer;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -147,5 +148,11 @@ public class OrderRepository implements IOrderRepository {
                                 "An active order already exists for this user to another event");
                     });
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ActiveOrder> getExpiredAndGuestOrders() {
+        return orderJpaRepository.findExpiredAndGuestOrders(LocalDateTime.now());
     }
 }

@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.dao.DataAccessException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import ticketsystem.DomainLayer.IRepository.ICompanyRepository;
 import ticketsystem.DomainLayer.SearchCriteria;
@@ -99,5 +100,15 @@ public class CompanyRepository implements ICompanyRepository {
         } catch (DataAccessException e) {
             throw new RuntimeException("Failed to get company ids by search criteria", e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String findCompanyNameById(Long companyId) {
+        if (companyId == null) {
+            return null;
+        }
+
+        return companyJpaRepository.findCompanyNameById(companyId);
     }
 }

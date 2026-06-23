@@ -211,4 +211,10 @@ public class InMemoryOrderRepository implements IOrderRepository {
     private long nextTicketId() {
         return nextGeneratedTicketId++;
     }
+
+	@Override
+	public List<ActiveOrder> getExpiredAndGuestOrders() {
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'getExpiredAndGuestOrders'");
+	}
 }
