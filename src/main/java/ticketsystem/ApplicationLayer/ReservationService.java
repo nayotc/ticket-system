@@ -110,7 +110,7 @@ public class ReservationService {
             if (event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
                 Lottery lottery = lotteryRepository.findByEventId(eventId);
 
-                if (lottery != null && event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
+                if (lottery != null) {
                     Long userId = tokenService.extractUserId(token);
                     reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
                 }
@@ -151,7 +151,7 @@ public class ReservationService {
          
             if (event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
                 Lottery lottery = lotteryRepository.findByEventId(eventId);
-                if (lottery != null && event.getSaleStatus().equals(SaleStatus.PRE_SALE)) {
+                if (lottery != null) {
                     Long userId = tokenService.extractUserId(token);
                     reservationDomeinService.checkLottery(lottery, userId, lotteryCode);
                 }
