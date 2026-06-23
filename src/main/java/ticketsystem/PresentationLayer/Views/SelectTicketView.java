@@ -956,10 +956,18 @@ private Div createSelectedTicketRowFromOrder(TicketDTO ticket) {
     text.addClassName("selected-ticket-text");
     String areaName = findAreaNameById(ticket.getAreaId());
 
-text.add(
-        new Span(areaName),
-        new Span("שורה " + ticket.getRow() + " • כיסא " + ticket.getChair())
-    );
+    if (ticket.getChair() == 0 && ticket.getRow() == 0) {
+        text.add(
+            new Span(areaName),
+            new Span("כרטיס עמידה")
+        );
+    }
+    else {
+        text.add(
+            new Span(areaName),
+            new Span("שורה " + ticket.getRow() + " • כיסא " + ticket.getChair())
+        );
+    }
 
     Span price = new Span(formatMoney(ticket.getPrice()));
     price.addClassName("selected-ticket-price");

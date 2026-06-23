@@ -749,7 +749,20 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         Span meta = new Span(metaOf(dto));
         meta.addClassName("hall-map-element-meta");
 
+        if (dto instanceof SeatingAreaDTO seating) {
+            meta.setText(seating.rows() + "x" + seating.columns());
+        } else if (dto instanceof StandingAreaDTO standing) {
+            meta.setText("קיבולת: " + standing.capacity());
+        }
+
         element.add(icon, name, meta);
+
+        if (dto instanceof SeatingAreaDTO seating || dto instanceof  StandingAreaDTO standing) {
+            Span price = new Span("מחיר: " + (dto instanceof SeatingAreaDTO ? seatingPriceField.getValue() : standingPriceField.getValue()) + "₪");
+            price.addClassName("hall-map-element-price");
+            element.add(price);
+        }
+
         element.addClickListener(event -> {
             selectedIndex = index;
             renderAll();
