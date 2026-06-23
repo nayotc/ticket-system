@@ -453,6 +453,38 @@ public class EventRepositoryPersistenceTest {
 
         assertEquals(1, results.size());
         assertEquals(matchingEventId, results.get(0).getId());
+        assertEquals(0, new BigDecimal("80.00").compareTo(results.get(0).getTicketPrice()));
+    }
+
+    @Test
+    void GivenAreaRowWithoutPrice_WhenPersisted_ThenDatabaseRejectsIt() {
+        assertThrows(PersistenceException.class, () -> {
+            entityManager
+                    .getEntityManager()
+                    .createNativeQuery("""
+                    INSERT INTO event_elements (
+                        element_type,
+                        name,
+                        location_x,
+                        location_y,
+                        size_width,
+                        size_height,
+                        price
+                    )
+                    VALUES (
+                        'SEATING',
+                        'Invalid seating area',
+                        0,
+                        0,
+                        10,
+                        10,
+                        NULL
+                    )
+                    """)
+                    .executeUpdate();
+
+            entityManager.flush();
+        });
     }
 
     // ------------------- Purchase Policy Tests ------------------

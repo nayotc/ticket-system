@@ -68,6 +68,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
     private static final String MAP_OVERLAP_MESSAGE = "לא ניתן למקם אלמנט על אלמנט אחר";
     private final BigDecimalField seatingPriceField = new BigDecimalField("מחיר כרטיס באזור");
     private final BigDecimalField standingPriceField = new BigDecimalField("מחיר כרטיס באזור");
+    private final BigDecimalField selectedAreaPriceField = new BigDecimalField("מחיר כרטיס באזור");
 
     private final TextField standingNameField = new TextField("שם אזור עמידה");
     private final IntegerField standingCapacityField = new IntegerField("קיבולת מרבית");
@@ -135,6 +136,9 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         standingNameField.setValue("אזור עמידה");
         configurePositiveField(standingCapacityField, 500, 1, 100000);
         configurePriceField(standingPriceField);
+
+        configurePriceField(selectedAreaPriceField);
+        selectedAreaPriceField.addValueChangeListener(event -> updateSelectedElementFromProperties());
 
         elementNameField.addValueChangeListener(event -> updateSelectedElementFromProperties());
         elementXField.addValueChangeListener(event -> updateSelectedElementFromProperties());
@@ -757,8 +761,19 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         element.add(icon, name, meta);
 
-        if (dto instanceof SeatingAreaDTO seating || dto instanceof  StandingAreaDTO standing) {
-            Span price = new Span("מחיר: " + (dto instanceof SeatingAreaDTO ? seatingPriceField.getValue() : standingPriceField.getValue()) + "₪");
+        if (dto instanceof SeatingAreaDTO seating) {
+            Span price = new Span(
+                    "מחיר: " + formatPrice(seating.price()) + "₪"
+            );
+
+            price.addClassName("hall-map-element-price");
+            element.add(price);
+
+        } else if (dto instanceof StandingAreaDTO standing) {
+            Span price = new Span(
+                    "מחיר: " + formatPrice(standing.price()) + "₪"
+            );
+
             price.addClassName("hall-map-element-price");
             element.add(price);
         }
@@ -768,6 +783,14 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
             renderAll();
         });
         return element;
+    }
+
+    private String formatPrice(BigDecimal price) {
+        if (price == null) {
+            return "0";
+        }
+
+        return price.stripTrailingZeros().toPlainString();
     }
 
     private void moveElementToGrid(int index, int x, int y) {
@@ -864,8 +887,16 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
         delete.addClassName("hall-delete-button");
 
-        propertiesPanel.add(elementNameField, positionFields, sizeFields, delete);
+        propertiesPanel.add(elementNameField);
+
+        if (selected instanceof SeatingAreaDTO || selected instanceof StandingAreaDTO) {
+            propertiesPanel.add(selectedAreaPriceField);
+        }
+
+        propertiesPanel.add(positionFields, sizeFields, delete);
     }
+
+
 
     private void updatePropertiesFields(IMapElementDTO dto) {
         updatingProperties = true;
@@ -879,6 +910,14 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         elementWidthField.setValue(size.first());
         elementHeightField.setValue(size.second());
 
+        if (dto instanceof SeatingAreaDTO seating) {
+            selectedAreaPriceField.setValue(seating.price() == null ? BigDecimal.ZERO : seating.price());
+            selectedAreaPriceField.setInvalid(false);
+        } else if (dto instanceof StandingAreaDTO standing) {
+            selectedAreaPriceField.setValue(standing.price() == null ? BigDecimal.ZERO : standing.price());
+            selectedAreaPriceField.setInvalid(false);
+        }
+
         updatingProperties = false;
     }
 
@@ -888,6 +927,19 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         }
 
         IMapElementDTO current = elements.get(selectedIndex);
+        BigDecimal updatedPrice = areaPriceOf(current);
+
+        if (current instanceof SeatingAreaDTO
+                || current instanceof StandingAreaDTO) {
+
+            updatedPrice = selectedAreaPriceField.getValue();
+
+            if (!isValidPrice(updatedPrice)) {
+                selectedAreaPriceField.setInvalid(true);
+                showWarning("יש להזין מחיר תקין לאזור");
+                return;
+            }
+        }
 
         int width = positive(elementWidthField.getValue());
         int height = positive(elementHeightField.getValue());
@@ -907,7 +959,8 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                 x,
                 y,
                 width,
-                height
+                height,
+                updatedPrice
         );
 
         elements.set(selectedIndex, updated);
@@ -951,6 +1004,74 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         ElementDTO element = (ElementDTO) dto;
         return new ElementDTO(element.id(), name, location, size, element.type());
+    }
+
+    private IMapElementDTO updateGeometry(
+            IMapElementDTO dto,
+            String name,
+            int x,
+            int y,
+            int width,
+            int height,
+            BigDecimal price
+    ) {
+        PairDTO<Integer, Integer> location =
+                new PairDTO<>(x, y);
+
+        PairDTO<Integer, Integer> size =
+                new PairDTO<>(width, height);
+
+        if (dto instanceof SeatingAreaDTO area) {
+            return new SeatingAreaDTO(
+                    area.id(),
+                    name,
+                    location,
+                    size,
+                    area.type(),
+                    area.soldOut(),
+                    price,
+                    area.rows(),
+                    area.columns(),
+                    area.seats()
+            );
+        }
+
+        if (dto instanceof StandingAreaDTO area) {
+            return new StandingAreaDTO(
+                    area.id(),
+                    name,
+                    location,
+                    size,
+                    area.type(),
+                    area.soldOut(),
+                    price,
+                    area.capacity(),
+                    area.reserved(),
+                    area.sold()
+            );
+        }
+
+        ElementDTO element = (ElementDTO) dto;
+
+        return new ElementDTO(
+                element.id(),
+                name,
+                location,
+                size,
+                element.type()
+        );
+    }
+
+    private BigDecimal areaPriceOf(IMapElementDTO dto) {
+        if (dto instanceof SeatingAreaDTO seating) {
+            return seating.price();
+        }
+
+        if (dto instanceof StandingAreaDTO standing) {
+            return standing.price();
+        }
+
+        return null;
     }
 
     private void deleteSelectedElement() {

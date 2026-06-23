@@ -3,6 +3,7 @@ package ticketsystem.DomainLayer.event;
 import jakarta.persistence.Entity;
 import java.math.BigDecimal;
 import jakarta.persistence.Column;
+import jakarta.persistence.PostLoad;
 
 @Entity
 public abstract class Area extends Element {
@@ -37,5 +38,10 @@ public abstract class Area extends Element {
             throw new IllegalArgumentException("Area price cannot be negative");
         }
         this.price = price;
+    }
+
+    @PostLoad
+    private void validateLoadedPrice() {
+        setPrice(price);
     }
 }
