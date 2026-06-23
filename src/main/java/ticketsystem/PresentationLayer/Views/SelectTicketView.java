@@ -1277,6 +1277,7 @@ protected void onAttach(AttachEvent attachEvent) {
     refreshSelectionAccessTimer();
     startClientSideSelectionTimer();
 }
+
 @Override
 protected void onDetach(DetachEvent detachEvent) {
     stopClientSideSelectionTimer();

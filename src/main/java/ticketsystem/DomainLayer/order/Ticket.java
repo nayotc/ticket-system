@@ -97,4 +97,8 @@ public class Ticket {
     void setActiveOrder(ActiveOrder activeOrder) {
         this.activeOrder = activeOrder;
     }
+
+    public boolean isSeat(){
+        return row!=0 && chair !=0;
+    }
 }

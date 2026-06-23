@@ -16,16 +16,19 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.EventSearchResultView;
+import ticketsystem.DomainLayer.event.SaleStatus;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+import ticketsystem.DomainLayer.event.SeatPosition;
 
 /**
  * Test-only in-memory implementation of IEventRepository.
-
+ * 
  * It assigns event IDs similarly to a database-generated ID.
-
+ * 
  * Policy state is stored as a DTO snapshot. This prevents an Event returned
  * from getEventById from changing the stored policy unless updateEvent is
  * called explicitly.
-
+ * 
  * This makes the repository suitable for testing EventService policy use cases
  * before purchase and discount policies are mapped with JPA.
  */
@@ -36,11 +39,9 @@ public final class InMemoryEventRepository implements IEventRepository {
     private final Map<Long, StoredEvent> events = new LinkedHashMap<>();
     private final AtomicLong nextId = new AtomicLong(1L);
 
-    private final DiscountPolicyMapper discountPolicyMapper =
-            new DiscountPolicyMapper();
+    private final DiscountPolicyMapper discountPolicyMapper = new DiscountPolicyMapper();
 
-    private final PurchasePolicyMapper purchasePolicyMapper =
-            new PurchasePolicyMapper();
+    private final PurchasePolicyMapper purchasePolicyMapper = new PurchasePolicyMapper();
 
     @Override
     public synchronized void addEvent(Event event) {
@@ -55,15 +56,12 @@ public final class InMemoryEventRepository implements IEventRepository {
             assignGeneratedId(event, eventId);
         } else {
             long existingId = eventId;
-            nextId.updateAndGet(current ->
-                    Math.max(current, existingId + 1)
-            );
+            nextId.updateAndGet(current -> Math.max(current, existingId + 1));
         }
 
         if (events.containsKey(eventId)) {
             throw new IllegalArgumentException(
-                    "Event with ID " + eventId + " already exists"
-            );
+                    "Event with ID " + eventId + " already exists");
         }
 
         events.put(eventId, new StoredEvent(event));
@@ -94,16 +92,14 @@ public final class InMemoryEventRepository implements IEventRepository {
 
         if (eventId == null) {
             throw new IllegalArgumentException(
-                    "Cannot update an event without an ID"
-            );
+                    "Cannot update an event without an ID");
         }
 
         StoredEvent storedEvent = events.get(eventId);
 
         if (storedEvent == null) {
             throw new IllegalArgumentException(
-                    "Event with ID " + eventId + " does not exist"
-            );
+                    "Event with ID " + eventId + " does not exist");
         }
 
         storedEvent.update(event);
@@ -112,22 +108,19 @@ public final class InMemoryEventRepository implements IEventRepository {
     @Override
     public synchronized void deleteEvent(
             Long eventId,
-            long expectedVersion
-    ) {
+            long expectedVersion) {
         StoredEvent storedEvent = events.get(eventId);
 
         if (storedEvent == null) {
             throw new IllegalArgumentException(
-                    "Event with ID " + eventId + " does not exist"
-            );
+                    "Event with ID " + eventId + " does not exist");
         }
 
         Event event = storedEvent.load();
 
         if (event.getVersion() != expectedVersion) {
             throw new IllegalStateException(
-                    "Event was updated by another request"
-            );
+                    "Event was updated by another request");
         }
 
         events.remove(eventId);
@@ -162,18 +155,15 @@ public final class InMemoryEventRepository implements IEventRepository {
     @Override
     public synchronized List<EventSearchResultView> searchEvents(
             SearchCriteria criteria,
-            List<Long> companyIds
-    ) {
+            List<Long> companyIds) {
         throw new UnsupportedOperationException(
-                "Catalog search is not supported by the policy test repository"
-        );
+                "Catalog search is not supported by the policy test repository");
     }
 
     @Override
     public synchronized List<EventSearchResultView> getFeaturedEvents(int limit) {
         throw new UnsupportedOperationException(
-                "Featured event search is not supported by the policy test repository"
-        );
+                "Featured event search is not supported by the policy test repository");
     }
 
     /**
@@ -222,19 +212,15 @@ public final class InMemoryEventRepository implements IEventRepository {
         }
 
         private void capturePolicies(Event source) {
-            discountPolicySnapshot =
-                    source.getDiscountPolicy() == null
-                            ? null
-                            : discountPolicyMapper.toDTO(
-                            source.getDiscountPolicy()
-                    );
+            discountPolicySnapshot = source.getDiscountPolicy() == null
+                    ? null
+                    : discountPolicyMapper.toDTO(
+                            source.getDiscountPolicy());
 
-            purchasePolicySnapshot =
-                    source.getPurchasePolicy() == null
-                            ? null
-                            : purchasePolicyMapper.toDTO(
-                            source.getPurchasePolicy()
-                    );
+            purchasePolicySnapshot = source.getPurchasePolicy() == null
+                    ? null
+                    : purchasePolicyMapper.toDTO(
+                            source.getPurchasePolicy());
         }
 
         private void restorePolicies(Event target) {
@@ -242,17 +228,13 @@ public final class InMemoryEventRepository implements IEventRepository {
                     discountPolicySnapshot == null
                             ? null
                             : discountPolicyMapper.toDomain(
-                            discountPolicySnapshot
-                    )
-            );
+                                    discountPolicySnapshot));
 
             target.setPurchasePolicy(
                     purchasePolicySnapshot == null
                             ? null
                             : purchasePolicyMapper.toDomain(
-                            purchasePolicySnapshot
-                    )
-            );
+                                    purchasePolicySnapshot));
         }
     }
 
@@ -264,8 +246,7 @@ public final class InMemoryEventRepository implements IEventRepository {
         } catch (NoSuchFieldException exception) {
             throw new IllegalStateException(
                     "Event no longer contains an id field",
-                    exception
-            );
+                    exception);
         }
     }
 
@@ -275,8 +256,91 @@ public final class InMemoryEventRepository implements IEventRepository {
         } catch (IllegalAccessException exception) {
             throw new IllegalStateException(
                     "Failed to assign generated event ID",
-                    exception
-            );
+                    exception);
         }
+    }
+
+    @Override
+    public synchronized void updateSeatStatus(
+            Long eventId,
+            Long areaId,
+            int row,
+            int number,
+            SeatStatus newStatus) {
+        StoredEvent storedEvent = events.get(eventId);
+
+        if (storedEvent == null) {
+            throw new IllegalArgumentException(
+                    "Event with ID " + eventId + " does not exist");
+        }
+
+        Event event = storedEvent.load();
+        SeatPosition position = new SeatPosition(row, number);
+
+        switch (newStatus) {
+            case RESERVED -> event.reserveSeat(areaId, position);
+            case AVAILABLE -> event.releaseSeat(areaId, position);
+            case SOLD -> event.sellSeat(areaId, position);
+            default -> throw new IllegalArgumentException(
+                    "Unsupported seat status: " + newStatus);
+        }
+
+        storedEvent.update(event);
+    }
+
+    @Override
+    public synchronized void updateStandingAreaReservedCount(
+            Long eventId,
+            Long areaId,
+            int reservedDelta) {
+        StoredEvent storedEvent = events.get(eventId);
+
+        if (storedEvent == null) {
+            throw new IllegalArgumentException(
+                    "Event with ID " + eventId + " does not exist");
+        }
+
+        Event event = storedEvent.load();
+
+        if (reservedDelta > 0) {
+            event.reserveSpot(areaId, reservedDelta);
+        } else if (reservedDelta < 0) {
+            event.releaseSpot(areaId, -reservedDelta);
+        }
+
+        storedEvent.update(event);
+    }
+
+    @Override
+    public synchronized void markStandingTicketsAsSold(
+            Long eventId,
+            Long areaId,
+            int quantity) {
+        StoredEvent storedEvent = events.get(eventId);
+
+        if (storedEvent == null) {
+            throw new IllegalArgumentException(
+                    "Event with ID " + eventId + " does not exist");
+        }
+
+        Event event = storedEvent.load();
+        event.sellSpot(areaId, quantity);
+        storedEvent.update(event);
+    }
+
+    @Override
+    public synchronized void updateSaleStatus(
+            Long eventId,
+            SaleStatus saleStatus) {
+        StoredEvent storedEvent = events.get(eventId);
+
+        if (storedEvent == null) {
+            throw new IllegalArgumentException(
+                    "Event with ID " + eventId + " does not exist");
+        }
+
+        Event event = storedEvent.load();
+        event.setSaleStatus(saleStatus);
+        storedEvent.update(event);
     }
 }

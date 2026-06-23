@@ -22,6 +22,9 @@ import org.springframework.data.jpa.domain.Specification;
 
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.event.EventSearchResultView;
+import ticketsystem.DomainLayer.event.SaleStatus;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
@@ -363,4 +366,51 @@ public class EventRepository implements IEventRepository {
                 activeReservations
         );
     }
+
+         @Override
+        @Transactional
+        public void updateSeatStatus(Long eventId, Long areaId, int row, int number, SeatStatus newStatus) {
+        int updatedRows = eventJpaRepository.updateSeatStatus(areaId, row, number, newStatus);
+
+        if (updatedRows == 0) {
+                throw new OptimisticLockException("Seat was already changed by another request. eventId=" + eventId + ", areaId=" + areaId + ", row=" + row + ", number=" + number);
+        }
+        }
+
+        @Override
+        @Transactional
+        public void updateStandingAreaReservedCount(Long eventId, Long areaId, int reservedDelta) {
+        int updatedRows = eventJpaRepository.updateStandingAreaReservedCount(areaId, reservedDelta);
+
+        if (updatedRows == 0) {
+                throw new IllegalStateException("Standing area update failed");
+        }
+        }
+
+        @Override
+        @Transactional
+        public void markStandingTicketsAsSold(
+                        Long eventId,
+                        Long areaId,
+                        int quantity) {
+                int updatedRows = eventJpaRepository.markStandingTicketsAsSold(
+                                areaId,
+                                quantity);
+
+                if (updatedRows == 0) {
+                        throw new IllegalStateException(
+                                        "Failed to mark standing tickets as sold. eventId="
+                                                        + eventId + ", areaId=" + areaId);
+                }
+        }
+
+        @Override
+        @Transactional
+        public void updateSaleStatus(Long eventId, SaleStatus saleStatus) {
+        int updatedRows = eventJpaRepository.updateSaleStatus(eventId, saleStatus);
+
+        if (updatedRows == 0) {
+                throw new IllegalStateException("Failed to update sale status for eventId=" + eventId);
+        }
+        }
 }
