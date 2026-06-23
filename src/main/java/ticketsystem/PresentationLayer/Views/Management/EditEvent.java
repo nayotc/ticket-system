@@ -84,7 +84,7 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
     private final DatePicker eventDate = new DatePicker("תאריך");
     private final TimePicker eventTime = new TimePicker("שעה");
     private final ComboBox<EventLocation> location = new ComboBox<>("מיקום");
-    private final TextField ticketPrice = new TextField("מחיר כרטיס");
+    private final TextField ticketPrice = new TextField("מחיר כרטיס דיפולטיבי");
     private final TextField trafficThreshold = new TextField("רף עומס");
 
     private PurchaseExpressionNode purchasePolicyRoot = PurchaseExpressionNode.group(LogicalOperator.AND);
