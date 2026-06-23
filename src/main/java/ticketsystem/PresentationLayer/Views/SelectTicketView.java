@@ -423,9 +423,27 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         );
     }
 
+    /**
+     * Handles navigation away from the ticket-selection page.
+     *
+     * Users who entered the page directly, without a limited queue turn, should not
+     * see a warning about being returned to the end of the queue.
+     *
+     * Users who were promoted from the waiting queue and still have an active
+     * selection deadline are warned before leaving, because leaving may end their
+     * current selection window.
+     *
+     * @param event Vaadin before-leave navigation event
+     */
     @Override
     public void beforeLeave(BeforeLeaveEvent event) {
         if (allowLeavingSelectionPage || eventId == null) {
+            return;
+        }
+
+        if (!hasActiveQueueTurnDeadline()) {
+            reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+            allowLeavingSelectionPage = true;
             return;
         }
 
@@ -433,18 +451,13 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
         ConfirmDialog dialog = new ConfirmDialog();
         dialog.setHeader("עזיבת בחירת הכרטיסים");
-        dialog.setText("עזיבה של העמוד עלולה להחזיר אותך לסוף התור. האם להמשיך?");
+        dialog.setText("עזיבה תסיים את חלון הבחירה הנוכחי, וייתכן שתצטרכו להצטרף מחדש לתור. האם לצאת?");
         dialog.setConfirmText("כן, לצאת");
         dialog.setCancelText("להישאר");
         dialog.setCancelable(true);
 
         dialog.addConfirmListener(e -> {
-            try {
-    reservationPresenter.releaseQueueAccess(currentToken(), eventId);
-        } catch (PresentationException ex) {
-            Notification.show(ex.getMessage());
-        }
-
+            reservationPresenter.releaseQueueAccess(currentToken(), eventId);
             allowLeavingSelectionPage = true;
             action.proceed();
         });
@@ -454,6 +467,24 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         });
 
         dialog.open();
+    }
+
+    /**
+     * Checks whether the current user has an active limited selection window that
+     * was granted after being promoted from the waiting queue.
+     *
+     * A positive number of seconds means the user is currently inside a queue turn
+     * deadline. Users who entered directly do not have such a deadline.
+     *
+     * @return true if the user has an active queue-selection deadline
+     */
+    private boolean hasActiveQueueTurnDeadline() {
+        try {
+            return eventId != null
+                    && reservationPresenter.getSelectionAccessSecondsLeft(currentToken(), eventId) > 0;
+        } catch (PresentationException e) {
+            return false;
+        }
     }
 
     private void renderMap() {
