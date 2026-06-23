@@ -78,7 +78,7 @@ public class ActiveOrder {
         this.userId = userId;
         this.eventId = eventId;
         this.status = OrderStatus.ACTIVE;
-        this.expiresAt = LocalDateTime.now().plusMinutes(1);
+        this.expiresAt = LocalDateTime.now().plusMinutes(15);
     }
 
     public ActiveOrder(ActiveOrder other) {
