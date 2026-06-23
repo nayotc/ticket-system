@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -443,6 +444,156 @@ public class WaitingQueueServiceTest {
                 scenario + ": active reservation count should not change on failure");
         assertEquals(before.queueSize, after.queueSize,
                 scenario + ": queue size should not change on failure");
+    }
+
+    /**
+     * Verifies that a user who is approved directly because there is available
+     * capacity does not receive a waiting-queue selection-access deadline.
+     *
+     * Direct approval means the user did not wait in the virtual queue, so the
+     * queue access countdown should not be created for that user.
+     */
+    @Test
+    public void givenUserApprovedDirectly_whenCheckingSelectionAccess_thenNoQueueDeadlineExists() {
+        // Arrange
+        Event event = new Event(
+                LocalDateTime.now().plusDays(1),
+                "Direct Access Event",
+                1L,
+                1L,
+                EventLocation.NEW_YORK,
+                2L,
+                EventCategory.CONCERT,
+                "Artist Name",
+                BigDecimal.valueOf(100),
+                new Pair<>(10, 10)
+        );
+        EventRepo.addEvent(event);
+
+        Long eventId = event.getId();
+        String directToken = tokenService.addActiveSession(new Guest());
+
+        // Act
+        String result = waitingQueueService.tryReserve(eventId, directToken);
+
+        // Assert
+        assertEquals("APPROVED", result, "Direct user should be approved while capacity is available.");
+        assertEquals(
+                0,
+                waitingQueueService.getSelectionAccessSecondsLeft(eventId, directToken),
+                "Directly approved user should not receive a waiting-queue selection-access deadline."
+        );
+    }
+
+    /**
+     * Verifies that a user who was waiting in the queue and then got promoted does
+     * receive a selection-access deadline.
+     *
+     * This deadline represents the limited access window granted after the user's
+     * turn in the queue arrives.
+     */
+    @Test
+    public void givenQueuedUserPromoted_whenCheckingSelectionAccess_thenQueueDeadlineExists() {
+        // Arrange
+        Event event = new Event(
+                LocalDateTime.now().plusDays(1),
+                "Queued Access Event",
+                1L,
+                1L,
+                EventLocation.NEW_YORK,
+                1L,
+                EventCategory.CONCERT,
+                "Artist Name",
+                BigDecimal.valueOf(100),
+                new Pair<>(10, 10)
+        );
+        EventRepo.addEvent(event);
+
+        Long eventId = event.getId();
+        String directToken = tokenService.addActiveSession(new Guest());
+        String queuedToken = tokenService.addActiveSession(new Guest());
+
+        assertEquals("APPROVED", waitingQueueService.tryReserve(eventId, directToken));
+        assertEquals("QUEUED", waitingQueueService.tryReserve(eventId, queuedToken));
+
+        assertEquals(
+                0,
+                waitingQueueService.getSelectionAccessSecondsLeft(eventId, queuedToken),
+                "Queued user should not have a selection-access deadline before being promoted."
+        );
+
+        // Act
+        waitingQueueService.releaseSpot(eventId, directToken);
+
+        // Assert
+        assertEquals(0, realQueueRepo.getQueueSize(eventId), "Queue should be empty after promotion.");
+        assertTrue(
+                waitingQueueService.getSelectionAccessSecondsLeft(eventId, queuedToken) > 0,
+                "Promoted queued user should receive a positive selection-access deadline."
+        );
+    }
+
+    /**
+     * Verifies that checking expiration for a directly approved user does not create
+     * a queue deadline and does not release the user's active purchasing slot.
+     *
+     * A missing queue deadline means the user did not enter through the waiting
+     * queue, not that their queue access expired.
+     */
+    @Test
+    public void givenDirectlyApprovedUserWithoutQueueDeadline_whenExpireSelectionAccessChecked_thenStateUnchanged() {
+        // Arrange
+        Event event = new Event(
+                LocalDateTime.now().plusDays(1),
+                "Direct Expiration Check Event",
+                1L,
+                1L,
+                EventLocation.NEW_YORK,
+                1L,
+                EventCategory.CONCERT,
+                "Artist Name",
+                BigDecimal.valueOf(100),
+                new Pair<>(10, 10)
+        );
+        EventRepo.addEvent(event);
+
+        Long eventId = event.getId();
+        String directToken = tokenService.addActiveSession(new Guest());
+        String queuedToken = tokenService.addActiveSession(new Guest());
+
+        assertEquals("APPROVED", waitingQueueService.tryReserve(eventId, directToken));
+        assertEquals("QUEUED", waitingQueueService.tryReserve(eventId, queuedToken));
+
+        recordingNotifier.clear();
+
+        // Act
+        boolean expired = waitingQueueService.expireSelectionAccessIfNeeded(eventId, directToken);
+
+        // Assert
+        assertFalse(expired, "Directly approved user should not be expired by the queue access timer.");
+        assertEquals(
+                0,
+                waitingQueueService.getSelectionAccessSecondsLeft(eventId, directToken),
+                "Expiration check must not create a queue deadline for a directly approved user."
+        );
+
+        Event savedEvent = EventRepo.getEventById(eventId);
+        assertEquals(
+                1,
+                savedEvent.getActiveReservationsCount(),
+                "Direct user's active purchasing slot should remain active."
+        );
+        assertEquals(
+                1,
+                realQueueRepo.getQueueSize(eventId),
+                "Queued user should remain waiting because the direct user was not expired."
+        );
+        assertEquals(
+                1,
+                realQueueRepo.getUserPosition(eventId, queuedToken),
+                "Queued user should remain first in line."
+        );
+        recordingNotifier.assertNotificationCount(0);
     }
 
 }
