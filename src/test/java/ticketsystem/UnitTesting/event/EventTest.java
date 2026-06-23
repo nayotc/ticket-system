@@ -150,15 +150,6 @@ public class EventTest {
     }
 
     @Test
-    void givenEvent_whenSetTicketPrice_thenTicketPriceIsUpdated() {
-        BigDecimal newPrice = new BigDecimal("149.90");
-
-        event.setTicketPrice(newPrice);
-
-        assertEquals(newPrice, event.getMinimalTicketPrice());
-    }
-
-    @Test
     void givenEvent_whenSetRateOnce_thenRateIsUpdatedToGivenRate() {
         event.setRate(4.0);
 

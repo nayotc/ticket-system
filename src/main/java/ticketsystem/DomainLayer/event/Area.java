@@ -14,7 +14,7 @@ public abstract class Area extends Element {
 
     public Area(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, BigDecimal price) {
         super(name, location, size);
-        this.price = price;
+        setPrice(price);
     }
 
     public Area(Area other) {
@@ -26,5 +26,16 @@ public abstract class Area extends Element {
 
     public BigDecimal getPrice() {
         return price;
+    }
+
+    public void  setPrice(BigDecimal price) {
+        if (price == null) {
+            throw new IllegalArgumentException("Area price cannot be null");
+        }
+
+        if (price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Area price cannot be negative");
+        }
+        this.price = price;
     }
 }

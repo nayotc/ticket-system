@@ -29,11 +29,12 @@ public class Reservation {
     } 
 
     public void selectStandingTicket(ActiveOrder order, Event event,Long areaId, int quantity) {
-      event.reserveSpot(areaId, quantity);
+        event.reserveSpot(areaId, quantity);
+        BigDecimal areaPrice = event.getAreaPrice(areaId);
         for(int i=0; i<quantity; i++) {
-            Ticket ticket = new Ticket(null, event.getId(), areaId, 0, 0, event.getAreaPrice(areaId));
+            Ticket ticket = new Ticket(null, event.getId(), areaId, 0, 0, areaPrice);
             order.addTicket(ticket);
-      }
+        }
     }
 
   // UC 2.7

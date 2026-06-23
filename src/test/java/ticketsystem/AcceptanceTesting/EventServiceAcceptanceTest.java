@@ -1717,6 +1717,7 @@ public class EventServiceAcceptanceTest {
                 new PairDTO<>(4, 6),
                 "SeatingArea",
                 false,
+                BigDecimal.valueOf(99.99),
                 4,
                 6,
                 List.of()
@@ -1729,6 +1730,7 @@ public class EventServiceAcceptanceTest {
                 new PairDTO<>(3, 5),
                 "StandingArea",
                 false,
+                BigDecimal.valueOf(99.99),
                 100L,
                 0L,
                 0L
@@ -1757,6 +1759,7 @@ public class EventServiceAcceptanceTest {
                 new PairDTO<>(4, 4),
                 "SeatingArea",
                 false,
+                BigDecimal.valueOf(100.00),
                 4,
                 6,
                 List.of()
@@ -1785,6 +1788,7 @@ public class EventServiceAcceptanceTest {
                 new PairDTO<>(4, 4),
                 "SeatingArea",
                 false,
+                BigDecimal.valueOf(100.00),
                 4,
                 6,
                 List.of()
@@ -1799,7 +1803,7 @@ public class EventServiceAcceptanceTest {
 
     private EventMapDTO createInconsistentMapDTO() {
         StandingAreaDTO inconsistentStandingArea = new StandingAreaDTO(
-                1L, "Invalid Standing Area", new PairDTO<>(2, 2), new PairDTO<>(4, 5), "StandingArea", false, 10L, 8L,
+                1L, "Invalid Standing Area", new PairDTO<>(2, 2), new PairDTO<>(4, 5), "StandingArea", false,BigDecimal.valueOf(120.00), 10L, 8L,
                 5L);
 
         return new EventMapDTO(new PairDTO<>(10, 20), List.of(inconsistentStandingArea), false);

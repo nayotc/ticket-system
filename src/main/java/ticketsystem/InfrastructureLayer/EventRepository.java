@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.ListJoin;
 
 import ticketsystem.DomainLayer.event.Area;
 import ticketsystem.DomainLayer.event.Element;
@@ -244,15 +245,10 @@ public class EventRepository implements IEventRepository {
                  */
                 query.distinct(true);
 
-                Join<Event, EventMap> mapJoin =
-                        root.join("map", JoinType.INNER);
-
-                Join<EventMap, Element> elementJoin =
-                        mapJoin.join("elements", JoinType.INNER);
-
-                Path<BigDecimal> areaPrice = criteriaBuilder
-                        .treat(elementJoin, Area.class)
-                        .get("price");
+                Join<Event, EventMap> mapJoin = root.join("map", JoinType.INNER);
+                ListJoin<EventMap, Element> elementJoin = mapJoin.joinList("elements", JoinType.INNER);
+                ListJoin<EventMap, Area> areaJoin = criteriaBuilder.treat(elementJoin, Area.class);
+                Path<BigDecimal> areaPrice = areaJoin.get("price");
 
                 if (criteria.getMinPrice() != null) {
                     predicates.add(

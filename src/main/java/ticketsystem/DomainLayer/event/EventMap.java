@@ -17,6 +17,8 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import java.math.BigDecimal;
+import java.util.Objects;
 
 @Embeddable
 public class EventMap {
@@ -174,16 +176,7 @@ public class EventMap {
     }
 
     public BigDecimal getAreaPrice(Long areaId) {
-        if (areaId == null) {
-            return BigDecimal.ZERO;
-        }
-
-        for (Element element : elements) {
-            if (areaId.equals(element.getId()) && element instanceof Area) {
-                return ((Area) element).getPrice();
-            }
-        }
-        return BigDecimal.ZERO;
+        return findArea(areaId).getPrice();
     }
 
     public BigDecimal getMinimumAreaPrice() {
@@ -221,6 +214,27 @@ public class EventMap {
                 .anyMatch(price ->
                         (minPrice == null || price.compareTo(minPrice) >= 0)
                                 && (maxPrice == null || price.compareTo(maxPrice) <= 0)
+                );
+    }
+
+    private Area findArea(Long areaId) {
+        if (areaId == null) {
+            throw new IllegalArgumentException("Area ID cannot be null");
+        }
+
+        if (elements == null) {
+            throw new IllegalArgumentException("Area not found");
+        }
+
+        return elements.stream()
+                .filter(Area.class::isInstance)
+                .map(Area.class::cast)
+                .filter(area -> Objects.equals(area.getId(), areaId))
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Area not found: " + areaId
+                        )
                 );
     }
 

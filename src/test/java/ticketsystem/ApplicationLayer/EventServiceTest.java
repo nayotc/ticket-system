@@ -172,6 +172,7 @@ public class EventServiceTest {
                                 new PairDTO<>(3, 3),
                                 "StandingArea",
                                 false,
+                                BigDecimal.valueOf(80.00),
                                 100L,
                                 0L,
                                 0L

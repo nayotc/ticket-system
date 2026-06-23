@@ -7,8 +7,11 @@ import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.SeatPosition;
 
 import static org.junit.jupiter.api.Assertions.*;
+import java.math.BigDecimal;
 
 class SeatingAreaTest {
+
+    private static final BigDecimal DEFAULT_PRICE = new BigDecimal("120.00");
 
     private Pair<Integer, Integer> pair(int first, int second) {
         return new Pair<>(first, second);
@@ -19,7 +22,7 @@ class SeatingAreaTest {
     }
 
     private SeatingArea seatingArea(int rows, int columns) {
-        return new SeatingArea( "Main Seating", pair(0, 0), pair(10, 10), rows, columns);
+        return new SeatingArea( "Main Seating", pair(0, 0), pair(10, 10), rows, columns,DEFAULT_PRICE);
     }
 
     @Test
@@ -115,5 +118,63 @@ class SeatingAreaTest {
         assertNotSame(original, copy);
         assertEquals(SeatStatus.RESERVED, original.isSeatAvailable(position(1, 1)));
         assertEquals(SeatStatus.SOLD, copy.isSeatAvailable(position(1, 1)));
+        assertEquals(0, original.getPrice().compareTo(copy.getPrice()));
+    }
+
+    @Test
+    void GivenValidPrice_WhenCreateSeatingArea_ThenPriceIsStored() {
+        SeatingArea area = seatingArea(2, 3);
+
+        assertEquals(
+                0,
+                DEFAULT_PRICE.compareTo(area.getPrice())
+        );
+    }
+
+    @Test
+    void GivenNegativePrice_WhenCreateSeatingArea_ThenThrowException() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new SeatingArea(
+                        "Main Seating",
+                        pair(0, 0),
+                        pair(10, 10),
+                        2,
+                        3,
+                        new BigDecimal("-1.00")
+                )
+        );
+    }
+
+    @Test
+    void GivenNullPrice_WhenCreateSeatingArea_ThenThrowException() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new SeatingArea(
+                        "Main Seating",
+                        pair(0, 0),
+                        pair(10, 10),
+                        2,
+                        3,
+                        null
+                )
+        );
+    }
+
+    @Test
+    void GivenZeroPrice_WhenCreateSeatingArea_ThenPriceIsAccepted() {
+        SeatingArea area = new SeatingArea(
+                "Free Seating",
+                pair(0, 0),
+                pair(10, 10),
+                2,
+                3,
+                BigDecimal.ZERO
+        );
+
+        assertEquals(
+                0,
+                BigDecimal.ZERO.compareTo(area.getPrice())
+        );
     }
 }

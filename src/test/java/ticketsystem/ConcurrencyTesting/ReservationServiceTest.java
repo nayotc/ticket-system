@@ -596,7 +596,8 @@ public class ReservationServiceTest {
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
                 rows,
-                columns
+                columns,
+                new BigDecimal("100.00")
         );
 
         event.getMap().addElement(seatingArea);
@@ -612,7 +613,8 @@ public class ReservationServiceTest {
                 "Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
-                capacity
+                capacity,
+                new BigDecimal("100.00")
         );
 
         event.getMap().addElement(standingArea);
@@ -628,7 +630,8 @@ public class ReservationServiceTest {
                 "Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
-                20
+                20,
+                new BigDecimal("100.00")
         );
 
         event.getMap().addElement(standingArea);
@@ -645,7 +648,8 @@ public class ReservationServiceTest {
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
                 1,
-                1
+                1,
+                new BigDecimal("100.00")
         );
 
         event.getMap().addElement(seatingArea);
