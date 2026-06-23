@@ -109,6 +109,16 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         add(shell);
     }
 
+    /**
+     * Loads the ticket-selection page only after verifying that the current user is
+     * allowed to access it.
+     *
+     * This protects the route from direct URL access. If the event is currently over
+     * the active-selection limit, the user is moved to the waiting queue instead of
+     * being allowed to bypass it by typing the ticket-selection URL directly.
+     *
+     * @param event Vaadin before-enter navigation event
+     */
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         String routeEventId = event.getRouteParameters().get("eventId").orElse(null);
@@ -117,13 +127,32 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         if (this.eventId == null) {
             Notifications.error("לא ניתן לטעון אירוע לא תקין");
             setEventData(null, null);
+            event.forwardTo(UiRoutes.EVENTS);
             return;
         }
 
         visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
-        loadTicketSelectionEventData();
-    }
 
+        try {
+            boolean mayEnterTicketSelection = reservationPresenter.requestTicketSelectionAccess(
+                    currentToken(),
+                    this.eventId
+            );
+
+            if (!mayEnterTicketSelection) {
+                Notifications.info("האירוע עמוס כרגע, הועברת לתור ההמתנה.");
+                event.forwardTo(UiRoutes.WAITING_QUEUE.replace(":eventId", String.valueOf(this.eventId)));
+                return;
+            }
+
+            loadTicketSelectionEventData();
+
+        } catch (PresentationException e) {
+            Notifications.error(e.getMessage());
+            setEventData(null, null);
+            event.forwardTo(UiRoutes.EVENTS);
+        }
+    }
 
     private Long parseEventId(String value) {
         if (value == null || value.isBlank()) {

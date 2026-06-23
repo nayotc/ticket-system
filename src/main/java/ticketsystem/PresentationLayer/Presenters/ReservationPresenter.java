@@ -1024,6 +1024,50 @@ public class ReservationPresenter {
                     "הרכישה לא הושלמה. יש לנסות שוב.";
         };
     }
+
+    /**
+     * Requests access to the ticket-selection page for the given event.
+     *
+     * This method protects the ticket-selection route itself, so users cannot
+     * bypass the waiting queue by typing the ticket-selection URL directly.
+     *
+     * @param token active guest/member session token
+     * @param eventId event whose ticket-selection page is being requested
+     * @return true if the user may enter ticket selection, false if the user was placed in the waiting queue
+     */
+    public boolean requestTicketSelectionAccess(String token, Long eventId) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            String result = waitingQueueService.tryReserve(eventId, token);
+
+            if ("APPROVED".equals(result)) {
+                return true;
+            }
+
+            if ("QUEUED".equals(result)) {
+                return false;
+            }
+
+            throw presentationError(result);
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Ticket selection failed. Please try again.");
+        }
+    }
+
     /**
      * Releases the user's active purchasing slot for an event.
      *
