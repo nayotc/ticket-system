@@ -1273,22 +1273,11 @@ private String formatSeconds(long seconds) {
 @Override
 protected void onAttach(AttachEvent attachEvent) {
     super.onAttach(attachEvent);
-    UI ui = attachEvent.getUI();
-    ui.setPollInterval(2000);
 
-    // ui.addPollListener(e -> {
-    //     if (eventId != null) {
-    //         reloadTicketSelectionEventDataKeepingSelection();
-    //     }
-    // });
-        ui.addPollListener(e -> {
-        if (eventId != null && getUI().isPresent()) {
-            reloadTicketSelectionEventDataKeepingSelection();
-        }
-    });
     refreshSelectionAccessTimer();
     startClientSideSelectionTimer();
 }
+
 @Override
 protected void onDetach(DetachEvent detachEvent) {
     stopClientSideSelectionTimer();
