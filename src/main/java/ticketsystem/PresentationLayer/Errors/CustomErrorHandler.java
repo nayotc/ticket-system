@@ -74,7 +74,18 @@ public class CustomErrorHandler implements ErrorHandler {
         }
 
         // Fallback for other unexpected errors
-        event.getThrowable().printStackTrace();
+        // event.getThrowable().printStackTrace();
+        logger.logEvent("Unhandled UI exception: " + event.getThrowable().getMessage(), LogLevel.DEBUG);
+        UI ui = UI.getCurrent();
+        if (ui != null) {
+            ui.access(() -> {
+                Notification.show(
+                    "אירעה שגיאה בביצוע הפעולה. במידה והבעיה נמשכת, ודאו חיבור תקין לרשת.", 
+                    5000, 
+                    Position.TOP_CENTER
+                );
+            });
+        }
     }
 
     private void handleSessionTimeout() {
