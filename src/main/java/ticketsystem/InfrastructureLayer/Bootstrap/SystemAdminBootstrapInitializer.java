@@ -97,10 +97,7 @@ public class SystemAdminBootstrapInitializer implements CommandLineRunner {
     }
 
     private Optional<Member> findMemberByUsername(String username) {
-        return userService.getAllUsers()
-                .stream()
-                .filter(member -> member.getUserName().equalsIgnoreCase(username))
-                .findFirst();
+        return userService.findMemberByUsername(username);
     }
 
     private void registerAdminMember() {

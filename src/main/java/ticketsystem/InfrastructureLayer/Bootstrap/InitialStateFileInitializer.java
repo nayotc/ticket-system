@@ -117,29 +117,48 @@ public class InitialStateFileInitializer implements CommandLineRunner {
         registerUsers(config.users());
 
         String u1Token = login(config.user("u1"));
-        Long companyId = createOrFindCompany(u1Token, config.company().name());
+        CompanyBootstrapResult companyResult = createOrFindCompany(u1Token, config.company().name());
+        Long companyId = companyResult.companyId();
 
-        membershipService.requestOwnerAssignment(u1Token, companyId, config.user("u2").username());
         String u2Token = login(config.user("u2"));
-        membershipService.approveAssignment(u2Token, companyId);
-
-        Set<Permission> u3Permissions = EnumSet.of(Permission.CONFIGURE_HALL_AND_MAP);
-        membershipService.requestManagerAssignment(u2Token, companyId, config.user("u3").username(), u3Permissions);
         String u3Token = login(config.user("u3"));
-        membershipService.approveAssignment(u3Token, companyId);
 
-        Long eventId = createOrFindEvent(u2Token, companyId, config.event());
-        defineEventMap(u2Token, eventId, config.event());
+        if (companyResult.created()) {
+            membershipService.requestOwnerAssignment(u1Token, companyId, config.user("u2").username());
+            membershipService.approveAssignment(u2Token, companyId);
 
-        addCompanyCouponDiscount(u2Token, companyId, config.couponDiscount());
+            Set<Permission> u3Permissions = EnumSet.of(Permission.CONFIGURE_HALL_AND_MAP);
+            membershipService.requestManagerAssignment(u2Token, companyId, config.user("u3").username(), u3Permissions);
+            membershipService.approveAssignment(u3Token, companyId);
+
+            addCompanyCouponDiscount(u2Token, companyId, config.couponDiscount());
+        } else {
+            System.out.println(
+                    "Initial-state company already existed, skipping role assignments and company discount policy "
+                            + "to avoid duplicating assignments or overwriting existing company data."
+            );
+        }
+
+        EventBootstrapResult eventResult = createOrFindEvent(u2Token, companyId, config.event());
+
+        if (eventResult.created()) {
+            defineEventMap(u2Token, eventResult.eventId(), config.event());
+        } else {
+            System.out.println(
+                    "Initial-state event already existed, skipping map definition "
+                            + "to avoid overwriting existing event map and area prices."
+            );
+}
 
         logoutAndExit(u1Token);
         logoutAndExit(u2Token);
         logoutAndExit(u3Token);
 
         System.out.println(
-                "Version 3 initial-state bootstrap completed successfully. "
-                        + "companyId=" + companyId + ", eventId=" + eventId
+                "Initial-state bootstrap completed. companyId="
+                        + companyId
+                        + ", eventId="
+                        + eventResult.eventId()
         );
     }
 
@@ -156,9 +175,7 @@ public class InitialStateFileInitializer implements CommandLineRunner {
 
     private void registerUsers(List<UserConfig> users) {
         for (UserConfig user : users) {
-            boolean alreadyExists = userService.getAllUsers()
-                    .stream()
-                    .anyMatch(existing -> existing.getUserName().equalsIgnoreCase(user.username()));
+            boolean alreadyExists = userService.findMemberByUsername(user.username()).isPresent();
 
             if (alreadyExists) {
                 System.out.println("Initial-state user already exists, skipping signup: " + user.username());
@@ -185,23 +202,22 @@ public class InitialStateFileInitializer implements CommandLineRunner {
         return userService.login(guestToken, user.username(), user.password());
     }
 
-    private Long createOrFindCompany(String u1Token, String companyName) throws Exception {
-        Optional<CompanyDTO> existingCompany = companyService.getAllCompanies()
+    private CompanyBootstrapResult createOrFindCompany(String u1Token, String companyName) throws Exception {        Optional<CompanyDTO> existingCompany = companyService.getAllCompanies()
                 .stream()
                 .filter(company -> company.getName().equalsIgnoreCase(companyName))
                 .findFirst();
 
         if (existingCompany.isPresent()) {
             System.out.println("Initial-state company already exists, reusing: " + companyName);
-            return existingCompany.get().getId();
+            return new CompanyBootstrapResult(existingCompany.get().getId(), false);
         }
 
         CompanyDTO createdCompany = companyService.createProductionCompany(u1Token, companyName);
         System.out.println("Initial-state company created: " + companyName + " [ID: " + createdCompany.getId() + "]");
-        return createdCompany.getId();
+        return new CompanyBootstrapResult(createdCompany.getId(), true);
     }
 
-    private Long createOrFindEvent(String u2Token, Long companyId, EventConfig eventConfig) {
+    private EventBootstrapResult createOrFindEvent(String u2Token, Long companyId, EventConfig eventConfig) {
         Optional<Event> existingEvent = eventRepository.getAllEvents()
                 .stream()
                 .filter(event -> companyId.equals(event.getCompanyId()))
@@ -210,7 +226,7 @@ public class InitialStateFileInitializer implements CommandLineRunner {
 
         if (existingEvent.isPresent()) {
             System.out.println("Initial-state event already exists, reusing: " + eventConfig.name());
-            return existingEvent.get().getId();
+            return new EventBootstrapResult(existingEvent.get().getId(), false);
         }
 
         Long eventId = eventService.insertEvent(
@@ -228,7 +244,7 @@ public class InitialStateFileInitializer implements CommandLineRunner {
         );
 
         System.out.println("Initial-state event created: " + eventConfig.name() + " [ID: " + eventId + "]");
-        return eventId;
+        return new EventBootstrapResult(eventId, true);
     }
 
     /**
@@ -392,5 +408,11 @@ public class InitialStateFileInitializer implements CommandLineRunner {
             String compositionType,
             String expiresAt
     ) {
+    }
+
+    private record CompanyBootstrapResult(Long companyId, boolean created) {
+    }
+
+    private record EventBootstrapResult(Long eventId, boolean created) {
     }
 }
