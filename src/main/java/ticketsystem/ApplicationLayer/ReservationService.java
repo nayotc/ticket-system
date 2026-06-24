@@ -3,11 +3,11 @@ package ticketsystem.ApplicationLayer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.Events.OrderCompletedListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -41,10 +39,10 @@ import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.lottery.Lottery;
 import ticketsystem.DomainLayer.order.ActiveOrder;
-import ticketsystem.DomainLayer.order.Ticket;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.discount.PricingQuote;
 import ticketsystem.DTO.PricingQuoteDTO;
+import ticketsystem.DomainLayer.order.Ticket;
 
 @Service
 public class ReservationService {
@@ -66,6 +64,7 @@ public class ReservationService {
     private final Set<Long> expirationWarningSentOrderIds = ConcurrentHashMap.newKeySet();
     private final Set<Long> soldOutNotificationSentEventIds = ConcurrentHashMap.newKeySet();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final long EXPIRATION_WARNING_BEFORE_MINUTES = 2;
 
     public ReservationService(
             IOrderRepository orderRepository,
@@ -254,10 +253,10 @@ public class ReservationService {
 
             logger.logEvent(
                     "Seat ticket removed from active order: orderId=" + order.getOrderId()
-                            + ", eventId=" + eventId
-                            + ", areaId=" + areaId
-                            + ", row=" + position.getRow()
-                            + ", chair=" + position.getChair(),
+                    + ", eventId=" + eventId
+                    + ", areaId=" + areaId
+                    + ", row=" + position.getRow()
+                    + ", chair=" + position.getChair(),
                     LogLevel.INFO);
             if (event != null && event.getSaleStatus()!=SaleStatus.SOLD_OUT) {
                 soldOutNotificationSentEventIds.remove(event.getId());
@@ -324,7 +323,7 @@ public class ReservationService {
 
             logger.logEvent(
                     "Active order viewed: orderId=" + order.getOrderId()
-                            + ", eventId=" + order.getEventId(),
+                    + ", eventId=" + order.getEventId(),
                     LogLevel.INFO);
 
             return activeOrderDTO;
@@ -336,17 +335,17 @@ public class ReservationService {
     }
 
     /**
-     * Returns the current active order for the given UI session token.
-     * This method is intended for presentation-layer flows such as the active order
-     * cart, where the UI needs to display the current user's active order without
-     * receiving an order id in the route.
+     * Returns the current active order for the given UI session token. This
+     * method is intended for presentation-layer flows such as the active order
+     * cart, where the UI needs to display the current user's active order
+     * without receiving an order id in the route.
      *
-     * The lookup is based on the token type:
-     * - guest token: finds the active order by session token
-     * - member token: extracts the member id and finds the active order by user id
+     * The lookup is based on the token type: - guest token: finds the active
+     * order by session token - member token: extracts the member id and finds
+     * the active order by user id
      *
-     * If no active order exists, or if the found order is no longer ACTIVE, this
-     * method returns null so the UI can render an empty cart state.
+     * If no active order exists, or if the found order is no longer ACTIVE,
+     * this method returns null so the UI can render an empty cart state.
      *
      * @param token active guest/member session token
      * @return active order DTO for the current session, or null if none exists
@@ -374,7 +373,7 @@ public class ReservationService {
 
             logger.logEvent(
                     "Current active order viewed: orderId=" + order.getOrderId()
-                            + ", eventId=" + order.getEventId(),
+                    + ", eventId=" + order.getEventId(),
                     LogLevel.INFO);
 
             return activeOrderDTO;
@@ -393,17 +392,17 @@ public class ReservationService {
      * and returns an application-layer DTO with the subtotal, total discount
      * amount, final total, and the discounts that were actually applied.
      *
-     * This method only calculates pricing. It does not complete checkout, does not
-     * charge payment, and does not validate purchase-policy rules that require
-     * buyer details, such as minimum age. Purchase-policy validation is still done
-     * before payment.
+     * This method only calculates pricing. It does not complete checkout, does
+     * not charge payment, and does not validate purchase-policy rules that
+     * require buyer details, such as minimum age. Purchase-policy validation is
+     * still done before payment.
      *
-     * The domain layer returns a PricingQuote object, but this service converts it
-     * to PricingQuoteDTO before returning it so upper layers do not receive
+     * The domain layer returns a PricingQuote object, but this service converts
+     * it to PricingQuoteDTO before returning it so upper layers do not receive
      * domain-layer objects directly.
      *
-     * @param token      active guest/member session token
-     * @param eventId    event identifier of the active order
+     * @param token active guest/member session token
+     * @param eventId event identifier of the active order
      * @param couponCode coupon code entered by the user, if any
      * @return full pricing DTO for the active order
      */
@@ -458,7 +457,7 @@ public class ReservationService {
             return true;
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to validate active order policy: " + e.getMessage());
-           
+
         }
     }
 
@@ -540,13 +539,13 @@ public class ReservationService {
             if (!listenersNotified) {
                 logger.logEvent(
                         "Order completed but notifying listeners failed: orderId="
-                                + order.getOrderId() + ", eventId=" + eventId,
+                        + order.getOrderId() + ", eventId=" + eventId,
                         LogLevel.WARN);
             }
 
             logger.logEvent(
                     "Checkout completed successfully: orderId="
-                            + order.getOrderId() + ", eventId=" + eventId,
+                    + order.getOrderId() + ", eventId=" + eventId,
                     LogLevel.INFO);
 
             return true;
@@ -570,7 +569,7 @@ public class ReservationService {
 
         logger.logEvent(
                 "Active order expired during checkout: orderId="
-                        + order.getOrderId() + ", eventId=" + event.getId(),
+                + order.getOrderId() + ", eventId=" + event.getId(),
                 LogLevel.INFO
         );
     }
@@ -602,20 +601,19 @@ public class ReservationService {
      * before the checkout flow was fully completed.
      *
      * At this stage, the system must refund the payment because the purchase
-     * cannot be safely completed. The method also logs the original failure cause
-     * before throwing a user-facing checkout failure exception.
+     * cannot be safely completed. The method also logs the original failure
+     * cause before throwing a user-facing checkout failure exception.
      *
      * Logging the original exception is important because the public exception
      * message intentionally stays general, while the internal cause may explain
      * whether the failure came from ticket issuing, order status validation,
      * seat status validation, persistence, or another checkout-completion step.
      *
-     * @param order                active order that failed during checkout
-     *                             completion
-     * @param event                event related to the active order
-     * @param amount               payment amount that should be refunded
-     * @param originalException    original exception that caused checkout
-     *                             completion to fail
+     * @param order active order that failed during checkout completion
+     * @param event event related to the active order
+     * @param amount payment amount that should be refunded
+     * @param originalException original exception that caused checkout
+     * completion to fail
      * @param refundSuccessMessage message used when refund succeeds
      * @param refundFailureMessage message used when refund itself fails
      */
@@ -630,12 +628,12 @@ public class ReservationService {
         Long eventId = event.getId();
         logger.logError(
                 refundSuccessMessage
-                        + " Original checkout failure cause: "
-                        + originalException.getClass().getSimpleName()
-                        + " - "
-                        + originalException.getMessage()
-                        + ". orderId=" + order.getOrderId()
-                        + ", eventId=" + eventId,
+                + " Original checkout failure cause: "
+                + originalException.getClass().getSimpleName()
+                + " - "
+                + originalException.getMessage()
+                + ". orderId=" + order.getOrderId()
+                + ", eventId=" + eventId,
                 originalException);
         reservationDomeinService.expire(event, order);
         boolean refundResult = paymentService.refund(transactionId);
@@ -663,7 +661,7 @@ public class ReservationService {
 
     // secure barcode logic
     private OrderDTO creaOrderDTOwithBarcode(ActiveOrder order, Event event, BigDecimal total, Integer transactionId) {
-        OrderDTO orderDTO = toDTO(order, event,total, transactionId);
+        OrderDTO orderDTO = toDTO(order, event, total, transactionId);
 
         for (PurchaseDTO purchesDTO : orderDTO.getTickets()) {
             TicketIssueRequest request = createTicketIssueRequest(purchesDTO, orderDTO);
@@ -702,7 +700,7 @@ public class ReservationService {
             orderRepository.addOrder(order);
             logger.logEvent(
                     "Active order created: orderId=" + order.getOrderId()
-                            + ", eventId=" + eventId,
+                    + ", eventId=" + eventId,
                     LogLevel.INFO);
         }
 
@@ -768,63 +766,131 @@ public class ReservationService {
     }
     
 
-    private void expireOldOrders() {
-        List<ActiveOrder> allOrders = orderRepository.getAll();
+    // private void expireOldOrders() {
+    //     LocalDateTime now = LocalDateTime.now();
+    //     List<ActiveOrder> expiredOrders = orderRepository.getExpiredAndGuestOrders();
 
-        for (ActiveOrder order : allOrders) {
-            try{
-            Event event = eventRepository.getEventById(order.getEventId());
+    //     for (ActiveOrder order : expiredOrders) {
+    //         try {
+    //             if (order == null) {
+    //                 continue;
+    //             }
 
-            if (event == null || order == null) {
-                continue;
-            }
-            String token= order.getSessionToken();
-            boolean tokenExpired =false;
-            try{
-                tokenService.validateToken(token);
+    //             Event event = eventRepository.getEventById(order.getEventId());
+
+    //             if (event == null) {
+    //                 continue;
+    //             }
+
+    //             String token = order.getSessionToken();
+    //             boolean tokenExpired = false;
+    //             try {
+    //                 tokenService.validateToken(token);
+    //             } catch (Exception e) {
+    //                 tokenExpired = true;
+    //             }
+
+    //             boolean guestOrder = order.getUserId() == null;
+    //             if (reservationDomeinService.timeExpire(event, order) || (tokenExpired && guestOrder)) {
+    //                 List<Ticket> tickets = reservationDomeinService.expire(event, order);
+
+    //                 notifyOrderOwner(
+    //                         order,
+    //                         "Your active order has expired. The reserved tickets were released back to the inventory.");
+
+    //                 expirationWarningSentOrderIds.remove(order.getOrderId());
+    //                 releaseTicketInEvent(tickets);
+    //                 orderRepository.deleteOrder(order.getOrderId());
+    //                 logger.logEvent(
+    //                         "Expired order cancelled: " + order.getOrderId(),
+    //                         LogLevel.WARN);
+    //             }
+    //         } catch (Exception e) {
+    //             logger.logEvent(
+    //                     "Failed to expire orderId=" + order.getOrderId()
+    //                             + ", eventId=" + order.getEventId()
+    //                             + ", reason=" + e.getMessage(),
+    //                     LogLevel.WARN
+    //             );
+    //         }
+    //     }
+
+    //     List<ActiveOrder> expiringOrders = orderRepository.findOrdersExpiringBetween(
+    //             now,
+    //             now.plusMinutes(EXPIRATION_WARNING_BEFORE_MINUTES)
+    //     );
+
+    //     for (ActiveOrder order : expiringOrders) {
+    //         if (expirationWarningSentOrderIds.add(order.getOrderId())) {
+    //             notifyOrderOwner(
+    //                     order,
+    //                     "Your active order is about to expire. Please complete your purchase soon.");
+
+    //             logger.logEvent(
+    //                     "Active order expiration warning sent: " + order.getOrderId(),
+    //                     LogLevel.INFO);
+    //         }
+    //     }
+    // }
+
+     private void expireOldOrders() {
+            List<ActiveOrder> allOrders = orderRepository.getAll();
+
+            for (ActiveOrder order : allOrders) {
+                try{
+                Event event = eventRepository.getEventById(order.getEventId());
+
+                if (event == null || order == null) {
+                    continue;
+                }
+                String token= order.getSessionToken();
+                boolean tokenExpired =false;
+                try{
+                    tokenService.validateToken(token);
+                }
+                catch (Exception e){
+                    tokenExpired = true;
+                }
+                boolean guestOrder = order.getUserId() == null;
+                if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
+                    List<Ticket> tickets= reservationDomeinService.expire(event, order);
+                    
+                    notifyOrderOwner(
+                            order,
+                            "Your active order has expired. The reserved tickets were released back to the inventory.");
+                    
+                    expirationWarningSentOrderIds.remove(order.getOrderId());
+                    releaseTicketInEvent(tickets);
+                    orderRepository.deleteOrder(order.getOrderId());
+                    logger.logEvent(
+                            "Expired order cancelled: " + order.getOrderId(),
+                            LogLevel.WARN);
+
+                    continue;
+                }
+
+                if (reservationDomeinService.timeAboutToExpire(event, order) && expirationWarningSentOrderIds.add(order.getOrderId())) {
+
+                    notifyOrderOwner(
+                            order,
+                            "Your active order is about to expire. Please complete your purchase soon.");
+
+                    logger.logEvent(
+                            "Active order expiration warning sent: " + order.getOrderId(),
+                            LogLevel.INFO);
+                }
             }
             catch (Exception e){
-                tokenExpired = true;
+                            logger.logEvent(
+                        "Failed to expire orderId=" + order.getOrderId()
+                                + ", eventId=" + order.getEventId()
+                                + ", reason=" + e.getMessage(),
+                        LogLevel.WARN
+                );
             }
-            boolean guestOrder = order.getUserId() == null;
-            if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
-                List<Ticket> tickets= reservationDomeinService.expire(event, order);
-                
-                notifyOrderOwner(
-                        order,
-                        "Your active order has expired. The reserved tickets were released back to the inventory.");
-                
-                expirationWarningSentOrderIds.remove(order.getOrderId());
-                releaseTicketInEvent(tickets);
-                orderRepository.deleteOrder(order.getOrderId());
-                logger.logEvent(
-                        "Expired order cancelled: " + order.getOrderId(),
-                        LogLevel.WARN);
-
-                continue;
-            }
-
-            if (reservationDomeinService.timeAboutToExpire(event, order) && expirationWarningSentOrderIds.add(order.getOrderId())) {
-
-                notifyOrderOwner(
-                        order,
-                        "Your active order is about to expire. Please complete your purchase soon.");
-
-                logger.logEvent(
-                        "Active order expiration warning sent: " + order.getOrderId(),
-                        LogLevel.INFO);
-            }
-        }
-        catch (Exception e){
-                          logger.logEvent(
-                    "Failed to expire orderId=" + order.getOrderId()
-                            + ", eventId=" + order.getEventId()
-                            + ", reason=" + e.getMessage(),
-                    LogLevel.WARN
-            );
         }
     }
-}
+
     private void expireOldOrdersForEvent(Event event) {
 
         if (event == null) {
@@ -929,7 +995,7 @@ public class ReservationService {
 
             logger.logEvent(
                     "Sold out notification sent for eventId=" + event.getId()
-                            + ", companyId=" + event.getCompanyId(),
+                    + ", companyId=" + event.getCompanyId(),
                     LogLevel.INFO);
 
         } catch (Exception e) {
@@ -937,79 +1003,81 @@ public class ReservationService {
 
             logger.logEvent(
                     "Failed to send sold out notification for eventId="
-                            + event.getId() + ". reason=" + e.getMessage(),
+                    + event.getId() + ". reason=" + e.getMessage(),
                     LogLevel.WARN);
         }
     }
 
     private void notifyOrderOwner(ActiveOrder order, String message) {
-    if (order == null || message == null || message.isBlank()) {
-        return;
-    }
-
-    try {
-        if (order.getUserId() != null) {
-            notificationsService.notifyMember(order.getUserId(), message);
-            return;
-        }
-
-        String sessionToken = order.getSessionToken();
-        if (sessionToken == null) {
+        if (order == null || message == null || message.isBlank()) {
             return;
         }
 
         try {
-            tokenService.validateToken(sessionToken);
-            notificationsService.notifyGuest(sessionToken, message);
-        } catch (Exception ignored) {
-            // אורח לא מחובר / טוקן פג — אין למי לשלוח התראה
+            if (order.getUserId() != null) {
+                notificationsService.notifyMember(order.getUserId(), message);
+                return;
+            }
+
+            String sessionToken = order.getSessionToken();
+            if (sessionToken == null) {
+                return;
+            }
+
+            try {
+                tokenService.validateToken(sessionToken);
+                notificationsService.notifyGuest(sessionToken, message);
+            } catch (Exception ignored) {
+                // אורח לא מחובר / טוקן פג — אין למי לשלוח התראה
+            }
+
+        } catch (Exception e) {
+            logger.logEvent("Failed to notify order owner. reason=" + e.getMessage(), LogLevel.WARN);
+        }
+    }
+
+    public OrderDTO toDTO(ActiveOrder order, Event event, BigDecimal total, Integer transactionId) {
+        if (order == null) {
+            throw new IllegalArgumentException("Order cannot be null");
         }
 
-    } catch (Exception e) {
-        logger.logEvent("Failed to notify order owner. reason=" + e.getMessage(), LogLevel.WARN);
+        List<PurchaseDTO> ticketDTOs = new ArrayList<>();
+
+        for (Ticket ticket : order.getTickets()) {
+            ticketDTOs.add(new PurchaseDTO(
+                    ticket.getTicketId(),
+                    ticket.getRow(),
+                    ticket.getChair(),
+                    event.getAreaName(ticket.getAreaId()),
+                    ticket.getPrice(),
+                    "ACTIVE",
+                    ""
+            ));
+        }
+
+        Long eventId = order.getEventId();
+        Long memberId = order.getUserId();
+
+        String eventName = event == null ? "אירוע" : event.getName();
+        String location = event == null ? "" : event.getLocation().toString();
+
+        Long companyId = event == null ? null : event.getCompanyId();
+
+        return new OrderDTO(
+                0L,
+                ticketDTOs,
+                eventName,
+                location,
+                memberId,
+                companyId,
+                null,
+                eventId,
+                total == null ? BigDecimal.ZERO : total,
+                transactionId,
+                false
+        );
     }
-}
-public OrderDTO toDTO(ActiveOrder order, Event event, BigDecimal total, Integer transactionId) {
-    if (order == null) {
-        throw new IllegalArgumentException("Order cannot be null");
-    }
 
-    List<PurchaseDTO> ticketDTOs = new ArrayList<>();
-
-    for (Ticket ticket : order.getTickets()) {
-        ticketDTOs.add(new PurchaseDTO(
-                ticket.getTicketId(),
-                ticket.getRow(),
-                ticket.getChair(),
-                event.getAreaName(ticket.getAreaId()),
-                ticket.getPrice(),
-                "ACTIVE",
-                ""
-        ));
-    }
-
-    Long eventId = order.getEventId();
-    Long memberId = order.getUserId();
-
-    String eventName = event == null ? "אירוע" : event.getName();
-    String location = event == null ? "" : event.getLocation().toString();
-
-    Long companyId = event == null ? null : event.getCompanyId();
-
-    return new OrderDTO(
-            0L,
-            ticketDTOs,
-            eventName,
-            location,
-            memberId,
-            companyId,
-            null,
-            eventId,
-            total == null ? BigDecimal.ZERO : total,
-            transactionId,
-            false
-    );
-}
     public ActiveOrderDTO toDTO(ActiveOrder order) {
         List<TicketDTO> ticketDTOs = new ArrayList<>();
 
@@ -1024,14 +1092,14 @@ public OrderDTO toDTO(ActiveOrder order, Event event, BigDecimal total, Integer 
             ));
         }
 
-    return new ActiveOrderDTO(
-            order.getOrderId(),
-            order.getUserId(),
-            order.getEventId(),
-            ticketDTOs,
-            order.getExpiresAtEpochMillis()
-    );
-}
+        return new ActiveOrderDTO(
+                order.getOrderId(),
+                order.getUserId(),
+                order.getEventId(),
+                ticketDTOs,
+                order.getExpiresAtEpochMillis()
+        );
+    }
 
     private TicketIssueRequest createTicketIssueRequest(PurchaseDTO purchesDTO, OrderDTO orderDTO) {
         {
@@ -1040,7 +1108,7 @@ public OrderDTO toDTO(ActiveOrder order, Event event, BigDecimal total, Integer 
             String seatsJson = seating
                     ? buildSeatsJson(purchesDTO)
                     : null;
-           
+
             return new TicketIssueRequest(
                     String.valueOf(orderDTO.getMemberId()),
                     String.valueOf(orderDTO.getEventId()),

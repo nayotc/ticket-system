@@ -19,6 +19,8 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.BatchSize;
+
 @Entity
 @Table(name = "discount_policies")
 public class DiscountPolicy {
@@ -34,6 +36,7 @@ public class DiscountPolicy {
     )
     @JoinColumn(name = "discount_policy_id")
     @OrderColumn(name = "discount_order")
+    @BatchSize(size = 50)
     private List<DiscountTypes> discounts = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)

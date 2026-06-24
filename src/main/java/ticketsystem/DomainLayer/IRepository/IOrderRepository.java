@@ -1,4 +1,5 @@
 package ticketsystem.DomainLayer.IRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 
@@ -26,6 +27,8 @@ public interface IOrderRepository {
     ActiveOrder getActiveOrderByUserId(Long userId);
     
     List<ActiveOrder> getActiveOrdersByEventId(Long eventId);
+    List<ActiveOrder> findExpiredOrders(LocalDateTime now);
+    List<ActiveOrder> findOrdersExpiringBetween(LocalDateTime now, LocalDateTime warningCutoff);
     
     List<ActiveOrder> getExpiredAndGuestOrders();
     
