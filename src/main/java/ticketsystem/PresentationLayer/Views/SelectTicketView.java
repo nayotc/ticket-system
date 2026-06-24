@@ -75,6 +75,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     //selectionAccessTimer.setId("selection-access-timer");
     private Registration selectionAccessPollRegistration;
     private boolean allowLeavingSelectionPage = false;
+    private boolean queueAccessReleased = false;
 
     private final ReservationPresenter reservationPresenter;
     private final UiVisitCoordinator visitCoordinator;
@@ -443,13 +444,29 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             return;
         }
 
-        reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+        releaseQueueAccessIfNeeded();
 
         allowLeavingSelectionPage = true;
 
         UI.getCurrent().navigate(
                 UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(eventId))
         );
+    }
+
+    /**
+     * Releases the current user's active selection slot for the selected event once.
+     *
+     * This cleanup is required when the user leaves the ticket-selection page.
+     * The method is idempotent at the UI level so that beforeLeave and detach do
+     * not trigger duplicate release attempts for the same view instance.
+     */
+    private void releaseQueueAccessIfNeeded() {
+        if (queueAccessReleased || eventId == null) {
+            return;
+        }
+
+        reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+        queueAccessReleased = true;
     }
 
     /**
@@ -471,7 +488,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         }
 
         if (!hasActiveQueueTurnDeadline()) {
-            reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+            releaseQueueAccessIfNeeded();
             allowLeavingSelectionPage = true;
             return;
         }
@@ -486,7 +503,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         dialog.setCancelable(true);
 
         dialog.addConfirmListener(e -> {
-            reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+            releaseQueueAccessIfNeeded();
             allowLeavingSelectionPage = true;
             action.proceed();
         });
@@ -1399,6 +1416,7 @@ private String findAreaNameById(Long areaId) {
 
     @Override
     protected void onDetach(DetachEvent detachEvent) {
+        releaseQueueAccessIfNeeded();
         stopClientSideSelectionTimer();
         super.onDetach(detachEvent);
     }
