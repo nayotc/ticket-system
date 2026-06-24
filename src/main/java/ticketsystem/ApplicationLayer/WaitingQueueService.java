@@ -46,7 +46,7 @@ public class WaitingQueueService {
     private final ConcurrentHashMap<Long, Object> eventLocks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Set<String>> activeReservationSessions = new ConcurrentHashMap<>();
     private final ISystemLogger logger;
-    private static final Duration SELECTION_ACCESS_DURATION = Duration.ofMinutes(5);
+    private static final Duration SELECTION_ACCESS_DURATION = Duration.ofMinutes(10);
 
     private final ConcurrentHashMap<Long, Map<String, Instant>> selectionAccessDeadlines =
         new ConcurrentHashMap<>();
