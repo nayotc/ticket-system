@@ -766,69 +766,127 @@ public class ReservationService {
     }
     
 
-    private void expireOldOrders() {
-        LocalDateTime now = LocalDateTime.now();
-        List<ActiveOrder> expiredOrders = orderRepository.getExpiredAndGuestOrders();
+    // private void expireOldOrders() {
+    //     LocalDateTime now = LocalDateTime.now();
+    //     List<ActiveOrder> expiredOrders = orderRepository.getExpiredAndGuestOrders();
 
-        for (ActiveOrder order : expiredOrders) {
-            try {
-                if (order == null) {
-                    continue;
-                }
+    //     for (ActiveOrder order : expiredOrders) {
+    //         try {
+    //             if (order == null) {
+    //                 continue;
+    //             }
 
+    //             Event event = eventRepository.getEventById(order.getEventId());
+
+    //             if (event == null) {
+    //                 continue;
+    //             }
+
+    //             String token = order.getSessionToken();
+    //             boolean tokenExpired = false;
+    //             try {
+    //                 tokenService.validateToken(token);
+    //             } catch (Exception e) {
+    //                 tokenExpired = true;
+    //             }
+
+    //             boolean guestOrder = order.getUserId() == null;
+    //             if (reservationDomeinService.timeExpire(event, order) || (tokenExpired && guestOrder)) {
+    //                 List<Ticket> tickets = reservationDomeinService.expire(event, order);
+
+    //                 notifyOrderOwner(
+    //                         order,
+    //                         "Your active order has expired. The reserved tickets were released back to the inventory.");
+
+    //                 expirationWarningSentOrderIds.remove(order.getOrderId());
+    //                 releaseTicketInEvent(tickets);
+    //                 orderRepository.deleteOrder(order.getOrderId());
+    //                 logger.logEvent(
+    //                         "Expired order cancelled: " + order.getOrderId(),
+    //                         LogLevel.WARN);
+    //             }
+    //         } catch (Exception e) {
+    //             logger.logEvent(
+    //                     "Failed to expire orderId=" + order.getOrderId()
+    //                             + ", eventId=" + order.getEventId()
+    //                             + ", reason=" + e.getMessage(),
+    //                     LogLevel.WARN
+    //             );
+    //         }
+    //     }
+
+    //     List<ActiveOrder> expiringOrders = orderRepository.findOrdersExpiringBetween(
+    //             now,
+    //             now.plusMinutes(EXPIRATION_WARNING_BEFORE_MINUTES)
+    //     );
+
+    //     for (ActiveOrder order : expiringOrders) {
+    //         if (expirationWarningSentOrderIds.add(order.getOrderId())) {
+    //             notifyOrderOwner(
+    //                     order,
+    //                     "Your active order is about to expire. Please complete your purchase soon.");
+
+    //             logger.logEvent(
+    //                     "Active order expiration warning sent: " + order.getOrderId(),
+    //                     LogLevel.INFO);
+    //         }
+    //     }
+    // }
+
+     private void expireOldOrders() {
+            List<ActiveOrder> allOrders = orderRepository.getAll();
+
+            for (ActiveOrder order : allOrders) {
+                try{
                 Event event = eventRepository.getEventById(order.getEventId());
 
-                if (event == null) {
+                if (event == null || order == null) {
                     continue;
                 }
-
-                String token = order.getSessionToken();
-                boolean tokenExpired = false;
-                try {
+                String token= order.getSessionToken();
+                boolean tokenExpired =false;
+                try{
                     tokenService.validateToken(token);
-                } catch (Exception e) {
+                }
+                catch (Exception e){
                     tokenExpired = true;
                 }
-
                 boolean guestOrder = order.getUserId() == null;
-                if (reservationDomeinService.timeExpire(event, order) || (tokenExpired && guestOrder)) {
-                    List<Ticket> tickets = reservationDomeinService.expire(event, order);
-
+                if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
+                    List<Ticket> tickets= reservationDomeinService.expire(event, order);
+                    
                     notifyOrderOwner(
                             order,
                             "Your active order has expired. The reserved tickets were released back to the inventory.");
-
+                    
                     expirationWarningSentOrderIds.remove(order.getOrderId());
                     releaseTicketInEvent(tickets);
                     orderRepository.deleteOrder(order.getOrderId());
                     logger.logEvent(
                             "Expired order cancelled: " + order.getOrderId(),
                             LogLevel.WARN);
+
+                    continue;
                 }
-            } catch (Exception e) {
-                logger.logEvent(
+
+                if (reservationDomeinService.timeAboutToExpire(event, order) && expirationWarningSentOrderIds.add(order.getOrderId())) {
+
+                    notifyOrderOwner(
+                            order,
+                            "Your active order is about to expire. Please complete your purchase soon.");
+
+                    logger.logEvent(
+                            "Active order expiration warning sent: " + order.getOrderId(),
+                            LogLevel.INFO);
+                }
+            }
+            catch (Exception e){
+                            logger.logEvent(
                         "Failed to expire orderId=" + order.getOrderId()
                                 + ", eventId=" + order.getEventId()
                                 + ", reason=" + e.getMessage(),
                         LogLevel.WARN
                 );
-            }
-        }
-
-        List<ActiveOrder> expiringOrders = orderRepository.findOrdersExpiringBetween(
-                now,
-                now.plusMinutes(EXPIRATION_WARNING_BEFORE_MINUTES)
-        );
-
-        for (ActiveOrder order : expiringOrders) {
-            if (expirationWarningSentOrderIds.add(order.getOrderId())) {
-                notifyOrderOwner(
-                        order,
-                        "Your active order is about to expire. Please complete your purchase soon.");
-
-                logger.logEvent(
-                        "Active order expiration warning sent: " + order.getOrderId(),
-                        LogLevel.INFO);
             }
         }
     }
