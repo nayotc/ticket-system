@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ticketsystem.DomainLayer.IRepository.IOrderRepository;
 import ticketsystem.DomainLayer.exception.OptimisticLockException;
 import ticketsystem.DomainLayer.order.ActiveOrder;
+import ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus;
 import ticketsystem.InfrastructureLayer.persistence.OrderJpaRepository;
 
 @Repository
@@ -103,9 +104,7 @@ public class OrderRepository implements IOrderRepository {
     @Override
     @Transactional
     public void deleteActiveOrdersByUserId(Long userId) {
-        List<ActiveOrder> orders = orderJpaRepository.findAllWithTickets().stream()
-                .filter(order -> userId.equals(order.getUserId()))
-                .toList();
+        List<ActiveOrder> orders = orderJpaRepository.findAllByUserIdWithTickets(userId);
         orderJpaRepository.deleteAll(orders);
     }
 
@@ -129,6 +128,30 @@ public class OrderRepository implements IOrderRepository {
     @Transactional(readOnly = true)
     public List<ActiveOrder> getActiveOrdersByEventId(Long eventId) {
         return orderJpaRepository.findByEventIdWithTickets(eventId).stream()
+                .map(ActiveOrder::copy)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ActiveOrder> findExpiredOrders(LocalDateTime now) {
+        return orderJpaRepository.findExpiredOrdersWithTickets(
+                now,
+                OrderStatus.PENDING_CHECKOUT,
+                OrderStatus.CANCELLED
+        ).stream()
+                .map(ActiveOrder::copy)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ActiveOrder> findOrdersExpiringBetween(LocalDateTime now, LocalDateTime warningCutoff) {
+        return orderJpaRepository.findOrdersExpiringBetweenWithTickets(
+                now,
+                warningCutoff,
+                OrderStatus.PENDING_CHECKOUT
+        ).stream()
                 .map(ActiveOrder::copy)
                 .collect(Collectors.toList());
     }

@@ -17,21 +17,22 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
-import java.math.BigDecimal;
-import java.util.Objects;
+
+import org.hibernate.annotations.BatchSize;
 
 @Embeddable
 public class EventMap {
 
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "first", column = @Column(name = "map_width")),
-            @AttributeOverride(name = "second", column = @Column(name = "map_height"))
+        @AttributeOverride(name = "first", column = @Column(name = "map_width")),
+        @AttributeOverride(name = "second", column = @Column(name = "map_height"))
     })
     private Pair<Integer, Integer> size;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id")
+    @BatchSize(size = 50)
     private List<Element> elements;
 
     protected EventMap() {
@@ -162,7 +163,7 @@ public class EventMap {
     }
 
     public String getAreaName(Long areaId) {
-    if (areaId == null) {
+        if (areaId == null) {
             return "אזור לא ידוע";
         }
 

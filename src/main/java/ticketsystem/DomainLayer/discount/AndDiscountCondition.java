@@ -11,6 +11,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 
+import org.hibernate.annotations.BatchSize;
+
 @Entity
 @DiscriminatorValue("AND")
 public class AndDiscountCondition extends DiscountCondition {
@@ -22,6 +24,7 @@ public class AndDiscountCondition extends DiscountCondition {
     )
     @JoinColumn(name = "parent_condition_id")
     @OrderColumn(name = "condition_order")
+    @BatchSize(size = 50)
     private List<DiscountCondition> conditions =
             new ArrayList<>();
 
