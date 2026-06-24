@@ -47,13 +47,33 @@ public class GlobalRoutingErrorHandler extends Div implements HasErrorParameter<
                                 Position.TOP_CENTER
                         );
                     }
-                    return 302;
+                    return 302; //Temporary Redirect: Used for Session Timeout
+                }
+
+                boolean isDbError = 
+                    msg.contains("CannotCreateTransactionException") ||
+                    msg.contains("JDBCConnectionException") ||
+                    msg.contains("Communications link failure") ||
+                    msg.contains("Connection refused") ||
+                    msg.contains("DataAccessResourceFailureException");
+
+                if (isDbError) {
+                    event.getUI().access(() -> {
+                        Notification.show(
+                            "השירות אינו זמין זמנית עקב בעיית תקשורת. נסו שוב עוד מספר רגעים.", 
+                            5000, 
+                            Position.TOP_CENTER
+                        );
+                    });
+
+                    setText("השירות אינו זמין כרגע עקב עומס או ניתוק ממסד הנתונים. אנא נסו לרענן את העמוד בעוד מספר רגעים.");
+                    return 503; //Service Unavailable: Used for Database Disconnection
                 }
             }
             cause = cause.getCause();
         }
 
         setText("אופס! אירעה שגיאה בלתי צפויה בטעינת העמוד. נסה לרענן או לחזור לדף הבית.");
-        return 500; 
+        return 500; //Internal Server Error: Used as a Generic Fallback
     }
 }

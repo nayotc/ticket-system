@@ -48,12 +48,44 @@ public class CustomErrorHandler implements ErrorHandler {
                     handleSessionTimeout();
                     return; 
                 }
+
+                boolean isDbError = 
+                    msg.contains("CannotCreateTransactionException") ||
+                    msg.contains("JDBCConnectionException") ||
+                    msg.contains("Communications link failure") ||
+                    msg.contains("Connection refused") ||
+                    msg.contains("DataAccessResourceFailureException");
+
+                if (isDbError) {
+                    UI ui = UI.getCurrent();
+                    if (ui != null) {
+                        ui.access(() -> {
+                            Notification.show(
+                                "השירות אינו זמין זמנית עקב בעיית תקשורת. נסו שוב עוד מספר רגעים.", 
+                                5000, 
+                                Notification.Position.TOP_CENTER
+                            );
+                        });
+                    }
+                    return;
+                }
             }
             cause = cause.getCause();
         }
 
         // Fallback for other unexpected errors
-        event.getThrowable().printStackTrace();
+        // event.getThrowable().printStackTrace();
+        logger.logEvent("Unhandled UI exception: " + event.getThrowable().getMessage(), LogLevel.DEBUG);
+        UI ui = UI.getCurrent();
+        if (ui != null) {
+            ui.access(() -> {
+                Notification.show(
+                    "אירעה שגיאה בביצוע הפעולה. במידה והבעיה נמשכת, ודאו חיבור תקין לרשת.", 
+                    5000, 
+                    Position.TOP_CENTER
+                );
+            });
+        }
     }
 
     private void handleSessionTimeout() {
