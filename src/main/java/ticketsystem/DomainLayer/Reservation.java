@@ -140,7 +140,7 @@ public void removeStandingTicketsFromActiveOrder(ActiveOrder order, Event event,
                         return true;
                     }
                 return false;
-            }
+        }
             
     public boolean timeAboutToExpire(Event event, ActiveOrder order) {
     if (event == null || order == null) {

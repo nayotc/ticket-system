@@ -3,7 +3,6 @@ package ticketsystem.PresentationLayer.Presenters;
 import org.springframework.stereotype.Component;
 
 import ticketsystem.ApplicationLayer.CompanyService;
-import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.ApplicationLayer.EventService;
@@ -24,45 +23,33 @@ public class SystemAdminPresenter {
     private final UserService userService;
     private final CompanyService companyService;
     private final EventService eventService;
-    private final ITokenService tokenService;
 
     public SystemAdminPresenter(SystemAdminService systemAdminService, 
                                 UserService userService, 
                                 CompanyService companyService, 
-                                ITokenService tokenService,
                                 EventService eventService) {
         this.systemAdminService = systemAdminService;
         this.userService = userService;
         this.companyService = companyService;
-        this.tokenService = tokenService;
         this.eventService = eventService;
     }
 
-    /**
-     * Helper method to securely extract the admin's user ID from the session token.
-     */
-    private long validateAndGetAdminId(String token) throws PresentationException {
-        if (token == null || token.isBlank()) {
-            throw new PresentationException("Session token is missing. Please log in.");
-        }
+    public long getCurrentAdminId(String token) throws PresentationException {
         try {
-            return tokenService.extractUserId(token);
+            return systemAdminService.getCurrentAdminId(token);
         } catch (Exception e) {
             throw new PresentationException("Invalid or expired session token.");
         }
-    }
-
-    public long getCurrentAdminId(String token) throws PresentationException {
-        return validateAndGetAdminId(token);
     }
 
     // USERS & COMPANIES MANAGEMENT
 
     public List<AdminUserRow> loadActiveUsers(String token) throws PresentationException {
         try {
-            validateAndGetAdminId(token);
+            if (!systemAdminService.isSystemAdmin(token)) {
+                throw new PresentationException("גישה נדחתה: הפעולה מורשית למנהלי מערכת בלבד.");
+            }
 
-            // Fetch all users and map them correctly using Member's domain fields
             return userService.getAllUsers().stream()
                     .map(user -> new AdminUserRow(
                             user.getId(),
@@ -83,7 +70,10 @@ public class SystemAdminPresenter {
 
     public List<CompanyDTO> loadActiveCompanies(String token) throws PresentationException {
         try {
-            validateAndGetAdminId(token);
+            if (!systemAdminService.isSystemAdmin(token)) {
+                throw new PresentationException("גישה נדחתה: הפעולה מורשית למנהלי מערכת בלבד.");
+            }
+
             return companyService.getAllCompanies();
         } catch (PresentationException e) {
             throw e;
@@ -95,19 +85,32 @@ public class SystemAdminPresenter {
     }
 
     public void deleteUser(String token, long memberId) throws PresentationException {
-        long adminId = validateAndGetAdminId(token);
+        try {
+            if (!systemAdminService.isSystemAdmin(token)) {
+                throw new PresentationException("גישה נדחתה: הפעולה מורשית למנהלי מערכת בלבד.");
+            }
+
+            String result = systemAdminService.deleteMemberByAdmin(token, memberId);
         
-        // systemAdminService returns a String message starting with "ERROR" or "SUCCESS"
-        String result = systemAdminService.deleteMemberByAdmin(adminId, memberId);
-        
-        if (result != null && result.startsWith("ERROR")) {
-            throw new PresentationException(result.replace("ERROR: ", "").trim());
+            if (result != null && result.startsWith("ERROR")) {
+                throw new PresentationException(result.replace("ERROR: ", "").trim());
+            }
+        } catch (PresentationException e) {
+            throw e;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new PresentationException(e.getMessage());
+        } catch (Exception e) {
+            throw new PresentationException("Failed to delete user. Please try again.");
         }
+
     }
 
     public void removeUserFromAllCompanies(String token, long memberId) throws PresentationException {
         try {
-            validateAndGetAdminId(token);  
+            if (!systemAdminService.isSystemAdmin(token)) {
+                throw new PresentationException("גישה נדחתה: הפעולה מורשית למנהלי מערכת בלבד.");
+            }
+
             systemAdminService.removeUserFromAllCompanies(memberId);
         } catch (PresentationException e) {
             throw e;
@@ -120,8 +123,7 @@ public class SystemAdminPresenter {
 
     public void closeCompany(String token, long companyId) throws PresentationException {
         try {
-            long adminId = validateAndGetAdminId(token);
-            systemAdminService.closeProductionCompanyByAdmin(adminId, companyId);
+            systemAdminService.closeProductionCompanyByAdmin(token, companyId);
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -135,8 +137,7 @@ public class SystemAdminPresenter {
 
     public Map<Long, Map<String, List<OrderDTO>>> loadPurchaseHistoryByCompanyAndEvent(String token) throws PresentationException { 
         try {
-            long adminId = validateAndGetAdminId(token);
-            return systemAdminService.getPurchaseHistoryByCompanyAndEvent(adminId);
+            return systemAdminService.getPurchaseHistoryByCompanyAndEvent(token);
         } catch (IllegalStateException e) {
             return Map.of();
         } catch (PresentationException e) {
@@ -148,8 +149,7 @@ public class SystemAdminPresenter {
 
     public Map<Long, List<OrderDTO>> loadPurchaseHistoryByBuyer(String token) throws PresentationException {
         try {
-            long adminId = validateAndGetAdminId(token);
-            return systemAdminService.getPurchaseHistoryByBuyer(adminId);
+            return systemAdminService.getPurchaseHistoryByBuyer(token);
         } catch (IllegalStateException e) {
             return Map.of();
         } catch (PresentationException e) {
@@ -161,8 +161,6 @@ public class SystemAdminPresenter {
 
     public String getEventDateFormatted(String token, long eventId) {
         try {
-            validateAndGetAdminId(token);
-
             var event = eventService.getEvent(token, eventId);
             
             if (event != null && event.date() != null) {
@@ -179,8 +177,7 @@ public class SystemAdminPresenter {
 
     public void suspendMember(String token, long memberId, LocalDateTime startDate, LocalDateTime endDate, String reason) throws PresentationException {
         try {
-            long adminId = validateAndGetAdminId(token);
-            systemAdminService.suspendMemberByAdmin(adminId, memberId, startDate, endDate, reason);
+            systemAdminService.suspendMemberByAdmin(token, memberId, startDate, endDate, reason);
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -192,8 +189,7 @@ public class SystemAdminPresenter {
 
     public void revokeSuspension(String token, long memberId) throws PresentationException {
         try {
-            long adminId = validateAndGetAdminId(token);
-            systemAdminService.revokeMemberByAdmin(adminId, memberId);
+            systemAdminService.revokeMemberByAdmin(token, memberId);
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -205,8 +201,7 @@ public class SystemAdminPresenter {
 
     public List<SuspentionUserDTO> viewSuspendedMembers(String token) throws PresentationException {
         try {
-            long adminId = validateAndGetAdminId(token);
-            return systemAdminService.viewSuspendedMembersByAdmin(adminId);
+            return systemAdminService.viewSuspendedMembersByAdmin(token);
         } catch (IllegalStateException e) {
             return List.of();
         } catch (PresentationException e) {
@@ -220,8 +215,7 @@ public class SystemAdminPresenter {
 
     public List<String> viewEventLogs(String token) throws PresentationException {
         try {
-            long adminId = validateAndGetAdminId(token);
-            return systemAdminService.viewEventLogs(adminId);
+            return systemAdminService.viewEventLogs(token);
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -233,8 +227,7 @@ public class SystemAdminPresenter {
 
     public List<String> viewErrorLogs(String token) throws PresentationException {
         try {
-            long adminId = validateAndGetAdminId(token);
-            return systemAdminService.viewErrorLogs(adminId);
+            return systemAdminService.viewErrorLogs(token);
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -246,12 +239,10 @@ public class SystemAdminPresenter {
 
     public boolean canAccessSystemAdmin(String token) throws PresentationException {
         try {
-            long userId = validateAndGetAdminId(token);
-            return systemAdminService.isSystemAdmin(userId);
-        } catch (PresentationException e) {
-            throw e;
+            return systemAdminService.isSystemAdmin(token);
         } catch (Exception e) {
             throw new PresentationException("Failed to verify admin access. Please log in again.");
         }
     }
+
 }

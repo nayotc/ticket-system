@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.CompanyService;
-import ticketsystem.ApplicationLayer.ITokenService;
 import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.ApplicationLayer.EventService;
@@ -28,14 +27,12 @@ import ticketsystem.PresentationLayer.Presenters.CompanyManagementState.RoleType
 public class MembershipPresenter {
     
     private final MembershipService membershipService;
-    private final ITokenService tokenService;
     private final UserService userService;
     private final CompanyService companyService;
     private final EventService eventService;
 
-    public MembershipPresenter(MembershipService membershipService, ITokenService tokenService, UserService userService, CompanyService companyService, EventService eventService) {
+    public MembershipPresenter(MembershipService membershipService, UserService userService, CompanyService companyService, EventService eventService) {
         this.membershipService = membershipService;
-        this.tokenService = tokenService;
         this.userService = userService;
         this.companyService = companyService;
         this.eventService = eventService;
@@ -44,7 +41,7 @@ public class MembershipPresenter {
     public CompanyManagementState loadCompanyManagement(String sessionToken, Long requestedCompanyId) {
         try {
             // 1. Validate token and extract current user ID
-            Long currentUserId = tokenService.extractUserId(sessionToken);
+            Long currentUserId = membershipService.getCurrentUserId(sessionToken);
             if (currentUserId == null) {
                 throw new PresentationException("פג תוקף החיבור של המשתמש. אנא התחבר מחדש.");
             }
@@ -295,9 +292,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw presentationException(e.getMessage());
         } catch (Exception e) {
-            throw new PresentationException("Failed to remove owner assignment. Please try again later.");
+            throw presentationException(extractUsefulMessage(e));
         }
     }
 
@@ -449,6 +446,10 @@ public class MembershipPresenter {
 
         if (message.contains("permission")) {
             return "אין לך הרשאה לבצע את הפעולה הזו.";
+        }
+
+        if (message.contains("is the only active owner in the company")) {
+            return "לא ניתן להסיר: משתמש זה הוא הבעלים הפעיל היחיד שנותר בחברה.";
         }
 
         return message;

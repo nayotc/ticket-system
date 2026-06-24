@@ -15,4 +15,6 @@ public interface ICompanyRepository {
     List<Company> findAll();
 
     List<Long> getCompanyIdsByCriteria(SearchCriteria criteria);
+    
+    String findCompanyNameById(Long companyId);
 }

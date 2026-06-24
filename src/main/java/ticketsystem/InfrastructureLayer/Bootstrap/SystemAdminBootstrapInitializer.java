@@ -87,13 +87,17 @@ public class SystemAdminBootstrapInitializer implements CommandLineRunner {
             System.out.println("System admin bootstrap: member registered: " + adminUsername);
         }
 
-        if (systemAdminService.isSystemAdmin(adminMember.getId())) {
+       try {
+        systemAdminService.promoteMemberToSystemAdmin(adminMember.getId());
+        System.out.println("System admin bootstrap: member promoted to system admin: " + adminUsername);
+    } catch (Exception e) {
+        if (e.getMessage() != null && e.getMessage().contains("already an active System Admin")) {
             System.out.println("System admin bootstrap: system admin already exists: " + adminUsername);
             return;
         }
 
-        systemAdminService.promoteMemberToSystemAdmin(adminMember.getId());
-        System.out.println("System admin bootstrap: member promoted to system admin: " + adminUsername);
+        throw e;
+    }
     }
 
     private Optional<Member> findMemberByUsername(String username) {
