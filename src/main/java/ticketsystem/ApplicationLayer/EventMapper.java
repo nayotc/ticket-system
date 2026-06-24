@@ -110,7 +110,8 @@ public class EventMapper {
                 toDomain(dto.location()),
                 toDomain(dto.size()),
                 dto.rows(),
-                dto.columns()
+                dto.columns(),
+                dto.price()
         );
 
         for (SeatDTO seatDTO : dto.seats()) {
@@ -140,7 +141,8 @@ public class EventMapper {
                 dto.name(),
                 toDomain(dto.location()),
                 toDomain(dto.size()),
-                dto.capacity()                
+                dto.capacity(),
+                dto.price()
         );
         standingArea.setReserved(dto.reserved());
         standingArea.setSold(dto.sold());

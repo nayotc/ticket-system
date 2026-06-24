@@ -63,4 +63,15 @@ public interface OrderJpaRepository extends JpaRepository<ActiveOrder, Long> {
             @Param("now") LocalDateTime now,
             @Param("warningCutoff") LocalDateTime warningCutoff,
             @Param("pendingCheckoutStatus") OrderStatus pendingCheckoutStatus);
+        @Query("""
+        SELECT o
+        FROM ActiveOrder o
+        WHERE o.userId IS NULL
+        OR o.status = ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus.CANCELLED
+        OR (
+                o.status <> ticketsystem.DomainLayer.order.ActiveOrder.OrderStatus.PENDING_CHECKOUT
+                AND o.expiresAt <= :now
+                )
+        """)
+        List<ActiveOrder> findExpiredAndGuestOrders(@Param("now") LocalDateTime now);
 }

@@ -383,14 +383,16 @@ public class ReservationIntegrationTest {
                 new Pair<>(0, 0),
                 new Pair<>(5, 5),
                 5,
-                5
+                5,
+                new BigDecimal("100.00")
         );
 
         StandingArea standingArea = new StandingArea(
                 "Main Standing Area",
                 new Pair<>(5, 0),
                 new Pair<>(5, 5),
-                100
+                100,
+                new BigDecimal("80.00")
         );
 
         setElementId(seatingArea, 1L);

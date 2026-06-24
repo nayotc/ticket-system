@@ -242,4 +242,25 @@ public class InMemoryOrderRepository implements IOrderRepository {
     private long nextTicketId() {
         return nextGeneratedTicketId++;
     }
+
+	@Override
+    public List<ActiveOrder> getExpiredAndGuestOrders() {
+        synchronized (lock) {
+            List<ActiveOrder> result = new ArrayList<>();
+
+            for (ActiveOrder order : orders.values()) {
+                boolean guestOrder = order.getUserId() == null;
+                boolean cancelled = order.getStatus() == ActiveOrder.OrderStatus.CANCELLED;
+                boolean expiredAndNotPendingCheckout =
+                        order.getStatus() != ActiveOrder.OrderStatus.PENDING_CHECKOUT
+                                && order.isExpired();
+
+                if (guestOrder || cancelled || expiredAndNotPendingCheckout) {
+                    result.add(order.copy());
+                }
+            }
+
+            return result;
+        }
+    }
 }

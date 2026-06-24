@@ -41,7 +41,6 @@ import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
-import ticketsystem.DomainLayer.IRepository.IHistoryRepository;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.discount.ConditionalDiscount;
@@ -368,7 +367,7 @@ public class EventServiceAcceptanceTest {
         assertEquals(200L, updatedEvent.getTrafficThreshold());
         assertEquals(EventCategory.CONCERT, updatedEvent.getCategory());
         assertEquals("Updated Artist", updatedEvent.getArtistName());
-        assertEquals(0, BigDecimal.valueOf(149.99).compareTo(updatedEvent.getTicketPrice()));
+        assertEquals(0, BigDecimal.valueOf(149.99).compareTo(updatedEvent.getMinimalTicketPrice()));
     }
 
     @Test
@@ -381,7 +380,7 @@ public class EventServiceAcceptanceTest {
         LocalDateTime originalDate = savedEvent.getDate();
         EventLocation originalLocation = savedEvent.getLocation();
         EventCategory originalCategory = savedEvent.getCategory();
-        BigDecimal originalPrice = savedEvent.getTicketPrice();
+        BigDecimal originalPrice = savedEvent.getMinimalTicketPrice();
 
         EventDTO invalidUpdateDTO = new EventDTO(
                 savedEvent.getId(),
@@ -413,7 +412,7 @@ public class EventServiceAcceptanceTest {
         assertEquals(originalDate, unchangedEvent.getDate());
         assertEquals(originalLocation, unchangedEvent.getLocation());
         assertEquals(originalCategory, unchangedEvent.getCategory());
-        assertEquals(0, originalPrice.compareTo(unchangedEvent.getTicketPrice()));
+        assertEquals(0, originalPrice.compareTo(unchangedEvent.getMinimalTicketPrice()));
     }
 
     @Test
@@ -1718,6 +1717,7 @@ public class EventServiceAcceptanceTest {
                 new PairDTO<>(4, 6),
                 "SeatingArea",
                 false,
+                BigDecimal.valueOf(99.99),
                 4,
                 6,
                 List.of()
@@ -1730,6 +1730,7 @@ public class EventServiceAcceptanceTest {
                 new PairDTO<>(3, 5),
                 "StandingArea",
                 false,
+                BigDecimal.valueOf(99.99),
                 100L,
                 0L,
                 0L
@@ -1758,6 +1759,7 @@ public class EventServiceAcceptanceTest {
                 new PairDTO<>(4, 4),
                 "SeatingArea",
                 false,
+                BigDecimal.valueOf(100.00),
                 4,
                 6,
                 List.of()
@@ -1786,6 +1788,7 @@ public class EventServiceAcceptanceTest {
                 new PairDTO<>(4, 4),
                 "SeatingArea",
                 false,
+                BigDecimal.valueOf(100.00),
                 4,
                 6,
                 List.of()
@@ -1800,7 +1803,7 @@ public class EventServiceAcceptanceTest {
 
     private EventMapDTO createInconsistentMapDTO() {
         StandingAreaDTO inconsistentStandingArea = new StandingAreaDTO(
-                1L, "Invalid Standing Area", new PairDTO<>(2, 2), new PairDTO<>(4, 5), "StandingArea", false, 10L, 8L,
+                1L, "Invalid Standing Area", new PairDTO<>(2, 2), new PairDTO<>(4, 5), "StandingArea", false,BigDecimal.valueOf(120.00), 10L, 8L,
                 5L);
 
         return new EventMapDTO(new PairDTO<>(10, 20), List.of(inconsistentStandingArea), false);

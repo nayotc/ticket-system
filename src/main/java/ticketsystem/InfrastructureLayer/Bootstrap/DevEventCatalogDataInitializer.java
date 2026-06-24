@@ -242,14 +242,16 @@ public class DevEventCatalogDataInitializer implements CommandLineRunner {
                 new Pair<>(4, 7),
                 new Pair<>(10, 6),
                 6,
-                10
+                10,
+                new BigDecimal("120.00")
         ));
 
         event.getMap().addElement(new StandingArea(
                 "רחבת עמידה",
                 new Pair<>(16, 7),
                 new Pair<>(8, 8),
-                120
+                120,
+                new BigDecimal("80.00")
         ));
 
         event.getMap().addElement(new Element(

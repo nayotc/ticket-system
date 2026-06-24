@@ -11,6 +11,7 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.textfield.BigDecimalField;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -27,6 +28,7 @@ import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import com.vaadin.flow.component.icon.VaadinIcon;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -64,6 +66,9 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
     private final IntegerField seatingRowsField = new IntegerField("שורות");
     private final IntegerField seatingColumnsField = new IntegerField("מושבים בשורה");
     private static final String MAP_OVERLAP_MESSAGE = "לא ניתן למקם אלמנט על אלמנט אחר";
+    private final BigDecimalField seatingPriceField = new BigDecimalField("מחיר כרטיס באזור");
+    private final BigDecimalField standingPriceField = new BigDecimalField("מחיר כרטיס באזור");
+    private final BigDecimalField selectedAreaPriceField = new BigDecimalField("מחיר כרטיס באזור");
 
     private final TextField standingNameField = new TextField("שם אזור עמידה");
     private final IntegerField standingCapacityField = new IntegerField("קיבולת מרבית");
@@ -78,6 +83,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
     private int selectedIndex = -1;
     private long nextElementId = 1;
     private boolean updatingProperties;
+
 
     public HallMapBuilder(HallMapBuilderPresenter presenter) {
         this.presenter = presenter;
@@ -125,9 +131,14 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         seatingNameField.setValue("אזור ישיבה");
         configurePositiveField(seatingRowsField, 10, 1, 80);
         configurePositiveField(seatingColumnsField, 20, 1, 80);
+        configurePriceField(seatingPriceField);
 
         standingNameField.setValue("אזור עמידה");
         configurePositiveField(standingCapacityField, 500, 1, 100000);
+        configurePriceField(standingPriceField);
+
+        configurePriceField(selectedAreaPriceField);
+        selectedAreaPriceField.addValueChangeListener(event -> updateSelectedElementFromProperties());
 
         elementNameField.addValueChangeListener(event -> updateSelectedElementFromProperties());
         elementXField.addValueChangeListener(event -> updateSelectedElementFromProperties());
@@ -142,6 +153,21 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         field.setStepButtonsVisible(true);
         field.setValue(value);
         field.setWidthFull();
+    }
+
+    private void configurePriceField(BigDecimalField field) {
+        field.setValue(BigDecimal.ZERO);
+        field.setWidthFull();
+        field.setClearButtonVisible(true);
+
+        field.addValueChangeListener(event -> {
+            BigDecimal value = event.getValue();
+            boolean invalid = value == null
+                    || value.compareTo(BigDecimal.ZERO) < 0;
+
+            field.setInvalid(invalid);
+            field.setErrorMessage("המחיר חייב להיות אפס או מספר חיובי");
+        });
     }
 
     private Component createHeader() {
@@ -317,7 +343,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         Div seatingFields = new Div();
         seatingFields.addClassName("hall-area-fields");
-        seatingFields.add(seatingNameField, seatingRowsField, seatingColumnsField, addSeating);
+        seatingFields.add(seatingNameField, seatingRowsField, seatingColumnsField,seatingPriceField, addSeating);
 
         AppCard seatingCard = new AppCard();
         seatingCard.addClassNames("hall-area-card", "hall-seating-card");
@@ -328,7 +354,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         Div standingFields = new Div();
         standingFields.addClassName("hall-area-fields");
-        standingFields.add(standingNameField, standingCapacityField, addStanding);
+        standingFields.add(standingNameField, standingCapacityField,standingPriceField, addStanding);
 
         AppCard standingCard = new AppCard();
         standingCard.addClassNames("hall-area-card", "hall-standing-card");
@@ -420,6 +446,13 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         int rows = positive(seatingRowsField.getValue());
         int columns = positive(seatingColumnsField.getValue());
         String name = safeText(seatingNameField.getValue(), "אזור ישיבה");
+        BigDecimal price = seatingPriceField.getValue();
+
+        if (!isValidPrice(price)) {
+            seatingPriceField.setInvalid(true);
+            showWarning("יש להזין מחיר תקין לאזור הישיבה");
+            return;
+        }
 
         int width = Math.min(Math.max(columns / 2, 6), mapWidth());
         int height = Math.min(Math.max(rows / 2, 4), mapHeight());
@@ -443,6 +476,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                 new PairDTO<>(width, height),
                 "SeatingArea",
                 false,
+                price,
                 rows,
                 columns,
                 createAvailableSeats(rows, columns)
@@ -455,6 +489,13 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
     private void addStandingArea() {
         int capacity = positive(standingCapacityField.getValue());
         String name = safeText(standingNameField.getValue(), "אזור עמידה");
+        BigDecimal price = standingPriceField.getValue();
+
+        if (!isValidPrice(price)) {
+            standingPriceField.setInvalid(true);
+            showWarning("יש להזין מחיר תקין לאזור העמידה");
+            return;
+        }
 
         int width = 8;
         int height = 5;
@@ -478,6 +519,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                 new PairDTO<>(width, height),
                 "StandingArea",
                 false,
+                price,
                 capacity,
                 0,
                 0
@@ -485,6 +527,11 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         selectedIndex = elements.size() - 1;
         renderAll();
+    }
+
+    private boolean isValidPrice(BigDecimal price) {
+        return price != null
+                && price.compareTo(BigDecimal.ZERO) >= 0;
     }
 
     private List<SeatDTO> createAvailableSeats(int rows, int columns) {
@@ -706,12 +753,44 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         Span meta = new Span(metaOf(dto));
         meta.addClassName("hall-map-element-meta");
 
+        if (dto instanceof SeatingAreaDTO seating) {
+            meta.setText(seating.rows() + "x" + seating.columns());
+        } else if (dto instanceof StandingAreaDTO standing) {
+            meta.setText("קיבולת: " + standing.capacity());
+        }
+
         element.add(icon, name, meta);
+
+        if (dto instanceof SeatingAreaDTO seating) {
+            Span price = new Span(
+                    "מחיר: " + formatPrice(seating.price()) + "₪"
+            );
+
+            price.addClassName("hall-map-element-price");
+            element.add(price);
+
+        } else if (dto instanceof StandingAreaDTO standing) {
+            Span price = new Span(
+                    "מחיר: " + formatPrice(standing.price()) + "₪"
+            );
+
+            price.addClassName("hall-map-element-price");
+            element.add(price);
+        }
+
         element.addClickListener(event -> {
             selectedIndex = index;
             renderAll();
         });
         return element;
+    }
+
+    private String formatPrice(BigDecimal price) {
+        if (price == null) {
+            return "0";
+        }
+
+        return price.stripTrailingZeros().toPlainString();
     }
 
     private void moveElementToGrid(int index, int x, int y) {
@@ -808,8 +887,16 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
         delete.addClassName("hall-delete-button");
 
-        propertiesPanel.add(elementNameField, positionFields, sizeFields, delete);
+        propertiesPanel.add(elementNameField);
+
+        if (selected instanceof SeatingAreaDTO || selected instanceof StandingAreaDTO) {
+            propertiesPanel.add(selectedAreaPriceField);
+        }
+
+        propertiesPanel.add(positionFields, sizeFields, delete);
     }
+
+
 
     private void updatePropertiesFields(IMapElementDTO dto) {
         updatingProperties = true;
@@ -823,6 +910,14 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         elementWidthField.setValue(size.first());
         elementHeightField.setValue(size.second());
 
+        if (dto instanceof SeatingAreaDTO seating) {
+            selectedAreaPriceField.setValue(seating.price() == null ? BigDecimal.ZERO : seating.price());
+            selectedAreaPriceField.setInvalid(false);
+        } else if (dto instanceof StandingAreaDTO standing) {
+            selectedAreaPriceField.setValue(standing.price() == null ? BigDecimal.ZERO : standing.price());
+            selectedAreaPriceField.setInvalid(false);
+        }
+
         updatingProperties = false;
     }
 
@@ -832,6 +927,19 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         }
 
         IMapElementDTO current = elements.get(selectedIndex);
+        BigDecimal updatedPrice = areaPriceOf(current);
+
+        if (current instanceof SeatingAreaDTO
+                || current instanceof StandingAreaDTO) {
+
+            updatedPrice = selectedAreaPriceField.getValue();
+
+            if (!isValidPrice(updatedPrice)) {
+                selectedAreaPriceField.setInvalid(true);
+                showWarning("יש להזין מחיר תקין לאזור");
+                return;
+            }
+        }
 
         int width = positive(elementWidthField.getValue());
         int height = positive(elementHeightField.getValue());
@@ -851,7 +959,8 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                 x,
                 y,
                 width,
-                height
+                height,
+                updatedPrice
         );
 
         elements.set(selectedIndex, updated);
@@ -871,6 +980,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                     size,
                     area.type(),
                     area.soldOut(),
+                    area.price(),
                     area.rows(),
                     area.columns(),
                     area.seats()
@@ -885,6 +995,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                     size,
                     area.type(),
                     area.soldOut(),
+                    area.price(),
                     area.capacity(),
                     area.reserved(),
                     area.sold()
@@ -893,6 +1004,74 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         ElementDTO element = (ElementDTO) dto;
         return new ElementDTO(element.id(), name, location, size, element.type());
+    }
+
+    private IMapElementDTO updateGeometry(
+            IMapElementDTO dto,
+            String name,
+            int x,
+            int y,
+            int width,
+            int height,
+            BigDecimal price
+    ) {
+        PairDTO<Integer, Integer> location =
+                new PairDTO<>(x, y);
+
+        PairDTO<Integer, Integer> size =
+                new PairDTO<>(width, height);
+
+        if (dto instanceof SeatingAreaDTO area) {
+            return new SeatingAreaDTO(
+                    area.id(),
+                    name,
+                    location,
+                    size,
+                    area.type(),
+                    area.soldOut(),
+                    price,
+                    area.rows(),
+                    area.columns(),
+                    area.seats()
+            );
+        }
+
+        if (dto instanceof StandingAreaDTO area) {
+            return new StandingAreaDTO(
+                    area.id(),
+                    name,
+                    location,
+                    size,
+                    area.type(),
+                    area.soldOut(),
+                    price,
+                    area.capacity(),
+                    area.reserved(),
+                    area.sold()
+            );
+        }
+
+        ElementDTO element = (ElementDTO) dto;
+
+        return new ElementDTO(
+                element.id(),
+                name,
+                location,
+                size,
+                element.type()
+        );
+    }
+
+    private BigDecimal areaPriceOf(IMapElementDTO dto) {
+        if (dto instanceof SeatingAreaDTO seating) {
+            return seating.price();
+        }
+
+        if (dto instanceof StandingAreaDTO standing) {
+            return standing.price();
+        }
+
+        return null;
     }
 
     private void deleteSelectedElement() {

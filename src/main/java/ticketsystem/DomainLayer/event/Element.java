@@ -12,11 +12,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Check;
 
 @Entity
 @Table(name = "event_elements")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "element_type")
+@Check(constraints = "element_type not in ('SEATING', 'STANDING') or (price is not null and price >= 0)")
 public class Element {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

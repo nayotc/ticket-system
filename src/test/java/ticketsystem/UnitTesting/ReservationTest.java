@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -50,13 +49,14 @@ public class ReservationTest {
         when(position.getRow()).thenReturn(3);
         when(position.getChair()).thenReturn(7);
         when(event.getId()).thenReturn(eventId);
-        when(event.getTicketPrice()).thenReturn(price);
+        when(event.getAreaPrice(areaId)).thenReturn(price);
 
         // Act
         reservation.selectSeatTicket(order, event, areaId, position);
 
         // Assert
         verify(event).reserveSeat(eq(areaId), any(SeatPosition.class));
+        verify(event).getAreaPrice(areaId);
 
         ArgumentCaptor<Ticket> ticketCaptor = ArgumentCaptor.forClass(Ticket.class);
         verify(order).addTicket(ticketCaptor.capture());
@@ -79,14 +79,18 @@ public class ReservationTest {
         BigDecimal price = BigDecimal.valueOf(80);
 
         when(event.getId()).thenReturn(eventId);
-        when(event.getTicketPrice()).thenReturn(price);
+        when(event.getAreaPrice(areaId)).thenReturn(price);
 
         // Act
         reservation.selectStandingTicket(order, event, areaId, quantity);
 
         // Assert
         verify(event).reserveSpot(areaId, quantity);
-        verify(order, times(quantity)).addTicket(any(Ticket.class));
+        ArgumentCaptor<Ticket> ticketCaptor = ArgumentCaptor.forClass(Ticket.class);
+        verify(order, times(quantity)).addTicket(ticketCaptor.capture());
+        assertEquals(quantity, ticketCaptor.getAllValues().size());
+        assertTrue(ticketCaptor.getAllValues().stream().allMatch(ticket -> price.equals(ticket.getPrice())));
+        verify(event).getAreaPrice(areaId);
     }
 
     @Test

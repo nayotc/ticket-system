@@ -708,4 +708,11 @@ private int countDiscounts(Company company) {
         }
     }
 
+    @Transactional(readOnly = true)
+    public String getCompanyName(String sessionToken, Long companyId) {
+        tokenService.validateToken(sessionToken);
+        return companyRepository.findCompanyNameById(companyId);
+    }
+
+
 }

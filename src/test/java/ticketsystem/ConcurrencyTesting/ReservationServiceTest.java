@@ -43,6 +43,7 @@ import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
 import ticketsystem.DomainLayer.event.*;
+import ticketsystem.DomainLayer.event.Seat.SeatStatus;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.InMemoryEventRepository;
@@ -596,7 +597,8 @@ public class ReservationServiceTest {
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
                 rows,
-                columns
+                columns,
+                new BigDecimal("100.00")
         );
 
         event.getMap().addElement(seatingArea);
@@ -612,7 +614,8 @@ public class ReservationServiceTest {
                 "Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
-                capacity
+                capacity,
+                new BigDecimal("100.00")
         );
 
         event.getMap().addElement(standingArea);
@@ -628,7 +631,8 @@ public class ReservationServiceTest {
                 "Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
-                20
+                20,
+                new BigDecimal("100.00")
         );
 
         event.getMap().addElement(standingArea);
@@ -645,7 +649,8 @@ public class ReservationServiceTest {
                 new Pair<>(0, 0),
                 new Pair<>(10, 10),
                 1,
-                1
+                1,
+                new BigDecimal("100.00")
         );
 
         event.getMap().addElement(seatingArea);
@@ -788,6 +793,32 @@ public class ReservationServiceTest {
         public List<EventSearchResultView> searchEvents(SearchCriteria criteria, List<Long> companyIds
         ) {
             return realRepository.searchEvents(criteria, companyIds);
+        }
+
+		@Override
+		public void updateSeatStatus(Long eventId, Long areaId, int row, int number, SeatStatus newStatus) {
+			realRepository.updateSeatStatus(eventId,areaId,row,number,newStatus);
+		}
+
+		@Override
+		public void updateStandingAreaReservedCount(Long eventId, Long areaId, int reservedDelta) {
+			realRepository.updateStandingAreaReservedCount(eventId, areaId, reservedDelta);
+		}
+
+		@Override
+		public void markStandingTicketsAsSold(Long eventId, Long areaId, int quantity) {
+			realRepository.markStandingTicketsAsSold(eventId, areaId, quantity);
+		}
+
+		@Override
+		public void updateSaleStatus(Long eventId, SaleStatus saleStatus) {
+			// TODO Auto-generated method stub
+			throw new UnsupportedOperationException("Unimplemented method 'updateSaleStatus'");
+		}
+
+		@Override
+        public Event getEventForReservation(Long eventId) {
+            return getEventById(eventId);
         }
 
 

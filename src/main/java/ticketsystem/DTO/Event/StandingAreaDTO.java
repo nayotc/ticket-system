@@ -2,6 +2,8 @@ package ticketsystem.DTO.Event;
 
 import ticketsystem.DomainLayer.event.StandingArea;
 
+import java.math.BigDecimal;
+
 public record StandingAreaDTO(
         long id,
         String name,
@@ -9,6 +11,7 @@ public record StandingAreaDTO(
         PairDTO<Integer, Integer> size,
         String type,
         boolean soldOut,
+        BigDecimal price,
         long capacity,
         long reserved,
         long sold
@@ -26,6 +29,7 @@ public record StandingAreaDTO(
                 PairDTO.from(area.getSize()),
                 "StandingArea",
                 area.isSoldOut(),
+                area.getPrice(),
                 area.getCapacity(),
                 area.getReserved(),
                 area.getSold()

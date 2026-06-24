@@ -8115,6 +8115,12 @@ vaadin-button.hall-builder-secondary-button:hover {
     font-weight: 700;
 }
 
+.hall-map-element-price {
+    color: var(--tn-primary);
+    font-size: 12px;
+    font-weight: 800;
+}
+
 .hall-builder-tools-panel {
     min-width: 0;
     overflow-y: auto;

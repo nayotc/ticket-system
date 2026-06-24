@@ -6,16 +6,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ticketsystem.DomainLayer.event.Pair;
 import ticketsystem.DomainLayer.event.StandingArea;
-
+import java.math.BigDecimal;
 
 class StandingAreaTest {
+
+    private static final BigDecimal DEFAULT_PRICE = new BigDecimal("80.00");
 
     private Pair<Integer, Integer> pair(int first, int second) {
         return new Pair<>(first, second);
     }
 
     private StandingArea standingArea(long capacity) {
-        return new StandingArea( "Standing", pair(0, 0), pair(10, 10), capacity);
+        return new StandingArea( "Standing", pair(0, 0), pair(10, 10), capacity, DEFAULT_PRICE);
     }
 
     @Test
@@ -112,6 +114,45 @@ class StandingAreaTest {
         assertEquals(3, original.getSold());
         assertEquals(0, copy.getReserved());
         assertEquals(3, copy.getSold());
+        assertEquals(0, original.getPrice().compareTo(copy.getPrice()));
+    }
+
+    @Test
+    void GivenValidPrice_WhenCreateStandingArea_ThenPriceIsStored() {
+        StandingArea area = standingArea(10);
+
+        assertEquals(
+                0,
+                DEFAULT_PRICE.compareTo(area.getPrice())
+        );
+    }
+
+    @Test
+    void GivenNegativePrice_WhenCreateStandingArea_ThenThrowException() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new StandingArea(
+                        "Standing",
+                        pair(0, 0),
+                        pair(10, 10),
+                        10,
+                        new BigDecimal("-1.00")
+                )
+        );
+    }
+
+    @Test
+    void GivenNullPrice_WhenCreateStandingArea_ThenThrowException() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new StandingArea(
+                        "Standing",
+                        pair(0, 0),
+                        pair(10, 10),
+                        10,
+                        null
+                )
+        );
     }
 }
 

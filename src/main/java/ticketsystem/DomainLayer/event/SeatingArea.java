@@ -1,5 +1,6 @@
 package ticketsystem.DomainLayer.event;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,8 +27,8 @@ public class SeatingArea extends Area {
 
     protected SeatingArea() {}
 
-    public SeatingArea(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, int rows, int columns) {
-        super(name, location, size);
+    public SeatingArea(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, int rows, int columns, BigDecimal price) {
+        super(name, location, size, price);
         this.rows = rows;
         this.columns = columns;
         for (int row = 1; row <= rows; row++) {

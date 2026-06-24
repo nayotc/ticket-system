@@ -172,4 +172,10 @@ public class OrderRepository implements IOrderRepository {
                     });
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ActiveOrder> getExpiredAndGuestOrders() {
+        return orderJpaRepository.findExpiredAndGuestOrders(LocalDateTime.now());
+    }
 }

@@ -52,7 +52,6 @@ import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Permission;
 import ticketsystem.DomainLayer.user.RoleStatus;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
-import ticketsystem.DomainLayer.event.SeatPosition;
 import ticketsystem.InfrastructureLayer.CompanyRepository;
 import ticketsystem.InfrastructureLayer.InMemoryOrderRepository;
 import ticketsystem.InfrastructureLayer.InMemoryUserRepository;
@@ -989,6 +988,8 @@ public class ReservationServiceTest {
         expiredOrder.setExpiresAt(LocalDateTime.now().minusMinutes(1));
         orderRepository.updateOrder(expiredOrder);
 
+        reservationService.sweepExpiredAndExpiringOrders();
+
         boolean result = reservationService.selectSeatTicket(
                 memberToken,
                 eventId,
@@ -1244,8 +1245,9 @@ public class ReservationServiceTest {
 
         ActiveOrder order = orderRepository.getActiveOrderByUserId(memberId);
         order.setExpiresAt(LocalDateTime.now().plusMinutes(2));
+       
         orderRepository.updateOrder(order);
-
+        reservationService.sweepExpiredAndExpiringOrders();
         reservationService.viewActiveOrder(
                 memberToken,
                 order.getOrderId()
@@ -1278,7 +1280,7 @@ public class ReservationServiceTest {
                 guestToken,
                 order.getOrderId()
         );
-
+        reservationService.sweepExpiredAndExpiringOrders();
         recordingNotifier.assertNotifiedGuest(guestToken, "about to expire");
         recordingNotifier.assertNotificationCount(1);
     }
@@ -1345,7 +1347,8 @@ public class ReservationServiceTest {
                 "Single Ticket Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(5, 5),
-                1
+                1,
+                new BigDecimal("100.00")
         );
 
         map.addElement(standingArea);
@@ -1375,7 +1378,8 @@ public class ReservationServiceTest {
                 "Main Standing Area",
                 new Pair<>(0, 0),
                 new Pair<>(5, 5),
-                100
+                100,
+                new BigDecimal("80.00")
         );
 
         map.addElement(standingArea);
@@ -1406,7 +1410,8 @@ public class ReservationServiceTest {
                 new Pair<>(0, 0),
                 new Pair<>(5, 5),
                 5,
-                5
+                5,
+                new BigDecimal("120.00")
         );
 
         map.addElement(seatingArea);
