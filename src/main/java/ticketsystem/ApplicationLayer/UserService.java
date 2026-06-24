@@ -3,6 +3,7 @@ package ticketsystem.ApplicationLayer;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -668,6 +669,13 @@ public class UserService {
             logger.logError("Failed to get member by ID", e);
             throw e;
         }
+    }
+    public Optional<Member> findMemberByUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(userRepository.getMemberByUsernameIgnoreCase(username.trim()));
     }
 
 }
