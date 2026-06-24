@@ -480,6 +480,7 @@ public class ReservationService {
             }
 
             if (!paymentService.handshake()) {
+                System.out.println("handshake- 988");
                 throw new IllegalStateException("Payment service is unavailable");
             }
 
@@ -843,16 +844,8 @@ public class ReservationService {
                 if (event == null || order == null) {
                     continue;
                 }
-                String token= order.getSessionToken();
-                boolean tokenExpired =false;
-                try{
-                    tokenService.validateToken(token);
-                }
-                catch (Exception e){
-                    tokenExpired = true;
-                }
-                boolean guestOrder = order.getUserId() == null;
-                if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
+        
+                if (reservationDomeinService.timeExpire(event, order)) {
                     List<Ticket> tickets= reservationDomeinService.expire(event, order);
                     
                     notifyOrderOwner(
@@ -902,19 +895,8 @@ public class ReservationService {
 
         for (ActiveOrder order : orders) {
             try {
-                String token = order.getSessionToken();
 
-                boolean tokenExpired = false;
-                try {
-                    tokenService.validateToken(token);
-                } catch (Exception e) {
-                    tokenExpired = true;
-                }
-
-                boolean guestOrder = order.getUserId() == null;
-
-                if (reservationDomeinService.timeExpire(event, order)
-                        || (tokenExpired && guestOrder)) {
+                if (reservationDomeinService.timeExpire(event, order)) {
 
                     List<Ticket> tickets = reservationDomeinService.expire(event, order);
 
