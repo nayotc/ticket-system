@@ -37,12 +37,10 @@ public class ExternalPaymentService implements IPaymentService {
     @Override
     public boolean handshake() {
         try {
-           System.out.println(externalSystemUrl+"!!!");
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
             body.add("action_type", "handshake");
 
             String response = postForm(body);
-            
             return response != null
                     && response.trim().equalsIgnoreCase("OK");
 
