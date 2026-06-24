@@ -27,20 +27,50 @@ public class SalesReportPresenter {
         this.userService = userService;
     }
 
+    /**
+     * Generates a sales-report summary and prepares its status message for display.
+     *
+     * <p>The application service remains responsible for permission validation
+     * and sales calculations. The presenter creates a presentation-ready DTO so
+     * that service messages are not displayed directly to the user.</p>
+     *
+     * @param token current member-session token
+     * @param companyId identifier of the requested production company
+     * @return sales-report data with a user-facing Hebrew message
+     * @throws PresentationException when report generation fails
+     */
     public SalesReportDTO generateSalesReport(String token, long companyId) {
         try {
-            // Forwarding the request to the Service, which performs the permission validation and data calculation itself
-            return historyService.generateSalesReport(token, companyId);
-            
+            SalesReportDTO report =
+                    historyService.generateSalesReport(token, companyId);
+
+            if (report == null) {
+                throw new PresentationException(
+                        "הפקת דוח המכירות נכשלה. יש לנסות שוב."
+                );
+            }
+
+            return new SalesReportDTO(
+                    report.getTotalTicketsSold(),
+                    report.getTotalRevenue(),
+                    translateReportMessage(report.getMessage())
+            );
+
         } catch (PresentationException e) {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            // Catching permission or validation errors from the Service and translating them into a PresentationException
-            throw new PresentationException(e.getMessage());
+            throw new PresentationException(
+                    translateSalesReportError(
+                            e.getMessage(),
+                            "הפקת דוח המכירות נכשלה. יש לנסות שוב."
+                    )
+            );
+
         } catch (Exception e) {
-            // Smart protection: unexpected system exceptions are translated into a friendly message that doesn't crash the UI
-            throw new PresentationException("An error occurred while generating the summary report. Please try again.");
+            throw new PresentationException(
+                    "אירעה שגיאה במהלך הפקת דוח המכירות. יש לנסות שוב."
+            );
         }
     }
 
@@ -66,11 +96,17 @@ public class SalesReportPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            // Similar to the previous method, converting logic errors into an exception that the View understands
-            throw new PresentationException(e.getMessage());
+            throw new PresentationException(
+                    translateSalesReportError(
+                            e.getMessage(),
+                            "טעינת עסקאות החברה נכשלה. יש לנסות שוב."
+                    )
+            );
+
         } catch (Exception e) {
-            // Handling a general error to protect the screen
-            throw new PresentationException("An error occurred while loading the company transaction history.");
+            throw new PresentationException(
+                    "אירעה שגיאה במהלך טעינת עסקאות החברה. יש לנסות שוב."
+            );
         }
     }
 
@@ -110,9 +146,17 @@ public class SalesReportPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw new PresentationException(
+                    translateSalesReportError(
+                            e.getMessage(),
+                            "ייצוא דוח המכירות נכשל. יש לנסות שוב."
+                    )
+            );
+
         } catch (Exception e) {
-            throw new PresentationException("An error occurred while generating the CSV export file.");
+            throw new PresentationException(
+                    "אירעה שגיאה במהלך ייצוא דוח המכירות. יש לנסות שוב."
+            );
         }
     }
 
@@ -137,5 +181,75 @@ public class SalesReportPresenter {
         } catch (Exception e) {
             return "משתמש לא ידוע";
         }
+    }
+
+    /**
+     * Translates the report-result message returned by the application service.
+     *
+     * <p>Only messages that are displayed as part of the report summary are
+     * translated here. Unknown or missing messages receive a neutral Hebrew
+     * description instead of being exposed directly to the user.</p>
+     *
+     * @param message message returned inside the sales-report DTO
+     * @return a Hebrew message suitable for display in the sales-report view
+     */
+    private String translateReportMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return "נתוני המכירות נטענו.";
+        }
+
+        return switch (message.trim()) {
+            case "No sales data was found" ->
+                    "לא נמצאו נתוני מכירות.";
+
+            case "Sales report generated successfully" ->
+                    "דוח המכירות הופק בהצלחה.";
+
+            default ->
+                    "נתוני המכירות נטענו.";
+        };
+    }
+
+    /**
+     * Translates known sales-report errors into user-facing Hebrew messages.
+     *
+     * <p>The presenter translates application-layer error messages before they
+     * reach the view. Unknown or missing messages are replaced with the supplied
+     * action-specific fallback so technical details are not exposed to the user.</p>
+     *
+     * @param message original exception message received from the application layer
+     * @param fallback safe Hebrew message describing the failed action
+     * @return translated user-facing message, or the supplied fallback
+     */
+    private String translateSalesReportError(String message, String fallback) {
+        if (message == null || message.isBlank()) {
+            return fallback;
+        }
+
+        return switch (message.trim()) {
+            case "Invalid or expired token",
+                 "Invalid or expired token.",
+                 "Error: Invalid or expired session token." ->
+                    "לא נמצאה פעילות משתמש. יש לרענן את העמוד ולנסות שוב.";
+
+            case "Only members can generate sales reports" ->
+                    "יש להתחבר כמנוי כדי להפיק דוח מכירות.";
+
+            case "Could not extract user id from token" ->
+                    "לא ניתן לטעון את פרטי המשתמש. יש לרענן את העמוד ולנסות שוב.";
+
+            case "Member not found",
+                 "Member not found." ->
+                    "לא נמצאו פרטי המשתמש במערכת.";
+
+            case "Suspended users can only perform view actions" ->
+                    "משתמש מושהה יכול לצפות במידע בלבד ולא לבצע פעולות במערכת.";
+
+            case "Insufficient permissions to generate sales report" ->
+                    "אין לך הרשאה להפיק דוח מכירות עבור החברה הזו.";
+
+            default ->
+                    fallback;
+        };
     }
 }

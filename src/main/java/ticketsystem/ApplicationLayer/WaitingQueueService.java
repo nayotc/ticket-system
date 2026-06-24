@@ -46,7 +46,7 @@ public class WaitingQueueService {
     private final ConcurrentHashMap<Long, Object> eventLocks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Set<String>> activeReservationSessions = new ConcurrentHashMap<>();
     private final ISystemLogger logger;
-    private static final Duration SELECTION_ACCESS_DURATION = Duration.ofMinutes(2);
+    private static final Duration SELECTION_ACCESS_DURATION = Duration.ofMinutes(10);
 
     private final ConcurrentHashMap<Long, Map<String, Instant>> selectionAccessDeadlines =
         new ConcurrentHashMap<>();
@@ -111,9 +111,14 @@ public class WaitingQueueService {
                     }
 
                     if (hasAvailableSpot(event)) {
-                        approveSession(eventId, event, tokenString);
+                        /*
+                         * Direct approval means the user entered ticket selection without waiting
+                         * in the virtual queue. The user still consumes an active selection slot,
+                         * but should not receive a waiting-queue access deadline.
+                         */
+                        approveSession(eventId, event, tokenString, false);
                         logger.logEvent(
-                                "User with session id " + tokenString + " APPROVED to enter ticket selection for Event "
+                                "User with session id " + tokenString + " APPROVED directly to enter ticket selection for Event "
                                         + eventId,
                                 LogLevel.INFO
                         );
@@ -173,7 +178,12 @@ public class WaitingQueueService {
         }
 
         String sessionId = approvedUsers.get(0);
-        approveSession(eventId, event, sessionId);
+
+        /*
+         * A user promoted from the waiting queue receives a limited access window
+         * for ticket selection, so this approval creates a selection-access deadline.
+         */
+        approveSession(eventId, event, sessionId, true);
 
         notifyTokenHolder(
                 sessionId,
@@ -424,17 +434,30 @@ public class WaitingQueueService {
     //     }
     // }
 
+    /**
+     * Checks whether a queue-granted ticket-selection access window has expired.
+     *
+     * A missing deadline means that the user did not receive a limited access
+     * window from the waiting queue. It must not be treated as an expired queue
+     * access window, because directly approved users do not have such a deadline.
+     *
+     * @param eventId event identifier
+     * @param token active guest/member session token
+     * @return true only when an existing queue access deadline has passed
+     */
     public boolean isSelectionAccessExpired(long eventId, String token) {
         if (token == null || token.isBlank()) {
             return true;
         }
 
         Map<String, Instant> deadlines = selectionAccessDeadlines.get(eventId);
+
         if (deadlines == null || !deadlines.containsKey(token)) {
-            return true;
+            return false;
         }
 
-        return Instant.now().isAfter(deadlines.get(token));
+        Instant deadline = deadlines.get(token);
+        return deadline != null && Instant.now().isAfter(deadline);
     }
 
     public long getSelectionAccessSecondsLeft(long eventId, String token) {
@@ -487,15 +510,35 @@ public class WaitingQueueService {
     }
 
 
-    private void approveSession(long eventId, Event event, String token) {
-        if (getActiveSessions(eventId).add(token)) {
+    /**
+     * Grants a user active access to the ticket-selection screen.
+     *
+     * Every approved user consumes an active selection slot so the system can
+     * limit how many users are selecting tickets for the same event at once.
+     * Only users promoted from the waiting queue receive a limited queue access
+     * deadline. Directly approved users should not receive this deadline.
+     *
+     * @param eventId event identifier
+     * @param event event aggregate whose active selection counter should be updated
+     * @param token guest/member session token
+     * @param createSelectionAccessDeadline whether to create a queue access deadline
+     */
+    private void approveSession(
+            long eventId,
+            Event event,
+            String token,
+            boolean createSelectionAccessDeadline
+    ) {
+        Set<String> activeSessions = getActiveSessions(eventId);
+
+        if (activeSessions.add(token)) {
             event.incrementActiveReservations();
             eventRepository.updateEvent(event);
         }
 
-        selectionAccessDeadlines
-                .computeIfAbsent(eventId, k -> new ConcurrentHashMap<>())
-                .put(token, Instant.now().plus(SELECTION_ACCESS_DURATION));
+        if (createSelectionAccessDeadline) {
+            refreshSelectionAccess(eventId, token);
+        }
     }
 
     private void cleanupActiveSessionsIfPossible(long eventId) {

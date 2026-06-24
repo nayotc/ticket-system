@@ -820,52 +820,49 @@ public class ReservationPresenter {
         return new PresentationException(translateReservationError(message));
     }
 
-
     private String translateReservationError(String message) {
         if (message == null || message.isBlank()) {
             return "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
         }
 
-        if (message != null && (
-                message.contains("JWT") ||
-                message.contains("expired") ||
-                message.contains("Invalid") ||
-                message.contains("Invalid session ID") ||
-                message.contains("Token is missing or null") ||
-                message.contains("Session is no longer active") ||
-                message.contains("Invalid or expired security token")
-        )) {
-            return message;
+        String dynamicTranslation = translateDynamicReservationError(message);
+        if (dynamicTranslation != null) {
+            return dynamicTranslation;
         }
 
-        // 1. טיפול דינמי בכמות כרטיסים מקסימלית
+        return translateExactReservationError(message);
+    }
+
+    private String translateDynamicReservationError(String message) {
         if (message.matches("Failed to validate active order policy: Cannot purchase more than \\d+ tickets\\.")) {
             String maxTickets = message.replaceAll("\\D+", "");
             return "לא ניתן לרכוש יותר מ-" + maxTickets + " כרטיסים לאירוע זה.";
         }
 
-        // 2. טיפול דינמי בהגבלת גיל מינימלי
         if (message.contains("Customer does not meet the minimum age requirement of")) {
             String minAge = message.replaceAll("\\D+", "");
             return "הרכישה נכשלה: האירוע מוגבל מגיל " + minAge + " ומעלה בלבד.";
         }
 
-        // 3. טיפול דינמי בכמות כרטיסים מינימלית
         if (message.contains("Insufficient tickets purchased, minimum required:")) {
             String minTickets = message.replaceAll("\\D+", "");
             return "יש לרכוש לפחות " + minTickets + " כרטיסים כדי לבצע הזמנה לאירוע זה.";
         }
 
-        // 4. טיפול בשגיאה מרוכבת (All rules failed)
         if (message.startsWith("All rules failed:")) {
             String reasonsPart = message.substring("All rules failed:".length()).trim();
             String[] individualReasons = reasonsPart.split("; ");
             List<String> translatedReasons = new ArrayList<>();
             for (String reason : individualReasons) {
-                translatedReasons.add(translateReservationError(reason.trim())); // קריאה רקורסיבית מוגנת
+                translatedReasons.add(translateReservationError(reason.trim()));
             }
             return "הרכישה נדחתה עקב אי-עמידה בתנאי המדיניות: " + String.join(" וגם ", translatedReasons);
         }
+
+        return null;
+    }
+
+    private String translateExactReservationError(String message) {
         return switch (message) {
             case "No active session found. Please refresh and try again." ->
                     "לא נמצאה פעילות משתמש. יש לרענן את העמוד ולנסות שוב.";
@@ -901,6 +898,9 @@ public class ReservationPresenter {
             case "Not enough standing tickets in the order to remove" ->
                     "לא נמצאו מספיק כרטיסי עמידה להסרה מההזמנה.";
 
+            case "Suspended users can only perform view actions" ->
+                    "משתמש מושהה יכול לצפות במידע בלבד ולא לבצע פעולות רכישה.";
+
             case "User is not allowed to view this order" ->
                     "אין לך הרשאה לצפות בהזמנה הזו.";
 
@@ -924,15 +924,16 @@ public class ReservationPresenter {
                     "הסרת הכרטיסים נכשלה. יש לנסות שוב.";
 
             case "Lottery code is required for this event" ->
-                "נדרש קוד זכייה בהגרלה כדי לבחור כרטיסים לאירוע הזה.";
+                    "נדרש קוד זכייה בהגרלה כדי לבחור כרטיסים לאירוע הזה.";
 
             case "Invalid lottery code",
-                "Invalid winner code",
-                "Lottery code is invalid" ->
+                 "Invalid winner code",
+                 "Lottery code is invalid" ->
                     "קוד ההגרלה אינו תקין.";
 
             case "Payment service is unavailable" ->
                     "שירות התשלום אינו זמין כרגע. יש לנסות שוב מאוחר יותר.";
+
             case "Ticket issuing service is unavailable" ->
                     "שירות הנפקת הכרטיסים אינו זמין כרגע. יש לנסות שוב מאוחר יותר.";
             case "Selection access time could not be loaded." ->
@@ -942,7 +943,7 @@ public class ReservationPresenter {
                     "לא ניתן לבדוק את תוקף הגישה לבחירת הכרטיסים.";
 
             default ->
-                    "בחירת הכרטיסים נכשלה!!. יש לנסות שוב.";
+                    "בחירת הכרטיסים נכשלה. יש לנסות שוב.";
         };
     }
 
@@ -1023,6 +1024,50 @@ public class ReservationPresenter {
                     "הרכישה לא הושלמה. יש לנסות שוב.";
         };
     }
+
+    /**
+     * Requests access to the ticket-selection page for the given event.
+     *
+     * This method protects the ticket-selection route itself, so users cannot
+     * bypass the waiting queue by typing the ticket-selection URL directly.
+     *
+     * @param token active guest/member session token
+     * @param eventId event whose ticket-selection page is being requested
+     * @return true if the user may enter ticket selection, false if the user was placed in the waiting queue
+     */
+    public boolean requestTicketSelectionAccess(String token, Long eventId) {
+        try {
+            if (token == null || token.isBlank()) {
+                throw presentationError("No active session found. Please refresh and try again.");
+            }
+
+            if (eventId == null || eventId <= 0) {
+                throw presentationError("Event id is invalid.");
+            }
+
+            String result = waitingQueueService.tryReserve(eventId, token);
+
+            if ("APPROVED".equals(result)) {
+                return true;
+            }
+
+            if ("QUEUED".equals(result)) {
+                return false;
+            }
+
+            throw presentationError(result);
+
+        } catch (PresentationException e) {
+            throw e;
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("Ticket selection failed. Please try again.");
+        }
+    }
+
     /**
      * Releases the user's active purchasing slot for an event.
      *

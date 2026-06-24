@@ -75,6 +75,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     //selectionAccessTimer.setId("selection-access-timer");
     private Registration selectionAccessPollRegistration;
     private boolean allowLeavingSelectionPage = false;
+    private boolean queueAccessReleased = false;
 
     private final ReservationPresenter reservationPresenter;
     private final UiVisitCoordinator visitCoordinator;
@@ -99,7 +100,8 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         mapSection.addClassName("ticket-map-section");
         selectionAccessTimer.addClassName("selection-access-timer");
         selectionAccessTimer.setId("selection-access-timer");
-        selectionAccessTimer.setText("זמן לבחירת כרטיסים: --:--");
+        selectionAccessTimer.setText("");
+        selectionAccessTimer.setVisible(false);
        mapSection.add(selectionAccessTimer, createMapToolbar(), createFloatingZoomControls(), mapCanvas);
 
         Div summarySection = createSummarySection();
@@ -108,6 +110,16 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         add(shell);
     }
 
+    /**
+     * Loads the ticket-selection page only after verifying that the current user is
+     * allowed to access it.
+     *
+     * This protects the route from direct URL access. If the event is currently over
+     * the active-selection limit, the user is moved to the waiting queue instead of
+     * being allowed to bypass it by typing the ticket-selection URL directly.
+     *
+     * @param event Vaadin before-enter navigation event
+     */
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         String routeEventId = event.getRouteParameters().get("eventId").orElse(null);
@@ -116,13 +128,32 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         if (this.eventId == null) {
             Notifications.error("לא ניתן לטעון אירוע לא תקין");
             setEventData(null, null);
+            event.forwardTo(UiRoutes.EVENTS);
             return;
         }
 
         visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
-        loadTicketSelectionEventData();
-    }
 
+        try {
+            boolean mayEnterTicketSelection = reservationPresenter.requestTicketSelectionAccess(
+                    currentToken(),
+                    this.eventId
+            );
+
+            if (!mayEnterTicketSelection) {
+                Notifications.info("האירוע עמוס כרגע, הועברת לתור ההמתנה.");
+                event.forwardTo(UiRoutes.WAITING_QUEUE.replace(":eventId", String.valueOf(this.eventId)));
+                return;
+            }
+
+            loadTicketSelectionEventData();
+
+        } catch (PresentationException e) {
+            Notifications.error(e.getMessage());
+            setEventData(null, null);
+            event.forwardTo(UiRoutes.EVENTS);
+        }
+    }
 
     private Long parseEventId(String value) {
         if (value == null || value.isBlank()) {
@@ -202,7 +233,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             Notifications.error("לא ניתן לרענן את מפת האירוע. יש לנסות שוב");
         }
     }
-    
+
     public void setEventData(EventDTO eventDTO, EventMapDTO mapDTO) {
         this.eventDTO = eventDTO;
         this.mapDTO = mapDTO;
@@ -413,7 +444,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             return;
         }
 
-        reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+        releaseQueueAccessIfNeeded();
 
         allowLeavingSelectionPage = true;
 
@@ -422,9 +453,43 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         );
     }
 
+    /**
+     * Releases the current user's active selection slot for the selected event once.
+     *
+     * This cleanup is required when the user leaves the ticket-selection page.
+     * The method is idempotent at the UI level so that beforeLeave and detach do
+     * not trigger duplicate release attempts for the same view instance.
+     */
+    private void releaseQueueAccessIfNeeded() {
+        if (queueAccessReleased || eventId == null) {
+            return;
+        }
+
+        reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+        queueAccessReleased = true;
+    }
+
+    /**
+     * Handles navigation away from the ticket-selection page.
+     *
+     * Users who entered the page directly, without a limited queue turn, should not
+     * see a warning about being returned to the end of the queue.
+     *
+     * Users who were promoted from the waiting queue and still have an active
+     * selection deadline are warned before leaving, because leaving may end their
+     * current selection window.
+     *
+     * @param event Vaadin before-leave navigation event
+     */
     @Override
     public void beforeLeave(BeforeLeaveEvent event) {
         if (allowLeavingSelectionPage || eventId == null) {
+            return;
+        }
+
+        if (!hasActiveQueueTurnDeadline()) {
+            releaseQueueAccessIfNeeded();
+            allowLeavingSelectionPage = true;
             return;
         }
 
@@ -432,18 +497,13 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
         ConfirmDialog dialog = new ConfirmDialog();
         dialog.setHeader("עזיבת בחירת הכרטיסים");
-        dialog.setText("עזיבה של העמוד עלולה להחזיר אותך לסוף התור. האם להמשיך?");
+        dialog.setText("עזיבה תסיים את חלון הבחירה הנוכחי, וייתכן שתצטרכו להצטרף מחדש לתור. האם לצאת?");
         dialog.setConfirmText("כן, לצאת");
         dialog.setCancelText("להישאר");
         dialog.setCancelable(true);
 
         dialog.addConfirmListener(e -> {
-            try {
-    reservationPresenter.releaseQueueAccess(currentToken(), eventId);
-        } catch (PresentationException ex) {
-            Notification.show(ex.getMessage());
-        }
-
+            releaseQueueAccessIfNeeded();
             allowLeavingSelectionPage = true;
             action.proceed();
         });
@@ -453,6 +513,24 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         });
 
         dialog.open();
+    }
+
+    /**
+     * Checks whether the current user has an active limited selection window that
+     * was granted after being promoted from the waiting queue.
+     *
+     * A positive number of seconds means the user is currently inside a queue turn
+     * deadline. Users who entered directly do not have such a deadline.
+     *
+     * @return true if the user has an active queue-selection deadline
+     */
+    private boolean hasActiveQueueTurnDeadline() {
+        try {
+            return eventId != null
+                    && reservationPresenter.getSelectionAccessSecondsLeft(currentToken(), eventId) > 0;
+        } catch (PresentationException e) {
+            return false;
+        }
     }
 
     private void renderMap() {
@@ -807,7 +885,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 UiSession.handleTimeoutRedirect();
-                return; 
+                return;
             }
             Notifications.error(e.getMessage());
         } catch (Exception e) {
@@ -915,7 +993,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
                 UiSession.handleTimeoutRedirect();
                 return;
             }
-           
+
         } catch (Exception e) {
             Notifications.error("שגיאה בעדכון סל הכרטיסים.");
         }
@@ -932,8 +1010,6 @@ private ActiveOrderDTO loadCurrentEventActiveOrder() {
 
     private void syncSelectedStandingFromActiveOrder(ActiveOrderDTO order) {
         try {
-              
-        
             if (order == null || order.getTickets() == null || mapDTO == null || mapDTO.elements() == null) {
                 return;
             }
@@ -1127,9 +1203,8 @@ private String findAreaNameById(Long areaId) {
                 if (field != null) {
                     field.setValue(0);
                 }
-                ActiveOrderDTO order= loadCurrentEventActiveOrder();
+                ActiveOrderDTO order = loadCurrentEventActiveOrder();
                 refreshSummary(order);
-            
             } catch (PresentationException e) {
                 if (e.isSessionTimeout()) {
                     if (UiSession.isLoggedIn()) {
@@ -1278,40 +1353,73 @@ private String findAreaNameById(Long areaId) {
         return "₪" + amount.setScale(0, RoundingMode.HALF_UP).toPlainString();
     }
 
-    private void refreshSelectionAccessTimer() {
-    long secondsLeft = reservationPresenter.getSelectionAccessSecondsLeft(
-              currentToken(),eventId
-          
-    );
+    /**
+     * Refreshes the waiting-queue access timer shown above the map.
+     *
+     * The timer should be visible only for users who were promoted from the
+     * waiting queue and therefore have a positive selection-access deadline.
+     * Directly approved users do not have such a deadline, so the timer is hidden
+     * and no client-side countdown should run for them.
+     *
+     * @return true if a queue access countdown should be displayed and started
+     */
+    private boolean refreshSelectionAccessTimer() {
+        long secondsLeft = reservationPresenter.getSelectionAccessSecondsLeft(
+                currentToken(),
+                eventId
+        );
 
-    selectionAccessTimer.getElement()
-            .setAttribute("data-seconds-left", String.valueOf(secondsLeft));
+        if (secondsLeft <= 0) {
+            stopClientSideSelectionTimer();
+            selectionAccessTimer.setVisible(false);
+            selectionAccessTimer.getElement().removeAttribute("data-seconds-left");
+            selectionAccessTimer.setText("");
+            return false;
+        }
 
-    selectionAccessTimer.setText(formatSeconds(secondsLeft));
-}
+        selectionAccessTimer.setVisible(true);
+        selectionAccessTimer.getElement()
+                .setAttribute("data-seconds-left", String.valueOf(secondsLeft));
+
+        selectionAccessTimer.setText(formatQueueTurnTimerText(secondsLeft));
+        return true;
+    }
+
+    private String formatSeconds(long seconds) {
+        long safeSeconds = Math.max(0, seconds);
+        long minutesPart = safeSeconds / 60;
+        long secondsPart = safeSeconds % 60;
+
+        return String.format("%02d:%02d", minutesPart, secondsPart);
+    }
+
+    /**
+     * Formats the countdown shown only to users whose turn arrived from the
+     * waiting queue.
+     *
+     * @param secondsLeft number of seconds left until the queue turn expires
+     * @return user-facing Hebrew timer text
+     */
+    private String formatQueueTurnTimerText(long secondsLeft) {
+        return "תורך לבחירת כרטיסים יסתיים בעוד " + formatSeconds(secondsLeft);
+    }
 
 
-private String formatSeconds(long seconds) {
-    long safeSeconds = Math.max(0, seconds);
-    long minutesPart = safeSeconds / 60;
-    long secondsPart = safeSeconds % 60;
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
 
-    return String.format("%02d:%02d", minutesPart, secondsPart);
-}
+        if (refreshSelectionAccessTimer()) {
+            startClientSideSelectionTimer();
+        }
+    }
 
-@Override
-protected void onAttach(AttachEvent attachEvent) {
-    super.onAttach(attachEvent);
-
-    refreshSelectionAccessTimer();
-    startClientSideSelectionTimer();
-}
-
-@Override
-protected void onDetach(DetachEvent detachEvent) {
-    stopClientSideSelectionTimer();
-    super.onDetach(detachEvent);
-}
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        releaseQueueAccessIfNeeded();
+        stopClientSideSelectionTimer();
+        super.onDetach(detachEvent);
+    }
     private record SeatKey(Long areaId, int row, int number) {
     }
 
@@ -1324,26 +1432,48 @@ protected void onDetach(DetachEvent detachEvent) {
         }
     }
 
+    /**
+     * Starts a client-side countdown for the waiting-queue access timer.
+     *
+     * This method assumes that the server already decided the timer is relevant
+     * and stored a positive data-seconds-left value on the timer element.
+     */
     private void startClientSideSelectionTimer() {
-    getElement().executeJs("""
+        getElement().executeJs("""
         const root = this;
 
         if (root.__selectionTimerInterval) {
             clearInterval(root.__selectionTimerInterval);
+            root.__selectionTimerInterval = null;
+        }
+
+        const timer = root.querySelector('#selection-access-timer');
+
+        if (!timer) {
+            return;
+        }
+
+        let initialSecondsLeft = Number(timer.dataset.secondsLeft || '0');
+
+        if (initialSecondsLeft <= 0) {
+            return;
         }
 
         root.__selectionTimerInterval = setInterval(() => {
             const timer = root.querySelector('#selection-access-timer');
 
             if (!timer) {
+                clearInterval(root.__selectionTimerInterval);
+                root.__selectionTimerInterval = null;
                 return;
             }
 
             let secondsLeft = Number(timer.dataset.secondsLeft || '0');
 
             if (secondsLeft <= 0) {
-                timer.textContent = 'זמן לבחירת כרטיסים: 00:00';
+                timer.textContent = 'תורך לבחירת כרטיסים הסתיים';
                 clearInterval(root.__selectionTimerInterval);
+                root.__selectionTimerInterval = null;
                 root.$server.onSelectionAccessTimerExpired();
                 return;
             }
@@ -1355,12 +1485,12 @@ protected void onDetach(DetachEvent detachEvent) {
             const seconds = secondsLeft % 60;
 
             timer.textContent =
-                'זמן לבחירת כרטיסים: ' +
+                'תורך לבחירת כרטיסים יסתיים בעוד ' +
                 String(minutes).padStart(2, '0') + ':' +
                 String(seconds).padStart(2, '0');
         }, 1000);
     """);
-}
+    }
 
 private void stopClientSideSelectionTimer() {
     getElement().executeJs("""
@@ -1380,14 +1510,19 @@ private void onSelectionAccessTimerExpired() {
 
     if (expired) {
         allowLeavingSelectionPage = true;
-        UI.getCurrent().navigate("waiting-queue/" + eventId);
+        Notification.show(
+                "זמן הבחירה שלך הסתיים. אפשר לבחור את האירוע מחדש ולנסות שוב.",
+                5000,
+                Notification.Position.MIDDLE
+        );
+        UI.getCurrent().navigate(UiRoutes.HOME);
         return;
     }
 
-    refreshSelectionAccessTimer();
-    startClientSideSelectionTimer();
+    if (refreshSelectionAccessTimer()) {
+        startClientSideSelectionTimer();
+    }
 }
-
 
 
     private void refreshReservationTimer(ActiveOrderDTO order) {
@@ -1400,7 +1535,7 @@ private void onSelectionAccessTimerExpired() {
             }
 
             reservationTimer.setDeadline(order.getExpiresAtEpochMillis());
-        
+
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 UiSession.handleTimeoutRedirect();
