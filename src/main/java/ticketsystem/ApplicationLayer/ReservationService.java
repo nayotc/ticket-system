@@ -473,20 +473,23 @@ public class ReservationService {
             if (order == null || event == null) {
                 throw new IllegalStateException("No active order or event found");
             }
-
+            
             if (reservationDomeinService.timeExpire(event, order)) {
                 expireCurrentOrder(token, order, event);
                 throw new IllegalStateException("Active order has expired");
             }
-
+            if (details == null || details.getBirthDate() == null || details.getPayerName() == null
+                    || details.getPaymentMethodId() == null) {
+                    order.paymentFailed();
+                throw new IllegalArgumentException("Payment details are incomplete");
+            }
+            
             if (!paymentService.handshake()) {
+                order.paymentFailed();
                 throw new IllegalStateException("Payment service is unavailable");
             }
 
-            if (details == null || details.getBirthDate() == null || details.getPayerName() == null
-                    || details.getPaymentMethodId() == null) {
-                throw new IllegalArgumentException("Payment details are incomplete");
-            }
+
 
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
             BigDecimal amountAfterDiscount = eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event,
@@ -843,16 +846,8 @@ public class ReservationService {
                 if (event == null || order == null) {
                     continue;
                 }
-                String token= order.getSessionToken();
-                boolean tokenExpired =false;
-                try{
-                    tokenService.validateToken(token);
-                }
-                catch (Exception e){
-                    tokenExpired = true;
-                }
-                boolean guestOrder = order.getUserId() == null;
-                if (reservationDomeinService.timeExpire(event, order) ||  (tokenExpired &&guestOrder)) {
+        
+                if (reservationDomeinService.timeExpire(event, order)) {
                     List<Ticket> tickets= reservationDomeinService.expire(event, order);
                     
                     notifyOrderOwner(
@@ -902,19 +897,8 @@ public class ReservationService {
 
         for (ActiveOrder order : orders) {
             try {
-                String token = order.getSessionToken();
 
-                boolean tokenExpired = false;
-                try {
-                    tokenService.validateToken(token);
-                } catch (Exception e) {
-                    tokenExpired = true;
-                }
-
-                boolean guestOrder = order.getUserId() == null;
-
-                if (reservationDomeinService.timeExpire(event, order)
-                        || (tokenExpired && guestOrder)) {
+                if (reservationDomeinService.timeExpire(event, order)) {
 
                     List<Ticket> tickets = reservationDomeinService.expire(event, order);
 

@@ -41,7 +41,6 @@ public class ExternalPaymentService implements IPaymentService {
             body.add("action_type", "handshake");
 
             String response = postForm(body);
-
             return response != null
                     && response.trim().equalsIgnoreCase("OK");
 
