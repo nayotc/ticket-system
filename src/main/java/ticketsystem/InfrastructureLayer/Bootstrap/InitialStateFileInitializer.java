@@ -5,10 +5,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -22,11 +20,8 @@ import org.springframework.stereotype.Component;
 
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.EventService;
-import ticketsystem.ApplicationLayer.MembershipService;
 import ticketsystem.ApplicationLayer.UserService;
 import ticketsystem.DTO.CompanyDTO;
-import ticketsystem.DTO.DiscountDTO;
-import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DTO.Event.IMapElementDTO;
 import ticketsystem.DTO.Event.PairDTO;
@@ -34,19 +29,16 @@ import ticketsystem.DTO.Event.SeatDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
-import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.DomainLayer.event.EventCategory;
 import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.user.Permission;
 
 /**
- * Initializes the system from an external initial-state file for Version 3.
+ * Initializes the system from an external initial-state file for the final version scenario.
  *
  * <p>The initializer intentionally creates the requested state through the
- * application services, so the same use-case validations, permissions, role
- * approvals, policy updates, and event-map validations are exercised during
- * startup.</p>
+ * application services, so the same use-case validations, permissions, and
+ * event-map validations are exercised during startup.</p>
  *
  * <p>The initializer is disabled by default and is activated only when
  * ticketsystem.initial-state.enabled=true is configured. This prevents tests
@@ -64,7 +56,6 @@ public class InitialStateFileInitializer implements CommandLineRunner {
     private final ResourceLoader resourceLoader;
     private final UserService userService;
     private final CompanyService companyService;
-    private final MembershipService membershipService;
     private final EventService eventService;
     private final IEventRepository eventRepository;
     private final ObjectMapper objectMapper;
@@ -76,34 +67,34 @@ public class InitialStateFileInitializer implements CommandLineRunner {
             ResourceLoader resourceLoader,
             UserService userService,
             CompanyService companyService,
-            MembershipService membershipService,
             EventService eventService,
             IEventRepository eventRepository
     ) {
         this.resourceLoader = resourceLoader;
         this.userService = userService;
         this.companyService = companyService;
-        this.membershipService = membershipService;
         this.eventService = eventService;
         this.eventRepository = eventRepository;
         this.objectMapper = new ObjectMapper().findAndRegisterModules();
     }
 
     /**
-     * Loads the configured initial-state file and executes the required use-case sequence:
+     * Loads the configured initial-state file and executes the required final-version scenario:
      *
      * <ol>
-     *     <li>Register users u1, u2, u3, u4.</li>
-     *     <li>Log in u1.</li>
-     *     <li>u1 opens production company p1.</li>
-     *     <li>u1 appoints u2 as owner.</li>
-     *     <li>u2 logs in and confirms the appointment.</li>
-     *     <li>u2 appoints u3 as manager with venue-layout permission only.</li>
-     *     <li>u3 logs in and confirms the appointment.</li>
-     *     <li>u2 adds event e1 and defines the required event map.</li>
-     *     <li>u2 adds the company coupon discount sale123.</li>
-     *     <li>All logged-in users are logged out.</li>
+     *     <li>Register User1.</li>
+     *     <li>Register User2.</li>
+     *     <li>Register User3, who is over 18 years old.</li>
+     *     <li>Register User4.</li>
+     *     <li>Log in User1.</li>
+     *     <li>Create company C1.</li>
+     *     <li>Create event E1 with 10 standing tickets and 10 seats.</li>
+     *     <li>Create event E2 with 10 standing tickets and 10 seats, each ticket costing 10 dollars.</li>
+     *     <li>Log out User1.</li>
      * </ol>
+     *
+     * <p>The system admin is expected to be created by the existing system-admin bootstrap
+     * configuration before or during application initialization.</p>
      *
      * @param args command-line arguments supplied by Spring Boot
      * @throws Exception if the initial-state file cannot be read or if any use-case fails
@@ -112,53 +103,39 @@ public class InitialStateFileInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         InitialStateConfig config = loadConfig();
 
-        System.out.println("Starting Version 3 initial-state bootstrap from: " + initialStateFile);
+        System.out.println("Starting final-version initial-state bootstrap from: " + initialStateFile);
 
         registerUsers(config.users());
 
-        String u1Token = login(config.user("u1"));
-        CompanyBootstrapResult companyResult = createOrFindCompany(u1Token, config.company().name());
+        UserConfig user1 = config.user("user1");
+        String user1Token = login(user1);
+
+        CompanyBootstrapResult companyResult = createOrFindCompany(user1Token, config.company().name());
         Long companyId = companyResult.companyId();
 
-        String u2Token = login(config.user("u2"));
-        String u3Token = login(config.user("u3"));
+        List<Long> eventIds = new ArrayList<>();
+        for (EventConfig eventConfig : config.events()) {
+            EventBootstrapResult eventResult = createOrFindEvent(user1Token, companyId, eventConfig);
+            eventIds.add(eventResult.eventId());
 
-        if (companyResult.created()) {
-            membershipService.requestOwnerAssignment(u1Token, companyId, config.user("u2").username());
-            membershipService.approveAssignment(u2Token, companyId);
-
-            Set<Permission> u3Permissions = EnumSet.of(Permission.CONFIGURE_HALL_AND_MAP);
-            membershipService.requestManagerAssignment(u2Token, companyId, config.user("u3").username(), u3Permissions);
-            membershipService.approveAssignment(u3Token, companyId);
-
-            addCompanyCouponDiscount(u2Token, companyId, config.couponDiscount());
-        } else {
-            System.out.println(
-                    "Initial-state company already existed, skipping role assignments and company discount policy "
-                            + "to avoid duplicating assignments or overwriting existing company data."
-            );
+            if (eventResult.created()) {
+                defineEventMap(user1Token, eventResult.eventId(), eventConfig);
+            } else {
+                System.out.println(
+                        "Initial-state event already existed, skipping map definition "
+                                + "to avoid overwriting existing event map and area prices: "
+                                + eventConfig.name()
+                );
+            }
         }
 
-        EventBootstrapResult eventResult = createOrFindEvent(u2Token, companyId, config.event());
-
-        if (eventResult.created()) {
-            defineEventMap(u2Token, eventResult.eventId(), config.event());
-        } else {
-            System.out.println(
-                    "Initial-state event already existed, skipping map definition "
-                            + "to avoid overwriting existing event map and area prices."
-            );
-}
-
-        logoutAndExit(u1Token);
-        logoutAndExit(u2Token);
-        logoutAndExit(u3Token);
+        logoutAndExit(user1Token);
 
         System.out.println(
-                "Initial-state bootstrap completed. companyId="
+                "Final-version initial-state bootstrap completed. companyId="
                         + companyId
-                        + ", eventId="
-                        + eventResult.eventId()
+                        + ", eventIds="
+                        + eventIds
         );
     }
 
@@ -202,7 +179,8 @@ public class InitialStateFileInitializer implements CommandLineRunner {
         return userService.login(guestToken, user.username(), user.password());
     }
 
-    private CompanyBootstrapResult createOrFindCompany(String u1Token, String companyName) throws Exception {        Optional<CompanyDTO> existingCompany = companyService.getAllCompanies()
+    private CompanyBootstrapResult createOrFindCompany(String userToken, String companyName) throws Exception {
+        Optional<CompanyDTO> existingCompany = companyService.getAllCompanies()
                 .stream()
                 .filter(company -> company.getName().equalsIgnoreCase(companyName))
                 .findFirst();
@@ -212,12 +190,12 @@ public class InitialStateFileInitializer implements CommandLineRunner {
             return new CompanyBootstrapResult(existingCompany.get().getId(), false);
         }
 
-        CompanyDTO createdCompany = companyService.createProductionCompany(u1Token, companyName);
+        CompanyDTO createdCompany = companyService.createProductionCompany(userToken, companyName);
         System.out.println("Initial-state company created: " + companyName + " [ID: " + createdCompany.getId() + "]");
         return new CompanyBootstrapResult(createdCompany.getId(), true);
     }
 
-    private EventBootstrapResult createOrFindEvent(String u2Token, Long companyId, EventConfig eventConfig) {
+    private EventBootstrapResult createOrFindEvent(String userToken, Long companyId, EventConfig eventConfig) {
         Optional<Event> existingEvent = eventRepository.getAllEvents()
                 .stream()
                 .filter(event -> companyId.equals(event.getCompanyId()))
@@ -230,7 +208,7 @@ public class InitialStateFileInitializer implements CommandLineRunner {
         }
 
         Long eventId = eventService.insertEvent(
-                u2Token,
+                userToken,
                 eventConfig.name(),
                 companyId,
                 LocalDateTime.parse(eventConfig.date()),
@@ -248,17 +226,17 @@ public class InitialStateFileInitializer implements CommandLineRunner {
     }
 
     /**
-     * Defines the event map required by the Version 3 initial-state scenario.
+     * Defines the event map required by the final-version initial-state scenario.
      *
-     * <p>The map contains one standing area with 30 available tickets and one
-     * seating area with a 10x10 layout. Each area receives its own ticket price,
-     * according to the updated area-pricing model.</p>
+     * <p>Each event contains one standing area and one seating area. The standing
+     * capacity and the seating layout are loaded from the external initial-state file.
+     * For example, a seating layout of 2x5 creates exactly 10 seats.</p>
      *
-     * @param u2Token token of u2, who owns the production company
+     * @param userToken token of User1, who owns the production company
      * @param eventId ID of the created event
      * @param eventConfig event configuration loaded from the initial-state file
      */
-    private void defineEventMap(String u2Token, Long eventId, EventConfig eventConfig) {
+    private void defineEventMap(String userToken, Long eventId, EventConfig eventConfig) {
         List<IMapElementDTO> elements = new ArrayList<>();
 
         StandingZoneConfig standingZone = eventConfig.standingZone();
@@ -295,7 +273,7 @@ public class InitialStateFileInitializer implements CommandLineRunner {
                 false
         );
 
-        eventService.defineEventMap(u2Token, eventId, mapDTO);
+        eventService.defineEventMap(userToken, eventId, mapDTO);
 
         System.out.println(
                 "Initial-state event map defined for eventId=" + eventId
@@ -303,33 +281,6 @@ public class InitialStateFileInitializer implements CommandLineRunner {
                         + ", standing price=" + standingZone.price()
                         + ", seating layout=" + seatingZone.rows() + "x" + seatingZone.columns()
                         + ", seating price=" + seatingZone.price()
-        );
-    }
-
-    private void addCompanyCouponDiscount(
-            String u2Token,
-            Long companyId,
-            CouponDiscountConfig couponConfig
-    ) throws Exception {
-        DiscountDTO coupon = new DiscountDTO();
-        coupon.setName(couponConfig.name());
-        coupon.setType("COUPON");
-        coupon.setCouponCode(couponConfig.code());
-        coupon.setPercentage(BigDecimal.valueOf(couponConfig.percentage()));
-        coupon.setEndTime(LocalDateTime.parse(couponConfig.expiresAt()));
-
-        DiscountPolicyDTO policyDTO = new DiscountPolicyDTO(
-                DiscountCompositionType.valueOf(couponConfig.compositionType()),
-                List.of(coupon)
-        );
-
-        companyService.setCompanyDiscountPolicy(u2Token, companyId, policyDTO);
-
-        System.out.println(
-                "Initial-state company coupon discount configured: code="
-                        + couponConfig.code()
-                        + ", percentage=" + couponConfig.percentage()
-                        + "%"
         );
     }
 
@@ -345,15 +296,14 @@ public class InitialStateFileInitializer implements CommandLineRunner {
     private record InitialStateConfig(
             List<UserConfig> users,
             CompanyConfig company,
-            EventConfig event,
-            CouponDiscountConfig couponDiscount
+            List<EventConfig> events
     ) {
-    private UserConfig user(String id) {
-        return users.stream()
-                .filter(user -> user.id().equalsIgnoreCase(id))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Missing user in initial-state file: " + id));
-    }
+        private UserConfig user(String id) {
+            return users.stream()
+                    .filter(user -> user.id().equalsIgnoreCase(id))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("Missing user in initial-state file: " + id));
+        }
     }
 
     private record UserConfig(
@@ -398,15 +348,6 @@ public class InitialStateFileInitializer implements CommandLineRunner {
             int rows,
             int columns,
             int price
-    ) {
-    }
-
-    private record CouponDiscountConfig(
-            String name,
-            String code,
-            int percentage,
-            String compositionType,
-            String expiresAt
     ) {
     }
 
