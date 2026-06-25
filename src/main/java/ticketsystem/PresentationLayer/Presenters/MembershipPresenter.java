@@ -217,9 +217,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -232,9 +232,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -247,9 +247,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -262,9 +262,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -277,9 +277,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -292,9 +292,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -307,9 +307,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -322,9 +322,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -337,9 +337,9 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -352,15 +352,15 @@ public class MembershipPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationException(e.getMessage());
+            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw presentationException(extractUsefulMessage(e));
+            throw new PresentationException(translateError(extractUsefulMessage(e)));
         }
     }
 
-    private PresentationException presentationException(String message) {
-        return new PresentationException(translateError(message));
-    }
+    // private PresentationException presentationException(String message) {
+    //     return new PresentationException(translateError(message));
+    // }
 
     private String translateError(String message) {
         String cleanMessage = cleanErrorMessage(message);
@@ -368,25 +368,16 @@ public class MembershipPresenter {
         if (cleanMessage == null || cleanMessage.isBlank()) {
             return "אירעה שגיאה. נסו שוב.";
         }
-        
-        if (message != null && (
-                message.contains("JWT") ||
-                message.contains("expired") ||
-                message.contains("Invalid") ||
-                message.contains("Invalid session ID") ||
-                message.contains("Token is missing or null") ||
-                message.contains("Session is no longer active") ||
-                message.contains("Invalid or expired security token")
-        )) {
-            return message;
+
+        if (PresentationException.isDbDisconnectMessage(cleanMessage)) {
+            return PresentationException.DB_DISCONNECT_HEBREW_MSG;
+        }
+
+        if (PresentationException.isSessionTimeoutMessage(cleanMessage)) {
+            return PresentationException.SESSION_TOKEN_EXPIRED;
         }
 
         return switch (cleanMessage) {
-            case "Session authentication failed.",
-                 "Invalid session ID",
-                 "Invalid token.",
-                 "Member ID not found in token." ->
-                    "פג תוקף החיבור. יש להתחבר מחדש.";
 
             case "Appointer not found." ->
                     "המשתמש שמבצע את המינוי לא נמצא במערכת.";

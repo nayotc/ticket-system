@@ -179,7 +179,7 @@ public class Login extends PageContainer implements BeforeEnterObserver {
             UI.getCurrent().navigate(UiRoutes.HOME);
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }

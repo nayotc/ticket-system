@@ -385,7 +385,7 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
             }
         
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }

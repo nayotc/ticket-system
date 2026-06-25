@@ -25,6 +25,7 @@ import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.EventCardViewModel;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
@@ -249,8 +250,8 @@ public class CompanySearchResults extends PageContainer implements BeforeEnterOb
                     eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
                     Notification.show("נרשמת להגרלה בהצלחה.", 3000, Notification.Position.TOP_CENTER);
                     
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                         return;
                     }
@@ -266,8 +267,8 @@ public class CompanySearchResults extends PageContainer implements BeforeEnterOb
                 try {
                     return eventCardPresenter.isPreSaleCodeValid(UiSession.getMemberToken(), eventId, lotteryCode);
                     
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                     } else {
                         Notifications.error(e.getMessage());
