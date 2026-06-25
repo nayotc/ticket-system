@@ -43,6 +43,7 @@ public class PresentationException extends RuntimeException {
                message.contains("Invalid session") ||
                message.contains("Invalid or expired") ||
                message.contains("ID not found in token") ||
+               message.contains("Session token is empty") ||
                message.contains("Token is missing or null") ||
                message.contains("Session is no longer active") ||
                message.contains("Session authentication failed");

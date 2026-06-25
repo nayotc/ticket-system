@@ -39,7 +39,10 @@ public class SystemAdminPresenter {
             return systemAdminService.getCurrentAdminId(token);
         
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), PresentationException.SESSION_TOKEN_EXPIRED));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "אירעה שגיאה במהלך זיהוי האדמין לפי הסשן טוקן."
+                ));
         }
     }
 
@@ -63,9 +66,15 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "טעינת רשימת המשתמשים נכשלה. אנא נסו שוב."
+                ));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "טעינת רשימת המשתמשים נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                     "אירעה שגיאה במהלך טעינת רשימת המשתמשים. אנא נסו שוב."
+                ));
         }
     }
 
@@ -79,9 +88,15 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "טעינת רשימת החברות נכשלה. אנא נסו שוב."
+                ));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "טעינת רשימת החברות נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                     "אירעה שגיאה במהלך טעינת רשימת החברות. אנא נסו שוב."
+                ));
         }
     }
 
@@ -98,11 +113,16 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "מחיקת המשתמש נכשלה. אנא נסו שוב."
+                ));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "מחיקת המשתמש נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                     "אירעה שגיאה במהלך מחיקת המשתמש. אנא נסו שוב."
+                ));
         }
-
     }
 
     public void removeUserFromAllCompanies(String token, long memberId) throws PresentationException {
@@ -115,9 +135,15 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "הסרת המשתמש מחברות ההפקה נכשלה. אנא נסו שוב."
+                ));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "הסרת המשתמש מחברות ההפקה נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                     "אירעה שגיאה במהלך הסרת המשתמש מחברות ההפקה. אנא נסו שוב."
+                ));
         }
     }
 
@@ -128,9 +154,15 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "סגירת חברת ההפקה נכשלה. אנא נסו שוב."
+                ));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "סגירת חברת ההפקה נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                     "אירעה שגיאה במהלך סגירת חברת ההפקה. אנא נסו שוב."
+                ));
         }
     }
 
@@ -145,7 +177,10 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "טעינת היסטוריית הרכישות לפי חברה ואירוע נכשלה. אנא נסו שוב."));
+                        throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                     "אירעה שגיאה במהלך טעינת היסטוריית הרכישות לפי חברה ואירוע. אנא נסו שוב."
+                ));
         }
     }
 
@@ -158,7 +193,10 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "טעינת היסטוריית הרכישות לפי משתמשים נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                     "אירעה שגיאה במהלך טעינת היסטוריית הרכישות לפי משתמשים. אנא נסו שוב."
+                ));
         }
     }
 
@@ -185,9 +223,15 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "השעיית המשתמש נכשלה. אנא נסו שוב."
+                ));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "השעיית המשתמש נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "אירעה שגיאה במהלך השעיית המשתמש. אנא נסו שוב."
+                ));
         }
     }
 
@@ -198,9 +242,15 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "ביטול השעיית המשתמש נכשל. אנא נסו שוב."
+                ));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "ביטול השעיית המשתמש נכשל. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "אירעה שגיאה במהלך ביטול השעיית המשתמש. אנא נסו שוב."
+                ));
         }
     }
 
@@ -213,7 +263,10 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "טעינת רשימת המשתמשים המושהים נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "אירעה שגיאה במהלך טעינת רשימת המשתמשים המושעים. אנא נסו שוב."
+                ));
         }
     }
 
@@ -226,9 +279,15 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "טעינת יומני האירועים במערכת נכשלה. אנא נסו שוב."
+                ));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "טעינת יומני האירועים במערכת נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "אירעה שגיאה במהלך טעינת יומני האירועים. אנא נסו שוב."
+                ));
         }
     }
 
@@ -239,9 +298,15 @@ public class SystemAdminPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "טעינת יומני השגיאות במערכת נכשלה. אנא נסו שוב."
+                ));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "טעינת יומני השגיאות במערכת נכשלה. אנא נסו שוב."));
+            throw PresentationException.dispatch(e, 
+                msg -> translateAdminError(msg,
+                    "אירעה שגיאה במהלך טעינת יומני השגיאות. אנא נסו שוב."
+                ));
         }
     }
 
@@ -250,24 +315,16 @@ public class SystemAdminPresenter {
             return systemAdminService.isSystemAdmin(token);
         
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), "אימות הרשאות מנהל המערכת נכשל. אנא התחברו מחדש."));
+            throw new PresentationException("גישה נדחתה: הפעולה מורשית למנהלי מערכת בלבד.");
         }
     }
 
-    private String translateError(String message, String fallbackMessage) {
+    private String translateAdminError(String message, String fallbackMessage) {
         if (message == null || message.isBlank()) {
             return fallbackMessage;
         }
 
         String cleanMessage = message.trim();
-
-        if (PresentationException.isDbDisconnectMessage(cleanMessage)) {
-            return PresentationException.DB_DISCONNECT_HEBREW_MSG;
-        }
-
-        if (PresentationException.isSessionTimeoutMessage(cleanMessage)) {
-            return PresentationException.SESSION_TOKEN_EXPIRED;
-        }
 
         return switch (cleanMessage) {
             case "Failed to verify admin access. Please log in again." ->
@@ -313,25 +370,4 @@ public class SystemAdminPresenter {
             default -> fallbackMessage;
         };
     }
-
-    /**
-     * חולצת את השגיאה המקורית ממעמקי ה-Stack Trace כדי לזהות ניתוקי DB
-     */
-    private String extractUsefulMessage(Exception exception) {
-        if (exception == null) {
-            return "";
-        }
-
-        Throwable current = exception;
-        while (current.getCause() != null) {
-            current = current.getCause();
-        }
-
-        if (current.getMessage() != null && !current.getMessage().isBlank()) {
-            return current.getMessage();
-        }
-
-        return exception.getMessage() != null ? exception.getMessage() : "";
-    }
-
 }
