@@ -467,6 +467,16 @@ public class SystemAdminDashboard extends Div {
             return actions;
         }
 
+        if (!user.isActive()) {
+            Span deletedLabel = new Span("נמחק");
+            deletedLabel.getStyle().set("color", "var(--lumo-error-text-color)");
+            deletedLabel.getStyle().set("font-size", "var(--lumo-font-size-s)");
+            deletedLabel.getStyle().set("font-weight", "500");
+            actions.add(deletedLabel);
+            
+            return actions; 
+        }
+
     // Dynamic button (toggles between suspend and return to activity)
         Button suspendAction = new Button();
         if ("מושעה".equals(user.status())) {
@@ -792,9 +802,9 @@ public class SystemAdminDashboard extends Div {
 
     private void loadDemoData() {
         allUsers.clear();
-        allUsers.add(new AdminUserRow(101L, "noam@test.com", "נועם כהן", "פעיל"));
-        allUsers.add(new AdminUserRow(102L, "maya@test.com", "מאיה לוי", "פעיל"));
-        allUsers.add(new AdminUserRow(103L, "admin-watch@test.com", "חשבון בבדיקה", "פעיל"));
+        allUsers.add(new AdminUserRow(101L, "noam@test.com", "נועם כהן", "פעיל", true));
+        allUsers.add(new AdminUserRow(102L, "maya@test.com", "מאיה לוי", "פעיל", true));
+        allUsers.add(new AdminUserRow(103L, "admin-watch@test.com", "חשבון בבדיקה", "פעיל", true));
 
         allCompanies.clear();
         allCompanies.add(new CompanyTableRow(11L, "LiveNation Israel", 1L, "פעילה"));
@@ -1010,7 +1020,8 @@ public class SystemAdminDashboard extends Div {
             Long id,
             String email,
             String displayName,
-            String status
+            String status,
+            boolean isActive
     ) {
     }
 

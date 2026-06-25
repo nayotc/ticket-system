@@ -55,7 +55,8 @@ public class SystemAdminPresenter {
                             user.getId(),
                             user.getUserName(), // Using UserName (serves as email)
                             user.getFullName(), // Using FullName
-                            user.isSuspended() ? "מושעה" : "פעיל" // Dynamically set status based on suspension
+                            user.isSuspended() ? "מושעה" : "פעיל", // Dynamically set status based on suspension
+                            user.isActive() // Using isActive flag
                     ))
                     .collect(Collectors.toList());
         } catch (PresentationException e) {
