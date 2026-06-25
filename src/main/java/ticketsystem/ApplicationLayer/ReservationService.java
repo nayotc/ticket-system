@@ -478,17 +478,18 @@ public class ReservationService {
                 expireCurrentOrder(token, order, event);
                 throw new IllegalStateException("Active order has expired");
             }
-
-            if (!paymentService.handshake()) {
-                order.paymentFailed();
-                throw new IllegalStateException("Payment service is unavailable");
-            }
-
             if (details == null || details.getBirthDate() == null || details.getPayerName() == null
                     || details.getPaymentMethodId() == null) {
                     order.paymentFailed();
                 throw new IllegalArgumentException("Payment details are incomplete");
             }
+            
+            if (!paymentService.handshake()) {
+                order.paymentFailed();
+                throw new IllegalStateException("Payment service is unavailable");
+            }
+
+
 
             BigDecimal amount = reservationDomeinService.submitActiveOrderForCheckout(order, event);
             BigDecimal amountAfterDiscount = eventCatalogDomainService.calculateFinalPrice(event.getCompanyId(), event,
