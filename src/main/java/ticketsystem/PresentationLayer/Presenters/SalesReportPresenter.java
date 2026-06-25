@@ -21,6 +21,7 @@ public class SalesReportPresenter {
     private final HistoryService historyService;
     private final UserService userService;
 
+    // Dependency injection of the history service from the application layer
     public SalesReportPresenter(HistoryService historyService, UserService userService) {
         this.historyService = historyService;
         this.userService = userService;
@@ -39,7 +40,6 @@ public class SalesReportPresenter {
      * @throws PresentationException when report generation fails
      */
     public SalesReportDTO generateSalesReport(String token, long companyId) {
-        String fallback = "הפקת דוח המכירות נכשלה. אנא נסו שוב.";
         try {
             SalesReportDTO report =
                     historyService.generateSalesReport(token, companyId);
@@ -58,65 +58,70 @@ public class SalesReportPresenter {
 
         } catch (PresentationException e) {
             throw e;
+
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateSalesReportError(
-                            e.getMessage(),
-                            "הפקת דוח המכירות נכשלה. יש לנסות שוב."
-                    )
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "הפקת דוח המכירות נכשלה. יש לנסות שוב."
+                ));
 
         } catch (Exception e) {
-            throw new PresentationException(
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
                     "אירעה שגיאה במהלך הפקת דוח המכירות. יש לנסות שוב."
-            );
+                ));
         }
     }
 
     public List<OrderDTO> getCompanyHistoryUnfiltered(String token, Long companyId) {
-        String fallback = "טעינת היסטוריית החברה נכשלה. אנא נסו שוב.";
         try {
             return historyService.getHistoryForCompany(token, companyId);
+            
+        } catch (PresentationException e) {
+            throw e;
 
-            } catch (PresentationException e) {
-                throw e;
-            } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), fallback));
-            } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e), fallback));
-            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "טעינת היסטוריית החברה ללא סינון נכשלה. יש לנסות שוב."
+                ));
+
+        } catch (Exception e) {
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "אירעה שגיאה במהלך טעינת היסטוריית החברה ללא סינון. יש לנסות שוב."
+                ));
+        }
     }
 
     public List<OrderDTO> getCompanyTransactions(String token, long companyId) {
-        String fallback = "טעינת עסקאות החברה נכשלה. אנא נסו שוב.";
         try {
+            // Calling the Service to fetch the raw purchase history for the company
             return historyService.getManagerFilteredHistoryForCompany(token, companyId);
             
         } catch (PresentationException e) {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateSalesReportError(
-                            e.getMessage(),
-                            "טעינת עסקאות החברה נכשלה. יש לנסות שוב."
-                    )
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "טעינת עסקאות החברה נכשלה. יש לנסות שוב."
+                ));
 
         } catch (Exception e) {
-            throw new PresentationException(
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
                     "אירעה שגיאה במהלך טעינת עסקאות החברה. יש לנסות שוב."
-            );
+                ));
         }
     }
 
     public InputStream exportTransactionsToCsv(String token, long companyId) {
-        String fallback = "יצירת קובץ ה-CSV נכשלה. אנא נסו שוב.";
         try {
             List<OrderDTO> transactions = historyService.getManagerFilteredHistoryForCompany(token, companyId);
             
             StringBuilder csvBuilder = new StringBuilder();
-            csvBuilder.append('\ufeff');
+            csvBuilder.append('\ufeff'); // קידוד לעברית באקסל
             csvBuilder.append("מספר עסקה,שם אירוע,מיקום,שם רוכש,סכום לתשלום\n");
             
             for (OrderDTO order : transactions) {
@@ -146,18 +151,18 @@ public class SalesReportPresenter {
             
         } catch (PresentationException e) {
             throw e;
+        
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateSalesReportError(
-                            e.getMessage(),
-                            "ייצוא דוח המכירות נכשל. יש לנסות שוב."
-                    )
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "ייצוא דוח המכירות נכשל. יש לנסות שוב."
+                ));
 
         } catch (Exception e) {
-            throw new PresentationException(
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
                     "אירעה שגיאה במהלך ייצוא דוח המכירות. יש לנסות שוב."
-            );
+                ));
         }
     }
 
