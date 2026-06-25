@@ -44,9 +44,15 @@ public class PoliciesEditorPresenter {
             return mapToUiPurchasePolicyExpression(companyId.toString(), appPurchasePolicy);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw PresentationException.dispatch(e, 
+                msg -> translatePoliciesEditorError(msg,
+                    "An error occurred while loading the purchase policy."
+                ));
         } catch (Exception e) {
-            throw new PresentationException("An error occurred while loading the purchase policy.");
+            throw PresentationException.dispatch(e, 
+                msg -> translatePoliciesEditorError(msg,
+                    "An error occurred while loading the purchase policy."
+                ));
         }
     }
 
@@ -56,9 +62,15 @@ public class PoliciesEditorPresenter {
             companyService.setCompanyPurchasePolicy(sessionToken, companyId, appPurchasePolicy);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw PresentationException.dispatch(e, 
+                msg -> translatePoliciesEditorError(msg,
+                    "An error occurred while saving the purchase policy. Please try again."
+                ));
         } catch (Exception e) {
-            throw new PresentationException("An error occurred while saving the purchase policy. Please try again.");
+            throw PresentationException.dispatch(e, 
+                msg -> translatePoliciesEditorError(msg,
+                    "An error occurred while saving the purchase policy. Please try again."
+                ));
         }
     }
 
@@ -68,26 +80,47 @@ public class PoliciesEditorPresenter {
             return mapToUiDiscountPolicy(companyId.toString(), appDiscountPolicy);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw PresentationException.dispatch(e, 
+                msg -> translatePoliciesEditorError(msg,
+                    "An error occurred while loading the discount policy."
+            ));
         } catch (Exception e) {
-            throw new PresentationException("An error occurred while loading the discount policy.");
+            throw PresentationException.dispatch(e, 
+                msg -> translatePoliciesEditorError(msg,
+                    "An error occurred while loading the discount policy."
+            ));
         }
     }
     public void saveCompanyDiscountPolicy(String token, Long eventId, DiscountPolicyDraftDTO discountDraft) {
         try {
-
             DiscountPolicyDTO appDiscountPolicy = mapToAppDiscountPolicy(discountDraft);
-           
-
             companyService.setCompanyDiscountPolicy(token, eventId, appDiscountPolicy);
 
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw new PresentationException(exception.getMessage());
-        } catch (Exception exception) {
-            throw new PresentationException("אירעה שגיאה בעת שמירת מדיניות ההנחות. נסו שוב.");
+        } catch (PresentationException e) {
+            throw e;
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw PresentationException.dispatch(e, 
+                msg -> translatePoliciesEditorError(msg,
+                    "An error occurred while saving discount policy."
+            ));
+        } catch (Exception e) {
+            throw PresentationException.dispatch(e, 
+                msg -> translatePoliciesEditorError(msg,
+                    "An error occurred while saving discount policy."
+            ));
         }
+    }
+ 
+    // TODO: Implement the translation to Hebrew message
+    private String translatePoliciesEditorError(String message, String fallback) {
+        if (message == null || message.isBlank()) {
+            return fallback;
+        }
+
+        return switch (message.trim()) {
+
+            default -> fallback;
+        };
     }
 
 
