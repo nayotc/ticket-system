@@ -24,11 +24,13 @@ public class SeatingArea extends Area {
     private Map<SeatPosition, Seat> seats = new HashMap<>();
     private int rows;
     private int columns;
+    private int SoldSeats;
 
     protected SeatingArea() {}
 
     public SeatingArea(String name, Pair<Integer, Integer> location, Pair<Integer, Integer> size, int rows, int columns, BigDecimal price) {
         super(name, location, size, price);
+        validateDimensions(rows, columns);
         this.rows = rows;
         this.columns = columns;
         for (int row = 1; row <= rows; row++) {
@@ -77,6 +79,8 @@ public class SeatingArea extends Area {
         return this.seats;
     }
 
+    public int getSoldSeats() {return this.SoldSeats;}
+
     public void reserveSeat(SeatPosition position) {
         Seat seat = seats.get(position);
         if (seat == null) {
@@ -99,15 +103,11 @@ public class SeatingArea extends Area {
             throw new IllegalArgumentException("Seat not found");
         }
         seat.sell();
+        SoldSeats++;
     }
 
     public boolean isSoldOut() {
-        for (Seat seat : seats.values()) {
-            if (seat.getStatus() != Seat.SeatStatus.SOLD) {
-                return false;
-            }
-        }
-        return true;
+        return SoldSeats >= seats.size();
     }
 
     public SeatStatus isSeatAvailable(SeatPosition position) {
@@ -118,4 +118,53 @@ public class SeatingArea extends Area {
         return seat.getStatus();
     }
 
+    @Override
+    public long getCapacity() {
+        return seats.size();
+    }
+
+    public int expandTo(int newRows, int newColumns) {
+        validateDimensions(newRows, newColumns);
+
+        if (newRows < this.rows) {
+            throw new IllegalArgumentException("Rows cannot be reduced for an active event");
+        }
+
+        if (newColumns < this.columns) {
+            throw new IllegalArgumentException("Columns cannot be reduced for an active event");
+        }
+
+        int previousSeatCount = seats.size();
+
+        for (int row = this.rows + 1; row <= newRows; row++) {
+            for (int column = this.columns + 1; column <= newColumns; column++) {
+                addSeat(row, column);
+            }
+        }
+        this.rows = newRows;
+        this.columns = newColumns;
+        return seats.size() - previousSeatCount;
+    }
+
+    private void addSeat(int row, int column) {
+        SeatPosition position = new SeatPosition(row, column);
+
+        if (seats.containsKey(position)) {
+            return;
+        }
+
+        Seat seat = new Seat(position);
+        seat.setSeatingArea(this);
+        seats.put(position, seat);
+    }
+
+    private void validateDimensions(int rows, int columns) {
+        if (rows <= 0) {
+            throw new IllegalArgumentException("Rows must be positive");
+        }
+
+        if (columns <= 0) {
+            throw new IllegalArgumentException("Columns must be positive");
+        }
+    }
 }
