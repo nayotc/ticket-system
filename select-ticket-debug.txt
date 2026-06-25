@@ -1,0 +1,194 @@
+
+===== toggleSeat =====
+734:     private void toggleSeat(SeatingAreaDTO area, SeatDTO seat) {
+735:         if (eventId == null) {
+736:             Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+737:             return;
+738:         }
+739: 
+740:         int row = seatRow(seat);
+741:         int number = seatNumber(seat);
+742:         SeatKey key = new SeatKey(area.id(), row, number);
+743:         String token = currentToken();
+744: 
+745:         try {
+746:             if (selectedSeats.containsKey(key)) {
+747:                 removeSeatFromOrderByPosition(area.id(),row, number);
+748:                 selectedSeats.remove(key);
+749: 
+750:                 reloadTicketSelectionEventDataKeepingSelection();
+751:                 return;
+752: 
+753:           } else if (isSeatAvailable(seat)) {
+754:             reservationPresenter.selectSeatTicket(token, eventId, area.id(), row, number, currentLotteryCode());
+755: 
+756:             reloadTicketSelectionEventDataKeepingSelection();
+757:             return;
+758:         }
+759: 
+760:         } catch (PresentationException e) {
+761:             if (e.isSessionTimeout()) {
+762:                 if (UiSession.isLoggedIn()) {
+763:                     UiSession.handleTimeoutRedirect();
+764:                     return;
+765:                 } else {
+766:                     UiSession.exit();
+767:                     Notifications.error("זמן החיבור של בחירת הכרטיסים פג, אנא בחרו כרטיסים מחדש.");
+768:                     UI.getCurrent().navigate(UiRoutes.HOME);
+769:                 }
+770:                 return;
+771:             }
+772:             Notifications.error(e.getMessage());
+773:             reloadTicketSelectionEventDataKeepingSelection();
+774: 
+775:         } catch (Exception e) {
+776:             Notifications.error("לא ניתן לעדכן את בחירת המושב. יש לנסות שוב");
+777:             reloadTicketSelectionEventDataKeepingSelection();
+778:         }
+779:     }
+780: 
+781:    private void removeSeatFromOrderByPosition(Long areaId, int row, int chair) {
+782:         try {
+783:             ActiveOrderDTO order = reservationPresenter.loadActiveOrder(currentToken());
+784: 
+785:             if (order == null || order.getTickets() == null) {
+786:                 return;
+787:             }
+788: 
+789:             for (TicketDTO ticket : order.getTickets()) {
+790:                 if (ticket.getEventId() == null || !ticket.getEventId().equals(eventId)) {
+791:                         continue;
+792:                     }
+793:                 if (ticket.getAreaId() == null || !ticket.getAreaId().equals(areaId)) {
+794:                     continue;
+795:                 }
+796:                 if (ticket.getRow() == row && ticket.getChair() == chair) {
+797: 
+798:                     reservationPresenter.removeTicketFromActiveOrder(
+799:                             currentToken(),
+800:                             eventId,
+801:                             ticket.getTicketId()
+802:                     );
+803: 
+804:                     return;
+805:                 }
+806:             }
+807:         } catch (PresentationException e) {
+808:             if (e.isSessionTimeout()) {
+809:                 UiSession.handleTimeoutRedirect();
+810:                 return; 
+811:             }
+812:             Notifications.error(e.getMessage());
+813:         } catch (Exception e) {
+814:             Notifications.error("לא ניתן להסיר את המושב מההזמנה. יש לנסות שוב");
+815:         }
+816:     }
+817: 
+818:     private void updateStandingSelection(StandingAreaDTO area, int quantity) {
+819:         if (eventId == null) {
+820:             Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+
+===== refreshSummary =====
+884:     private void refreshSummary(ActiveOrderDTO order) {
+885:         selectedTicketsList.removeAll();
+886: 
+887:         try {
+888:             if (order == null || order.getTickets() == null || order.getTickets().isEmpty()) {
+889:                 emptySelection.setVisible(true);
+890:                 selectedTicketsList.setVisible(false);
+891:                 totalTickets.setText("0 כרטיסים");
+892:                 totalPrice.setText("₪0");
+893:                 continueButton.setEnabled(false);
+894:                 return;
+895:             }
+896: 
+897:             for (TicketDTO ticket : order.getTickets()) {
+898:                 selectedTicketsList.add(createSelectedTicketRowFromOrder(ticket));
+899:             }
+900: 
+901:             int count = order.getTickets().size();
+902: 
+903:             BigDecimal total = order.getTickets().stream()
+904:                     .map(TicketDTO::getPrice)
+905:                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+906: 
+907:             totalTickets.setText(count + " כרטיסים");
+908:             totalPrice.setText(formatMoney(total));
+909:             emptySelection.setVisible(false);
+910:             selectedTicketsList.setVisible(true);
+911:             continueButton.setEnabled(true);
+912: 
+913:         } catch (PresentationException e) {
+914:             if (e.isSessionTimeout()) {
+915:                 UiSession.handleTimeoutRedirect();
+916:                 return;
+917:             }
+918:            
+919:         } catch (Exception e) {
+920:             Notifications.error("שגיאה בעדכון סל הכרטיסים.");
+
+===== SeatKey records =====
+1300: }
+1301: 
+1302: @Override
+1303: protected void onAttach(AttachEvent attachEvent) {
+1304:     super.onAttach(attachEvent);
+1305: 
+1306:     refreshSelectionAccessTimer();
+1307:     startClientSideSelectionTimer();
+1308: }
+1309: 
+1310: @Override
+1311: protected void onDetach(DetachEvent detachEvent) {
+1312:     stopClientSideSelectionTimer();
+1313:     super.onDetach(detachEvent);
+1314: }
+1315:     private record SeatKey(Long areaId, int row, int number) {
+1316:     }
+1317: 
+1318:     private record SelectedSeat(Long areaId, String areaName, int row, int number, BigDecimal price) {
+1319:     }
+1320: 
+1321:     private record SelectedStandingArea(Long areaId, String areaName, int quantity, BigDecimal price) {
+1322:         static SelectedStandingArea empty(StandingAreaDTO area, BigDecimal price) {
+1323:             return new SelectedStandingArea(area.id(), area.name(), 0, price);
+1324:         }
+1325:     }
+1326: 
+1327:     private void startClientSideSelectionTimer() {
+1328:     getElement().executeJs("""
+1329:         const root = this;
+1330: 
+1331:         if (root.__selectionTimerInterval) {
+1332:             clearInterval(root.__selectionTimerInterval);
+1333:         }
+1334: 
+1335:         root.__selectionTimerInterval = setInterval(() => {
+
+===== handleContinue =====
+405:    private void handleContinue() {
+406:         if (eventId == null) {
+407:             Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
+408:             return;
+409:         }
+410: 
+411:         if (selectedSeats.isEmpty() && selectedStandingAreas.isEmpty()) {
+412:             Notifications.error("יש לבחור לפחות כרטיס אחד לפני מעבר לתשלום");
+413:             return;
+414:         }
+415: 
+416:         reservationPresenter.releaseQueueAccess(currentToken(), eventId);
+417: 
+418:         allowLeavingSelectionPage = true;
+419: 
+420:         UI.getCurrent().navigate(
+421:                 UiRoutes.CHECKOUT.replace(":eventId", String.valueOf(eventId))
+422:         );
+423:     }
+424: 
+425:     @Override
+426:     public void beforeLeave(BeforeLeaveEvent event) {
+427:         if (allowLeavingSelectionPage || eventId == null) {
+428:             return;
+429:         }
+430: 
