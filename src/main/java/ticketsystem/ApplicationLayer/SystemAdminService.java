@@ -141,6 +141,11 @@ public class SystemAdminService {
             } catch (Exception e) {
                 return "ERROR: Unauthorized access. Invalid admin credentials.";
             }
+            User memberNotNull = userRepository.getMemberById(memberId);
+            if (memberNotNull == null) {
+                logger.logEvent("ERROR: Member with ID " + memberId + " was not found.", LogLevel.INFO);
+                return "ERROR: Member with ID " + memberId + " was not found.";
+            }
             ActiveOrder activeOrder = orderRepository.getActiveOrderByUserId(memberId);
             if (activeOrder != null) {
                 activeOrder.cancelOrder();
@@ -148,10 +153,6 @@ public class SystemAdminService {
             }
             removeUserFromAllCompanies(memberId);
             Member member = userRepository.getMemberById(memberId);
-            if (member == null) {
-                logger.logEvent("ERROR: Member with ID " + memberId + " was not found.", LogLevel.INFO);
-                return "ERROR: Member with ID " + memberId + " was not found.";
-            }
             member.deactivate();
             boolean userRemoved = userRepository.updateMember(member);
             
