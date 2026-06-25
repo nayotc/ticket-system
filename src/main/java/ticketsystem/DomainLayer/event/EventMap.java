@@ -239,4 +239,90 @@ public class EventMap {
                 );
     }
 
+    public long getTicketCapacity() {
+        if (elements == null) {
+            return 0;
+        }
+
+        return elements.stream()
+                .filter(Area.class::isInstance)
+                .map(Area.class::cast)
+                .mapToLong(Area::getCapacity)
+                .sum();
+    }
+
+    public long addArea(Area area) {
+        if (area == null) {
+            throw new IllegalArgumentException("Area cannot be null");
+        }
+
+        if (area.getId() != null) {
+            throw new IllegalArgumentException(
+                    "A new area must not already have an ID"
+            );
+        }
+
+        if (elements == null) {
+            elements = new ArrayList<>();
+        }
+
+        elements.add(area);
+        return area.getCapacity();
+    }
+
+    public int expandSeatingArea(
+            Long areaId,
+            int newRows,
+            int newColumns
+    ) {
+        SeatingArea area = findSeatingArea(areaId);
+        return area.expandTo(newRows, newColumns);
+    }
+
+    public long increaseStandingAreaCapacity(
+            Long areaId,
+            long newCapacity
+    ) {
+        StandingArea area = findStandingArea(areaId);
+        return area.increaseCapacityTo(newCapacity);
+    }
+
+    private SeatingArea findSeatingArea(Long areaId) {
+        if (areaId == null) {
+            throw new IllegalArgumentException("Area ID cannot be null");
+        }
+
+        if (elements == null) {
+            throw new IllegalArgumentException("Seating area not found");
+        }
+
+        return elements.stream()
+                .filter(SeatingArea.class::isInstance)
+                .map(SeatingArea.class::cast)
+                .filter(area -> Objects.equals(area.getId(), areaId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Seating area not found: " + areaId
+                ));
+    }
+
+    private StandingArea findStandingArea(Long areaId) {
+        if (areaId == null) {
+            throw new IllegalArgumentException("Area ID cannot be null");
+        }
+
+        if (elements == null) {
+            throw new IllegalArgumentException("Standing area not found");
+        }
+
+        return elements.stream()
+                .filter(StandingArea.class::isInstance)
+                .map(StandingArea.class::cast)
+                .filter(area -> Objects.equals(area.getId(), areaId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Standing area not found: " + areaId
+                ));
+    }
+
 }

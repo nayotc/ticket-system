@@ -300,12 +300,95 @@ public class Event {
             throw new IllegalStateException("Event map can only be defined for a draft event");
         }
 
-        if (map != null && map.getElements() != null && !map.getElements().isEmpty()) {
-            throw new IllegalStateException("Event map has already been defined");
-        }
+//        if (map != null && map.getElements() != null && !map.getElements().isEmpty()) {
+//            throw new IllegalStateException("Event map has already been defined");
+//        }
 
         this.map = newMap;
         this.status = eventStatus.ACTIVE;
+    }
+
+    public void updateDraftMap(EventMap updatedMap) {
+        if (updatedMap == null) {
+            throw new IllegalArgumentException("Event map cannot be null");
+        }
+
+        if (status != eventStatus.DRAFT) {
+            throw new IllegalStateException("The complete map can only be replaced for a draft event");
+        }
+
+        this.map = updatedMap;
+    }
+
+    public void addAreaToActiveMap(Area area) {
+        requireActiveMapUpdate();
+
+        long addedCapacity = map.addArea(area);
+        increaseAvailableTickets(addedCapacity);
+    }
+
+    public void expandSeatingArea(
+            Long areaId,
+            int newRows,
+            int newColumns
+    ) {
+        requireActiveMapUpdate();
+
+        int addedSeats = map.expandSeatingArea(
+                areaId,
+                newRows,
+                newColumns
+        );
+
+        increaseAvailableTickets(addedSeats);
+    }
+
+    public void increaseStandingAreaCapacity(
+            Long areaId,
+            long newCapacity
+    ) {
+        requireActiveMapUpdate();
+
+        long addedCapacity = map.increaseStandingAreaCapacity(
+                areaId,
+                newCapacity
+        );
+
+        increaseAvailableTickets(addedCapacity);
+    }
+
+    private void requireActiveMapUpdate() {
+        if (status != eventStatus.ACTIVE) {
+            throw new IllegalStateException(
+                    "This map operation is only allowed for an active event"
+            );
+        }
+
+        if (map == null) {
+            throw new IllegalStateException("Event map is not defined");
+        }
+    }
+
+    private void increaseAvailableTickets(long quantity) {
+        if (quantity < 0) {
+            throw new IllegalArgumentException(
+                    "Added ticket quantity cannot be negative"
+            );
+        }
+
+        if (quantity == 0) {
+            return;
+        }
+
+        // TODO: if implement remainingTickets, uncomment the following lines
+//        this.remainingTickets = Math.addExact(
+//                this.remainingTickets,
+//                Math.toIntExact(quantity)
+//        );
+
+        if (this.saleStatus == SaleStatus.SOLD_OUT) {
+            this.saleStatus = SaleStatus.ONGOING;
+        }
     }
 
     // use case: ticket reservation
