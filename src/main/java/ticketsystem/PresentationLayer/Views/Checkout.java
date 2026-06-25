@@ -189,7 +189,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             renderCheckout();
         
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                 } else {
@@ -654,7 +654,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                 } else {
@@ -799,7 +799,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             renderCheckout();
         
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                 } else {
@@ -881,7 +881,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             }
         
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                 } else {

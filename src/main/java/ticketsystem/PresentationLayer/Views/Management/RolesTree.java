@@ -198,7 +198,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
             showRoleTree(toRoleNode(root));
         
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }

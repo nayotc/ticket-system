@@ -177,7 +177,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             setEventData(loadedEvent, loadedMap);
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                 } else {
@@ -216,7 +216,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             refreshReservationTimer(order);
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                     return;
@@ -292,7 +292,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             }
         }
     } catch (PresentationException e) {
-        if (e.isSessionTimeout()) {
+        if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
             UiSession.handleTimeoutRedirect();
         }
     } catch (Exception ignored) {
@@ -836,7 +836,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         }
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                     return;
@@ -883,7 +883,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
                 }
             }
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -930,7 +930,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             reloadTicketSelectionEventDataKeepingSelection();
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                     return;
@@ -989,7 +989,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
             continueButton.setEnabled(true);
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -1040,7 +1040,7 @@ private ActiveOrderDTO loadCurrentEventActiveOrder() {
                 break;
             }
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -1088,7 +1088,7 @@ private Div createSelectedTicketRowFromOrder(TicketDTO ticket) {
             reloadTicketSelectionEventDataKeepingSelection();
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                     return;
@@ -1154,7 +1154,7 @@ private String findAreaNameById(Long areaId) {
                 refreshSummary(order);
 
             } catch (PresentationException e) {
-                if (e.isSessionTimeout()) {
+                if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                     if (UiSession.isLoggedIn()) {
                         UiSession.handleTimeoutRedirect();
                             return;
@@ -1206,7 +1206,7 @@ private String findAreaNameById(Long areaId) {
                 ActiveOrderDTO order = loadCurrentEventActiveOrder();
                 refreshSummary(order);
             } catch (PresentationException e) {
-                if (e.isSessionTimeout()) {
+                if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                     if (UiSession.isLoggedIn()) {
                         UiSession.handleTimeoutRedirect();
                         return;
@@ -1537,7 +1537,7 @@ private void onSelectionAccessTimerExpired() {
             reservationTimer.setDeadline(order.getExpiresAtEpochMillis());
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
