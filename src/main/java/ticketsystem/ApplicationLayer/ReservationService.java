@@ -1054,7 +1054,7 @@ public class ReservationService {
                 location,
                 memberId,
                 companyId,
-                null,
+                event.getOpenedBy(),
                 eventId,
                 total == null ? BigDecimal.ZERO : total,
                 transactionId,
