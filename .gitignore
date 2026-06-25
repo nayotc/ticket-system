@@ -12,4 +12,4 @@ logs/
 src/main/frontend/generated/
 .classpath
 .project
-.settings/
+.settings/select-ticket-debug.txt
