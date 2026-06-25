@@ -26,7 +26,7 @@ public class UserPresenter {
             boolean updated = userService.updateMemberUsername(sessionToken, password, username, newUsername);
 
             if (!updated) {
-                throw new PresentationException("עדכון שם המשתמש נכשל. אנא בדקו את הפרטים ונסו שוב.");
+                throw new PresentationException("עדכון שם המשתמש נכשל. אנא בדקו את הפרטים נסו שוב.");
             }
 
             return true;
@@ -35,11 +35,16 @@ public class UserPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
-
+            throw PresentationException.dispatch(e, 
+                msg -> translateUserError(msg,
+                    "עדכון שם המשתמש נכשל. אנא נסו שוב."
+                ));
+        
         } catch (Exception e) {
-            String fallback = "עדכון שם המשתמש נכשל. אנא נסו שוב.";
-            throw new PresentationException(translateError(extractUsefulMessage(e), fallback));
+            throw PresentationException.dispatch(e, 
+                msg -> translateUserError(msg,
+                    "אירעה שגיאה במהלך עדכון שם המשתמש. אנא נסו שוב."
+                ));
         }
     }
 
@@ -57,28 +62,25 @@ public class UserPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage(), e.getMessage()));
-
+            throw PresentationException.dispatch(e, 
+                msg -> translateUserError(msg,
+                    "עדכון הסיסמה נכשל. אנא נסו שוב."
+                ));
+        
         } catch (Exception e) {
-            String fallback = "עדכון הסיסמה נכשל. אנא נסו שוב.";
-            throw new PresentationException(translateError(extractUsefulMessage(e), fallback));
+            throw PresentationException.dispatch(e, 
+                msg -> translateUserError(msg,
+                    "אירעה שגיאה במהלך עדכון הסיסמה. אנא נסו שוב."
+                ));
         }
     }
 
-    private String translateError(String message, String fallbackMessage) {
+    private String translateUserError(String message, String fallbackMessage) {
         if (message == null || message.isBlank()) {
             return fallbackMessage;
         }
 
         String cleanMessage = message.trim();
-
-        if (PresentationException.isDbDisconnectMessage(cleanMessage)) {
-            return PresentationException.DB_DISCONNECT_HEBREW_MSG;
-        }
-
-        if (PresentationException.isSessionTimeoutMessage(cleanMessage)) {
-            return PresentationException.SESSION_TOKEN_EXPIRED;
-        }
 
         return switch (cleanMessage) {
             case "Username update failed. Please check your details and try again." ->
@@ -104,25 +106,5 @@ public class UserPresenter {
 
             default -> fallbackMessage;
         };
-    }
-
-    /**
-     * חולצת את השגיאה המקורית ממעמקי ה-Stack Trace כדי לזהות ניתוקי DB.
-     */
-    private String extractUsefulMessage(Exception exception) {
-        if (exception == null) {
-            return "";
-        }
-
-        Throwable current = exception;
-        while (current.getCause() != null) {
-            current = current.getCause();
-        }
-
-        if (current.getMessage() != null && !current.getMessage().isBlank()) {
-            return current.getMessage();
-        }
-
-        return exception.getMessage() != null ? exception.getMessage() : "";
     }
 }
