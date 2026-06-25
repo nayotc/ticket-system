@@ -39,10 +39,16 @@ public class RolesTreePresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
-
+            throw PresentationException.dispatch(e, 
+                msg -> translateTreeError(msg,
+                    "טעינת עץ התפקידים נכשלה. אנא נסו שוב."
+                ));
+        
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractErrorMessage(e)));
+            throw PresentationException.dispatch(e, 
+                msg -> translateTreeError(msg,
+                    "אירעה שגיאה במהלך טעינת עץ התפקידים. אנא נסו שוב"
+                ));
         }
     }
     
@@ -62,12 +68,19 @@ public class RolesTreePresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
-
+            throw PresentationException.dispatch(e, 
+                msg -> translateTreeError(msg,
+                    "טעינת פרטי החברה נכשלה. אנא נסו שוב."
+                ));
+        
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractErrorMessage(e)));
+            throw PresentationException.dispatch(e, 
+                msg -> translateTreeError(msg,
+                    "אירעה שגיאה במהלך טעינת פרטי החברה. אנא נסו שוב"
+                ));
         }
     }
+    
     private String extractErrorMessage(Exception e) {
         Throwable current = e;
 
@@ -76,25 +89,11 @@ public class RolesTreePresenter {
         }
 
         return current.getMessage();
-    }
+    }   
 
-    
-
-    private String translateError(String message) {
+    private String translateTreeError(String message, String fallback) {
         if (message == null || message.isBlank()) {
-            return "טעינת עץ התפקידים נכשלה. נסו שוב.";
-        }
-
-        if (message != null && (
-                message.contains("JWT") ||
-                message.contains("expired") ||
-                message.contains("Invalid") ||
-                message.contains("Invalid session ID") ||
-                message.contains("Token is missing or null") ||
-                message.contains("Session is no longer active") ||
-                message.contains("Invalid or expired security token")
-        )) {
-            return message;
+            return fallback;
         }
 
         if (message.contains("Session authentication failed")) {
@@ -121,6 +120,6 @@ public class RolesTreePresenter {
             return "רק בעלים או מייסד החברה יכולים לצפות בעץ התפקידים.";
         }
 
-        return "טעינת עץ התפקידים נכשלה. נסו שוב.";
+        return fallback;
     }
 }
