@@ -49,6 +49,7 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private static final String TEST_USERNAME = "test@test.com";
     private static final String TEST_PASSWORD = "123456";
+    private static final String REDACTED_PASSWORD = "<redacted>";
 
     private static final String FOUNDER_USERNAME = "founder@test.com";
     private static final String FOUNDER_PASSWORD = "123456";
@@ -122,7 +123,7 @@ public class DevDataInitializer implements CommandLineRunner {
 
         System.out.println("Dev user created:");
         System.out.println("username: " + TEST_USERNAME);
-        System.out.println("password: " + TEST_PASSWORD);
+        System.out.println("password: " + REDACTED_PASSWORD);
     }
 
     private void createTestSystemAdmin() {
@@ -148,7 +149,7 @@ public class DevDataInitializer implements CommandLineRunner {
                 systemAdminService.promoteMemberToSystemAdmin(adminMember.getId());
                 System.out.println("Dev system admin created and promoted:");
                 System.out.println("username: " + SYSTEM_ADMIN_USERNAME);
-                System.out.println("password: " + SYSTEM_ADMIN_PASSWORD);
+                System.out.println("password: " + REDACTED_PASSWORD);
             } catch (Exception e) {
                 System.out.println("Failed to promote user to system admin: " + e.getMessage());
             }
@@ -168,7 +169,7 @@ public class DevDataInitializer implements CommandLineRunner {
 
         System.out.println("Dev founder created:");
         System.out.println("username: " + FOUNDER_USERNAME);
-        System.out.println("password: " + FOUNDER_PASSWORD);
+        System.out.println("password: " + REDACTED_PASSWORD);
     }
 
     /**
@@ -579,7 +580,7 @@ public class DevDataInitializer implements CommandLineRunner {
 
         System.out.println("Dev report-only manager created:");
         System.out.println("username: " + REPORT_MANAGER_USERNAME);
-        System.out.println("password: " + REPORT_MANAGER_PASSWORD);
+        System.out.println("password: " + REDACTED_PASSWORD);
     }
 
 }

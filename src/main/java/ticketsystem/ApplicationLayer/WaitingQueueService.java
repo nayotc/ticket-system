@@ -1,6 +1,5 @@
 package ticketsystem.ApplicationLayer;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.time.Duration;
@@ -66,6 +65,10 @@ public class WaitingQueueService {
         return eventLocks.computeIfAbsent(eventId, k -> new Object());
     }
 
+    private String maskSessionToken(String token) {
+        return tokenService.maskToken(token);
+    }
+
     public String tryReserve(long eventId, String tokenString) {
         // Validate the token
         if (!(tokenService.validateToken(tokenString))) {
@@ -94,7 +97,7 @@ public class WaitingQueueService {
 
                    if (hasActiveSpot(eventId, tokenString)) {
                         logger.logEvent(
-                                "User with session id " + tokenString + " already has active access for Event " + eventId,
+                                "User with session id " + maskSessionToken(tokenString) + " already has active access for Event " + eventId,
                                 LogLevel.INFO
                         );
                         return "APPROVED";
@@ -103,7 +106,7 @@ public class WaitingQueueService {
                     int existingPosition = queueRepository.getUserPosition(eventId, tokenString);
                     if (existingPosition > 0) {
                         logger.logEvent(
-                                "User with session id " + tokenString + " is already in queue for Event "
+                                "User with session id " + maskSessionToken(tokenString) + " is already in queue for Event "
                                         + eventId + ". Position: " + existingPosition,
                                 LogLevel.INFO
                         );
@@ -118,7 +121,7 @@ public class WaitingQueueService {
                          */
                         approveSession(eventId, event, tokenString, false);
                         logger.logEvent(
-                                "User with session id " + tokenString + " APPROVED directly to enter ticket selection for Event "
+                                "User with session id " + maskSessionToken(tokenString) + " APPROVED directly to enter ticket selection for Event "
                                         + eventId,
                                 LogLevel.INFO
                         );
@@ -127,7 +130,7 @@ public class WaitingQueueService {
 
                     queueRepository.enqueueUser(eventId, tokenString);
                     int position = queueRepository.getUserPosition(eventId, tokenString);
-                    logger.logEvent("Event is full. User " + tokenString + " moved to QUEUE. Position: " + position,
+                    logger.logEvent("Event is full. User " + maskSessionToken(tokenString) + " moved to QUEUE. Position: " + position,
                             LogLevel.INFO);
                     notifyTokenHolder(
                             tokenString,
@@ -191,7 +194,7 @@ public class WaitingQueueService {
         );
 
         logger.logEvent(
-                "Processed waiting queue for Event " + eventId + ". Approved user: " + sessionId,
+                "Processed waiting queue for Event " + eventId + ". Approved user: " + maskSessionToken(sessionId),
                 LogLevel.INFO
         );
     }
@@ -207,7 +210,7 @@ public class WaitingQueueService {
                 cleanupActiveSessionsIfPossible(eventId);
 
                 logger.logEvent(
-                        "User with session id " + sessionId + " was removed from queue for Event " + eventId,
+                        "User with session id " + maskSessionToken(sessionId) + " was removed from queue for Event " + eventId,
                         LogLevel.INFO
                 );
                 return;
@@ -243,7 +246,7 @@ public class WaitingQueueService {
             if (!hadTrackedActiveSpot && !hasUntrackedActiveSpot) {
                 logger.logEvent(
                         "No active queue access to release for session id "
-                                + sessionId + " and Event " + eventId,
+                                + maskSessionToken(sessionId) + " and Event " + eventId,
                         LogLevel.INFO
                 );
                 cleanupActiveSessionsIfPossible(eventId);
@@ -257,7 +260,7 @@ public class WaitingQueueService {
             cleanupActiveSessionsIfPossible(eventId);
 
             logger.logEvent(
-                    "User with session id " + sessionId + " released their spot for Event " + eventId,
+                    "User with session id " + maskSessionToken(sessionId) + " released their spot for Event " + eventId,
                     LogLevel.INFO
             );
         }
