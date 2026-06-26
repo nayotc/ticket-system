@@ -35,14 +35,8 @@ public class AuthPresenter {
             UiSession.startGuestSession(guestToken);
             return guestToken;
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
         } catch (Exception e) {
-            throw new PresentationException("Failed to start guest session. Please try again.");
+            throw PresentationException.dispatch(e, msg -> "Failed to start guest session. Please try again.");
         }
     }
 
@@ -70,17 +64,10 @@ public class AuthPresenter {
             userService.signUp(guestToken, username, password, fullName, phone,birthDate);
             return true;
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-        throw new PresentationException(translateSignUpError(e.getMessage()));
-    } catch (Exception e) {
-            throw new PresentationException("Registration failed. Please try again.");
+        } catch (Exception e) {
+            throw PresentationException.dispatch(e, msg -> translateSignUpError(msg));
         }
     }
-
-
 
     public String login(String guestToken, String username, String password) {
         try {
@@ -98,14 +85,8 @@ public class AuthPresenter {
             UiSession.login(memberToken, tokenService.extractUserId(memberToken).toString());
             return memberToken;
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
         } catch (Exception e) {
-            throw new PresentationException("Login failed. Please try again.");
+            throw PresentationException.dispatch(e, msg -> "Login failed. Please try again.");
         }
     }
 
@@ -125,14 +106,8 @@ public class AuthPresenter {
             UiSession.logoutToGuest(guestToken);
             return guestToken;
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
         } catch (Exception e) {
-            throw new PresentationException("Logout failed. Please try again.");
+            throw PresentationException.dispatch(e, msg -> "Logout failed. Please try again.");
         }
     }
 
@@ -148,14 +123,8 @@ public class AuthPresenter {
             UiSession.exit();
             return true;
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
         } catch (Exception e) {
-            throw new PresentationException("Exit failed. Please try again.");
+            throw PresentationException.dispatch(e, msg -> "Exit failed. Please try again.");
         }
     }
 

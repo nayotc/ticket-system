@@ -30,20 +30,11 @@ public class UserPresenter {
             }
 
             return true;
-
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw PresentationException.dispatch(e, 
-                msg -> translateUserError(msg,
-                    "עדכון שם המשתמש נכשל. אנא נסו שוב."
-                ));
         
         } catch (Exception e) {
             throw PresentationException.dispatch(e, 
                 msg -> translateUserError(msg,
-                    "אירעה שגיאה במהלך עדכון שם המשתמש. אנא נסו שוב."
+                    "עדכון שם המשתמש נכשל. אנא נסו שוב."
                 ));
         }
     }
@@ -58,19 +49,10 @@ public class UserPresenter {
 
             return true;
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw PresentationException.dispatch(e, 
-                msg -> translateUserError(msg,
-                    "עדכון הסיסמה נכשל. אנא נסו שוב."
-                ));
-        
         } catch (Exception e) {
             throw PresentationException.dispatch(e, 
                 msg -> translateUserError(msg,
-                    "אירעה שגיאה במהלך עדכון הסיסמה. אנא נסו שוב."
+                    "עדכון הסיסמה נכשל. אנא נסו שוב."
                 ));
         }
     }
