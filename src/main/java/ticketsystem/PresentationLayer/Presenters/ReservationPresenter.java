@@ -368,10 +368,10 @@ public class ReservationPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationError(e, e.getMessage());}
-        // } catch (Exception e) {
-        //     throw presentationError(e, "Failed to validate purchase policy. Please try again.");
-        // }
+            throw presentationError(e, e.getMessage());
+        } catch (Exception e) {
+            throw presentationError(e, "Failed to validate purchase policy. Please try again.");
+        }
     }
 
     /**
