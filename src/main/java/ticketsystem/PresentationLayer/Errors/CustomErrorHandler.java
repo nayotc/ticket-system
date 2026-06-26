@@ -9,6 +9,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.Notification.Position;
 
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -36,25 +37,14 @@ public class CustomErrorHandler implements ErrorHandler {
             String msg = cause.getMessage();
             
             if (msg != null) {
-                boolean isTimeout =       
-                    msg.contains("JWT") ||
-                    msg.contains("Invalid session ID") ||
-                    msg.contains("Invalid session token") ||
-                    msg.contains("Token is missing or null") ||
-                    msg.contains("Session is no longer active") ||
-                    msg.contains("Invalid or expired security token");
+                boolean isTimeout = PresentationException.isSessionTimeoutMessage(msg);
 
                 if (isTimeout) {
                     handleSessionTimeout();
                     return; 
                 }
 
-                boolean isDbError = 
-                    msg.contains("CannotCreateTransactionException") ||
-                    msg.contains("JDBCConnectionException") ||
-                    msg.contains("Communications link failure") ||
-                    msg.contains("Connection refused") ||
-                    msg.contains("DataAccessResourceFailureException");
+                boolean isDbError = PresentationException.isDbDisconnectMessage(msg);
 
                 if (isDbError) {
                     UI ui = UI.getCurrent();
