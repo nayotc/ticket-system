@@ -7,6 +7,7 @@ import ticketsystem.DTO.Event.EventDTO;
 import ticketsystem.DTO.Event.EventMapDTO;
 import ticketsystem.DTO.DiscountDTO;
 import ticketsystem.DTO.DiscountPolicyDTO;
+import ticketsystem.DTO.Event.IAreaDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DTO.PurchaseRuleDTO;
 import ticketsystem.DTO.PurchaseRuleType;
@@ -111,7 +112,38 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         }
     }
 
+    @Override
+    public boolean updateActiveEventMap(String sessionId, Long eventId, List<IAreaDTO> newAreas, List<IAreaDTO> updatedAreas){
+        try {
+            if (newAreas == null && updatedAreas == null){
+                throw new IllegalArgumentException("Both newAreas and updatedAreas cannot be null");
+            }
+            validateEventId(eventId);
+            return Boolean.TRUE.equals(eventService.updateActiveEvantMap(sessionId, eventId, newAreas, updatedAreas));
+        } catch (PresentationException exception) {
+            throw exception;
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw presentationException(exception.getMessage());
+        } catch (Exception exception) {
+            logger.logEvent("Unexpected error while updating map for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
+            throw new PresentationException("אירעה שגיאה בעת עדכון מפת האולם. נסו שוב.");
+        }
+    }
 
+    @Override
+    public EventMapDTO getEventMap(String sessionId, Long eventId) {
+        try {
+            validateEventId(eventId);
+            return eventService.getEventMap(sessionId, eventId);
+        } catch (PresentationException exception) {
+            throw exception;
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw presentationException(exception.getMessage());
+        } catch (Exception exception) {
+            logger.logEvent("Unexpected error while loading event map " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
+            throw new PresentationException("אירעה שגיאה בעת טעינת מפת האירוע.");
+        }
+    }
 
     @Override
     public boolean updateEvent(EditEvent.UpdateEventRequest request) {
@@ -568,10 +600,33 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
         if (message.startsWith("Map elements cannot overlap")) {
             return "לא ניתן לשמור את מפת האולם כי קיימים אלמנטים שחופפים במיקום. הזז את האלמנטים כך שלא יכסו אחד את השני.";
         }
-        if (message.contains("Cancellation failed")
-            || message.contains("Some refunds were not completed")) {
-        return "ביטול האירוע נכשל. חלק מההחזרים לא הושלמו. ניתן לנסות שוב מאוחר יותר.";
-    }
+        if (message.contains("Cancellation failed") || message.contains("Some refunds were not completed")) {
+            return "ביטול האירוע נכשל. חלק מההחזרים לא הושלמו. ניתן לנסות שוב מאוחר יותר.";
+        }
+        if (message.contains("User does not have permission to update event map")) {
+            return "אין לך הרשאה לעדכן את מפת האירוע.";
+        }
+        if (message.contains("Standing area capacity cannot be reduced")) {
+            return "לא ניתן להקטין קיבולת באזור עמידה של אירוע פעיל.";
+        }
+        if (message.contains("Rows cannot be reduced") || message.contains("Seating area rows cannot be reduced")) {
+            return "לא ניתן להקטין את מספר השורות באירוע פעיל.";
+        }
+        if (message.contains("Columns cannot be reduced") || message.contains("Seating area columns cannot be reduced")) {
+            return "לא ניתן להקטין את מספר העמודות באירוע פעיל.";
+        }
+        if (message.contains("Area type cannot be changed")) {
+            return "לא ניתן לשנות את סוג האזור באירוע פעיל.";
+        }
+        if (message.contains("A new area must not have an ID")) {
+            return "קרתה תקלה בעדכון מפת האירוע נא לרענן את העמוד ולנסות שנית.";
+        }
+        if (message.contains("An updated area must have an ID")) {
+            return "קרתה תקלה בעדכון מפת האירוע נא לרענן את העמוד ולנסות שנית.";
+        }
+        if (message.contains("Event must be active")) {
+            return "ניתן לבצע עדכון מוגבל זה רק באירוע פעיל.";
+        }
 
         return switch (message) {
             case "Invalid token.", "Invalid session ID" -> "אנא התחבר מחדש";

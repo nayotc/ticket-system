@@ -8150,6 +8150,18 @@ vaadin-button.hall-builder-secondary-button:hover {
     min-width: 0;
 }
 
+.hall-map-element-locked {
+    cursor: default;
+}
+
+.hall-map-element-locked::after {
+    content: "🔒";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    font-size: 12px;
+}
+
 .hall-tool-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
