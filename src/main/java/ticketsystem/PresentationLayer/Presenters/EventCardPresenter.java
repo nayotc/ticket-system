@@ -44,12 +44,8 @@ public class EventCardPresenter {
 
             return lotteryService.validateWinnerCodeForEvent(memberToken, eventId, lotteryCode);
 
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateLotteryError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException("לא הצלחנו לבדוק את קוד ההגרלה. נסו שוב.");
+            throw PresentationException.dispatch(e, msg -> translateLotteryError(msg));
         }
     }
 
@@ -108,16 +104,11 @@ public class EventCardPresenter {
 
                 lotteryService.registerMemberToLotteryByEventId(memberToken, eventId);
 
-            } catch (PresentationException e) {
-                throw e;
-
-            } catch (IllegalArgumentException | IllegalStateException e) {
-                throw new PresentationException(translateLotteryError(e.getMessage()));
-
             } catch (Exception e) {
-                throw new PresentationException("ההרשמה להגרלה נכשלה. נסו שוב.");
+                throw PresentationException.dispatch(e, msg -> translateLotteryError(msg));
             }
         }
+
         public PurchaseRequestResult requestPurchase(String sessionToken, Long eventId) {
             try {
                 if (sessionToken == null || sessionToken.isBlank()) {
@@ -144,14 +135,8 @@ public class EventCardPresenter {
 
                 throw new PresentationException(translateQueueResult(result));
 
-            } catch (PresentationException e) {
-                throw e;
-
-            } catch (IllegalArgumentException | IllegalStateException e) {
-                throw new PresentationException(translateQueueResult(e.getMessage()));
-
             } catch (Exception e) {
-                throw new PresentationException("לא ניתן להתחיל רכישה כרגע. נסו שוב.");
+                throw PresentationException.dispatch(e, msg -> translateQueueResult(msg));
             }
         }
         public String waitingQueueRoute(Long eventId) {
