@@ -34,20 +34,11 @@ public class RolesTreePresenter {
             }
 
             return root;
-
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw PresentationException.dispatch(e, 
-                msg -> translateTreeError(msg,
-                    "טעינת עץ התפקידים נכשלה. אנא נסו שוב."
-                ));
         
         } catch (Exception e) {
             throw PresentationException.dispatch(e, 
                 msg -> translateTreeError(msg,
-                    "אירעה שגיאה במהלך טעינת עץ התפקידים. אנא נסו שוב"
+                    "טעינת עץ התפקידים נכשלה. אנא נסו שוב."
                 ));
         }
     }
@@ -63,20 +54,11 @@ public class RolesTreePresenter {
             }
 
             return companyService.getCompanyDetails(memberToken, companyId);
-
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw PresentationException.dispatch(e, 
-                msg -> translateTreeError(msg,
-                    "טעינת פרטי החברה נכשלה. אנא נסו שוב."
-                ));
         
         } catch (Exception e) {
             throw PresentationException.dispatch(e, 
                 msg -> translateTreeError(msg,
-                    "אירעה שגיאה במהלך טעינת פרטי החברה. אנא נסו שוב"
+                    "טעינת פרטי החברה נכשלה. אנא נסו שוב."
                 ));
         }
     }

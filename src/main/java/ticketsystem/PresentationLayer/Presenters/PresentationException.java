@@ -12,6 +12,10 @@ public class PresentationException extends RuntimeException {
     }
 
     public static PresentationException dispatch(Exception rawException, Function<String, String> translator) {
+        if (rawException instanceof PresentationException pe) {
+            return pe; 
+        }
+        
         if (rawException == null) {
             return new PresentationException("אירעה שגיאה.");
         }
