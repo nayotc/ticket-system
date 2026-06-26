@@ -1941,7 +1941,7 @@ public class EventServiceAcceptanceTest {
                 50
         );
 
-        Boolean result = eventService.UpdateActiveEvantMap(
+        Boolean result = eventService.updateActiveEvantMap(
                 validOwnerSessionId,
                 activeEvent.getId(),
                 List.of(newArea),
@@ -1990,7 +1990,7 @@ public class EventServiceAcceptanceTest {
                 5
         );
 
-        Boolean result = eventService.UpdateActiveEvantMap(
+        Boolean result = eventService.updateActiveEvantMap(
                 validOwnerSessionId,
                 activeEvent.getId(),
                 List.of(),
@@ -2033,7 +2033,7 @@ public class EventServiceAcceptanceTest {
                 150
         );
 
-        Boolean result = eventService.UpdateActiveEvantMap(
+        Boolean result = eventService.updateActiveEvantMap(
                 validOwnerSessionId,
                 activeEvent.getId(),
                 List.of(),
@@ -2061,7 +2061,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         null,
@@ -2082,7 +2082,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(),
@@ -2121,7 +2121,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(invalidNewArea),
@@ -2165,7 +2165,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(overlappingArea),
@@ -2215,7 +2215,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(outsideArea),
@@ -2263,7 +2263,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(),
@@ -2318,7 +2318,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(),
@@ -2370,7 +2370,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(),
@@ -2421,7 +2421,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(),
@@ -2474,7 +2474,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(),
@@ -2535,7 +2535,7 @@ public class EventServiceAcceptanceTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         activeEvent.getId(),
                         List.of(validNewArea),
@@ -2586,7 +2586,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         validOwnerSessionId,
                         draftEvent.getId(),
                         List.of(newArea),
@@ -2615,7 +2615,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         invalidSessionId,
                         activeEvent.getId(),
                         List.of(),
@@ -2655,7 +2655,7 @@ public class EventServiceAcceptanceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> eventService.UpdateActiveEvantMap(
+                () -> eventService.updateActiveEvantMap(
                         sessionWithoutPermission,
                         activeEvent.getId(),
                         List.of(),
