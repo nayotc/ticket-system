@@ -27,9 +27,15 @@ public class GlobalRoutingErrorHandler extends Div implements HasErrorParameter<
             String msg = cause.getMessage();
             
             if (msg != null) {
-                boolean isTimeout = PresentationException.isSessionTimeoutMessage(msg);
-
-                if (isTimeout) {
+                // בדיקת ניתוק DB בכל שרשרת השגיאות
+                if (PresentationException.isDbDisconnectMessage(msg)) {
+                    setText("השירות אינו זמין כרגע עקב עומס או ניתוק ממסד הנתונים. אנא נסו לרענן את העמוד בעוד מספר רגעים.");
+                    getStyle().set("color", "red").set("text-align", "center").set("margin-top", "50px");
+                    return 503;
+                }
+                
+                // בדיקת Timeout
+                if (PresentationException.isSessionTimeoutMessage(msg)) {
                     boolean wasLoggedIn = UiSession.isLoggedIn();
                     UiSession.exit();
                     
@@ -44,26 +50,12 @@ public class GlobalRoutingErrorHandler extends Div implements HasErrorParameter<
                     }
                     return 302; //Temporary Redirect: Used for Session Timeout
                 }
-
-                boolean isDbError = PresentationException.isDbDisconnectMessage(msg);
-
-                if (isDbError) {
-                    event.getUI().access(() -> {
-                        Notification.show(
-                            "השירות אינו זמין זמנית עקב בעיית תקשורת. נסו שוב עוד מספר רגעים.", 
-                            5000, 
-                            Position.TOP_CENTER
-                        );
-                    });
-
-                    setText("השירות אינו זמין כרגע עקב עומס או ניתוק ממסד הנתונים. אנא נסו לרענן את העמוד בעוד מספר רגעים.");
-                    return 503; //Service Unavailable: Used for Database Disconnection
-                }
             }
-            cause = cause.getCause();
+            cause = cause.getCause(); // צלילה לעומק השגיאה
         }
 
-        setText("אופס! אירעה שגיאה בלתי צפויה בטעינת העמוד. נסה לרענן או לחזור לדף הבית.");
-        return 500; //Internal Server Error: Used as a Generic Fallback
+        // הודעת ברירת המחדל החדשה והברורה:
+        setText("אירעה שגיאה בטעינת העמוד. אנא ודאו את חיבור הרשת ונסו לרענן.");
+        return 500;
     }
 }
