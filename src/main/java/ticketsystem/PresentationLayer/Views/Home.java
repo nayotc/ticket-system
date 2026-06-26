@@ -28,6 +28,9 @@ import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
+import ticketsystem.DTO.ActiveOrderDTO;
+import ticketsystem.PresentationLayer.Components.ReservationTimer;
+import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 
 
 import java.util.Map;
@@ -39,15 +42,28 @@ public class Home extends PageContainer {
     private final EventCatalogPresenter eventCatalogPresenter;
     private final UiVisitCoordinator uiVisitCoordinator;
     private final EventCardPresenter eventCardPresenter;
+    private final ReservationPresenter reservationPresenter;
+    private final ReservationTimer reservationTimer = new ReservationTimer();
 
-    public Home(EventCatalogPresenter eventCatalogPresenter, UiVisitCoordinator uiVisitCoordinator, EventCardPresenter eventCardPresenter) {
+    public Home(
+            EventCatalogPresenter eventCatalogPresenter,
+            UiVisitCoordinator uiVisitCoordinator,
+            EventCardPresenter eventCardPresenter,
+            ReservationPresenter reservationPresenter
+    ) {
         super();
         this.eventCatalogPresenter = eventCatalogPresenter;
         this.eventCardPresenter = eventCardPresenter;
         this.uiVisitCoordinator = uiVisitCoordinator;
+        this.reservationPresenter = reservationPresenter;
+
         this.uiVisitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
 
+        reservationTimer.setVisible(false);
+        refreshReservationTimer();
+
         add(
+                reservationTimer,
                 createHero(),
                 createPopularEventsSection()
         );
@@ -242,7 +258,7 @@ public class Home extends PageContainer {
                         return;
                     }
                     Notifications.error(e.getMessage());
-                    
+
                 } catch (Exception e) {
                     Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
                 }
@@ -260,7 +276,7 @@ public class Home extends PageContainer {
                         return;
                     }
                     Notifications.error(e.getMessage());
-                    
+
                 } catch (Exception e) {
                     Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
                 }
@@ -270,7 +286,7 @@ public class Home extends PageContainer {
             public boolean isPreSaleCodeValid(Long eventId, String lotteryCode) {
                 try {
                     return eventCardPresenter.isPreSaleCodeValid(UiSession.getMemberToken(), eventId, lotteryCode);
-                    
+
                 } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
                     if (e.isSessionTimeout()) {
                         UiSession.handleTimeoutRedirect();
@@ -278,7 +294,7 @@ public class Home extends PageContainer {
                         Notifications.error(e.getMessage());
                     }
                     return false;
-                    
+
                 } catch (Exception e) {
                     return false;
                 }
@@ -301,12 +317,52 @@ public class Home extends PageContainer {
                         return;
                     }
                     Notifications.error(e.getMessage());
-                    
+
                 } catch (Exception e) {
                     Notifications.error(e.getMessage() == null ? "הפעולה נכשלה" : e.getMessage());
                 }
             }
         };
+    }
+
+    /**
+     * Refreshes the ActiveOrder reservation timer on the Home page.
+     *
+     * The timer is shown only when the current user/session has an active order with
+     * reserved tickets. If there is no active order, the active order is empty, or
+     * the order cannot be loaded, the timer is hidden so the Home page remains clean.
+     */
+    private void refreshReservationTimer() {
+        try {
+            ActiveOrderDTO activeOrder = reservationPresenter.loadActiveOrder(UiSession.getCurrentToken());
+
+            if (!hasReservedTickets(activeOrder)) {
+                ReservationTimer.clear();
+                reservationTimer.setVisible(false);
+                return;
+            }
+
+            reservationTimer.setDeadline(activeOrder.getExpiresAtEpochMillis());
+
+        } catch (PresentationException e) {
+            reservationTimer.setVisible(false);
+
+        } catch (Exception e) {
+            reservationTimer.setVisible(false);
+        }
+    }
+
+    /**
+     * Checks whether an ActiveOrder contains reserved tickets that should be shown
+     * to the user as an active reservation.
+     *
+     * @param activeOrder the loaded active order, or null if none exists
+     * @return true if the order exists and contains at least one ticket
+     */
+    private boolean hasReservedTickets(ActiveOrderDTO activeOrder) {
+        return activeOrder != null
+                && activeOrder.getTickets() != null
+                && !activeOrder.getTickets().isEmpty();
     }
 
     private Div createVipCard() {
