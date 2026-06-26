@@ -47,6 +47,7 @@ public class SeatingArea extends Area {
         super(other);
         this.rows = other.rows;
         this.columns = other.columns;
+        this.SoldSeats = other.SoldSeats;
 
         for (Seat originalSeat : other.seats.values()) {
             Seat copiedSeat = new Seat(originalSeat);
@@ -63,17 +64,17 @@ public class SeatingArea extends Area {
         return this.rows;
     }
 
-    public void setRows(int rows) {
-        this.rows = rows;
-    }
+//    public void setRows(int rows) {
+//        this.rows = rows;
+//    }
 
     public int getColumns() {
         return this.columns;
     }
 
-    public void setColumns(int columns) {
-        this.columns = columns;
-    }
+//    public void setColumns(int columns) {
+//        this.columns = columns;
+//    }
 
     public Map<SeatPosition, Seat> getSeats() {
         return this.seats;
@@ -123,26 +124,38 @@ public class SeatingArea extends Area {
         return seats.size();
     }
 
-    public int expandTo(int newRows, int newColumns) {
+    public void validateExpansionTo(int newRows, int newColumns) {
         validateDimensions(newRows, newColumns);
 
-        if (newRows < this.rows) {
-            throw new IllegalArgumentException("Rows cannot be reduced for an active event");
+        if (newRows < rows) {
+            throw new IllegalArgumentException(
+                    "Rows cannot be reduced for an active event"
+            );
         }
 
-        if (newColumns < this.columns) {
-            throw new IllegalArgumentException("Columns cannot be reduced for an active event");
+        if (newColumns < columns) {
+            throw new IllegalArgumentException(
+                    "Columns cannot be reduced for an active event"
+            );
         }
+    }
+
+    public int expandTo(int newRows, int newColumns) {
+        validateExpansionTo(newRows, newColumns);
 
         int previousSeatCount = seats.size();
 
-        for (int row = this.rows + 1; row <= newRows; row++) {
-            for (int column = this.columns + 1; column <= newColumns; column++) {
-                addSeat(row, column);
+        for (int row = 1; row <= newRows; row++) {
+            for (int column = 1; column <= newColumns; column++) {
+                if (row > rows || column > columns) {
+                    addSeat(row, column);
+                }
             }
         }
-        this.rows = newRows;
-        this.columns = newColumns;
+
+        rows = newRows;
+        columns = newColumns;
+
         return seats.size() - previousSeatCount;
     }
 

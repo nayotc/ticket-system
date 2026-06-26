@@ -4,16 +4,13 @@ import java.lang.reflect.Field;
 
 import org.junit.jupiter.api.Test;
 
-import ticketsystem.DomainLayer.event.EventMap;
+import ticketsystem.DomainLayer.event.*;
 import ticketsystem.DomainLayer.event.Seat.SeatStatus;
-import ticketsystem.DomainLayer.event.SeatingArea;
-import ticketsystem.DomainLayer.event.StandingArea;
-import ticketsystem.DomainLayer.event.Element;
-import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.DomainLayer.event.SeatPosition;
 
 import static org.junit.jupiter.api.Assertions.*;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 class EventMapTest {
 
@@ -265,5 +262,86 @@ class EventMapTest {
         map.addElement(seatingArea(2, 2));
 
         assertThrows(IllegalArgumentException.class, () -> map.getAreaPrice(999L));
+    }
+
+    @Test
+    void GivenMapWithoutTicketArea_WhenValidateForActivation_ThenFail() {
+        EventMap map = new EventMap(new Pair<>(10, 10));
+
+        map.addElement(new Element("Stage", new Pair<>(0, 0), new Pair<>(4, 2)));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, map::validateForActivation);
+
+        assertEquals("Event map must contain at least one seating area or standing area", exception.getMessage());
+    }
+
+    @Test
+    void GivenElementOutsideMap_WhenValidateForActivation_ThenFail() {
+        EventMap map = new EventMap(new Pair<>(10, 10));
+
+        map.addElement(new StandingArea("Standing", new Pair<>(8, 0), new Pair<>(3, 4), 100, BigDecimal.TEN));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, map::validateForActivation);
+
+        assertEquals("Element is outside map bounds: Standing", exception.getMessage());
+    }
+
+    @Test
+    void GivenOverlappingElements_WhenValidateForActivation_ThenFail() {
+        EventMap map = new EventMap(new Pair<>(10, 10));
+
+        map.addElement(new StandingArea("Standing", new Pair<>(0, 0), new Pair<>(5, 5), 100, BigDecimal.TEN));
+
+        map.addElement(new Element("Stage", new Pair<>(4, 4), new Pair<>(3, 2)));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, map::validateForActivation);
+
+        assertEquals("Map elements cannot overlap: Standing and Stage", exception.getMessage());
+    }
+
+    @Test
+    void GivenValidMap_WhenValidateForActivation_ThenDoesNotFail() {
+        EventMap map = new EventMap(new Pair<>(10, 10));
+
+        map.addElement(new StandingArea("Standing", new Pair<>(0, 0), new Pair<>(5, 5), 100, BigDecimal.TEN));
+
+        map.addElement(new Element("Stage", new Pair<>(5, 0), new Pair<>(3, 2)));
+
+        assertDoesNotThrow(map::validateForActivation);
+    }
+
+    @Test
+    void GivenOverlappingNewArea_WhenUpdateActiveAreas_ThenFailWithoutAddingArea() {
+        EventMap map = new EventMap(new Pair<>(10, 10));
+
+        map.addElement(
+                new StandingArea(
+                        "Existing standing",
+                        new Pair<>(0, 0),
+                        new Pair<>(5, 5),
+                        100,
+                        BigDecimal.TEN
+                )
+        );
+
+        Area overlappingArea = new StandingArea(
+                "New standing",
+                new Pair<>(4, 4),
+                new Pair<>(3, 3),
+                50,
+                BigDecimal.TEN
+        );
+
+        int originalElementCount = map.getElements().size();
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> map.updateActiveAreas(
+                        List.of(overlappingArea),
+                        Map.of()
+                )
+        );
+
+        assertEquals(originalElementCount, map.getElements().size());
     }
 }

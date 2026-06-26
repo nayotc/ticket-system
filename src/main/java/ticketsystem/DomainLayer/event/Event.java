@@ -5,12 +5,16 @@ import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.DTO.Event.EventMapDTO;
+import ticketsystem.DTO.Event.IAreaDTO;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
@@ -300,9 +304,11 @@ public class Event {
             throw new IllegalStateException("Event map can only be defined for a draft event");
         }
 
-//        if (map != null && map.getElements() != null && !map.getElements().isEmpty()) {
-//            throw new IllegalStateException("Event map has already been defined");
-//        }
+        if (map != null && map.getElements() != null && !map.getElements().isEmpty()) {
+            throw new IllegalStateException("Event map has already been defined");
+        }
+
+        newMap.validateForActivation();
 
         this.map = newMap;
         this.status = eventStatus.ACTIVE;
@@ -320,53 +326,11 @@ public class Event {
         this.map = updatedMap;
     }
 
-    public void addAreaToActiveMap(Area area) {
-        requireActiveMapUpdate();
-
-        long addedCapacity = map.addArea(area);
-        increaseAvailableTickets(addedCapacity);
-    }
-
-    public void expandSeatingArea(
-            Long areaId,
-            int newRows,
-            int newColumns
-    ) {
-        requireActiveMapUpdate();
-
-        int addedSeats = map.expandSeatingArea(
-                areaId,
-                newRows,
-                newColumns
-        );
-
-        increaseAvailableTickets(addedSeats);
-    }
-
-    public void increaseStandingAreaCapacity(
-            Long areaId,
-            long newCapacity
-    ) {
-        requireActiveMapUpdate();
-
-        long addedCapacity = map.increaseStandingAreaCapacity(
-                areaId,
-                newCapacity
-        );
-
-        increaseAvailableTickets(addedCapacity);
-    }
-
-    private void requireActiveMapUpdate() {
+    public void updateActiveMap(List<Area> newAreas, Map<Long, Area> updatedAreas) {
         if (status != eventStatus.ACTIVE) {
-            throw new IllegalStateException(
-                    "This map operation is only allowed for an active event"
-            );
+            throw new IllegalStateException("This map operation is only allowed for an active event");
         }
-
-        if (map == null) {
-            throw new IllegalStateException("Event map is not defined");
-        }
+        this.map.updateActiveAreas(newAreas, updatedAreas);
     }
 
     private void increaseAvailableTickets(long quantity) {
