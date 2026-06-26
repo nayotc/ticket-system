@@ -265,7 +265,7 @@ public class EventService {
         }
     }
 
-    public Boolean UpdateActiveEvantMap(String sessionId, Long eventId, List<IAreaDTO> newAreasDTO, List<IAreaDTO> updatedAreasDTO) {
+    public Boolean updateActiveEvantMap(String sessionId, Long eventId, List<IAreaDTO> newAreasDTO, List<IAreaDTO> updatedAreasDTO) {
         String context = "eventId=" + eventId + ", newAreasCount=" + (newAreasDTO != null ? newAreasDTO.size() : 0) + ", updatedAreasCount=" + (updatedAreasDTO != null ? updatedAreasDTO.size() : 0);
         logger.logEvent("Started - UpdateEventMap. " + context, LogLevel.INFO);
         try {
@@ -284,37 +284,37 @@ public class EventService {
             if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.CONFIGURE_HALL_AND_MAP)) {
                 throw new IllegalArgumentException("User does not have permission to update event map");
             }
-            if (newAreasDTO == null) {
-                throw new IllegalArgumentException("New areas list cannot be null");
-            }
-            if (updatedAreasDTO == null) {
-                throw new IllegalArgumentException("Updated areas list cannot be null");
+            if (newAreasDTO == null && updatedAreasDTO == null){
+                throw new IllegalArgumentException("Both newAreasDTO and updatedAreasDTO cannot be null");
             }
 
             logger.logEvent("Validated permission - UpdateEventMap. userId=" + userId + ", eventId=" + eventId + ", companyId=" + event.getCompanyId() + ", permission=" + Permission.CONFIGURE_HALL_AND_MAP, LogLevel.DEBUG);
             List<Area> newAreas = new ArrayList<>();
-            for (IAreaDTO areaDTO : newAreasDTO) {
-                Area area = EventMapper.toNewArea(areaDTO);
-                newAreas.add(area);
+            if (newAreasDTO != null) {
+                for (IAreaDTO areaDTO : newAreasDTO) {
+                    Area area = EventMapper.toNewArea(areaDTO);
+                    newAreas.add(area);
+                }
             }
             Map<Long, Area> updatedAreas = new HashMap<>();
+            if (updatedAreasDTO != null) {
+                for (IAreaDTO dto : updatedAreasDTO) {
+                    if (dto == null || dto.id() == null) {
+                        throw new IllegalArgumentException(
+                                "An updated area must have an ID"
+                        );
+                    }
 
-            for (IAreaDTO dto : updatedAreasDTO) {
-                if (dto == null || dto.id() == null) {
-                    throw new IllegalArgumentException(
-                            "An updated area must have an ID"
+                    Area previous = updatedAreas.put(
+                            dto.id(),
+                            EventMapper.toAreaUpdate(dto)
                     );
-                }
 
-                Area previous = updatedAreas.put(
-                        dto.id(),
-                        EventMapper.toAreaUpdate(dto)
-                );
-
-                if (previous != null) {
-                    throw new IllegalArgumentException(
-                            "Duplicate updated area ID: " + dto.id()
-                    );
+                    if (previous != null) {
+                        throw new IllegalArgumentException(
+                                "Duplicate updated area ID: " + dto.id()
+                        );
+                    }
                 }
             }
 

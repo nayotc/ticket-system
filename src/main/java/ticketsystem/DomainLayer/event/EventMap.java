@@ -309,35 +309,37 @@ public class EventMap {
     }
 
     public void updateActiveAreas(List<Area> newAreas,  Map<Long, Area> updatedAreas) {
-        if (newAreas == null || updatedAreas == null) {
-            throw new IllegalArgumentException("Area lists cannot be null");
+        if (newAreas == null && updatedAreas == null) {
+            throw new IllegalArgumentException("Both new areas and updated areas cannot be null");
         }
-        for (Area newArea : newAreas) {
-            if (newArea == null) {
-                throw new IllegalArgumentException("New areas cannot contain null");
-            }
-            if (newArea.getId() != null) {
-                throw new IllegalArgumentException("A new area must not already have an ID");
+        if (newAreas != null) {
+            for (Area newArea : newAreas) {
+                if (newArea == null) {
+                    throw new IllegalArgumentException("New areas cannot contain null");
+                }
+                if (newArea.getId() != null) {
+                    throw new IllegalArgumentException("A new area must not already have an ID");
+                }
             }
         }
         List<Element> candidateElements = new ArrayList<>(elements);
         candidateElements.addAll(newAreas);
         validateElementsInsideMapBounds(candidateElements);
         validateElementsDoNotOverlap(candidateElements);
-
-        for (Map.Entry<Long, Area> entry : updatedAreas.entrySet()) {
-            Long areaId = entry.getKey();
-            Area requestedArea = entry.getValue();
-            Area existingArea = findArea(areaId);
-            validateActiveAreaUpdate(existingArea, requestedArea);
-            if (existingArea instanceof  StandingArea) {
-                ((StandingArea) existingArea).increaseCapacityTo(requestedArea.getCapacity());
-            }
-            else if (existingArea instanceof SeatingArea seatingArea) {
-                SeatingArea updatedSeatingArea = (SeatingArea) requestedArea;
-                seatingArea.expandTo(updatedSeatingArea.getRows(), updatedSeatingArea.getColumns());
-            } else {
-                throw new IllegalArgumentException("Unknown area type");
+        if (updatedAreas != null) {
+            for (Map.Entry<Long, Area> entry : updatedAreas.entrySet()) {
+                Long areaId = entry.getKey();
+                Area requestedArea = entry.getValue();
+                Area existingArea = findArea(areaId);
+                validateActiveAreaUpdate(existingArea, requestedArea);
+                if (existingArea instanceof StandingArea) {
+                    ((StandingArea) existingArea).increaseCapacityTo(requestedArea.getCapacity());
+                } else if (existingArea instanceof SeatingArea seatingArea) {
+                    SeatingArea updatedSeatingArea = (SeatingArea) requestedArea;
+                    seatingArea.expandTo(updatedSeatingArea.getRows(), updatedSeatingArea.getColumns());
+                } else {
+                    throw new IllegalArgumentException("Unknown area type");
+                }
             }
         }
         elements.addAll(newAreas);
