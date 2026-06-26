@@ -213,7 +213,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
             renderMap();
             refreshSummary(order);
-            refreshReservationTimer(order);
+            refreshTimers(order);
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
@@ -246,8 +246,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         syncSelectedStandingFromActiveOrder(order);
         renderMap();
         refreshSummary(order);
-        refreshReservationTimer(order);
-        refreshSelectionAccessTimer();
+        refreshTimers(order);
     }
 
     private void syncSelectedSeatsFromActiveOrder(ActiveOrderDTO order) {
@@ -1354,6 +1353,29 @@ private String findAreaNameById(Long areaId) {
     }
 
     /**
+     * Refreshes the timers shown on the ticket-selection screen.
+     *
+     * The ticket-selection screen can show either the queue-selection timer or the
+     * active-order reservation timer, but never both at the same time.
+     *
+     * If the user has an active queue-selection window, the queue timer is shown and
+     * the ActiveOrder reservation timer is hidden. Otherwise, the ActiveOrder timer
+     * is shown only when there is an active order with reserved tickets.
+     *
+     * @param order the current active order for the selected event, or null if none exists
+     */
+    private void refreshTimers(ActiveOrderDTO order) {
+        boolean queueTimerVisible = refreshSelectionAccessTimer();
+
+        if (queueTimerVisible) {
+            reservationTimer.setVisible(false);
+            return;
+        }
+
+        refreshReservationTimer(order);
+    }
+
+    /**
      * Refreshes the waiting-queue access timer shown above the map.
      *
      * The timer should be visible only for users who were promoted from the
@@ -1378,6 +1400,8 @@ private String findAreaNameById(Long areaId) {
         }
 
         selectionAccessTimer.setVisible(true);
+        reservationTimer.setVisible(false);
+
         selectionAccessTimer.getElement()
                 .setAttribute("data-seconds-left", String.valueOf(secondsLeft));
 
