@@ -43,15 +43,10 @@ public class PoliciesEditorPresenter {
             PurchasePolicyDTO appPurchasePolicy = companyService.getCompanyPurchasePolicy(sessionToken, companyId);
             return mapToUiPurchasePolicyExpression(companyId.toString(), appPurchasePolicy);
 
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw PresentationException.dispatch(e, 
-                msg -> translatePoliciesEditorError(msg,
-                    "An error occurred while loading the purchase policy."
-                ));
         } catch (Exception e) {
             throw PresentationException.dispatch(e, 
                 msg -> translatePoliciesEditorError(msg,
-                    "An error occurred while loading the purchase policy."
+                    "An error occurred while loading the purchase policy. Please try again."
                 ));
         }
     }
@@ -61,11 +56,6 @@ public class PoliciesEditorPresenter {
             PurchasePolicyDTO appPurchasePolicy = mapToAppPurchasePolicyExpression(purchaseDraft);
             companyService.setCompanyPurchasePolicy(sessionToken, companyId, appPurchasePolicy);
 
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw PresentationException.dispatch(e, 
-                msg -> translatePoliciesEditorError(msg,
-                    "An error occurred while saving the purchase policy. Please try again."
-                ));
         } catch (Exception e) {
             throw PresentationException.dispatch(e, 
                 msg -> translatePoliciesEditorError(msg,
@@ -79,15 +69,10 @@ public class PoliciesEditorPresenter {
             DiscountPolicyDTO appDiscountPolicy = companyService.getCompanyDiscountPolicy(sessionToken, companyId);
             return mapToUiDiscountPolicy(companyId.toString(), appDiscountPolicy);
 
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw PresentationException.dispatch(e, 
-                msg -> translatePoliciesEditorError(msg,
-                    "An error occurred while loading the discount policy."
-            ));
         } catch (Exception e) {
             throw PresentationException.dispatch(e, 
                 msg -> translatePoliciesEditorError(msg,
-                    "An error occurred while loading the discount policy."
+                    "An error occurred while loading the discount policy. Please try again."
             ));
         }
     }
@@ -97,17 +82,10 @@ public class PoliciesEditorPresenter {
 
             companyService.setCompanyDiscountPolicy(token, eventId, appDiscountPolicy);
 
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw PresentationException.dispatch(e, 
-                msg -> translatePoliciesEditorError(msg,
-                    "An error occurred while saving discount policy."
-            ));
         } catch (Exception e) {
             throw PresentationException.dispatch(e, 
                 msg -> translatePoliciesEditorError(msg,
-                    "An error occurred while saving discount policy."
+                    "An error occurred while saving discount policy. Please try again."
             ));
         }
     }
