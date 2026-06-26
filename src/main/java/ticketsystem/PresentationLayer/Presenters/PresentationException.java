@@ -42,12 +42,11 @@ public class PresentationException extends RuntimeException {
             return false;
         }
 
-        return message.contains("JWT") ||
-               message.contains("Invalid token") || 
-               message.contains("Invalid session") ||
-               message.contains("Invalid or expired") ||
-               message.contains("ID not found in token") ||
-               message.contains("Session token is empty") ||
+        return message.equals(SESSION_TOKEN_EXPIRED) ||
+               message.contains("JWT") ||
+               message.contains("expired") ||
+               message.contains("Invalid") ||
+               message.contains("Invalid session ID") ||
                message.contains("Token is missing or null") ||
                message.contains("Session is no longer active") ||
                message.contains("Session authentication failed");
@@ -58,13 +57,14 @@ public class PresentationException extends RuntimeException {
             return false;
         }
 
-        return message.contains("Connection refused") ||
-            message.contains("Communications link failure") ||
-            message.contains("CannotCreateTransactionException") ||
-            message.contains("JDBCConnectionException") ||
-            message.contains("DataAccessResourceFailureException") ||
-            message.contains("The connection attempt failed") ||
-            message.contains("Connection is not available");
+        return message.equals(DB_DISCONNECT_HEBREW_MSG) ||
+               message.contains("Connection refused") ||
+               message.contains("Communications link failure") ||
+               message.contains("CannotCreateTransactionException") ||
+               message.contains("JDBCConnectionException") ||
+               message.contains("DataAccessResourceFailureException") ||
+               message.contains("The connection attempt failed") ||
+               message.contains("Connection is not available");
     }
 
     /**
