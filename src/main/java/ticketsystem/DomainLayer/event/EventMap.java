@@ -421,9 +421,7 @@ public class EventMap {
         }
     }
 
-    private void validateElementsInsideMapBounds(
-            List<? extends Element> elementsToValidate
-    ) {
+    private void validateElementsInsideMapBounds(List<? extends Element> elementsToValidate) {
         // Preserve the existing system convention:
         // first = height, second = width
         int mapHeight = size.getFirst();
@@ -438,11 +436,7 @@ public class EventMap {
         }
     }
 
-    private void validateSingleElementInsideMapBounds(
-            Element element,
-            int mapWidth,
-            int mapHeight
-    ) {
+    private void validateSingleElementInsideMapBounds(Element element, int mapWidth, int mapHeight) {
         if (element == null) {
             throw new IllegalArgumentException(
                     "Map elements cannot contain null"
@@ -454,20 +448,14 @@ public class EventMap {
         String elementName = safeElementName(element.getName());
 
         if (location == null || elementSize == null) {
-            throw new IllegalArgumentException(
-                    "Element location and size cannot be null: "
-                            + elementName
-            );
+            throw new IllegalArgumentException("Element location and size cannot be null: " + elementName);
         }
 
         if (location.getFirst() == null
                 || location.getSecond() == null
                 || elementSize.getFirst() == null
                 || elementSize.getSecond() == null) {
-            throw new IllegalArgumentException(
-                    "Element location and size values cannot be null: "
-                            + elementName
-            );
+            throw new IllegalArgumentException("Element location and size values cannot be null: " + elementName);
         }
 
         int x = location.getFirst();
@@ -476,27 +464,19 @@ public class EventMap {
         int height = elementSize.getSecond();
 
         if (x < 0 || y < 0) {
-            throw new IllegalArgumentException(
-                    "Element location cannot be negative: "
-                            + elementName
-            );
+            throw new IllegalArgumentException("Element location must be positive. " + elementName);
         }
 
         if (width <= 0 || height <= 0) {
-            throw new IllegalArgumentException(
-                    "Element size must be positive: "
-                            + elementName
-            );
+            throw new IllegalArgumentException("Element size must be positive: " + elementName);
         }
 
-        long rightBoundary = (long) x + width;
-        long bottomBoundary = (long) y + height;
+        long rightBoundary = (long) x + width - 1;
+        long bottomBoundary = (long) y + height - 1;
 
-        if (rightBoundary > mapWidth
-                || bottomBoundary > mapHeight) {
+        if (rightBoundary > mapWidth || bottomBoundary > mapHeight) {
             throw new IllegalArgumentException(
-                    "Element is outside map bounds: "
-                            + elementName
+                    "Element is outside map bounds: " + elementName
             );
         }
     }
