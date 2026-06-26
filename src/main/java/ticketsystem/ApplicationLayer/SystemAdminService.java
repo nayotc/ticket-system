@@ -28,6 +28,7 @@ import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.history.Purchase;
+import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.Member;
 import ticketsystem.DomainLayer.user.Suspension;
@@ -140,22 +141,26 @@ public class SystemAdminService {
             } catch (Exception e) {
                 return "ERROR: Unauthorized access. Invalid admin credentials.";
             }
-
-            User member = userRepository.getMemberById(memberId);
-            if (member == null) {
+            User memberNotNull = userRepository.getMemberById(memberId);
+            if (memberNotNull == null) {
                 logger.logEvent("ERROR: Member with ID " + memberId + " was not found.", LogLevel.INFO);
                 return "ERROR: Member with ID " + memberId + " was not found.";
             }
-
-            orderRepository.deleteActiveOrdersByUserId(memberId);
+            ActiveOrder activeOrder = orderRepository.getActiveOrderByUserId(memberId);
+            if (activeOrder != null) {
+                activeOrder.cancelOrder();
+                orderRepository.updateOrder(activeOrder);
+            }
             removeUserFromAllCompanies(memberId);
-            boolean userRemoved = userRepository.removeRegisteredMember(memberId);
+            Member member = userRepository.getMemberById(memberId);
+            member.deactivate();
+            boolean userRemoved = userRepository.updateMember(member);
             
             if (!userRemoved) {
                 logger.logEvent("ERROR: Failed to delete member from the system.", LogLevel.INFO);
                 return "ERROR: Failed to delete member from the system.";
             }
-            
+            notificationsService.notifyMember(memberId, "Your account has been deactivated by a system administrator. You will no longer have access to the system.");
             logger.logEvent("Completed - deleteMemberByAdmin. " + context, LogLevel.INFO);
             return "SUCCESS: Member deactivated and associated records cleaned up.";
             

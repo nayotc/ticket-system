@@ -130,7 +130,6 @@ public class UserService {
                 throw new IllegalArgumentException("Username and password are required.");
             }
             logger.logEvent("Login input validation passed: username=" + username, LogLevel.DEBUG);
-
             String hashedPassword = userRepository.getHashedPasswordByUsername(username);
             logger.logEvent("Login password hash lookup completed: username=" + username + ", found="
                     + (hashedPassword != null), LogLevel.DEBUG);
@@ -150,6 +149,11 @@ public class UserService {
                         LogLevel.WARN);
                 throw new IllegalStateException("Login failed. Please try again.");
             }
+            if(member.isActive() == false){
+                logger.logEvent("Login rejected: member is deactivated, username=" + username, LogLevel.WARN);
+                throw new IllegalStateException("This account has been deactivated. Please contact support.");
+            }
+
             logger.logEvent("Login member loaded: username=" + username + ", memberId=" + member.getId(),
                     LogLevel.DEBUG);
 
