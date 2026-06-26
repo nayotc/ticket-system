@@ -3,32 +3,23 @@ package ticketsystem.ApplicationLayer;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.Events.EventUpdatesListener;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
-import ticketsystem.DTO.Event.ElementDTO;
-import ticketsystem.DTO.Event.EventDTO;
-import ticketsystem.DTO.Event.EventMapDTO;
-import ticketsystem.DTO.Event.IMapElementDTO;
-import ticketsystem.DTO.Event.PairDTO;
-import ticketsystem.DTO.Event.SeatingAreaDTO;
-import ticketsystem.DTO.Event.StandingAreaDTO;
+import ticketsystem.DTO.Event.*;
 import ticketsystem.DTO.DiscountPolicyDTO;
 import ticketsystem.DTO.PurchasePolicyDTO;
 import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.discount.DiscountPolicy;
-import ticketsystem.DomainLayer.event.Event;
+import ticketsystem.DomainLayer.event.*;
 import ticketsystem.DomainLayer.event.Event.eventStatus;
-import ticketsystem.DomainLayer.event.EventCategory;
-import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.EventMap;
-import ticketsystem.DomainLayer.event.Pair;
-import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.DomainLayer.policy.PurchasePolicy;
 import ticketsystem.DomainLayer.user.Permission;
 
@@ -254,16 +245,6 @@ public class EventService {
                     LogLevel.DEBUG
             );
 
-            validateMapHasAtLeastOneTicketArea(mapDTO);
-            validateMapElementsInsideMapBounds(mapDTO);
-            validateMapElementsDoNotOverlap(mapDTO);
-            validateAreaPrices(mapDTO);
-
-            logger.logEvent(
-                    "Map DTO validated - defineEventMap. " + mapDTOLogContext(mapDTO),
-                    LogLevel.DEBUG
-            );
-
             EventMap map = EventMapper.toDomain(mapDTO);
             event.defineMap(map);
             eventRepository.updateEvent(event);
@@ -283,6 +264,73 @@ public class EventService {
             throw e;
         }
     }
+
+    public Boolean UpdateActiveEvantMap(String sessionId, Long eventId, List<IAreaDTO> newAreasDTO, List<IAreaDTO> updatedAreasDTO) {
+        String context = "eventId=" + eventId + ", newAreasCount=" + (newAreasDTO != null ? newAreasDTO.size() : 0) + ", updatedAreasCount=" + (updatedAreasDTO != null ? updatedAreasDTO.size() : 0);
+        logger.logEvent("Started - UpdateEventMap. " + context, LogLevel.INFO);
+        try {
+            if (!tokenService.validateToken(sessionId)) {
+                throw new IllegalArgumentException("Invalid session ID");
+            }
+            logger.logEvent("Authenticated actor - UpdateEventMap. " + context, LogLevel.DEBUG);
+
+            Event event = eventRepository.getEventById(eventId);
+            if (event == null) {
+                throw new IllegalArgumentException("Event not found");
+            }
+            logger.logEvent("Found event - UpdateEventMap. " + context, LogLevel.DEBUG);
+            Long userId = tokenService.extractUserId(sessionId);
+            userAccessService.validateCanPerformNonViewAction(userId);
+            if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.CONFIGURE_HALL_AND_MAP)) {
+                throw new IllegalArgumentException("User does not have permission to update event map");
+            }
+            if (newAreasDTO == null) {
+                throw new IllegalArgumentException("New areas list cannot be null");
+            }
+            if (updatedAreasDTO == null) {
+                throw new IllegalArgumentException("Updated areas list cannot be null");
+            }
+
+            logger.logEvent("Validated permission - UpdateEventMap. userId=" + userId + ", eventId=" + eventId + ", companyId=" + event.getCompanyId() + ", permission=" + Permission.CONFIGURE_HALL_AND_MAP, LogLevel.DEBUG);
+            List<Area> newAreas = new ArrayList<>();
+            for (IAreaDTO areaDTO : newAreasDTO) {
+                Area area = EventMapper.toNewArea(areaDTO);
+                newAreas.add(area);
+            }
+            Map<Long, Area> updatedAreas = new HashMap<>();
+
+            for (IAreaDTO dto : updatedAreasDTO) {
+                if (dto == null || dto.id() == null) {
+                    throw new IllegalArgumentException(
+                            "An updated area must have an ID"
+                    );
+                }
+
+                Area previous = updatedAreas.put(
+                        dto.id(),
+                        EventMapper.toAreaUpdate(dto)
+                );
+
+                if (previous != null) {
+                    throw new IllegalArgumentException(
+                            "Duplicate updated area ID: " + dto.id()
+                    );
+                }
+            }
+
+            event.updateActiveMap(newAreas, updatedAreas);
+            eventRepository.updateEvent(event);
+            return true;
+        }
+        catch (IllegalArgumentException | IllegalStateException e) {
+            logger.logEvent("Failed - updateActiveEventMap. " + context + ". Error: " + e.getMessage(), LogLevel.WARN);
+            throw e;
+        } catch (Exception e) {
+            logger.logError("Failed - updateActiveEventMap. " + context + ". Unexpected error: " + e.getMessage(), e);
+            throw e;
+        }
+    }
+
 
 
     public Boolean updateEventSaleStatus(String sessionId, Long eventId, SaleStatus targetStatus) {
@@ -678,227 +726,6 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
             throw new IllegalArgumentException("Price must be a non-negative number");
         }
         logger.logEvent("Validated event details successfully - validateEventDetails", LogLevel.DEBUG);
-    }
-
-    private void validateMapHasAtLeastOneTicketArea(EventMapDTO mapDTO) {
-        boolean hasTicketArea = mapDTO.getElementDTOs() != null
-                && mapDTO.getElementDTOs()
-                .stream()
-                .anyMatch(this::isTicketArea);
-        logger.logEvent("Validating map contains at least one ticket area - validateMapHasAtLeastOneTicketArea. hasTicketArea=" + hasTicketArea, LogLevel.DEBUG);
-
-        if (!hasTicketArea) {
-            logger.logEvent("Validation failed - event map does not contain any seating or standing area", LogLevel.DEBUG);
-            throw new IllegalArgumentException(
-                    "Event map must contain at least one seating area or standing area"
-            );
-        }
-    }
-
-    private boolean isTicketArea(IMapElementDTO element) {
-        return element instanceof SeatingAreaDTO
-                || element instanceof StandingAreaDTO;
-    }
-
-    private void validateMapElementsInsideMapBounds(EventMapDTO mapDTO) {
-        if (mapDTO.size() == null
-                || mapDTO.size().first() == null
-                || mapDTO.size().second() == null) {
-            logger.logEvent("Validation failed - map size is null", LogLevel.DEBUG);
-            throw new IllegalArgumentException("Map size cannot be null");
-        }
-
-        int mapHeight = mapDTO.size().first();
-        int mapWidth = mapDTO.size().second();
-
-        if (mapWidth <= 0 || mapHeight <= 0) {
-            logger.logEvent("Validation failed - map size is not positive", LogLevel.DEBUG);
-            throw new IllegalArgumentException("Map size must be positive");
-        }
-
-        if (mapDTO.getElementDTOs() == null) {
-            logger.logEvent("Validation failed - map elements list is null", LogLevel.DEBUG);
-            throw new IllegalArgumentException("Map elements cannot be null");
-        }
-
-        for (IMapElementDTO element : mapDTO.getElementDTOs()) {
-            validateSingleElementInsideMapBounds(element, mapWidth, mapHeight);
-        }
-    }
-
-    private void validateSingleElementInsideMapBounds(IMapElementDTO element, int mapWidth, int mapHeight) {
-        if (element == null) {
-            logger.logEvent("Validation failed - map element is null", LogLevel.DEBUG);
-            throw new IllegalArgumentException("Map elements cannot contain null");
-        }
-
-        PairDTO<Integer, Integer> location = getElementLocation(element);
-        PairDTO<Integer, Integer> size = getElementSize(element);
-
-        String elementName = getElementName(element);
-
-        if (location == null || size == null) {
-            logger.logEvent("Validation failed - element location or size is null: " + elementName, LogLevel.DEBUG);
-            throw new IllegalArgumentException("Element location and size cannot be null: " + elementName);
-        }
-
-        if (location.first() == null || location.second() == null
-                || size.first() == null || size.second() == null) {
-            logger.logEvent("Validation failed - element location or size values are null: " + elementName, LogLevel.DEBUG);
-            throw new IllegalArgumentException("Element location and size values cannot be null: " + elementName);
-        }
-
-        int x = location.first();
-        int y = location.second();
-        int width = size.first();
-        int height = size.second();
-
-        if (x < 0 || y < 0) {
-            logger.logEvent("Validation failed - element location cannot be negative: " + elementName, LogLevel.DEBUG);
-            throw new IllegalArgumentException("Element location cannot be negative: " + elementName);
-        }
-
-        if (width <= 0 || height <= 0) {
-            logger.logEvent("Validation failed - element size must be positive: " + elementName, LogLevel.DEBUG);
-            throw new IllegalArgumentException("Element size must be positive: " + elementName);
-        }
-
-        if (x + width > mapWidth || y + height > mapHeight) {
-            logger.logEvent("Validation failed - element is outside map bounds: " + elementName, LogLevel.DEBUG);
-            throw new IllegalArgumentException("Element is outside map bounds: " + elementName);
-        }
-    }
-
-    private void validateMapElementsDoNotOverlap(EventMapDTO mapDTO) {
-        List<MapElementBounds> existingBounds = new ArrayList<>();
-
-        for (IMapElementDTO element : mapDTO.getElementDTOs()) {
-            MapElementBounds currentBounds = toMapElementBounds(element);
-
-            for (MapElementBounds existing : existingBounds) {
-                if (currentBounds.overlaps(existing)) {
-                    String message = "Map elements cannot overlap: "
-                            + existing.name()
-                            + " and "
-                            + currentBounds.name();
-
-                    logger.logEvent(
-                            "Validation failed - " + message,
-                            LogLevel.DEBUG
-                    );
-
-                    throw new IllegalArgumentException(message);
-                }
-            }
-
-            existingBounds.add(currentBounds);
-        }
-    }
-
-    private void validateAreaPrices(EventMapDTO map) {
-        if (map == null || map.elements() == null) {
-            return;
-        }
-
-        for (IMapElementDTO element : map.elements()) {
-            if (element instanceof SeatingAreaDTO area) {
-                validateAreaPrice(area.price());
-            } else if (element instanceof StandingAreaDTO area) {
-                validateAreaPrice(area.price());
-            }
-        }
-    }
-
-    private void validateAreaPrice(BigDecimal price) {
-        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException(
-                    "Every seating or standing area must have a non-negative price"
-            );
-        }
-    }
-
-    private MapElementBounds toMapElementBounds(IMapElementDTO element) {
-        PairDTO<Integer, Integer> location = getElementLocation(element);
-        PairDTO<Integer, Integer> size = getElementSize(element);
-
-        return new MapElementBounds(
-                safeElementName(getElementName(element)),
-                location.first(),
-                location.second(),
-                size.first(),
-                size.second()
-        );
-    }
-
-    private String safeElementName(String elementName) {
-        if (elementName == null || elementName.isBlank()) {
-            return "Unnamed element";
-        }
-
-        return elementName.trim();
-    }
-
-    private record MapElementBounds(
-            String name,
-            int x,
-            int y,
-            int width,
-            int height
-    ) {
-        private boolean overlaps(MapElementBounds other) {
-            return x < other.x + other.width
-                    && x + width > other.x
-                    && y < other.y + other.height
-                    && y + height > other.y;
-        }
-    }
-
-    private PairDTO<Integer, Integer> getElementLocation(IMapElementDTO element) {
-        if (element instanceof SeatingAreaDTO seatingArea) {
-            return seatingArea.location();
-        }
-
-        if (element instanceof StandingAreaDTO standingArea) {
-            return standingArea.location();
-        }
-
-        if (element instanceof ElementDTO regularElement) {
-            return regularElement.location();
-        }
-        logger.logEvent("Validation failed - unsupported map element type: " + element.getClass().getSimpleName(), LogLevel.DEBUG);
-        throw new IllegalArgumentException("Unsupported map element type: " + element.getClass().getSimpleName());
-    }
-
-    private PairDTO<Integer, Integer> getElementSize(IMapElementDTO element) {
-        if (element instanceof SeatingAreaDTO seatingArea) {
-            return seatingArea.size();
-        }
-
-        if (element instanceof StandingAreaDTO standingArea) {
-            return standingArea.size();
-        }
-
-        if (element instanceof ElementDTO regularElement) {
-            return regularElement.size();
-        }
-        logger.logEvent("Validation failed - unsupported map element type: " + element.getClass().getSimpleName(), LogLevel.DEBUG);
-        throw new IllegalArgumentException("Unsupported map element type: " + element.getClass().getSimpleName());
-    }
-
-    private String getElementName(IMapElementDTO element) {
-        if (element instanceof SeatingAreaDTO seatingArea) {
-            return seatingArea.name();
-        }
-
-        if (element instanceof StandingAreaDTO standingArea) {
-            return standingArea.name();
-        }
-
-        if (element instanceof ElementDTO regularElement) {
-            return regularElement.name();
-        }
-
-        return element.getClass().getSimpleName();
     }
 
     private String eventDTOContext(EventDTO eventDTO) {

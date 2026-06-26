@@ -1663,6 +1663,1013 @@ public class EventServiceAcceptanceTest {
         );
     }
 
+    // -------------------- Map Domain Validation Tests -------------------
+
+    @Test
+    void GivenMapSizeIsNull_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        EventMapDTO invalidMap = new EventMapDTO(
+                null,
+                List.of(createNewStandingArea(
+                        "Standing Area",
+                        0,
+                        0,
+                        5,
+                        5,
+                        100
+                )),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Map size cannot be null"
+        );
+    }
+
+    @Test
+    void GivenMapSizeIsNotPositive_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(0, 20),
+                List.of(createNewStandingArea(
+                        "Standing Area",
+                        0,
+                        0,
+                        5,
+                        5,
+                        100
+                )),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Map size must be positive"
+        );
+    }
+
+    @Test
+    void GivenMapElementsListIsNull_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                null,
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Map elements cannot be null"
+        );
+    }
+
+    @Test
+    void GivenMapContainsNullElement_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        List<IMapElementDTO> elements = new java.util.ArrayList<>();
+        elements.add(null);
+
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                elements,
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Map elements cannot contain null"
+        );
+    }
+
+    @Test
+    void GivenMapDoesNotContainTicketArea_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        ElementDTO stage = new ElementDTO(
+                null,
+                "Main Stage",
+                new PairDTO<>(0, 0),
+                new PairDTO<>(5, 3),
+                "STAGE"
+        );
+
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                List.of(stage),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Event map must contain at least one seating area or standing area"
+        );
+    }
+
+    @Test
+    void GivenElementLocationIsNegative_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                List.of(createNewStandingArea(
+                        "Standing Area",
+                        -1,
+                        0,
+                        5,
+                        5,
+                        100
+                )),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Element location cannot be negative"
+        );
+    }
+
+    @Test
+    void GivenElementWidthIsZero_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                List.of(createNewStandingArea(
+                        "Standing Area",
+                        0,
+                        0,
+                        0,
+                        5,
+                        100
+                )),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Element size must be positive"
+        );
+    }
+
+    @Test
+    void GivenElementHeightIsNegative_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                List.of(createNewStandingArea(
+                        "Standing Area",
+                        0,
+                        0,
+                        5,
+                        -1,
+                        100
+                )),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Element size must be positive"
+        );
+    }
+
+    @Test
+    void GivenElementExceedsMapWidth_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                List.of(createNewStandingArea(
+                        "Standing Area",
+                        18,
+                        0,
+                        3,
+                        5,
+                        100
+                )),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Element is outside map bounds"
+        );
+    }
+
+    @Test
+    void GivenElementExceedsMapHeight_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                List.of(createNewStandingArea(
+                        "Standing Area",
+                        0,
+                        18,
+                        5,
+                        3,
+                        100
+                )),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Element is outside map bounds"
+        );
+    }
+
+    @Test
+    void GivenAreaPriceIsNegative_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        StandingAreaDTO invalidArea = new StandingAreaDTO(
+                null,
+                "Standing Area",
+                new PairDTO<>(0, 0),
+                new PairDTO<>(5, 5),
+                "STANDING_AREA",
+                false,
+                BigDecimal.valueOf(-1),
+                100,
+                0,
+                0
+        );
+
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                List.of(invalidArea),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Area price cannot be negative"
+        );
+    }
+
+    @Test
+    void GivenAreaPriceIsNull_WhenDefineEventMap_ThenSystemRejectsAndEventRemainsDraft() {
+        StandingAreaDTO invalidArea = new StandingAreaDTO(
+                null,
+                "Standing Area",
+                new PairDTO<>(0, 0),
+                new PairDTO<>(5, 5),
+                "STANDING_AREA",
+                false,
+                null,
+                100,
+                0,
+                0
+        );
+
+        EventMapDTO invalidMap = new EventMapDTO(
+                new PairDTO<>(20, 20),
+                List.of(invalidArea),
+                false
+        );
+
+        assertDefineMapRejected(
+                invalidMap,
+                "Area price cannot be null"
+        );
+    }
+
+    // -------------------- Update Active Event Map Tests -------------------
+
+    @Test
+    void GivenActiveEventAndValidNewArea_WhenUpdateActiveEventMap_ThenAreaIsAddedAndPersisted() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO beforeUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        int originalElementCount = beforeUpdate.getElementDTOs().size();
+
+        StandingAreaDTO newArea = createNewStandingArea(
+                "New Standing Area",
+                10,
+                10,
+                4,
+                4,
+                50
+        );
+
+        Boolean result = eventService.UpdateActiveEvantMap(
+                validOwnerSessionId,
+                activeEvent.getId(),
+                List.of(newArea),
+                List.of()
+        );
+
+        EventMapDTO afterUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO persistedArea = findStandingArea(
+                afterUpdate,
+                "New Standing Area"
+        );
+
+        assertTrue(result);
+        assertEquals(
+                originalElementCount + 1,
+                afterUpdate.getElementDTOs().size()
+        );
+        assertNotNull(persistedArea);
+        assertNotNull(persistedArea.id());
+        assertEquals(50L, persistedArea.capacity());
+    }
+
+    @Test
+    void GivenActiveEventAndLargerSeatingDimensions_WhenUpdateActiveEventMap_ThenSeatsAreAdded() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO originalMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        SeatingAreaDTO originalArea = findSeatingArea(
+                originalMap,
+                "Editable Seating"
+        );
+
+        SeatingAreaDTO update = createSeatingAreaUpdate(
+                originalArea,
+                originalArea.location(),
+                originalArea.size(),
+                4,
+                5
+        );
+
+        Boolean result = eventService.UpdateActiveEvantMap(
+                validOwnerSessionId,
+                activeEvent.getId(),
+                List.of(),
+                List.of(update)
+        );
+
+        EventMapDTO updatedMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        SeatingAreaDTO updatedArea = findSeatingArea(
+                updatedMap,
+                "Editable Seating"
+        );
+
+        assertTrue(result);
+        assertNotNull(updatedArea);
+        assertEquals(4, updatedArea.rows());
+        assertEquals(5, updatedArea.columns());
+        assertEquals(20, updatedArea.seats().size());
+    }
+
+    @Test
+    void GivenActiveEventAndLargerStandingCapacity_WhenUpdateActiveEventMap_ThenCapacityIsIncreased() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO originalMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO originalArea = findStandingArea(
+                originalMap,
+                "Editable Standing"
+        );
+
+        StandingAreaDTO update = createStandingAreaUpdate(
+                originalArea,
+                150
+        );
+
+        Boolean result = eventService.UpdateActiveEvantMap(
+                validOwnerSessionId,
+                activeEvent.getId(),
+                List.of(),
+                List.of(update)
+        );
+
+        EventMapDTO updatedMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO updatedArea = findStandingArea(
+                updatedMap,
+                "Editable Standing"
+        );
+
+        assertTrue(result);
+        assertNotNull(updatedArea);
+        assertEquals(150L, updatedArea.capacity());
+    }
+
+    @Test
+    void GivenNewAreasListIsNull_WhenUpdateActiveEventMap_ThenSystemRejectsTheRequest() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        null,
+                        List.of()
+                )
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "New areas list cannot be null"
+                )
+        );
+    }
+
+    @Test
+    void GivenUpdatedAreasListIsNull_WhenUpdateActiveEventMap_ThenSystemRejectsTheRequest() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(),
+                        null
+                )
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "Updated areas list cannot be null"
+                )
+        );
+    }
+
+    @Test
+    void GivenNewAreaAlreadyHasId_WhenUpdateActiveEventMap_ThenSystemRejectsAndMapIsUnchanged() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO beforeUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO invalidNewArea = new StandingAreaDTO(
+                999L,
+                "Invalid New Area",
+                new PairDTO<>(10, 10),
+                new PairDTO<>(4, 4),
+                "STANDING_AREA",
+                false,
+                BigDecimal.valueOf(40),
+                50,
+                0,
+                0
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(invalidNewArea),
+                        List.of()
+                )
+        );
+
+        EventMapDTO afterUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "new area must not have an ID"
+                )
+        );
+        assertEquals(
+                beforeUpdate.getElementDTOs().size(),
+                afterUpdate.getElementDTOs().size()
+        );
+    }
+
+    @Test
+    void GivenNewAreaOverlapsExistingArea_WhenUpdateActiveEventMap_ThenSystemRejectsAndMapIsUnchanged() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO beforeUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO overlappingArea = createNewStandingArea(
+                "Overlapping Area",
+                2,
+                2,
+                4,
+                4,
+                50
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(overlappingArea),
+                        List.of()
+                )
+        );
+
+        EventMapDTO afterUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "Map elements cannot overlap"
+                )
+        );
+        assertEquals(
+                beforeUpdate.getElementDTOs().size(),
+                afterUpdate.getElementDTOs().size()
+        );
+        assertFalse(
+                mapContainsElementNamed(
+                        afterUpdate,
+                        "Overlapping Area"
+                )
+        );
+    }
+
+    @Test
+    void GivenNewAreaIsOutsideMapBounds_WhenUpdateActiveEventMap_ThenSystemRejectsAndMapIsUnchanged() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO beforeUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO outsideArea = createNewStandingArea(
+                "Outside Area",
+                18,
+                18,
+                4,
+                4,
+                50
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(outsideArea),
+                        List.of()
+                )
+        );
+
+        EventMapDTO afterUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "Element is outside map bounds"
+                )
+        );
+        assertEquals(
+                beforeUpdate.getElementDTOs().size(),
+                afterUpdate.getElementDTOs().size()
+        );
+    }
+
+    @Test
+    void GivenSeatingRowsAreReduced_WhenUpdateActiveEventMap_ThenSystemRejectsAndRowsRemainUnchanged() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO originalMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        SeatingAreaDTO originalArea = findSeatingArea(
+                originalMap,
+                "Editable Seating"
+        );
+
+        SeatingAreaDTO invalidUpdate = createSeatingAreaUpdate(
+                originalArea,
+                originalArea.location(),
+                originalArea.size(),
+                originalArea.rows() - 1,
+                originalArea.columns()
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(),
+                        List.of(invalidUpdate)
+                )
+        );
+
+        SeatingAreaDTO unchangedArea = findSeatingArea(
+                eventService.getEventMap(
+                        validOwnerSessionId,
+                        activeEvent.getId()
+                ),
+                "Editable Seating"
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "rows cannot be reduced"
+                )
+        );
+        assertEquals(
+                originalArea.rows(),
+                unchangedArea.rows()
+        );
+        assertEquals(
+                originalArea.columns(),
+                unchangedArea.columns()
+        );
+    }
+
+    @Test
+    void GivenSeatingColumnsAreReduced_WhenUpdateActiveEventMap_ThenSystemRejectsAndColumnsRemainUnchanged() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO originalMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        SeatingAreaDTO originalArea = findSeatingArea(
+                originalMap,
+                "Editable Seating"
+        );
+
+        SeatingAreaDTO invalidUpdate = createSeatingAreaUpdate(
+                originalArea,
+                originalArea.location(),
+                originalArea.size(),
+                originalArea.rows(),
+                originalArea.columns() - 1
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(),
+                        List.of(invalidUpdate)
+                )
+        );
+
+        SeatingAreaDTO unchangedArea = findSeatingArea(
+                eventService.getEventMap(
+                        validOwnerSessionId,
+                        activeEvent.getId()
+                ),
+                "Editable Seating"
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "columns cannot be reduced"
+                )
+        );
+        assertEquals(
+                originalArea.rows(),
+                unchangedArea.rows()
+        );
+        assertEquals(
+                originalArea.columns(),
+                unchangedArea.columns()
+        );
+    }
+
+    @Test
+    void GivenStandingCapacityIsReduced_WhenUpdateActiveEventMap_ThenSystemRejectsAndCapacityRemainsUnchanged() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO originalMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO originalArea = findStandingArea(
+                originalMap,
+                "Editable Standing"
+        );
+
+        StandingAreaDTO invalidUpdate = createStandingAreaUpdate(
+                originalArea,
+                originalArea.capacity() - 1
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(),
+                        List.of(invalidUpdate)
+                )
+        );
+
+        StandingAreaDTO unchangedArea = findStandingArea(
+                eventService.getEventMap(
+                        validOwnerSessionId,
+                        activeEvent.getId()
+                ),
+                "Editable Standing"
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "capacity cannot be reduced"
+                )
+        );
+        assertEquals(
+                originalArea.capacity(),
+                unchangedArea.capacity()
+        );
+    }
+
+    @Test
+    void GivenUpdatedAreaDoesNotExist_WhenUpdateActiveEventMap_ThenSystemRejectsAndMapIsUnchanged() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO beforeUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO missingAreaUpdate = new StandingAreaDTO(
+                Long.MAX_VALUE,
+                "Missing Area",
+                new PairDTO<>(10, 10),
+                new PairDTO<>(4, 4),
+                "STANDING_AREA",
+                false,
+                BigDecimal.valueOf(40),
+                150,
+                0,
+                0
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(),
+                        List.of(missingAreaUpdate)
+                )
+        );
+
+        EventMapDTO afterUpdate = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "Area not found"
+                )
+        );
+        assertEquals(
+                beforeUpdate.getElementDTOs().size(),
+                afterUpdate.getElementDTOs().size()
+        );
+    }
+
+    @Test
+    void GivenUpdatedAreaChangesType_WhenUpdateActiveEventMap_ThenSystemRejectsAndOriginalAreaRemains() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO originalMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO standingArea = findStandingArea(
+                originalMap,
+                "Editable Standing"
+        );
+
+        SeatingAreaDTO invalidTypeUpdate = new SeatingAreaDTO(
+                standingArea.id(),
+                standingArea.name(),
+                standingArea.location(),
+                standingArea.size(),
+                "SEATING_AREA",
+                false,
+                standingArea.price(),
+                3,
+                3,
+                List.of()
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(),
+                        List.of(invalidTypeUpdate)
+                )
+        );
+
+        EventMapDTO unchangedMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "Area type cannot be changed"
+                )
+        );
+        assertNotNull(
+                findStandingArea(
+                        unchangedMap,
+                        "Editable Standing"
+                )
+        );
+    }
+
+    @Test
+    void GivenValidNewAreaAndInvalidAreaUpdate_WhenUpdateActiveEventMap_ThenNoPartialChangesAreSaved() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        EventMapDTO originalMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        int originalElementCount =
+                originalMap.getElementDTOs().size();
+
+        StandingAreaDTO originalStandingArea =
+                findStandingArea(
+                        originalMap,
+                        "Editable Standing"
+                );
+
+        StandingAreaDTO validNewArea = createNewStandingArea(
+                "Atomic New Area",
+                10,
+                10,
+                4,
+                4,
+                50
+        );
+
+        StandingAreaDTO invalidUpdate =
+                createStandingAreaUpdate(
+                        originalStandingArea,
+                        originalStandingArea.capacity() - 1
+                );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        activeEvent.getId(),
+                        List.of(validNewArea),
+                        List.of(invalidUpdate)
+                )
+        );
+
+        EventMapDTO unchangedMap = eventService.getEventMap(
+                validOwnerSessionId,
+                activeEvent.getId()
+        );
+
+        StandingAreaDTO unchangedStandingArea =
+                findStandingArea(
+                        unchangedMap,
+                        "Editable Standing"
+                );
+
+        assertEquals(
+                originalElementCount,
+                unchangedMap.getElementDTOs().size()
+        );
+        assertFalse(
+                mapContainsElementNamed(
+                        unchangedMap,
+                        "Atomic New Area"
+                )
+        );
+        assertEquals(
+                originalStandingArea.capacity(),
+                unchangedStandingArea.capacity()
+        );
+    }
+
+    @Test
+    void GivenDraftEvent_WhenUpdateActiveEventMap_ThenSystemRejectsTheRequest() {
+        Event draftEvent = createExistingEvent();
+        eventRepository.addEvent(draftEvent);
+
+        StandingAreaDTO newArea = createNewStandingArea(
+                "New Area",
+                10,
+                10,
+                4,
+                4,
+                50
+        );
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        validOwnerSessionId,
+                        draftEvent.getId(),
+                        List.of(newArea),
+                        List.of()
+                )
+        );
+
+        Event unchangedEvent =
+                eventRepository.getEventById(draftEvent.getId());
+
+        assertTrue(
+                exception.getMessage()
+                        .toLowerCase()
+                        .contains("active")
+        );
+        assertEquals(
+                eventStatus.DRAFT,
+                unchangedEvent.getStatus()
+        );
+        assertEquals(0, elementCount(unchangedEvent));
+    }
+
+    @Test
+    void GivenInvalidSession_WhenUpdateActiveEventMap_ThenSystemRejectsTheRequest() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        invalidSessionId,
+                        activeEvent.getId(),
+                        List.of(),
+                        List.of()
+                )
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "Invalid or expired security token"
+                )
+        );
+    }
+
+    @Test
+    void GivenUserWithoutMapPermission_WhenUpdateActiveEventMap_ThenSystemRejectsTheRequest() {
+        Event activeEvent = createActiveEventForMapUpdateTests();
+
+        Member memberWithoutPermission = new Member(
+                200L,
+                "MapUpdateUser",
+                "Map Update User",
+                "0500000200",
+                LocalDate.of(2001, 1, 1)
+        );
+
+        userRepository.addRegisteredMember(
+                200L,
+                memberWithoutPermission,
+                "password"
+        );
+
+        String sessionWithoutPermission =
+                tokenService.addActiveSession(
+                        memberWithoutPermission
+                );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.UpdateActiveEvantMap(
+                        sessionWithoutPermission,
+                        activeEvent.getId(),
+                        List.of(),
+                        List.of()
+                )
+        );
+
+        assertTrue(
+                exception.getMessage().contains(
+                        "User does not have permission to update event map"
+                )
+        );
+    }
+
     // -------------------- Helper Methods and Test Doubles -------------------
 
     private Event createExistingEvent() {
@@ -2009,6 +3016,157 @@ public class EventServiceAcceptanceTest {
                                 )
                         )
                 )
+        );
+    }
+
+    private void assertDefineMapRejected(
+            EventMapDTO invalidMap,
+            String expectedMessage
+    ) {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        Event originalEvent =
+                eventRepository.getEventById(event.getId());
+
+        int originalElementCount =
+                elementCount(originalEvent);
+
+        eventStatus originalStatus =
+                originalEvent.getStatus();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventService.defineEventMap(
+                        validOwnerSessionId,
+                        event.getId(),
+                        invalidMap
+                )
+        );
+
+        Event unchangedEvent =
+                eventRepository.getEventById(event.getId());
+
+        assertTrue(
+                exception.getMessage().contains(expectedMessage),
+                "Expected message containing: "
+                        + expectedMessage
+                        + ", but received: "
+                        + exception.getMessage()
+        );
+
+        assertEquals(
+                originalElementCount,
+                elementCount(unchangedEvent)
+        );
+
+        assertEquals(
+                originalStatus,
+                unchangedEvent.getStatus()
+        );
+    }
+
+    private Event createActiveEventForMapUpdateTests() {
+        Event event = createExistingEvent();
+        eventRepository.addEvent(event);
+
+        eventService.defineEventMap(
+                validOwnerSessionId,
+                event.getId(),
+                createEditableMapDTO()
+        );
+
+        return eventRepository.getEventById(event.getId());
+    }
+
+    private EventMapDTO createEditableMapDTO() {
+        SeatingAreaDTO seatingArea = new SeatingAreaDTO(
+                null,
+                "Editable Seating",
+                new PairDTO<>(0, 0),
+                new PairDTO<>(6, 6),
+                "SEATING_AREA",
+                false,
+                BigDecimal.valueOf(50),
+                2,
+                3,
+                List.of()
+        );
+
+        StandingAreaDTO standingArea = createNewStandingArea(
+                "Editable Standing",
+                10,
+                0,
+                5,
+                5,
+                100
+        );
+
+        return new EventMapDTO(
+                new PairDTO<>(20, 20),
+                List.of(seatingArea, standingArea),
+                false
+        );
+    }
+
+    private StandingAreaDTO createNewStandingArea(
+            String name,
+            int x,
+            int y,
+            int width,
+            int height,
+            long capacity
+    ) {
+        return new StandingAreaDTO(
+                null,
+                name,
+                new PairDTO<>(x, y),
+                new PairDTO<>(width, height),
+                "STANDING_AREA",
+                false,
+                BigDecimal.valueOf(40),
+                capacity,
+                0,
+                0
+        );
+    }
+
+    private SeatingAreaDTO createSeatingAreaUpdate(
+            SeatingAreaDTO existingArea,
+            PairDTO<Integer, Integer> location,
+            PairDTO<Integer, Integer> size,
+            int rows,
+            int columns
+    ) {
+        return new SeatingAreaDTO(
+                existingArea.id(),
+                existingArea.name(),
+                location,
+                size,
+                existingArea.type(),
+                existingArea.soldOut(),
+                existingArea.price(),
+                rows,
+                columns,
+                existingArea.seats()
+        );
+    }
+
+    private StandingAreaDTO createStandingAreaUpdate(
+            StandingAreaDTO existingArea,
+            long capacity
+    ) {
+        return new StandingAreaDTO(
+                existingArea.id(),
+                existingArea.name(),
+                existingArea.location(),
+                existingArea.size(),
+                existingArea.type(),
+                existingArea.soldOut(),
+                existingArea.price(),
+                capacity,
+                existingArea.reserved(),
+                existingArea.sold()
         );
     }
 

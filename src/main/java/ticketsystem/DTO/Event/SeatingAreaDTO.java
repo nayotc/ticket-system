@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import ticketsystem.DomainLayer.event.SeatingArea;
 
 public record SeatingAreaDTO(
-        long id,
+        Long id,
         String name,
         PairDTO<Integer, Integer> location,
         PairDTO<Integer, Integer> size,
@@ -17,7 +17,7 @@ public record SeatingAreaDTO(
         int rows,
         int columns,
         List<SeatDTO> seats
-) implements IMapElementDTO {
+) implements IAreaDTO {
 
     public static SeatingAreaDTO from(SeatingArea area) {
         if (area == null) {
