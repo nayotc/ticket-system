@@ -59,10 +59,12 @@ public class PresentationException extends RuntimeException {
         }
 
         return message.contains("Connection refused") ||
-               message.contains("Communications link failure") ||
-               message.contains("CannotCreateTransactionException") ||
-               message.contains("JDBCConnectionException") ||
-               message.contains("DataAccessResourceFailureException");
+            message.contains("Communications link failure") ||
+            message.contains("CannotCreateTransactionException") ||
+            message.contains("JDBCConnectionException") ||
+            message.contains("DataAccessResourceFailureException") ||
+            message.contains("The connection attempt failed") ||
+            message.contains("Connection is not available");
     }
 
     /**
