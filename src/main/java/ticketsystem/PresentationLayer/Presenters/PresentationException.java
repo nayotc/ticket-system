@@ -64,7 +64,14 @@ public class PresentationException extends RuntimeException {
                message.contains("JDBCConnectionException") ||
                message.contains("DataAccessResourceFailureException") ||
                message.contains("The connection attempt failed") ||
-               message.contains("Connection is not available");
+               message.contains("Connection is not available") ||
+               message.contains("noroutetohostexception") ||
+               message.contains("sockettimeoutexception") ||
+               message.contains("connection is not available") ||
+               message.contains("hikari") ||
+               message.contains("cannotcreatestransaction") ||
+               message.contains("transactionsystemexception") ||
+               message.contains("the connection attempt failed");
     }
 
     /**
