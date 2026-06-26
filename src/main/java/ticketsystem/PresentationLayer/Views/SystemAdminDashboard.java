@@ -22,6 +22,7 @@ import com.vaadin.flow.component.UI;
 // Vaadin - UI Components
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -579,7 +580,7 @@ public class SystemAdminDashboard extends Div {
         );
     }
 
-    private void openSuspendDialog(AdminUserRow user) {
+private void openSuspendDialog(AdminUserRow user) {
         Dialog dialog = new Dialog();
         dialog.addClassName("admin-confirm-dialog");
         dialog.setCloseOnEsc(true);
@@ -592,11 +593,22 @@ public class SystemAdminDashboard extends Div {
         titleElement.addClassName("admin-confirm-title");
 
         DateTimePicker endPicker = new DateTimePicker("סיום השעיה (אופציונלי)");
-        endPicker.setValue(LocalDateTime.now().plusDays(7)); // ברירת מחדל
+        endPicker.setValue(LocalDateTime.now().plusDays(7)); 
         endPicker.setWidthFull();
 
+        Checkbox permanentCheckbox = new Checkbox("השעיה לצמיתות");
+        permanentCheckbox.addValueChangeListener(event -> {
+            boolean isPermanent = event.getValue();
+            endPicker.setEnabled(!isPermanent); 
+            if (isPermanent) {
+                endPicker.clear();
+            } else if (endPicker.isEmpty()) {
+                endPicker.setValue(LocalDateTime.now().plusDays(7)); 
+            }
+        });
+
         TextField reasonField = new TextField("סיבת השעיה");
-        reasonField.setRequiredIndicatorVisible(true); // כוכבית אדומה לשדה חובה
+        reasonField.setRequiredIndicatorVisible(true); 
         reasonField.setErrorMessage("חובה להזין סיבה להשעיה");
         reasonField.setWidthFull();
 
@@ -613,9 +625,12 @@ public class SystemAdminDashboard extends Div {
                 return;
             }
 
-            LocalDateTime endDate = endPicker.getValue();
-            if (endDate == null) {
-                endDate = LocalDateTime.now().plusDays(7);
+            LocalDateTime endDate = null;
+            if (!permanentCheckbox.getValue()) { 
+                endDate = endPicker.getValue();
+                if (endDate == null) {
+                    endDate = LocalDateTime.now().plusDays(7); 
+                }
             }
 
             dialog.close();
@@ -625,7 +640,7 @@ public class SystemAdminDashboard extends Div {
         HorizontalLayout actions = new HorizontalLayout(cancel, approve);
         actions.addClassName("admin-confirm-actions");
 
-        card.add(titleElement, endPicker, reasonField, actions);
+        card.add(titleElement, endPicker, permanentCheckbox, reasonField, actions);
         dialog.add(card);
         dialog.open();
     }
@@ -802,9 +817,9 @@ public class SystemAdminDashboard extends Div {
 
     private void loadDemoData() {
         allUsers.clear();
-        allUsers.add(new AdminUserRow(101L, "noam@test.com", "נועם כהן", "פעיל", true));
-        allUsers.add(new AdminUserRow(102L, "maya@test.com", "מאיה לוי", "פעיל", true));
-        allUsers.add(new AdminUserRow(103L, "admin-watch@test.com", "חשבון בבדיקה", "פעיל", true));
+        allUsers.add(new AdminUserRow(101L, "noam@test.com", "נועם כהן", "פעיל", true, null, null, null));
+        allUsers.add(new AdminUserRow(102L, "maya@test.com", "מאיה לוי", "פעיל", true, null, null, null));
+        allUsers.add(new AdminUserRow(103L, "admin-watch@test.com", "חשבון בבדיקה", "פעיל", true, null, null, null));
 
         allCompanies.clear();
         allCompanies.add(new CompanyTableRow(11L, "LiveNation Israel", 1L, "פעילה"));
@@ -1021,7 +1036,10 @@ public class SystemAdminDashboard extends Div {
             String email,
             String displayName,
             String status,
-            boolean isActive
+            boolean isActive,
+            LocalDateTime suspensionStartDate,
+            LocalDateTime suspensionEndDate,
+            String suspensionReason
     ) {
     }
 
