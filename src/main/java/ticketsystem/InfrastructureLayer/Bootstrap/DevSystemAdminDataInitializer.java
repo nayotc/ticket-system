@@ -22,6 +22,7 @@ public class DevSystemAdminDataInitializer implements CommandLineRunner {
 
     private static final String ADMIN_USERNAME = "admin@tixnow.com";
     private static final String ADMIN_PASSWORD = "admin";
+    private static final String REDACTED_PASSWORD = "<redacted>";
     private static final String ADMIN_FULLNAME = "System Administrator";
     private static final String ADMIN_PHONE = "0509999999";
     private static final LocalDate ADMIN_BIRTH_DATE = LocalDate.of(2000, 6, 1);
@@ -99,7 +100,7 @@ public class DevSystemAdminDataInitializer implements CommandLineRunner {
         System.out.println("SYSTEM ADMIN ACCOUNT IS READY");
         System.out.println("-------------------------------------------------------------------------");
         System.out.println("Username: " + ADMIN_USERNAME);
-        System.out.println("Password: " + ADMIN_PASSWORD);
+        System.out.println("Password: " + REDACTED_PASSWORD);
         System.out.println("Role: System Administrator [ID: " + adminId + "]");
         System.out.println("=========================================================================");
 

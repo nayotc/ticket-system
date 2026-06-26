@@ -22,6 +22,7 @@ public class DevRoleTreeDataInitializer {
 
     private static final String FOUNDER_USERNAME = "founder@test.com";
     private static final String FOUNDER_PASSWORD = "123456";
+    private static final String REDACTED_PASSWORD = "<redacted>";
 
     private static final String OWNER_USERNAME = "owner@test.com";
     private static final String OWNER_PASSWORD = "123456";
@@ -149,7 +150,7 @@ public class DevRoleTreeDataInitializer {
 
         System.out.println("Dev role-tree user created:");
         System.out.println("username: " + username);
-        System.out.println("password: " + password);
+        System.out.println("password: " + REDACTED_PASSWORD);
     }
 
     private String login(String username, String password) {
