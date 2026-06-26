@@ -502,9 +502,17 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         dialog.setCancelable(true);
 
         dialog.addConfirmListener(e -> {
-            releaseQueueAccessIfNeeded();
-            allowLeavingSelectionPage = true;
-            action.proceed();
+            try {
+                reservationPresenter.leavePromotedQueueTurn(currentToken(), eventId);
+                queueAccessReleased = true;
+
+                allowLeavingSelectionPage = true;
+                UI.getCurrent().navigate(UiRoutes.HOME);
+
+            } catch (PresentationException ex) {
+                Notifications.error(ex.getMessage());
+                allowLeavingSelectionPage = false;
+            }
         });
 
         dialog.addCancelListener(e -> {

@@ -375,6 +375,37 @@ public class ReservationPresenter {
     }
 
     /**
+     * Leaves the queue-related selection turn after the user was promoted from the
+     * waiting queue into the ticket-selection page.
+     *
+     * This method is different from releaseQueueAccess:
+     * releaseQueueAccess silently releases a regular active purchasing slot, while
+     * this method also triggers the existing user-facing queue-leave notification.
+     *
+     * @param token active guest/member session token
+     * @param eventId event whose queue turn should be left
+     */
+    public void leavePromotedQueueTurn(String token, Long eventId) {
+        try {
+            if (token == null || token.isBlank()) {
+                return;
+            }
+
+            if (eventId == null || eventId <= 0) {
+                return;
+            }
+
+            waitingQueueService.leaveQueue(eventId, token);
+
+        } catch (IllegalArgumentException e) {
+            throw presentationError(e.getMessage());
+
+        } catch (Exception e) {
+            throw presentationError("לא ניתן לצאת מהתור כרגע.");
+        }
+    }
+
+    /**
      * Completes checkout for the current active order.
      *
      * This method is used by the checkout view to submit the active order for
