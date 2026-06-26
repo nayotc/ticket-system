@@ -71,13 +71,11 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
 
             return eventId;
 
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while creating event: " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת יצירת האירוע. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת יצירת האירוע. נסו שוב."
+            ));
         }
     }
 
@@ -86,13 +84,11 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         try {
             validateEventId(eventId);
             return eventService.getEvent(sessionId, eventId);
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while loading event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת טעינת פרטי האירוע. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת טעינת פרטי האירוע. נסו שוב."
+            ));
         }
     }
 
@@ -101,13 +97,11 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         try {
             validateDefineEventMapRequest(eventId, mapDTO);
             return Boolean.TRUE.equals(eventService.defineEventMap(sessionId, eventId, mapDTO));
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while defining map for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת שמירת מפת האולם. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת שמירת מפת האולם. נסו שוב."
+            ));
         }
     }
 
@@ -118,13 +112,11 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         try {
             validateUpdateEventRequest(request);
             return Boolean.TRUE.equals(eventService.updateEvent(request.sessionId(), request.event()));
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while updating event: " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת עדכון פרטי האירוע. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת עדכון פרטי האירוע. נסו שוב."
+            ));
         }
     }
 
@@ -155,13 +147,11 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             validateEventId(eventId);
             PurchasePolicyDTO appPurchasePolicy = mapToAppPurchasePolicyExpression(purchaseDraft);
             eventService.setEventPurchasePolicy(token, eventId, appPurchasePolicy);
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while saving purchase policy for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת שמירת מדיניות הרכישה. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת שמירת מדיניות הרכישה. נסו שוב."
+            ));
         }
     }
 
@@ -171,13 +161,11 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         try {
             validateEventId(eventId);
             eventService.cancelEvent(token, eventId);
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while canceling event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת ביטול האירוע. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת ביטול האירוע. נסו שוב."
+            ));
         }
     }
 
@@ -190,14 +178,11 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
 
             DiscountPolicyDTO appDiscountPolicy = mapToAppDiscountPolicy(discountDraft);
             eventService.setEventDiscountPolicy(token, eventId, appDiscountPolicy);
-
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while saving discount policy for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת שמירת מדיניות ההנחות. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת שמירת מדיניות ההנחות. נסו שוב."
+            ));
         }
     }
 
@@ -208,15 +193,12 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             if (targetStatus == null) {
                 throw new IllegalArgumentException("Sale status cannot be null");
             }
-
             eventService.updateEventSaleStatus(token, eventId, targetStatus);
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while updating sale status for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת עדכון מצב המכירה. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת עדכון מצב המכירה. נסו שוב."
+            ));
         }
     }
 
@@ -225,13 +207,11 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
         try {
             validateEventId(eventId);
             return lotteryService.hasLotteryForEvent(sessionId, eventId);
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while checking lottery for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת בדיקת הגרלה לאירוע. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת בדיקת הגרלה לאירוע. נסו שוב."
+            ));
         }
     }
 
@@ -242,13 +222,11 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             Long lotteryId = lotteryService.getLotteryIdByEventId(eventId); // Validate lottery existence before conducting draw
             lotteryService.closeLotteryRegistration(sessionId, lotteryId, companyId); // Ensure registration is closed before conducting draw
             lotteryService.conductLotteryDraw(sessionId, lotteryId, companyId);
-        } catch (PresentationException exception) {
-            throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
             logger.logEvent("Unexpected error while conducting lottery for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת ביצוע ההגרלה. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת ביצוע ההגרלה. נסו שוב."
+            ));
         }
     }
     @Override
@@ -256,18 +234,15 @@ public int getEventCapacity(String sessionId, Long eventId) {
     try {
         validateEventId(eventId);
         return eventService.getEventCapacity(sessionId, eventId);
-
-    } catch (PresentationException exception) {
-        throw exception;
-    } catch (IllegalArgumentException | IllegalStateException exception) {
-        throw presentationException(exception.getMessage());
     } catch (Exception exception) {
         logger.logEvent(
                 "Unexpected error while loading event capacity for event "
                         + eventId + ": " + exception.getMessage(),
                 LogbackSystemLogger.LogLevel.DEBUG
         );
-        throw new PresentationException("אירעה שגיאה בעת טעינת קיבולת האירוע. נסו שוב.");
+        throw PresentationException.dispatch(exception, msg -> translateError(msg,
+            "אירעה שגיאה בעת טעינת קיבולת האירוע. נסו שוב."
+        ));
     }
 }
 @Override
@@ -275,18 +250,15 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
     try {
         validateEventId(eventId);
         return eventService.getSoldTicketsCount(sessionId, eventId);
-
-    } catch (PresentationException exception) {
-        throw exception;
-    } catch (IllegalArgumentException | IllegalStateException exception) {
-        throw presentationException(exception.getMessage());
     } catch (Exception exception) {
         logger.logEvent(
                 "Unexpected error while loading sold tickets count for event "
                         + eventId + ": " + exception.getMessage(),
                 LogbackSystemLogger.LogLevel.DEBUG
         );
-        throw new PresentationException("אירעה שגיאה בעת טעינת נתוני המכירות. נסו שוב.");
+        throw PresentationException.dispatch(exception, msg -> translateError(msg,
+            "אירעה שגיאה בעת טעינת נתוני המכירות. נסו שוב."
+        ));
     }
 }
 
@@ -548,21 +520,9 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
         }
     }
 
-    private String translateError(String message) {
+    private String translateError(String message, String fallback) {
         if (message == null || message.isBlank()) {
             return "אירעה שגיאה. נסו שוב.";
-        }
-
-        if (message != null && (
-                message.contains("JWT") ||
-                message.contains("expired") ||
-                message.contains("Invalid") ||
-                message.contains("Invalid session ID") ||
-                message.contains("Token is missing or null") ||
-                message.contains("Session is no longer active") ||
-                message.contains("Invalid or expired security token")
-        )) {
-            return message;
         }
 
         if (message.startsWith("Map elements cannot overlap")) {
@@ -610,13 +570,13 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
             case "Event is already canceled" -> "האירוע כבר מבוטל.";
             case "Event Event does not exist" -> "האירוע לא קיים.";
             case "Event cancellation failed. Please try again later to complete the cancellation process." -> "ביטול אירוע נכשל, נסה שוב מאוחר יותר. ";
-            default -> message;
+            default -> fallback;
         };
     }
 
-    private PresentationException presentationException(String message) {
-        return new PresentationException(translateError(message));
-    }
+    // private PresentationException presentationException(String message) {
+    //     return new PresentationException(translateError(message));
+    // }
 
     private EditEvent.DiscountPolicyDraftDTO mapToUiDiscountPolicyDraft(
         Long eventId,
@@ -733,16 +693,14 @@ public EditEvent.DiscountPolicyDraftDTO loadEventDiscountPolicy(String token, Lo
 
         return mapToUiDiscountPolicyDraft(eventId, policyDTO);
 
-    } catch (PresentationException exception) {
-        throw exception;
-    } catch (IllegalArgumentException | IllegalStateException exception) {
-        throw presentationException(exception.getMessage());
     } catch (Exception exception) {
         logger.logEvent(
-                "Unexpected error while loading discount policy for event " + eventId + ": " + exception.getMessage(),
-                LogbackSystemLogger.LogLevel.DEBUG
+            "Unexpected error while loading discount policy for event " + eventId + ": " + exception.getMessage(),
+            LogbackSystemLogger.LogLevel.DEBUG
         );
-        throw new PresentationException("אירעה שגיאה בעת טעינת מדיניות ההנחות. נסו שוב.");
+            throw PresentationException.dispatch(exception, msg -> translateError(msg,
+                "אירעה שגיאה בעת טעינת מדיניות ההנחות. נסו שוב."
+            ));
     }
 }
 
