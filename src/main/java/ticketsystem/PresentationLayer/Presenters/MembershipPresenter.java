@@ -213,13 +213,8 @@ public class MembershipPresenter {
                     uiStats,
                     uiPolicySummary
             );
-
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -229,12 +224,8 @@ public class MembershipPresenter {
             if (!success) {
                 throw new PresentationException("בקשת מינוי המנהל נכשלה.");
             }
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -244,12 +235,8 @@ public class MembershipPresenter {
             if (!success) {
                 throw new PresentationException("בקשת מינוי הבעלים נכשלה.");
             }
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -259,12 +246,8 @@ public class MembershipPresenter {
             if (!success) {
                 throw new PresentationException("עדכון ההרשאות נכשל.");
             }
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -274,12 +257,8 @@ public class MembershipPresenter {
             if (!success) {
                 throw new PresentationException("הסרת המנהל נכשלה.");
             }
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -289,12 +268,8 @@ public class MembershipPresenter {
             if (!success) {
                 throw new PresentationException("הסרת הבעלים נכשלה.");
             }
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -304,12 +279,8 @@ public class MembershipPresenter {
             if (!success) {
                 throw new PresentationException("ויתור הבעלות נכשל.");
             }
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -319,12 +290,8 @@ public class MembershipPresenter {
             if (!success) {
                 throw new PresentationException("ביטול אירוע טרם מומש.");
             }
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -334,12 +301,8 @@ public class MembershipPresenter {
             if (!success) {
                 throw new PresentationException("אישור המינוי נכשל.");
             }
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
@@ -349,12 +312,8 @@ public class MembershipPresenter {
             if (!success) {
                 throw new PresentationException("דחיית המינוי נכשלה.");
             }
-        } catch (PresentationException e) {
-            throw e;
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(translateError(e.getMessage()));
         } catch (Exception e) {
-            throw new PresentationException(translateError(extractUsefulMessage(e)));
+            throw PresentationException.dispatch(e, msg -> translateError(extractUsefulMessage(e)));
         }
     }
 
