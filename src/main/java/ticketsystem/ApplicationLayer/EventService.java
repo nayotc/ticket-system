@@ -284,8 +284,11 @@ public class EventService {
             if (!membershipDomain.validatePermission(userId, event.getCompanyId(), Permission.CONFIGURE_HALL_AND_MAP)) {
                 throw new IllegalArgumentException("User does not have permission to update event map");
             }
-            if (newAreasDTO == null || updatedAreasDTO == null){
-                throw new IllegalArgumentException("newAreasDTO or updatedAreasDTO cannot be null");
+            if (newAreasDTO == null) {
+                throw new IllegalArgumentException("New areas list cannot be null");
+            }
+            if (updatedAreasDTO == null) {
+                throw new IllegalArgumentException("Updated areas list cannot be null");
             }
 
             logger.logEvent("Validated permission - UpdateEventMap. userId=" + userId + ", eventId=" + eventId + ", companyId=" + event.getCompanyId() + ", permission=" + Permission.CONFIGURE_HALL_AND_MAP, LogLevel.DEBUG);
