@@ -186,6 +186,7 @@ public class ReservationServiceTest {
         PaymentServiceProxy.isConnectionSuccessful = true;
         PaymentServiceProxy.isPaymentSuccessful = true;
         PaymentServiceProxy.isRefundSuccessful = true;
+        PaymentServiceProxy.forcedPayTransactionId = null;
 
         PaymentServiceProxy.wasConnectCalled = false;
         PaymentServiceProxy.wasPayCalled = false;
@@ -840,9 +841,15 @@ public class ReservationServiceTest {
                 null
         );
 
+        ActiveOrder orderBeforeCheckout = orderRepository.getActiveOrderByUserId(memberId);
+        assertNotNull(orderBeforeCheckout);
+
+        AtomicReference<OrderDTO> completedOrder = new AtomicReference<>();
+        reservationService.addOrderListener(completedOrder::set);
+
         secureBarcode.shouldGenerateSucceed = false;
 
-        assertThrows(
+        IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
                 () -> reservationService.checkout(
                         memberToken,
@@ -852,11 +859,93 @@ public class ReservationServiceTest {
                 )
         );
 
+        assertEquals("Ticket issuing failed. Payment was refunded.", exception.getMessage());
         assertTrue(PaymentServiceProxy.wasPayCalled);
         assertTrue(PaymentServiceProxy.wasRefundCalled);
         assertTrue(secureBarcode.wasGenerateCalled.get());
+        assertNull(completedOrder.get(), "Checkout must not complete when issuing fails after payment");
+
+        ActiveOrder orderAfterCheckout = orderRepository.findOrderById(orderBeforeCheckout.getOrderId());
+        assertNull(orderAfterCheckout, "Cart is cleared after issuing failure and refund flow");
+
         recordingNotifier.assertNotifiedMember(memberId, "refund was issued");
         recordingNotifier.assertNotificationCount(1);
+    }
+
+    @Test
+    void AcceptanceTest_Checkout_WhenIssuingReturnsMinusOne_ThenRefundIsCalled() {
+        Event event = createActiveEvent();
+        eventRepository.addEvent(event);
+        Long eventId = event.getId();
+        Long areaId = getStandingAreaId(eventId);
+
+        reservationService.selectStandingTicket(
+                memberToken,
+                eventId,
+                areaId,
+                1,
+                null
+        );
+
+        secureBarcode.returnMinusOneIssuingResponse = true;
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> reservationService.checkout(
+                        memberToken,
+                        eventId,
+                        createPaymentDetails(),
+                        null
+                )
+        );
+
+        assertEquals("Ticket issuing failed. Payment was refunded.", exception.getMessage());
+        assertTrue(PaymentServiceProxy.wasPayCalled);
+        assertTrue(PaymentServiceProxy.wasRefundCalled);
+        assertTrue(secureBarcode.wasGenerateCalled.get());
+
+        assertNull(
+                orderRepository.getActiveOrderByUserId(memberId),
+                "Cart is cleared after external issue_ticket returns -1"
+        );
+    }
+
+    @Test
+    void AcceptanceTest_Checkout_WhenPaymentHandshakeFails_ThenCheckoutIsRejected() {
+        Event event = createActiveEvent();
+        eventRepository.addEvent(event);
+        Long eventId = event.getId();
+        Long areaId = getStandingAreaId(eventId);
+
+        reservationService.selectStandingTicket(
+                memberToken,
+                eventId,
+                areaId,
+                1,
+                null
+        );
+
+        PaymentServiceProxy.isConnectionSuccessful = false;
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> reservationService.checkout(
+                        memberToken,
+                        eventId,
+                        createPaymentDetails(),
+                        null
+                )
+        );
+
+        assertEquals("Payment service is unavailable", exception.getMessage());
+        assertTrue(PaymentServiceProxy.wasConnectCalled);
+        assertFalse(PaymentServiceProxy.wasPayCalled);
+        assertFalse(PaymentServiceProxy.wasRefundCalled);
+        assertFalse(secureBarcode.wasGenerateCalled.get());
+
+        ActiveOrder orderAfterCheckout = orderRepository.getActiveOrderByUserId(memberId);
+        assertNotNull(orderAfterCheckout);
+        assertEquals(ActiveOrder.OrderStatus.ACTIVE, orderAfterCheckout.getStatus());
     }
 
     @Test
@@ -1173,6 +1262,9 @@ public class ReservationServiceTest {
                 null
         );
 
+        AtomicReference<OrderDTO> completedOrder = new AtomicReference<>();
+        reservationService.addOrderListener(completedOrder::set);
+
         secureBarcode.shouldGenerateSucceed = false;
         PaymentServiceProxy.isRefundSuccessful = false;
 
@@ -1190,6 +1282,16 @@ public class ReservationServiceTest {
                 "Ticket issuing failed and refund failed.",
                 exception.getMessage()
         );
+        assertTrue(PaymentServiceProxy.wasPayCalled);
+        assertTrue(PaymentServiceProxy.wasRefundCalled);
+        assertTrue(secureBarcode.wasGenerateCalled.get());
+        assertNull(completedOrder.get(), "Checkout must not complete when refund fails");
+
+        assertNull(
+                orderRepository.getActiveOrderByUserId(memberId),
+                "Cart is cleared after issuing failure even when refund fails"
+        );
+        recordingNotifier.assertNotificationCount(1);
     }
 
     @Test
@@ -1596,20 +1698,21 @@ public class ReservationServiceTest {
     private PaymentDetails createPaymentDetails() {
         return new PaymentDetails(
             "VISA",
-            "Yosi Cohen",
+            "Israel Israelovice",
             LocalDate.of(2001, 1, 1),
-            "4580458045804580",
-            12,
-            2030,
-            "123",
-            "123456789",
-            "ILS"
+            "2222333344445555",
+            4,
+            2021,
+            "262",
+            "20444444",
+            "USD"
         );
     }
 
     private static class TestSecureBarcode implements ITicketIssuingService {
 
         boolean shouldGenerateSucceed = true;
+        boolean returnMinusOneIssuingResponse = false;
         AtomicBoolean wasGenerateCalled = new AtomicBoolean(false);
 
         @Override
@@ -1621,11 +1724,15 @@ public class ReservationServiceTest {
         public String issueTicket(TicketIssueRequest request) {
             wasGenerateCalled.set(true);
 
+            if (returnMinusOneIssuingResponse) {
+                return "-1";
+            }
+
             if (!shouldGenerateSucceed) {
                 throw new IllegalStateException("Ticket issuing failed");
             }
 
-            return "SECURE_BARCODE_" + request.getCustomerId() + "_" + request.getEventId();
+            return "TIX-1a2b-3456";
         }
 
         @Override
