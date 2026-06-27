@@ -309,8 +309,12 @@ public class EventMap {
     }
 
     public void updateActiveAreas(List<Area> newAreas,  Map<Long, Area> updatedAreas) {
-        if (newAreas == null || updatedAreas == null) {
-            throw new IllegalArgumentException("New areas or updated areas cannot be null");
+        if (newAreas == null) {
+            throw new IllegalArgumentException("New areas list cannot be null");
+        }
+
+        if (updatedAreas == null) {
+            throw new IllegalArgumentException("Updated areas list cannot be null");
         }
         if (!newAreas.isEmpty()) {
             for (Area newArea : newAreas) {
@@ -463,8 +467,8 @@ public class EventMap {
         int width = elementSize.getFirst();
         int height = elementSize.getSecond();
 
-        if (x < 1 || y < 1) {
-            throw new IllegalArgumentException("Element location must be positive. " + elementName);
+        if (x < 0 || y < 0) {
+            throw new IllegalArgumentException("Element location cannot be negative: " + elementName);
         }
 
         if (width <= 0 || height <= 0) {
@@ -474,7 +478,7 @@ public class EventMap {
         long rightBoundary = (long) x + width - 1;
         long bottomBoundary = (long) y + height - 1;
 
-        if (rightBoundary > mapWidth || bottomBoundary > mapHeight) {
+        if (rightBoundary >= mapWidth || bottomBoundary >= mapHeight) {
             throw new IllegalArgumentException(
                     "Element is outside map bounds: " + elementName
             );
