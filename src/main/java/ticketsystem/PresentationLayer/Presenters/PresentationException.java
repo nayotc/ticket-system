@@ -42,14 +42,16 @@ public class PresentationException extends RuntimeException {
             return false;
         }
 
+        String lower = message.toLowerCase();
+
         return message.equals(SESSION_TOKEN_EXPIRED) ||
-               message.contains("JWT") ||
-               message.contains("expired") ||
-               message.contains("Invalid") ||
-               message.contains("Invalid session ID") ||
-               message.contains("Token is missing or null") ||
-               message.contains("Session is no longer active") ||
-               message.contains("Session authentication failed");
+            lower.contains("jwt") ||
+            lower.contains("expired") ||
+            lower.contains("invalid token") ||
+            lower.contains("invalid session id") ||
+            lower.contains("token is missing") ||
+            lower.contains("session is no longer active") ||
+            lower.contains("session authentication failed");
     }
     
 public static boolean isDbDisconnectMessage(String message) {
