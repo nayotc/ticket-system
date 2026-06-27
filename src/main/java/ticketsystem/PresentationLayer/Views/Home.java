@@ -236,8 +236,8 @@ public class Home extends PageContainer {
                     Notifications.success(result.message());
                     UI.getCurrent().navigate(result.route());
 
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                         return;
                     }
@@ -254,8 +254,8 @@ public class Home extends PageContainer {
                     eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
                     Notifications.success("נרשמת להגרלה בהצלחה.");
 
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                         return;
                     }
@@ -271,8 +271,8 @@ public class Home extends PageContainer {
                 try {
                     return eventCardPresenter.isPreSaleCodeValid(UiSession.getMemberToken(), eventId, lotteryCode);
                     
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                     } else {
                         Notifications.error(e.getMessage());
@@ -295,8 +295,8 @@ public class Home extends PageContainer {
                     Notifications.success(result.message());
                     UI.getCurrent().navigate(result.route());
 
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                         return;
                     }

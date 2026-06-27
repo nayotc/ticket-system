@@ -41,6 +41,7 @@ import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Presenters.MyAccountPresenter;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
@@ -334,8 +335,8 @@ private void openPasswordConfirmationDialog() {
             dialog.close();
             loadDataFromPresenter();
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 dialog.close();
                 UiSession.handleTimeoutRedirect();
                 return;
@@ -379,8 +380,8 @@ private void openPasswordConfirmationDialog() {
            
             setPurchaseHistory(orders);
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }

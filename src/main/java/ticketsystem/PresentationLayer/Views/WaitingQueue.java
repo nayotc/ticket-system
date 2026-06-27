@@ -19,6 +19,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.WaitingQueueSnapshot;
 import ticketsystem.PresentationLayer.Presenters.WaitingQueueStatus;
 import ticketsystem.PresentationLayer.Session.UiSession;
@@ -181,8 +182,8 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
 
             renderSnapshot(snapshot);
 
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                 } else {
@@ -256,8 +257,8 @@ public class WaitingQueue extends VerticalLayout implements BeforeEnterObserver 
             presenter.leaveQueue(eventId, getCurrentSessionToken());
             UI.getCurrent().navigate(UiRoutes.HOME);
 
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }

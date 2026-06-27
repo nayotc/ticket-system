@@ -114,7 +114,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
             render();
         
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -675,7 +675,7 @@ public class CompanyManagement extends Div implements BeforeEnterObserver {
             loadState(state.selectedCompany().id());
         
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }

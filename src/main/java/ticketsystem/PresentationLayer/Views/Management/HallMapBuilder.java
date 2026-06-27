@@ -25,6 +25,7 @@ import ticketsystem.PresentationLayer.Components.FormCard;
 import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import com.vaadin.flow.component.icon.VaadinIcon;
 
@@ -406,9 +407,9 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
             selectedIndex = elements.isEmpty() ? -1 : 0;
             renderAll();
             
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
-                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
+                UiSession.handleTimeoutRedirect();
                 return;
             }
             showError(messageOrDefault(e, "לא ניתן לטעון את פרטי האירוע"));
@@ -1123,9 +1124,9 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                 UI.getCurrent().navigate(UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(companyId)));
             }
             
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
-                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
+                UiSession.handleTimeoutRedirect();
                 return;
             }
             showError(messageOrDefault(e, "שמירת המפה נכשלה"));
