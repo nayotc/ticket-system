@@ -13,3 +13,4 @@ src/main/frontend/generated/
 .classpath
 .project
 .settings/
+/all-changes.patch

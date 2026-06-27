@@ -40,6 +40,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.ClientCallable;
@@ -553,6 +554,8 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         Div surface = new Div();
         surface.addClassName("ticket-map-surface");
         surface.getElement().setAttribute("dir", "ltr");
+
+        surface.getStyle().set("position", "relative");
         surface.getStyle().set("--ticket-cell-size", cellSize + "px");
         surface.getStyle().set("width", mapColumns() * cellSize + "px");
         surface.getStyle().set("height", mapRows() * cellSize + "px");
@@ -797,16 +800,37 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     }
 
     private void positionOnMap(Div component, PairDTO<Integer, Integer> location, PairDTO<Integer, Integer> size) {
+        validatePositivePair("location", location);
+        validatePositivePair("size", size);
+
         int x = clamp(location.first(), 1, mapColumns());
         int y = clamp(location.second(), 1, mapRows());
         int width = clamp(size.first(), 1, Math.max(1, mapColumns() - x + 1));
         int height = clamp(size.second(), 1, Math.max(1, mapRows() - y + 1));
 
         component.addClassName("ticket-map-element-positioned");
+
+        component.getStyle().set("position", "absolute");
         component.getStyle().set("left", (x - 1) * cellSize + "px");
         component.getStyle().set("top", (y - 1) * cellSize + "px");
         component.getStyle().set("width", width * cellSize + "px");
         component.getStyle().set("height", height * cellSize + "px");
+        component.getStyle().set("box-sizing", "border-box");
+    }
+
+    private void validatePositivePair(
+            String fieldName,
+            PairDTO<Integer, Integer> pair
+    ) {
+        if (pair == null
+                || pair.first() == null
+                || pair.second() == null
+                || pair.first() < 1
+                || pair.second() < 1) {
+            throw new IllegalStateException(
+                    "Invalid map " + fieldName + ": " + pair
+            );
+        }
     }
 
     private void toggleSeat(SeatingAreaDTO area, SeatDTO seat) {

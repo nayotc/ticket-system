@@ -115,8 +115,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
     @Override
     public boolean updateActiveEventMap(String sessionId, Long eventId, List<IAreaDTO> newAreas, List<IAreaDTO> updatedAreas){
         try {
-            if (newAreas == null && updatedAreas == null){
-                throw new IllegalArgumentException("Both newAreas and updatedAreas cannot be null");
+            if (newAreas == null || updatedAreas == null){
+                throw new IllegalArgumentException("newAreas or updatedAreas cannot be null");
             }
             validateEventId(eventId);
             return Boolean.TRUE.equals(eventService.updateActiveEvantMap(sessionId, eventId, newAreas, updatedAreas));
