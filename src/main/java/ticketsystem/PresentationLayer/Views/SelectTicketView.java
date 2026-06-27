@@ -34,6 +34,7 @@ import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
+import ticketsystem.PresentationLayer.Components.MessagePopup;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -84,11 +85,13 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     private Long eventId;
     private int zoomPercent = 100;
     private int cellSize = BASE_MAP_CELL_SIZE;
+    private boolean activeOrderExpirationPopupShown;
 
     @Autowired
     public SelectTicketView(ReservationPresenter reservationPresenter, UiVisitCoordinator visitCoordinator) {
         this.reservationPresenter = reservationPresenter;
         this.visitCoordinator = visitCoordinator;
+        reservationTimer.setExpirationHandler(this::handleActiveOrderExpired);
 
         addClassName("ticket-selection-page");
         setSizeFull();
@@ -966,6 +969,41 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         }
     }
 
+    /**
+     * Handles client-side ActiveOrder reservation expiration on the ticket selection page.
+     *
+     * <p>The ticket-selection reload flow already loads the current active order
+     * through the presenter. That lets the service layer detect an expired order,
+     * release its tickets, notify the user, and remove the order. Since server-side
+     * expiration notifications are not displayed reliably while staying on this
+     * page, the view shows one local expiration popup and then reloads the
+     * ticket-selection data without calling loadActiveOrder separately.</p>
+     */
+    private void handleActiveOrderExpired() {
+        ReservationTimer.clear();
+        reservationTimer.setVisible(false);
+
+        showActiveOrderExpiredPopupOnce();
+
+        try {
+            reloadTicketSelectionEventDataKeepingSelection();
+        } catch (Exception ignored) {
+            refreshSummary(null);
+        }
+    }
+
+    /**
+     * Shows the ActiveOrder expiration popup once per active reservation timer cycle.
+     */
+    private void showActiveOrderExpiredPopupOnce() {
+        if (activeOrderExpirationPopupShown) {
+            return;
+        }
+
+        activeOrderExpirationPopupShown = true;
+        MessagePopup.showNotification("פג תוקף שריון הכרטיסים. הכרטיסים שוחררו וניתן לבחור אותם מחדש.");
+    }
+
     private void refreshSummary(ActiveOrderDTO order) {
         selectedTicketsList.removeAll();
 
@@ -1567,6 +1605,8 @@ private void onSelectionAccessTimerExpired() {
             }
 
             reservationTimer.setDeadline(order.getExpiresAtEpochMillis());
+            activeOrderExpirationPopupShown = false;
+            reservationTimer.setVisible(true);
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {

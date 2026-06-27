@@ -11,12 +11,15 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.router.QueryParameters;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.PresentationLayer.Components.EventCard;
 import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.PageContainer;
 import ticketsystem.PresentationLayer.Components.PageHeader;
+import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Components.SearchPanel;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
@@ -29,15 +32,17 @@ import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.DTO.ActiveOrderDTO;
-import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 
-
+import java.util.List;
 import java.util.Map;
+import com.vaadin.flow.component.Component;
+import ticketsystem.PresentationLayer.Layouts.PublicLayout;
 
 @PageTitle("TixNow")
 @Route(value = UiRoutes.HOME, layout = MainLayout.class)
-public class Home extends PageContainer {
+public class Home extends PageContainer implements BeforeEnterObserver {
+    private static final String ACTIVE_ORDER_EXPIRED_QUERY_PARAM = "activeOrderExpired";
 
     private final EventCatalogPresenter eventCatalogPresenter;
     private final UiVisitCoordinator uiVisitCoordinator;
@@ -60,13 +65,50 @@ public class Home extends PageContainer {
         this.uiVisitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
 
         reservationTimer.setVisible(false);
-        refreshReservationTimer();
+        reservationTimer.setExpirationHandler(this::handleActiveOrderExpired);
 
         add(
                 reservationTimer,
                 createHero(),
                 createPopularEventsSection()
         );
+    }
+
+    /**
+     * Refreshes the Home reservation timer only when the page was not reached from
+     * a checkout-side ActiveOrder expiration redirect.
+     *
+     * <p>When checkout already synchronized the expired active order with the
+     * server, Home should not immediately load the active order again. This avoids
+     * a duplicate expiration attempt while still keeping the Home page clean.</p>
+     *
+     * @param event Vaadin navigation event containing the current query parameters
+     */
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (isActiveOrderExpiredRedirect(event)) {
+            ReservationTimer.clear();
+            reservationTimer.setVisible(false);
+            refreshHeader();
+            return;
+        }
+
+        refreshReservationTimer();
+    }
+
+    /**
+     * Checks whether Home was reached after the checkout page already handled an
+     * ActiveOrder timer expiration.
+     *
+     * @param event Vaadin navigation event
+     * @return true if the route contains the active-order-expired marker
+     */
+    private boolean isActiveOrderExpiredRedirect(BeforeEnterEvent event) {
+        return event.getLocation()
+                .getQueryParameters()
+                .getParameters()
+                .getOrDefault(ACTIVE_ORDER_EXPIRED_QUERY_PARAM, List.of())
+                .contains("true");
     }
 
     private Div createHero() {
@@ -323,6 +365,36 @@ public class Home extends PageContainer {
                 }
             }
         };
+    }
+
+    /**
+     * Handles client-side ActiveOrder reservation expiration on the home page.
+     *
+     * <p>The server remains responsible for expiring and releasing the active order.
+     * This handler only clears the local timer, refreshes the public header display,
+     * and lets the server-side notification mechanism show the expiration message.</p>
+     */
+    private void handleActiveOrderExpired() {
+        ReservationTimer.clear();
+        reservationTimer.setVisible(false);
+        refreshHeader();
+    }
+
+    /**
+     * Refreshes the public layout header so the cart badge is recalculated from
+     * the current server-side state.
+     */
+    private void refreshHeader() {
+        Component current = this;
+
+        while (current.getParent().isPresent()) {
+            current = current.getParent().get();
+
+            if (current instanceof PublicLayout publicLayout) {
+                publicLayout.refreshHeader();
+                return;
+            }
+        }
     }
 
     /**

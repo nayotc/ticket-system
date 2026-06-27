@@ -939,6 +939,9 @@ public class ReservationPresenter {
                  "No active order with tickets" ->
                     "לא נמצאה הזמנה פעילה עם כרטיסים.";
 
+            case "Active order has expired" ->
+                    "פג תוקף שריון הכרטיסים. הכרטיסים שוחררו ויש לבחור אותם מחדש.";
+
             case "Ticket quantity exceeds limit" ->
                     "כמות הכרטיסים חורגת מהמגבלה המותרת להזמנה.";
 
@@ -1014,6 +1017,9 @@ public class ReservationPresenter {
 
             case "No active order with tickets" ->
                     "לא נמצאה הזמנה פעילה עם כרטיסים.";
+
+            case "Active order has expired" ->
+                    "פג תוקף שריון הכרטיסים. הכרטיסים שוחררו ויש לבחור אותם מחדש.";
 
             case "Active order could not be loaded. Please try again." ->
                     "טעינת ההזמנה הפעילה נכשלה. יש לנסות שוב.";
