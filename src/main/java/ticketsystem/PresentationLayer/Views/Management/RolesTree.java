@@ -8,7 +8,6 @@ import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -16,6 +15,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.PresentationLayer.Components.MetricCard;
+import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.ManagementLayout;
 import ticketsystem.PresentationLayer.Session.UiSession;
@@ -135,7 +135,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
 
         refreshButton.addClickListener(event -> {
             loadRoleTree();
-            Notification.show("עץ התפקידים רוענן", 2500, Notification.Position.TOP_CENTER);
+            Notifications.success("עץ התפקידים רוענן");
         });
 
         Button exportButton = new Button("ייצוא PDF בקרוב");
@@ -506,7 +506,7 @@ public class RolesTree extends Div implements BeforeEnterObserver {
     }
 
     private void showError(String message) {
-        Notification.show(message, 4000, Notification.Position.TOP_CENTER);
+        Notifications.error(message);
     }
 
     private int countNodes(RoleNode node) {

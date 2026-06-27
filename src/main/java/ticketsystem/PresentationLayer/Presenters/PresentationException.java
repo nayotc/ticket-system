@@ -51,27 +51,29 @@ public class PresentationException extends RuntimeException {
                message.contains("Session is no longer active") ||
                message.contains("Session authentication failed");
     }
-
+    
     public static boolean isDbDisconnectMessage(String message) {
         if (message == null || message.isBlank()) {
             return false;
         }
 
-        return message.equals(DB_DISCONNECT_HEBREW_MSG) ||
-               message.contains("Connection refused") ||
-               message.contains("Communications link failure") ||
-               message.contains("CannotCreateTransactionException") ||
-               message.contains("JDBCConnectionException") ||
-               message.contains("DataAccessResourceFailureException") ||
-               message.contains("The connection attempt failed") ||
-               message.contains("Connection is not available") ||
-               message.contains("noroutetohostexception") ||
-               message.contains("sockettimeoutexception") ||
-               message.contains("connection is not available") ||
-               message.contains("hikari") ||
-               message.contains("cannotcreatestransaction") ||
-               message.contains("transactionsystemexception") ||
-               message.contains("the connection attempt failed");
+        String lower = message.toLowerCase();
+
+        return lower.equals(DB_DISCONNECT_HEBREW_MSG.toLowerCase()) ||
+               lower.contains("connection refused") ||
+               lower.contains("communications link failure") ||
+               lower.contains("cannotcreatetransaction") ||
+               lower.contains("jdbcconnection") ||
+               lower.contains("dataaccessresourcefailure") ||
+               lower.contains("the connection attempt failed") ||
+               lower.contains("connection is not available") ||
+               lower.contains("hikari") ||
+               lower.contains("transactionsystemexception") ||
+               lower.contains("noroutetohost") ||
+               lower.contains("no route to host") ||
+               lower.contains("this connection has been closed") ||
+               lower.contains("pool is empty") ||
+               lower.contains("network is unreachable");
     }
 
     /**

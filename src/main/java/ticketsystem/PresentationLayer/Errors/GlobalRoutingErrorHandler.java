@@ -30,7 +30,7 @@ public class GlobalRoutingErrorHandler extends Div implements HasErrorParameter<
                 // בדיקת ניתוק DB בכל שרשרת השגיאות
                 if (PresentationException.isDbDisconnectMessage(msg)) {
                     setText("השירות אינו זמין כרגע עקב עומס או ניתוק ממסד הנתונים. אנא נסו לרענן את העמוד בעוד מספר רגעים.");
-                    getStyle().set("color", "red").set("text-align", "center").set("margin-top", "50px");
+                    getStyle().set("text-align", "center");
                     return 503;
                 }
                 
