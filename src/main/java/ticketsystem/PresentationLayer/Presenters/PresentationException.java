@@ -52,28 +52,52 @@ public class PresentationException extends RuntimeException {
                message.contains("Session authentication failed");
     }
     
-    public static boolean isDbDisconnectMessage(String message) {
+public static boolean isDbDisconnectMessage(String message) {
         if (message == null || message.isBlank()) {
             return false;
         }
 
+        // אם זו כבר ההודעה המתורגמת שלנו ממעלה הסטאק:
+        if (message.equals(DB_DISCONNECT_HEBREW_MSG)) {
+            return true;
+        }
+
         String lower = message.toLowerCase();
 
-        return lower.equals(DB_DISCONNECT_HEBREW_MSG.toLowerCase()) ||
-               lower.contains("connection refused") ||
-               lower.contains("communications link failure") ||
-               lower.contains("cannotcreatetransaction") ||
-               lower.contains("jdbcconnection") ||
-               lower.contains("dataaccessresourcefailure") ||
-               lower.contains("the connection attempt failed") ||
-               lower.contains("connection is not available") ||
-               lower.contains("hikari") ||
-               lower.contains("transactionsystemexception") ||
-               lower.contains("noroutetohost") ||
-               lower.contains("no route to host") ||
-               lower.contains("this connection has been closed") ||
-               lower.contains("pool is empty") ||
-               lower.contains("network is unreachable");
+        return 
+            // --- שכבה 1: מערכת ההפעלה וכרטיס הרשת (OS & TCP Sockets) ---
+            lower.contains("connection refused") ||
+            lower.contains("connection reset") ||             
+            lower.contains("broken pipe") ||                  
+            lower.contains("no route to host") ||
+            lower.contains("noroutetohost") ||
+            lower.contains("network is unreachable") ||
+            lower.contains("host is down") ||
+            lower.contains("sockettimeout") ||
+            lower.contains("connect timed out") ||
+            lower.contains("read timed out") ||
+
+            // --- שכבה 2: הדרייבר הרשמי של פוסטגרס (Postgres JDBC Driver) ---
+            lower.contains("the connection attempt failed") ||
+            lower.contains("connection attempt timed out") ||
+            lower.contains("an i/o error occurred") ||        
+            lower.contains("server closed the connection") || 
+            lower.contains("terminating connection") ||       
+
+            // --- שכבה 3: בריכת החיבורים (HikariCP Pool) ---
+            lower.contains("connection is not available") ||
+            lower.contains("pool is empty") ||
+            lower.contains("this connection has been closed") ||
+            lower.contains("connection pool shut down") ||
+            lower.contains("hikari") ||
+
+            // --- שכבות 4+5: ה-ORM והפריימוורק (Hibernate & Spring JPA) ---
+            lower.contains("cannotcreatetransaction") ||
+            lower.contains("transactionsystemexception") ||
+            lower.contains("jdbcconnection") ||
+            lower.contains("unable to acquire jdbc") ||
+            lower.contains("could not open jpa") ||
+            lower.contains("dataaccessresourcefailure");
     }
 
     /**
