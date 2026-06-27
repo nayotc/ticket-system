@@ -1,7 +1,9 @@
 package ticketsystem.PresentationLayer.Session;
 
 import com.vaadin.flow.component.UI;
+
 import org.springframework.stereotype.Component;
+
 import ticketsystem.PresentationLayer.Notifications.NotificationCenter;
 import ticketsystem.PresentationLayer.Presenters.AuthPresenter;
 
@@ -22,10 +24,9 @@ public class UiVisitCoordinator {
             return;
         }
 
-        if (!UiSession.isLoggedIn() && !UiSession.hasGuestSession()) {
-            String guestToken = authPresenter.visitSystem();
-        }
+        authPresenter.ensureGuestSession();
 
+        syncBrowserExitToken(ui);
         connectCurrentTarget(ui);
     }
 
@@ -43,7 +44,7 @@ public class UiVisitCoordinator {
         );
 
         notificationCenter.disconnect();
-
+        syncBrowserExitToken(ui);
         connectCurrentTarget(ui);
 
         notificationCenter.showPending(
@@ -60,8 +61,40 @@ public class UiVisitCoordinator {
         authPresenter.logOut(UiSession.getCurrentToken());
 
         notificationCenter.disconnect();
-
+        syncBrowserExitToken(ui);
         connectCurrentTarget(ui);
+    }
+
+    public void registerBrowserExitHook(UI ui) {
+        if (ui == null) {
+            return;
+        }
+
+        ui.getPage().executeJs(
+                """
+                if (!window.__tixnowExitHookInstalled) {
+                    window.__tixnowExitHookInstalled = true;
+                    window.addEventListener('pagehide', function() {
+                        if (window.__tixnowExitToken) {
+                            navigator.sendBeacon('/api/session/exit', window.__tixnowExitToken);
+                        }
+                    });
+                }
+                """
+        );
+    }
+
+    public void syncBrowserExitToken(UI ui) {
+        if (ui == null) {
+            return;
+        }
+
+        String token = UiSession.getCurrentToken();
+        if (token == null || token.isBlank()) {
+            ui.getPage().executeJs("window.__tixnowExitToken = null;");
+        } else {
+            ui.getPage().executeJs("window.__tixnowExitToken = $0;", token);
+        }
     }
 
     public void disconnect() {
@@ -75,7 +108,7 @@ public class UiVisitCoordinator {
             notificationCenter.connect(ui, targetId);
         }
     }
-    
+
     public void forceShowPendingNotifications(UI ui) {
         if (ui != null) {
             notificationCenter.showPending(ui, UiSession.getNotificationTargetId());

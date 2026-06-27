@@ -1,8 +1,16 @@
 package ticketsystem.PresentationLayer.Views;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
@@ -17,35 +25,28 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.router.QueryParameters;
-import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.router.QueryParameters;
+import com.vaadin.flow.router.Route;
+
 import ticketsystem.DTO.ActiveOrderDTO;
+import ticketsystem.DTO.MyAccountDTO;
 import ticketsystem.DTO.PaymentDetails;
 import ticketsystem.DTO.TicketDTO;
-import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
+import ticketsystem.DomainLayer.discount.DiscountKind;
 import ticketsystem.PresentationLayer.Components.EmptyState;
 import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.Photos;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
-import ticketsystem.PresentationLayer.Session.UiSession;
-import ticketsystem.PresentationLayer.Presenters.PresentationException;
-import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.DTO.AppliedDiscount;
 import ticketsystem.PresentationLayer.DTO.OrderEventInfo;
 import ticketsystem.PresentationLayer.DTO.OrderPricing;
-import ticketsystem.DTO.MyAccountDTO;
-import ticketsystem.DomainLayer.discount.DiscountKind;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
+import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
+import ticketsystem.PresentationLayer.Session.UiSession;
+import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
 @Route(value = UiRoutes.CHECKOUT)
 public class Checkout extends VerticalLayout implements BeforeEnterObserver {
@@ -154,7 +155,8 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
         cvv.setPlaceholder("123");
         cvv.getElement().setAttribute("dir", "ltr");
-        cvv.setMaxLength(4);
+        cvv.setMaxLength(3);
+        cvv.setMinLength(3);
         cvv.addClassName("checkout-field");
     }
 
@@ -190,7 +192,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
             prefillBuyerDetailsIfLoggedIn(token);
             renderCheckout();
-        
+
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
@@ -204,7 +206,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             }
             showError(e.getMessage());
             renderEmptyCheckout();
-            
+
         } catch (Exception exception) {
             showError(exception.getMessage());
             renderEmptyCheckout();
@@ -219,18 +221,19 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
      * Prefills buyer contact details for logged-in members.
      *
      * Checkout supports both guest and member purchases. Guest users must enter
-     * their buyer details manually, while logged-in members can reuse the profile
-     * details stored in the system.
+     * their buyer details manually, while logged-in members can reuse the
+     * profile details stored in the system.
      *
      * The method intentionally does nothing for guest sessions, because guest
-     * tokens do not have member profile data and calling the profile loading flow
-     * with a guest token would fail.
+     * tokens do not have member profile data and calling the profile loading
+     * flow with a guest token would fail.
      *
      * Existing field values are not overwritten. This protects details that the
-     * user may have already typed manually before the checkout view is re-rendered.
+     * user may have already typed manually before the checkout view is
+     * re-rendered.
      *
      * @param token the current UI session token, expected to be a member token
-     *              when the user is logged in
+     * when the user is logged in
      */
     private void prefillBuyerDetailsIfLoggedIn(String token) {
         if (!UiSession.isLoggedIn()) {
@@ -599,9 +602,10 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
     /**
      * Applies the coupon entered in Checkout to the current pricing preview.
      *
-     * <p>A non-blank code is stored only when the resulting pricing confirms that
-     * a coupon discount was actually applied. An invalid code does not replace a
-     * previously confirmed coupon. A blank value removes the coupon from the
+     * <p>
+     * A non-blank code is stored only when the resulting pricing confirms that
+     * a coupon discount was actually applied. An invalid code does not replace
+     * a previously confirmed coupon. A blank value removes the coupon from the
      * current order after pricing without it succeeds.</p>
      */
     private void applyCheckoutCoupon() {
@@ -613,8 +617,8 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
         try {
             if (enteredCouponCode.isBlank()) {
-                OrderPricing pricingWithoutCoupon =
-                        presenter.calculatePricing(
+                OrderPricing pricingWithoutCoupon
+                        = presenter.calculatePricing(
                                 resolveSessionToken(),
                                 activeOrder,
                                 ""
@@ -629,8 +633,8 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                 return;
             }
 
-            OrderPricing candidatePricing =
-                    presenter.calculatePricing(
+            OrderPricing candidatePricing
+                    = presenter.calculatePricing(
                             resolveSessionToken(),
                             activeOrder,
                             enteredCouponCode
@@ -655,7 +659,6 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             renderCheckout();
             showError("קוד הקופון שגוי או שאינו בתוקף");
 
-
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
@@ -668,10 +671,10 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                 return;
             }
             showError(e.getMessage());
-            
+
         } catch (Exception exception) {
-            String storedCouponCode =
-                    UiSession.getCouponCode(activeOrder.getOrderId());
+            String storedCouponCode
+                    = UiSession.getCouponCode(activeOrder.getOrderId());
 
             couponCode.setValue(
                     storedCouponCode == null ? "" : storedCouponCode
@@ -685,12 +688,13 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
     /**
      * Loads Checkout pricing using the coupon stored for the active order.
      *
-     * <p>If the stored code no longer produces an applied coupon discount, the
+     * <p>
+     * If the stored code no longer produces an applied coupon discount, the
      * code is removed and pricing is recalculated without a coupon.</p>
      */
     private void loadPricingWithStoredCoupon() {
-        String storedCouponCode =
-                UiSession.getCouponCode(activeOrder.getOrderId());
+        String storedCouponCode
+                = UiSession.getCouponCode(activeOrder.getOrderId());
 
         String couponToApply = storedCouponCode == null
                 ? ""
@@ -727,15 +731,16 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         return calculatedPricing != null
                 && calculatedPricing.appliedDiscounts() != null
                 && calculatedPricing.appliedDiscounts().stream()
-                .anyMatch(discount ->
-                        discount.kind() == DiscountKind.COUPON
-                );
+                        .anyMatch(discount
+                                -> discount.kind() == DiscountKind.COUPON
+                        );
     }
 
     /**
      * Returns the coupon that was confirmed and stored for the active order.
      *
-     * <p>The raw value currently typed into the field is intentionally ignored
+     * <p>
+     * The raw value currently typed into the field is intentionally ignored
      * until the user applies it successfully.</p>
      *
      * @return confirmed coupon code, or an empty string when none is stored
@@ -745,8 +750,8 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             return "";
         }
 
-        String storedCouponCode =
-                UiSession.getCouponCode(activeOrder.getOrderId());
+        String storedCouponCode
+                = UiSession.getCouponCode(activeOrder.getOrderId());
 
         return storedCouponCode == null
                 ? ""
@@ -786,12 +791,12 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         if (!validatePersonalDetails()) {
             return;
         }
-        try{
-             
+        try {
+
             PaymentDetails details = new PaymentDetails(
                     resolvePaymentMethodId(),
                     payerId.getValue().trim(),
-                    birthDate.getValue(),cardNumber.getValue().trim(),null,null,cvv.getValue().trim(),payerId.getValue().trim(),DEFAULT_CURRENCY );
+                    birthDate.getValue(), cardNumber.getValue().trim(), null, null, cvv.getValue().trim(), payerId.getValue().trim(), DEFAULT_CURRENCY);
             presenter.validateOrderPolicyBeforePayment(
                     resolveSessionToken(),
                     activeOrder.getEventId(),
@@ -800,7 +805,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             );
             currentStep = 2;
             renderCheckout();
-        
+
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
@@ -813,18 +818,18 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                 return;
             }
             showError(e.getMessage());
-            
+
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
     }
 
-   /**
+    /**
      * Submits the current active order for payment.
      *
      * Queue access is released only after checkout has completed successfully.
-     * Failed validation or failed payment keeps the user's queue access active so
-     * the user can correct the details and retry the purchase.
+     * Failed validation or failed payment keeps the user's queue access active
+     * so the user can correct the details and retry the purchase.
      */
     private void submitPayment() {
         if (!validatePersonalDetails() || !validatePaymentDetails()) {
@@ -869,7 +874,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             /*
             * Checkout has completed successfully, so this user no longer occupies
             * an active purchasing slot for the event.
-            */
+             */
             presenter.releaseQueueAccess(token, completedEventId);
 
             ReservationTimer.clear();
@@ -882,7 +887,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
             } else {
                 UI.getCurrent().navigate(UiRoutes.HOME);
             }
-        
+
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
                 if (UiSession.isLoggedIn()) {
@@ -895,7 +900,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
                 return;
             }
             showError(e.getMessage());
-            
+
         } catch (Exception exception) {
             showError(exception.getMessage());
         }
@@ -952,21 +957,27 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
         String digits = onlyDigits(cardNumber.getValue());
 
-        if (digits.length() < 12) {
+        if (digits.length() != 16) {
             cardNumber.setInvalid(true);
-            cardNumber.setErrorMessage("מספר הכרטיס קצר מדי");
+            cardNumber.setErrorMessage("מספר הכרטיס חייב להכיל 16 ספרות");
             valid = false;
         }
 
-        if (isBlank(expiry.getValue()) || !expiry.getValue().contains("/")) {
+        try {
+            parseExpiryDate();
+        } catch (IllegalArgumentException exception) {
             expiry.setInvalid(true);
-            expiry.setErrorMessage("יש להזין תוקף בפורמט MM/YY");
+            expiry.setErrorMessage(exception.getMessage());
             valid = false;
         }
 
-        if (onlyDigits(cvv.getValue()).length() < 3) {
+        String cvvValue = cvv.getValue() == null
+                ? ""
+                : cvv.getValue().trim();
+
+        if (!cvvValue.matches("\\d{3}")) {
             cvv.setInvalid(true);
-            cvv.setErrorMessage("יש להזין CVV תקין");
+            cvv.setErrorMessage("CVV חייב להכיל בדיוק 3 ספרות");
             valid = false;
         }
 
@@ -1012,9 +1023,12 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
         return "fake-credit-card-" + lastFour;
     }
+
     private int[] parseExpiryDate() {
 
-        String value = expiry.getValue().trim();
+        String value = expiry.getValue() == null
+                ? ""
+                : expiry.getValue().trim();
 
         if (!value.matches("\\d{2}/\\d{2}")) {
             throw new IllegalArgumentException("תוקף חייב להיות בפורמט MM/YY");
@@ -1027,6 +1041,10 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
         if (month < 1 || month > 12) {
             throw new IllegalArgumentException("חודש לא תקין");
+        }
+
+        if (!YearMonth.of(year, month).isAfter(YearMonth.now())) {
+            throw new IllegalArgumentException("תוקף הכרטיס חייב להיות תאריך עתידי");
         }
 
         return new int[]{month, year};
@@ -1170,9 +1188,9 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
     /**
      * Cancels the current checkout flow.
      *
-     * This is an explicit cancellation action, so the user no longer occupies an
-     * active purchasing slot for the event. The existing navigation behavior is
-     * preserved and the user is returned to the active-order cart.
+     * This is an explicit cancellation action, so the user no longer occupies
+     * an active purchasing slot for the event. The existing navigation behavior
+     * is preserved and the user is returned to the active-order cart.
      */
     private void cancelCheckout() {
         String token = resolveSessionToken();

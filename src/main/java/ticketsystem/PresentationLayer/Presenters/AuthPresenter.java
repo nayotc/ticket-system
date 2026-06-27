@@ -46,6 +46,19 @@ public class AuthPresenter {
         }
     }
 
+    public void ensureGuestSession() {
+        if (UiSession.isLoggedIn()) {
+            return;
+        }
+
+        String guestToken = UiSession.getGuestToken();
+        if (guestToken == null
+                || guestToken.isBlank()
+                || !tokenService.isActiveSession(guestToken)) {
+            visitSystem();
+        }
+    }
+
     public boolean signUp(String username, String password, String fullName, String phone,LocalDate birthDate) {
         try {
             String guestToken = UiSession.getGuestToken();
