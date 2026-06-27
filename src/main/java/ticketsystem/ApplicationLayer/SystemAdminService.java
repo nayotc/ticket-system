@@ -219,6 +219,12 @@ public class SystemAdminService {
                         + "\" was closed by a system administrator, and your role in this company was removed."
                 );
             }
+            List<Purchase> orders = historyRepository.getPurchasesByCompanyId(companyId);
+    
+            for (Purchase order : orders) {
+                String message = "לצערנו, חברת " + company.getName() + " נסגרה והכרטיסים שלך לאירוע " + order.getEventName() + " בוטלו.";
+                notificationsService.notifyMember(order.getMemberId(), message);
+            }
 
             logger.logEvent("Completed - closeProductionCompanyByAdmin. companyId=" + companyId, LogLevel.INFO);
             return new CompanyDTO(company);

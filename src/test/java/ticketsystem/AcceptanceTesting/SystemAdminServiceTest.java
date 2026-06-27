@@ -894,7 +894,7 @@ public class SystemAdminServiceTest {
         FailureStateSnapshot afterState = captureStateSnapshot();
         Member savedMember = userRepo.getMemberById(memberId);
 
-        assertTrue(exception.getMessage().contains("End date cannot be before start date"));
+        assertTrue(exception.getMessage().contains("you cannot enter an end time that is before the current time"));
         assertNotNull(savedMember);
         assertFalse(savedMember.isSuspended());
         assertStateUnchanged(beforeState, afterState, "Suspend member with invalid dates");
