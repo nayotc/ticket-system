@@ -13,6 +13,7 @@ import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.PresentationLayer.Notifications.MessageTranslator;
 import ticketsystem.PresentationLayer.Views.Management.CreateEvent;
 import ticketsystem.PresentationLayer.Views.Management.EditEvent;
 import ticketsystem.PresentationLayer.Views.Management.EditEvent.DiscountConditionType;
@@ -563,6 +564,11 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
                 message.contains("Invalid or expired security token")
         )) {
             return message;
+        }
+
+        String policyTranslation = MessageTranslator.translate(message);
+        if (!policyTranslation.equals(message)) {
+            return policyTranslation;
         }
 
         if (message.startsWith("Map elements cannot overlap")) {
