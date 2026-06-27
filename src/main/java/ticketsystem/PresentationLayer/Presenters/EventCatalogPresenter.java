@@ -1,17 +1,5 @@
 package ticketsystem.PresentationLayer.Presenters;
 
-import org.springframework.stereotype.Component;
-import ticketsystem.ApplicationLayer.CompanyService;
-import ticketsystem.ApplicationLayer.EventCatalogService;
-import ticketsystem.ApplicationLayer.LotteryService;
-import ticketsystem.DTO.CompanyDTO;
-import ticketsystem.DTO.Event.EventSearchResultDTO;
-import ticketsystem.DomainLayer.SearchCriteria;
-import ticketsystem.DomainLayer.event.EventCategory;
-import ticketsystem.DomainLayer.event.EventLocation;
-import ticketsystem.DomainLayer.event.SaleStatus;
-import ticketsystem.PresentationLayer.Constants.Photos;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,15 +10,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.stereotype.Component;
+
+import ticketsystem.ApplicationLayer.CompanyService;
+import ticketsystem.ApplicationLayer.EventCatalogService;
+import ticketsystem.ApplicationLayer.LotteryService;
+import ticketsystem.DTO.Event.EventSearchResultDTO;
+import ticketsystem.DomainLayer.SearchCriteria;
+import ticketsystem.DomainLayer.event.EventCategory;
+import ticketsystem.DomainLayer.event.EventLocation;
+import ticketsystem.DomainLayer.event.SaleStatus;
+import ticketsystem.PresentationLayer.Constants.Photos;
+
 /**
  * Presenter for event catalog UI actions.
  *
- * This presenter keeps catalog/search view logic out of the Vaadin views.
- * It is responsible for:
- * - Building URL query parameters from search panel values.
- * - Loading featured events for the Home page.
- * - Loading global search results for the SearchResults page.
- * - Mapping application-layer event DTOs into card data used by the UI.
+ * This presenter keeps catalog/search view logic out of the Vaadin views. It is
+ * responsible for: - Building URL query parameters from search panel values. -
+ * Loading featured events for the Home page. - Loading global search results
+ * for the SearchResults page. - Mapping application-layer event DTOs into card
+ * data used by the UI.
  */
 @Component
 public class EventCatalogPresenter {
@@ -85,17 +84,18 @@ public class EventCatalogPresenter {
             double companyRate
     ) {
         Map<String, String> params = new LinkedHashMap<>();
+        SearchLocalDateRange dateRange = normalizeLocalDateRange(fromDate, toDate);
 
         if (freeText != null && !freeText.isBlank()) {
             params.put("q", freeText.trim());
         }
 
-        if (fromDate != null) {
-            params.put("fromDate", fromDate.toString());
+        if (dateRange.fromDate() != null) {
+            params.put("fromDate", dateRange.fromDate().toString());
         }
 
-        if (toDate != null) {
-            params.put("toDate", toDate.toString());
+        if (dateRange.toDate() != null) {
+            params.put("toDate", dateRange.toDate().toString());
         }
 
         String mappedLocation = mapLocationLabelToParam(location);
@@ -151,8 +151,9 @@ public class EventCatalogPresenter {
      * Loads featured events for the Home page.
      *
      * Featured events are loaded from the application layer and converted into
-     * EventCardViewModel records so the view can render EventCard components without
-     * knowing how to resolve company names, prices, dates, sale status, or lottery state.
+     * EventCardViewModel records so the view can render EventCard components
+     * without knowing how to resolve company names, prices, dates, sale status,
+     * or lottery state.
      *
      * @param sessionToken active guest/member session token
      * @return featured event card data for the Home page
@@ -173,32 +174,35 @@ public class EventCatalogPresenter {
      * events into card data used by the UI.
      *
      * This method is intentionally scoped to global search. Company-specific
-     * search should use a separate presenter method so the two flows stay explicit.
+     * search should use a separate presenter method so the two flows stay
+     * explicit.
      *
      * @param sessionToken active guest/member session token
      * @param parameters query parameters from the current route
      * @return event card data matching the global search criteria
      */
-  public List<EventCardViewModel> getGlobalSearchResultEvents(
-                String sessionToken,
-                Map<String, List<String>> parameters
-        ) {
-            SearchCriteria criteria = buildSearchCriteria(parameters);
+    public List<EventCardViewModel> getGlobalSearchResultEvents(
+            String sessionToken,
+            Map<String, List<String>> parameters
+    ) {
+        SearchCriteria criteria = buildSearchCriteria(parameters);
 
-            return toEventCards(
-                    sessionToken,
-                    eventCatalogService.globalSearch(sessionToken, criteria)
-            );
-        }
+        return toEventCards(
+                sessionToken,
+                eventCatalogService.globalSearch(sessionToken, criteria)
+        );
+    }
+
     /**
      * Loads company-specific event search results from URL query parameters.
      *
-     * The CompanySearchResults view passes the company id and the raw query parameters.
-     * This presenter converts the parameters into search criteria, delegates the company
-     * search to EventCatalogService, and maps the returned events into card data.
+     * The CompanySearchResults view passes the company id and the raw query
+     * parameters. This presenter converts the parameters into search criteria,
+     * delegates the company search to EventCatalogService, and maps the
+     * returned events into card data.
      *
-     * Company rating is intentionally ignored here because the search is already scoped
-     * to a single company.
+     * Company rating is intentionally ignored here because the search is
+     * already scoped to a single company.
      *
      * @param sessionToken active guest/member session token
      * @param companyId company whose events should be searched
@@ -225,6 +229,7 @@ public class EventCatalogPresenter {
                 )
         );
     }
+
     /**
      * View model used by EventCard-based screens.
      *
@@ -245,16 +250,18 @@ public class EventCatalogPresenter {
             Long eventId,
             SaleStatus saleStatus,
             boolean hasLottery
-    ) {
+            ) {
+
     }
 
     /**
      * Converts an application-layer event search DTO into UI card data.
-     */ private EventCardViewModel toEventCardViewModel(
-        String sessionToken,
-        EventSearchResultDTO event,
-        Set<Long> lotteryEventIds
-)  {
+     */
+    private EventCardViewModel toEventCardViewModel(
+            String sessionToken,
+            EventSearchResultDTO event,
+            Set<Long> lotteryEventIds
+    ) {
         String companyName = resolveCompanyName(sessionToken, event.companyId());
 
         return new EventCardViewModel(
@@ -270,30 +277,33 @@ public class EventCatalogPresenter {
                 event.id(),
                 parseSaleStatus(event.saleStatus()),
                 lotteryEventIds.contains(event.id())
-            );
+        );
     }
 
-   
     /**
      * Converts route query parameters into domain search criteria.
      *
-     * URL parameters are received as strings because they come from the browser.
-     * This method converts them into the types expected by the domain layer:
-     * enum values, date ranges, prices, and rating filters.
+     * URL parameters are received as strings because they come from the
+     * browser. This method converts them into the types expected by the domain
+     * layer: enum values, date ranges, prices, and rating filters.
      *
-     * Missing parameters are treated as null, meaning the matching filter should
-     * not restrict the search.
+     * Missing parameters are treated as null, meaning the matching filter
+     * should not restrict the search.
      */
     private SearchCriteria buildSearchCriteria(Map<String, List<String>> parameters) {
         Map<String, List<String>> safeParameters = parameters == null ? Map.of() : parameters;
+        SearchDateTimeRange dateRange = normalizeDateTimeRange(
+                parseDateParam(firstParam(safeParameters, "fromDate")),
+                parseDateParam(firstParam(safeParameters, "toDate"))
+        );
 
         return new SearchCriteria(
                 firstParam(safeParameters, "q"),
                 parseCategory(firstParam(safeParameters, "category")),
                 parseLocation(firstParam(safeParameters, "location")),
                 firstParam(safeParameters, "artist"),
-                parseStartDate(firstParam(safeParameters, "fromDate")),
-                parseEndDate(firstParam(safeParameters, "toDate")),
+                dateRange.fromDate(),
+                dateRange.toDate(),
                 parseBigDecimal(firstParam(safeParameters, "minPrice")),
                 parseBigDecimal(firstParam(safeParameters, "maxPrice")),
                 parseDouble(firstParam(safeParameters, "companyRate")),
@@ -304,20 +314,24 @@ public class EventCatalogPresenter {
     /**
      * Builds search criteria for company-specific search.
      *
-     * Company rating is not applicable here because the results are already scoped
-     * to one company. Passing companyRate into the domain company-search flow would
-     * be rejected by EventCatalogDomainService.
+     * Company rating is not applicable here because the results are already
+     * scoped to one company. Passing companyRate into the domain company-search
+     * flow would be rejected by EventCatalogDomainService.
      */
     private SearchCriteria buildCompanySearchCriteria(Map<String, List<String>> parameters) {
         Map<String, List<String>> safeParameters = parameters == null ? Map.of() : parameters;
+        SearchDateTimeRange dateRange = normalizeDateTimeRange(
+                parseDateParam(firstParam(safeParameters, "fromDate")),
+                parseDateParam(firstParam(safeParameters, "toDate"))
+        );
 
         return new SearchCriteria(
                 firstParam(safeParameters, "q"),
                 parseCategory(firstParam(safeParameters, "category")),
                 parseLocation(firstParam(safeParameters, "location")),
                 firstParam(safeParameters, "artist"),
-                parseStartDate(firstParam(safeParameters, "fromDate")),
-                parseEndDate(firstParam(safeParameters, "toDate")),
+                dateRange.fromDate(),
+                dateRange.toDate(),
                 parseBigDecimal(firstParam(safeParameters, "minPrice")),
                 parseBigDecimal(firstParam(safeParameters, "maxPrice")),
                 null,
@@ -334,8 +348,8 @@ public class EventCatalogPresenter {
         if (companyId == null) {
             return "";
         }
-            String companyName = companyService.getCompanyName(sessionToken, companyId);
-            return companyName == null ? "" : companyName;
+        String companyName = companyService.getCompanyName(sessionToken, companyId);
+        return companyName == null ? "" : companyName;
     }
 
     private String formatDate(LocalDateTime date) {
@@ -367,35 +381,40 @@ public class EventCatalogPresenter {
 
     private String[] imagesForCategory(String category) {
         if (category == null) {
-            return new String[] {
-                    Photos.EVENT_LIGHTS,
-                    Photos.EVENT_STANDUP,
-                    Photos.EVENT_ELECTRONIC
+            return new String[]{
+                Photos.EVENT_LIGHTS,
+                Photos.EVENT_STANDUP,
+                Photos.EVENT_ELECTRONIC
             };
         }
 
         return switch (category) {
-            case "THEATER" -> new String[] {
+            case "THEATER" ->
+                new String[]{
                     Photos.EVENT_STANDUP,
                     Photos.EVENT_LIGHTS
-            };
-            case "SPORTS" -> new String[] {
+                };
+            case "SPORTS" ->
+                new String[]{
                     Photos.EVENT_ELECTRONIC,
                     Photos.EVENT_LIGHTS
-            };
-            case "CONCERT" -> new String[] {
+                };
+            case "CONCERT" ->
+                new String[]{
                     Photos.EVENT_LIGHTS,
                     Photos.EVENT_ELECTRONIC
-            };
-            case "EXHIBITION" -> new String[] {
+                };
+            case "EXHIBITION" ->
+                new String[]{
                     Photos.EVENT_LIGHTS,
                     Photos.EVENT_STANDUP
-            };
-            default -> new String[] {
+                };
+            default ->
+                new String[]{
                     Photos.EVENT_LIGHTS,
                     Photos.EVENT_STANDUP,
                     Photos.EVENT_ELECTRONIC
-            };
+                };
         };
     }
 
@@ -414,8 +433,9 @@ public class EventCatalogPresenter {
     /**
      * Reads the first value of a query parameter.
      *
-     * Vaadin stores query parameters as a list of values per key. For this screen
-     * each filter is expected to have a single value, so only the first value is used.
+     * Vaadin stores query parameters as a list of values per key. For this
+     * screen each filter is expected to have a single value, so only the first
+     * value is used.
      */
     private String firstParam(Map<String, List<String>> parameters, String name) {
         if (parameters == null || name == null) {
@@ -455,20 +475,43 @@ public class EventCatalogPresenter {
         }
     }
 
-    private LocalDateTime parseStartDate(String value) {
+    private LocalDate parseDateParam(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
 
-        return LocalDate.parse(value).atStartOfDay();
+        return LocalDate.parse(value);
     }
 
-    private LocalDateTime parseEndDate(String value) {
-        if (value == null || value.isBlank()) {
+    private SearchLocalDateRange normalizeLocalDateRange(LocalDate fromDate, LocalDate toDate) {
+        LocalDate normalizedFromDate = normalizeSearchDate(fromDate);
+        LocalDate normalizedToDate = normalizeSearchDate(toDate);
+
+        if (normalizedFromDate != null
+                && normalizedToDate != null
+                && normalizedToDate.isBefore(normalizedFromDate)) {
+            normalizedToDate = normalizedFromDate;
+        }
+
+        return new SearchLocalDateRange(normalizedFromDate, normalizedToDate);
+    }
+
+    private SearchDateTimeRange normalizeDateTimeRange(LocalDate fromDate, LocalDate toDate) {
+        SearchLocalDateRange dateRange = normalizeLocalDateRange(fromDate, toDate);
+
+        return new SearchDateTimeRange(
+                dateRange.fromDate() == null ? null : dateRange.fromDate().atStartOfDay(),
+                dateRange.toDate() == null ? null : dateRange.toDate().atTime(23, 59, 59)
+        );
+    }
+
+    private LocalDate normalizeSearchDate(LocalDate date) {
+        if (date == null) {
             return null;
         }
 
-        return LocalDate.parse(value).atTime(23, 59, 59);
+        LocalDate today = LocalDate.now();
+        return date.isBefore(today) ? today : date;
     }
 
     private BigDecimal parseBigDecimal(String value) {
@@ -487,6 +530,14 @@ public class EventCatalogPresenter {
         return Double.parseDouble(value.trim());
     }
 
+    private record SearchLocalDateRange(LocalDate fromDate, LocalDate toDate) {
+
+    }
+
+    private record SearchDateTimeRange(LocalDateTime fromDate, LocalDateTime toDate) {
+
+    }
+
     private String prettyEnum(String value) {
         if (value == null || value.isBlank()) {
             return "";
@@ -494,8 +545,8 @@ public class EventCatalogPresenter {
 
         return Arrays.stream(value.toLowerCase().split("_"))
                 .map(part -> part.isBlank()
-                        ? part
-                        : part.substring(0, 1).toUpperCase() + part.substring(1))
+                ? part
+                : part.substring(0, 1).toUpperCase() + part.substring(1))
                 .reduce((left, right) -> left + " " + right)
                 .orElse(value);
     }
@@ -506,12 +557,18 @@ public class EventCatalogPresenter {
         }
 
         return switch (category) {
-            case "הופעה" -> "CONCERT";
-            case "ספורט" -> "SPORTS";
-            case "תיאטרון" -> "THEATER";
-            case "תערוכה" -> "EXHIBITION";
-            case "אחר" -> "OTHER";
-            default -> category;
+            case "הופעה" ->
+                "CONCERT";
+            case "ספורט" ->
+                "SPORTS";
+            case "תיאטרון" ->
+                "THEATER";
+            case "תערוכה" ->
+                "EXHIBITION";
+            case "אחר" ->
+                "OTHER";
+            default ->
+                category;
         };
     }
 
@@ -521,37 +578,48 @@ public class EventCatalogPresenter {
         }
 
         return switch (location) {
-            case "ניו יורק" -> "NEW_YORK";
-            case "לוס אנג׳לס" -> "LOS_ANGELES";
-            case "שיקגו" -> "CHICAGO";
-            case "יוסטון" -> "HOUSTON";
-            case "מיאמי" -> "MIAMI";
-            case "תל אביב" -> "TEL_AVIV";
-            case "ירושלים" -> "JERUSALEM";
-            case "באר שבע" -> "BEER_SHEVA";
-            case "חיפה" -> "HAIFA";
-            case "אחר" -> "OTHER";
-            default -> location;
+            case "ניו יורק" ->
+                "NEW_YORK";
+            case "לוס אנג׳לס" ->
+                "LOS_ANGELES";
+            case "שיקגו" ->
+                "CHICAGO";
+            case "יוסטון" ->
+                "HOUSTON";
+            case "מיאמי" ->
+                "MIAMI";
+            case "תל אביב" ->
+                "TEL_AVIV";
+            case "ירושלים" ->
+                "JERUSALEM";
+            case "באר שבע" ->
+                "BEER_SHEVA";
+            case "חיפה" ->
+                "HAIFA";
+            case "אחר" ->
+                "OTHER";
+            default ->
+                location;
         };
     }
 
     private List<EventCardViewModel> toEventCards(
-                String sessionToken,
-                List<EventSearchResultDTO> events
-        ) {
-            Set<Long> lotteryEventIds =
-                    lotteryService.findEventIdsWithLottery(
-                            sessionToken,
-                            events.stream()
-                                    .map(EventSearchResultDTO::id)
-                                    .toList()
-                    );
+            String sessionToken,
+            List<EventSearchResultDTO> events
+    ) {
+        Set<Long> lotteryEventIds
+                = lotteryService.findEventIdsWithLottery(
+                        sessionToken,
+                        events.stream()
+                                .map(EventSearchResultDTO::id)
+                                .toList()
+                );
 
-            return events.stream()
-                    .map(event -> toEventCardViewModel(
-                            sessionToken,
-                            event,
-                            lotteryEventIds))
-                    .toList();
-        }
+        return events.stream()
+                .map(event -> toEventCardViewModel(
+                sessionToken,
+                event,
+                lotteryEventIds))
+                .toList();
+    }
 }
