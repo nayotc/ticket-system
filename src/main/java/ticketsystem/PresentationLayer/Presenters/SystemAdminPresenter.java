@@ -2,6 +2,13 @@ package ticketsystem.PresentationLayer.Presenters;
 
 import org.springframework.stereotype.Component;
 
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.textfield.TextField;
+
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.UserService;
@@ -56,7 +63,10 @@ public class SystemAdminPresenter {
                             user.getUserName(), // Using UserName (serves as email)
                             user.getFullName(), // Using FullName
                             user.isSuspended() ? "מושעה" : "פעיל", // Dynamically set status based on suspension
-                            user.isActive() // Using isActive flag
+                            user.isActive(), // Using isActive flag
+                            user.getSuspension().getStartDate(),
+                            user.getSuspension().getEndDate(),
+                            user.getSuspension().getReason()
                     ))
                     .collect(Collectors.toList());
         } catch (PresentationException e) {
@@ -67,6 +77,51 @@ public class SystemAdminPresenter {
             throw new PresentationException("Failed to load active users. Please try again.");
         }
 
+    }
+    private void showSuspensionDetails(AdminUserRow user) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("פרטי השעיה: " + user.displayName());
+
+        // נגדיר פורמט אחיד לתאריכים
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        // --- התוספת החדשה: תאריך התחלה ---
+        String startDateText = "לא זמין";
+        if (user.suspensionStartDate() != null) {
+            startDateText = user.suspensionStartDate().format(formatter);
+        }
+        TextField startDateField = new TextField("תחילת השעיה");
+        startDateField.setValue(startDateText);
+        startDateField.setReadOnly(true);
+        startDateField.setWidthFull();
+        // ----------------------------------
+
+        // תאריך סיום (כמו מקודם)
+        String endDateText = "לצמיתות";
+        if (user.suspensionEndDate() != null) {
+            endDateText = user.suspensionEndDate().format(formatter);
+        }
+        TextField endDateField = new TextField("סיום השעיה");
+        endDateField.setValue(endDateText);
+        endDateField.setReadOnly(true);
+        endDateField.setWidthFull();
+
+        // סיבת השעיה
+        TextArea reasonField = new TextArea("סיבת השעיה");
+        reasonField.setValue(user.suspensionReason() != null ? user.suspensionReason() : "לא צוינה סיבה");
+        reasonField.setReadOnly(true);
+        reasonField.setWidthFull();
+
+        Button closeButton = new Button("סגירה", event -> dialog.close());
+        closeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        // נוסיף את שדה תאריך ההתחלה ללייאוט בראש הרשימה
+        VerticalLayout layout = new VerticalLayout(startDateField, endDateField, reasonField);
+        layout.setPadding(false);
+
+        dialog.add(layout);
+        dialog.getFooter().add(closeButton);
+        dialog.open();
     }
 
     public List<CompanyDTO> loadActiveCompanies(String token) throws PresentationException {
