@@ -29,53 +29,53 @@ public class CustomErrorHandler implements ErrorHandler {
         this.logger = logger;
     }
 
-@Override
-public void error(ErrorEvent event) {
-    Throwable cause = event.getThrowable();
+    @Override
+    public void error(ErrorEvent event) {
+        Throwable cause = event.getThrowable();
 
-    // לולאה שעוברת על כל שרשרת השגיאות כדי למצוא את המקור
-    while (cause != null) {
-        String msg = cause.getMessage();
-        
-        if (msg != null) {
-            // 1. בדיקת Timeout
-            if (PresentationException.isSessionTimeoutMessage(msg)) {
-                handleSessionTimeout();
-                return; 
-            }
-
-            // 2. בדיקת ניתוק DB - כאן השינוי המרכזי
-            if (PresentationException.isDbDisconnectMessage(msg)) {
-                UI ui = UI.getCurrent();
-                if (ui != null) {
-                    ui.access(() -> {
-                        // שימוש בהודעה המוגדרת ב-PresentationException
-                        Notification.show(
-                            PresentationException.DB_DISCONNECT_HEBREW_MSG, 
-                            5000, 
-                            Position.TOP_CENTER
-                        );
-                    });
+        // לולאה שעוברת על כל שרשרת השגיאות כדי למצוא את המקור
+        while (cause != null) {
+            String msg = cause.getMessage();
+            
+            if (msg != null) {
+                // 1. בדיקת Timeout
+                if (PresentationException.isSessionTimeoutMessage(msg)) {
+                    handleSessionTimeout();
+                    return; 
                 }
-                return;
-            }
-        }
-        cause = cause.getCause(); // חשוב: צלילה לשגיאת המקור
-    }
 
-    // Fallback: שגיאה לא מזוהה
-    logger.logEvent("Unhandled UI exception: " + event.getThrowable().getMessage(), LogLevel.DEBUG);
-    UI ui = UI.getCurrent();
-    if (ui != null) {
-        ui.access(() -> {
-            Notification.show(
-                "אירעה שגיאה בביצוע הפעולה. במידה והבעיה נמשכת, ודאו חיבור תקין לרשת.", 
-                5000, 
-                Position.TOP_CENTER
-            );
-        });
+                // 2. בדיקת ניתוק DB - כאן השינוי המרכזי
+                if (PresentationException.isDbDisconnectMessage(msg)) {
+                    UI ui = UI.getCurrent();
+                    if (ui != null) {
+                        ui.access(() -> {
+                            // שימוש בהודעה המוגדרת ב-PresentationException
+                            Notification.show(
+                                PresentationException.DB_DISCONNECT_HEBREW_MSG, 
+                                5000, 
+                                Position.TOP_CENTER
+                            );
+                        });
+                    }
+                    return;
+                }
+            }
+            cause = cause.getCause(); // חשוב: צלילה לשגיאת המקור
+        }
+
+        // Fallback: שגיאה לא מזוהה
+        logger.logEvent("Unhandled UI exception: " + event.getThrowable().getMessage(), LogLevel.DEBUG);
+        UI ui = UI.getCurrent();
+        if (ui != null) {
+            ui.access(() -> {
+                Notification.show(
+                    "אירעה שגיאה בביצוע הפעולה. במידה והבעיה נמשכת, ודאו חיבור תקין לרשת.", 
+                    5000, 
+                    Position.TOP_CENTER
+                );
+            });
+        }
     }
-}
 
     private void showNotification(String text) {
         UI ui = UI.getCurrent();
