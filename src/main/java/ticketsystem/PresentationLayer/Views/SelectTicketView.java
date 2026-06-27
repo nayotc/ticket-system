@@ -34,6 +34,7 @@ import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.ReservationPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
+import ticketsystem.PresentationLayer.Components.MessagePopup;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -84,11 +85,13 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     private Long eventId;
     private int zoomPercent = 100;
     private int cellSize = BASE_MAP_CELL_SIZE;
+    private boolean activeOrderExpirationPopupShown;
 
     @Autowired
     public SelectTicketView(ReservationPresenter reservationPresenter, UiVisitCoordinator visitCoordinator) {
         this.reservationPresenter = reservationPresenter;
         this.visitCoordinator = visitCoordinator;
+        reservationTimer.setExpirationHandler(this::handleActiveOrderExpired);
 
         addClassName("ticket-selection-page");
         setSizeFull();
@@ -213,7 +216,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
             renderMap();
             refreshSummary(order);
-            refreshReservationTimer(order);
+            refreshTimers(order);
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {
@@ -246,8 +249,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         syncSelectedStandingFromActiveOrder(order);
         renderMap();
         refreshSummary(order);
-        refreshReservationTimer(order);
-        refreshSelectionAccessTimer();
+        refreshTimers(order);
     }
 
     private void syncSelectedSeatsFromActiveOrder(ActiveOrderDTO order) {
@@ -503,9 +505,17 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         dialog.setCancelable(true);
 
         dialog.addConfirmListener(e -> {
-            releaseQueueAccessIfNeeded();
-            allowLeavingSelectionPage = true;
-            action.proceed();
+            try {
+                reservationPresenter.leavePromotedQueueTurn(currentToken(), eventId);
+                queueAccessReleased = true;
+
+                allowLeavingSelectionPage = true;
+                UI.getCurrent().navigate(UiRoutes.HOME);
+
+            } catch (PresentationException ex) {
+                Notifications.error(ex.getMessage());
+                allowLeavingSelectionPage = false;
+            }
         });
 
         dialog.addCancelListener(e -> {
@@ -959,6 +969,41 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         }
     }
 
+    /**
+     * Handles client-side ActiveOrder reservation expiration on the ticket selection page.
+     *
+     * <p>The ticket-selection reload flow already loads the current active order
+     * through the presenter. That lets the service layer detect an expired order,
+     * release its tickets, notify the user, and remove the order. Since server-side
+     * expiration notifications are not displayed reliably while staying on this
+     * page, the view shows one local expiration popup and then reloads the
+     * ticket-selection data without calling loadActiveOrder separately.</p>
+     */
+    private void handleActiveOrderExpired() {
+        ReservationTimer.clear();
+        reservationTimer.setVisible(false);
+
+        showActiveOrderExpiredPopupOnce();
+
+        try {
+            reloadTicketSelectionEventDataKeepingSelection();
+        } catch (Exception ignored) {
+            refreshSummary(null);
+        }
+    }
+
+    /**
+     * Shows the ActiveOrder expiration popup once per active reservation timer cycle.
+     */
+    private void showActiveOrderExpiredPopupOnce() {
+        if (activeOrderExpirationPopupShown) {
+            return;
+        }
+
+        activeOrderExpirationPopupShown = true;
+        MessagePopup.showNotification("פג תוקף שריון הכרטיסים. הכרטיסים שוחררו וניתן לבחור אותם מחדש.");
+    }
+
     private void refreshSummary(ActiveOrderDTO order) {
         selectedTicketsList.removeAll();
 
@@ -1354,6 +1399,29 @@ private String findAreaNameById(Long areaId) {
     }
 
     /**
+     * Refreshes the timers shown on the ticket-selection screen.
+     *
+     * The ticket-selection screen can show either the queue-selection timer or the
+     * active-order reservation timer, but never both at the same time.
+     *
+     * If the user has an active queue-selection window, the queue timer is shown and
+     * the ActiveOrder reservation timer is hidden. Otherwise, the ActiveOrder timer
+     * is shown only when there is an active order with reserved tickets.
+     *
+     * @param order the current active order for the selected event, or null if none exists
+     */
+    private void refreshTimers(ActiveOrderDTO order) {
+        boolean queueTimerVisible = refreshSelectionAccessTimer();
+
+        if (queueTimerVisible) {
+            reservationTimer.setVisible(false);
+            return;
+        }
+
+        refreshReservationTimer(order);
+    }
+
+    /**
      * Refreshes the waiting-queue access timer shown above the map.
      *
      * The timer should be visible only for users who were promoted from the
@@ -1378,6 +1446,8 @@ private String findAreaNameById(Long areaId) {
         }
 
         selectionAccessTimer.setVisible(true);
+        reservationTimer.setVisible(false);
+
         selectionAccessTimer.getElement()
                 .setAttribute("data-seconds-left", String.valueOf(secondsLeft));
 
@@ -1535,6 +1605,8 @@ private void onSelectionAccessTimerExpired() {
             }
 
             reservationTimer.setDeadline(order.getExpiresAtEpochMillis());
+            activeOrderExpirationPopupShown = false;
+            reservationTimer.setVisible(true);
 
         } catch (PresentationException e) {
             if (e.isSessionTimeout()) {

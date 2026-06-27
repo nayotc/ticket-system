@@ -1,10 +1,10 @@
 package ticketsystem.PresentationLayer.Views;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.vaadin.flow.component.UI;
@@ -27,6 +27,7 @@ import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 
 import ticketsystem.DTO.ActiveOrderDTO;
@@ -88,6 +89,7 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         configureFields();
 
         this.visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
+        reservationTimer.setExpirationHandler(this::handleActiveOrderExpired);
     }
 
     @Override
@@ -1046,6 +1048,40 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
         }
 
         return new int[]{month, year};
+    }
+
+    /**
+     * Handles client-side ActiveOrder reservation expiration on the checkout page.
+     *
+     * <p>The view does not expire the order directly. It only refreshes the current
+     * active order through the presenter, so the service layer can detect an expired
+     * order, release its tickets, notify the user, and remove it if needed. The view
+     * then clears its local checkout state and redirects the user to the home page.</p>
+     */
+    private void handleActiveOrderExpired() {
+        try {
+            String token = UiSession.getCurrentToken();
+
+            if (token != null && !token.isBlank()) {
+                presenter.loadActiveOrder(token);
+            }
+        } catch (Exception ignored) {
+            // Local UI cleanup should still continue even if the server refresh fails.
+        }
+
+        if (activeOrder != null) {
+            UiSession.clearCouponCode(activeOrder.getOrderId());
+        }
+
+        activeOrder = null;
+        eventInfo = null;
+        pricing = null;
+
+        ReservationTimer.clear();
+        UI.getCurrent().navigate(
+                UiRoutes.HOME,
+                QueryParameters.simple(Map.of("activeOrderExpired", "true"))
+        );
     }
 
     private void renderEmptyCheckout() {

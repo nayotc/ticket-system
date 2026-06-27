@@ -61,6 +61,7 @@ public class ActiveOrderCart extends VerticalLayout {
         setWidthFull();
 
         this.visitCoordinator.ensureVisitAndNotifications(UI.getCurrent());
+        reservationTimer.setExpirationHandler(this::handleActiveOrderExpired);
         loadCart();
     }
 
@@ -520,6 +521,35 @@ public class ActiveOrderCart extends VerticalLayout {
         return presenter.loadActiveOrderEventInfo(resolveSessionToken(), eventId);
     }
 
+    /**
+     * Handles client-side ActiveOrder reservation expiration on the active cart page.
+     *
+     * <p>The view does not expire the order directly. It first refreshes the current
+     * active order through the presenter, so the service layer can detect an expired
+     * order, release its tickets, notify the user, and remove it if needed. The view
+     * then clears the local cart state, clears the local timer, renders an empty cart,
+     * and refreshes the public header display.</p>
+     */
+    private void handleActiveOrderExpired() {
+        try {
+            presenter.loadActiveOrder(resolveSessionToken());
+        } catch (Exception ignored) {
+            // Local UI cleanup should still continue even if the server refresh fails.
+        }
+
+        if (activeOrder != null) {
+            UiSession.clearCouponCode(activeOrder.getOrderId());
+        }
+
+        activeOrder = null;
+        eventInfo = null;
+        pricing = null;
+        currentCouponCode = "";
+
+        ReservationTimer.clear();
+        renderEmptyCart();
+        refreshHeader();
+    }
 
     private void renderEmptyCart() {
         removeAll();

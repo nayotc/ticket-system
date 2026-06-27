@@ -337,37 +337,38 @@ public class ReservationService {
     }
 
     /**
-     * Returns the current active order for the given UI session token. This
-     * method is intended for presentation-layer flows such as the active order
-     * cart, where the UI needs to display the current user's active order
-     * without receiving an order id in the route.
+     * Returns the current valid active order for the given UI session token.
      *
-     * The lookup is based on the token type: - guest token: finds the active
-     * order by session token - member token: extracts the member id and finds
-     * the active order by user id
-     *
-     * If no active order exists, or if the found order is no longer ACTIVE,
-     * this method returns null so the UI can render an empty cart state.
+     * <p>Before returning the order, the method runs the existing expiration flow
+     * for the order's event, so an expired order is released, deleted, and not
+     * returned to the UI.</p>
      *
      * @param token active guest/member session token
-     * @return active order DTO for the current session, or null if none exists
+     * @return active order DTO for the current session, or null if no valid active order exists
      */
     public ActiveOrderDTO viewCurrentActiveOrder(String token) {
-          
-
         try {
             tokenService.validateToken(token);
 
-            ActiveOrder order;
+            boolean guestToken = tokenService.isGuestToken(token);
+            Long userId = guestToken ? null : tokenService.extractUserId(token);
 
-            if (tokenService.isGuestToken(token)) {
-                order = orderRepository.getActiveOrderBySessionToken(token);
-            } else {
-                Long userId = tokenService.extractUserId(token);
-                order = orderRepository.getActiveOrderByUserId(userId);
+            ActiveOrder order = guestToken
+                    ? orderRepository.getActiveOrderBySessionToken(token)
+                    : orderRepository.getActiveOrderByUserId(userId);
+
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+                return null;
             }
 
-            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE ) {
+            Event event = eventRepository.getEventById(order.getEventId());
+            expireOldOrdersForEvent(event);
+
+            order = guestToken
+                    ? orderRepository.getActiveOrderBySessionToken(token)
+                    : orderRepository.getActiveOrderByUserId(userId);
+
+            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
                 return null;
             }
 
@@ -375,8 +376,9 @@ public class ReservationService {
 
             logger.logEvent(
                     "Current active order viewed: orderId=" + order.getOrderId()
-                    + ", eventId=" + order.getEventId(),
-                    LogLevel.INFO);
+                            + ", eventId=" + order.getEventId(),
+                    LogLevel.INFO
+            );
 
             return activeOrderDTO;
 
