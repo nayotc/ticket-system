@@ -10,6 +10,8 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.textfield.TextField;
 
+import java.time.LocalDate;
+
 public class SearchPanel extends AppCard {
 
     private static final double MAX_PRICE_LIMIT = 1000.0;
@@ -69,9 +71,13 @@ public class SearchPanel extends AppCard {
 
         fromDate.setPlaceholder("תאריך התחלה");
         fromDate.setClearButtonVisible(true);
+        fromDate.setMin(LocalDate.now());
+        fromDate.addValueChangeListener(event -> enforceDateRange());
 
         toDate.setPlaceholder("תאריך סיום");
         toDate.setClearButtonVisible(true);
+        toDate.setMin(LocalDate.now());
+        toDate.addValueChangeListener(event -> enforceDateRange());
 
         category.setItems(
                 "כל הקטגוריות",
@@ -82,6 +88,24 @@ public class SearchPanel extends AppCard {
                 "אחר"
         );
         category.setValue("כל הקטגוריות");
+    }
+
+    private void enforceDateRange() {
+        LocalDate today = LocalDate.now();
+        LocalDate from = fromDate.getValue();
+        LocalDate to = toDate.getValue();
+
+        if (from != null && from.isBefore(today)) {
+            fromDate.setValue(today);
+            return;
+        }
+
+        LocalDate earliestToDate = from == null ? today : from;
+        toDate.setMin(earliestToDate);
+
+        if (to != null && to.isBefore(earliestToDate)) {
+            toDate.setValue(earliestToDate);
+        }
     }
 
     private void configureActions() {

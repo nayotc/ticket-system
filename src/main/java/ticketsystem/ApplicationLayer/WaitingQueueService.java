@@ -1,10 +1,12 @@
 package ticketsystem.ApplicationLayer;
 
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.springframework.stereotype.Service;
 
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -12,10 +14,10 @@ import ticketsystem.DomainLayer.IRepository.IEventRepository;
 import ticketsystem.DomainLayer.IRepository.IWaitingQueueRepository;
 import ticketsystem.DomainLayer.event.Event;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
-import java.util.Set;
 
 @Service
 public class WaitingQueueService {
+
     /**
      * User-facing messages for the virtual waiting-queue flow.
      *
@@ -23,20 +25,20 @@ public class WaitingQueueService {
      * messages delivered to guests and members are written in Hebrew to match
      * the presentation language used throughout the application.
      */
-    private static final String SOLD_OUT_NOTIFICATION =
-            "הכרטיסים לאירוע אזלו.";
+    private static final String SOLD_OUT_NOTIFICATION
+            = "הכרטיסים לאירוע אזלו.";
 
-    private static final String TURN_REACHED_NOTIFICATION =
-            "התור שלך הגיע! אפשר לעבור כעת לרכישת כרטיסים.";
+    private static final String TURN_REACHED_NOTIFICATION
+            = "התור שלך הגיע! אפשר לעבור כעת לרכישת כרטיסים.";
 
-    private static final String LEFT_QUEUE_NOTIFICATION =
-            "יצאת מתור ההמתנה.";
+    private static final String LEFT_QUEUE_NOTIFICATION
+            = "יצאת מתור ההמתנה.";
 
-    private static final String ACCESS_EXPIRED_NOTIFICATION =
-            "זמן הגישה שלך לבחירת הכרטיסים הסתיים, ולכן הוסרת מהתור.";
+    private static final String ACCESS_EXPIRED_NOTIFICATION
+            = "זמן הגישה שלך לבחירת הכרטיסים הסתיים, ולכן הוסרת מהתור.";
 
-    private static final String QUEUE_CLOSED_SOLD_OUT_NOTIFICATION =
-            "הכרטיסים לאירוע אזלו ותור ההמתנה נסגר.";
+    private static final String QUEUE_CLOSED_SOLD_OUT_NOTIFICATION
+            = "הכרטיסים לאירוע אזלו ותור ההמתנה נסגר.";
 
     private final IEventRepository eventRepository;
     private final IWaitingQueueRepository queueRepository;
@@ -47,8 +49,8 @@ public class WaitingQueueService {
     private final ISystemLogger logger;
     private static final Duration SELECTION_ACCESS_DURATION = Duration.ofMinutes(10);
 
-    private final ConcurrentHashMap<Long, Map<String, Instant>> selectionAccessDeadlines =
-        new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Map<String, Instant>> selectionAccessDeadlines
+            = new ConcurrentHashMap<>();
 
     public WaitingQueueService(IEventRepository eventRepository,
             IWaitingQueueRepository queueRepository,
@@ -88,14 +90,14 @@ public class WaitingQueueService {
                     if (event.isSoldOut()) {
                         logger.logEvent("Attempt to reserve for sold-out event. Event ID: " + eventId,
                                 LogbackSystemLogger.LogLevel.INFO);
-                    notifyTokenHolder(
-                            tokenString,
-                            SOLD_OUT_NOTIFICATION
-                    );
+                        notifyTokenHolder(
+                                tokenString,
+                                SOLD_OUT_NOTIFICATION
+                        );
                         return "ERROR: Sold Out";
                     }
 
-                   if (hasActiveSpot(eventId, tokenString)) {
+                    if (hasActiveSpot(eventId, tokenString)) {
                         logger.logEvent(
                                 "User with session id " + maskSessionToken(tokenString) + " already has active access for Event " + eventId,
                                 LogLevel.INFO
@@ -107,7 +109,7 @@ public class WaitingQueueService {
                     if (existingPosition > 0) {
                         logger.logEvent(
                                 "User with session id " + maskSessionToken(tokenString) + " is already in queue for Event "
-                                        + eventId + ". Position: " + existingPosition,
+                                + eventId + ". Position: " + existingPosition,
                                 LogLevel.INFO
                         );
                         return "QUEUED";
@@ -122,7 +124,7 @@ public class WaitingQueueService {
                         approveSession(eventId, event, tokenString, false);
                         logger.logEvent(
                                 "User with session id " + maskSessionToken(tokenString) + " APPROVED directly to enter ticket selection for Event "
-                                        + eventId,
+                                + eventId,
                                 LogLevel.INFO
                         );
                         return "APPROVED";
@@ -135,7 +137,7 @@ public class WaitingQueueService {
                     notifyTokenHolder(
                             tokenString,
                             "נכנסת לתור ההמתנה. המיקום הנוכחי שלך בתור הוא "
-                                    + position + "."
+                            + position + "."
                     );
                     return "QUEUED";
                 }
@@ -239,14 +241,14 @@ public class WaitingQueueService {
             *
             * If the event counter is higher than the tracked active sessions,
             * there is still an untracked active spot that can be released.
-            */
-            boolean hasUntrackedActiveSpot =
-                    event.getActiveReservationsCount() > trackedActiveCountAfterRemoval;
+             */
+            boolean hasUntrackedActiveSpot
+                    = event.getActiveReservationsCount() > trackedActiveCountAfterRemoval;
 
             if (!hadTrackedActiveSpot && !hasUntrackedActiveSpot) {
                 logger.logEvent(
                         "No active queue access to release for session id "
-                                + maskSessionToken(sessionId) + " and Event " + eventId,
+                        + maskSessionToken(sessionId) + " and Event " + eventId,
                         LogLevel.INFO
                 );
                 cleanupActiveSessionsIfPossible(eventId);
@@ -287,6 +289,7 @@ public class WaitingQueueService {
                 LEFT_QUEUE_NOTIFICATION
         );
     }
+
     public void expireUserSession(long eventId, String sessionId) {
         releaseSpot(eventId, sessionId);
         logger.logEvent("User session expired for Event " + eventId,
@@ -411,6 +414,7 @@ public class WaitingQueueService {
 
         return Math.max(1, (position + 4) / 5);
     }
+
     private Set<String> getActiveSessions(long eventId) {
         return activeReservationSessions.computeIfAbsent(eventId, k -> ConcurrentHashMap.newKeySet());
     }
@@ -436,13 +440,14 @@ public class WaitingQueueService {
     //         eventRepository.updateEvent(event);
     //     }
     // }
-
     /**
-     * Checks whether a queue-granted ticket-selection access window has expired.
+     * Checks whether a queue-granted ticket-selection access window has
+     * expired.
      *
      * A missing deadline means that the user did not receive a limited access
      * window from the waiting queue. It must not be treated as an expired queue
-     * access window, because directly approved users do not have such a deadline.
+     * access window, because directly approved users do not have such a
+     * deadline.
      *
      * @param eventId event identifier
      * @param token active guest/member session token
@@ -492,6 +497,7 @@ public class WaitingQueueService {
             return true;
         }
     }
+
     private void refreshSelectionAccess(long eventId, String token) {
         selectionAccessDeadlines
                 .computeIfAbsent(eventId, k -> new ConcurrentHashMap<>())
@@ -512,7 +518,6 @@ public class WaitingQueueService {
         deadlines.remove(token);
     }
 
-
     /**
      * Grants a user active access to the ticket-selection screen.
      *
@@ -522,9 +527,11 @@ public class WaitingQueueService {
      * deadline. Directly approved users should not receive this deadline.
      *
      * @param eventId event identifier
-     * @param event event aggregate whose active selection counter should be updated
+     * @param event event aggregate whose active selection counter should be
+     * updated
      * @param token guest/member session token
-     * @param createSelectionAccessDeadline whether to create a queue access deadline
+     * @param createSelectionAccessDeadline whether to create a queue access
+     * deadline
      */
     private void approveSession(
             long eventId,
@@ -550,6 +557,7 @@ public class WaitingQueueService {
             activeReservationSessions.remove(eventId);
         }
     }
+
     private boolean isQueued(long eventId, String token) {
         return token != null
                 && !token.isBlank()
