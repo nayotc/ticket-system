@@ -309,10 +309,10 @@ public class EventMap {
     }
 
     public void updateActiveAreas(List<Area> newAreas,  Map<Long, Area> updatedAreas) {
-        if (newAreas == null && updatedAreas == null) {
-            throw new IllegalArgumentException("Both new areas and updated areas cannot be null");
+        if (newAreas == null || updatedAreas == null) {
+            throw new IllegalArgumentException("New areas or updated areas cannot be null");
         }
-        if (newAreas != null) {
+        if (!newAreas.isEmpty()) {
             for (Area newArea : newAreas) {
                 if (newArea == null) {
                     throw new IllegalArgumentException("New areas cannot contain null");
@@ -326,7 +326,7 @@ public class EventMap {
         candidateElements.addAll(newAreas);
         validateElementsInsideMapBounds(candidateElements);
         validateElementsDoNotOverlap(candidateElements);
-        if (updatedAreas != null) {
+        if (!updatedAreas.isEmpty()) {
             for (Map.Entry<Long, Area> entry : updatedAreas.entrySet()) {
                 Long areaId = entry.getKey();
                 Area requestedArea = entry.getValue();
@@ -463,7 +463,7 @@ public class EventMap {
         int width = elementSize.getFirst();
         int height = elementSize.getSecond();
 
-        if (x < 0 || y < 0) {
+        if (x < 1 || y < 1) {
             throw new IllegalArgumentException("Element location must be positive. " + elementName);
         }
 
