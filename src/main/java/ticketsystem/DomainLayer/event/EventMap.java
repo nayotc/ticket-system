@@ -308,7 +308,7 @@ public class EventMap {
                 ));
     }
 
-    public void updateActiveAreas(List<Area> newAreas,  Map<Long, Area> updatedAreas) {
+    public void updateActiveAreas(List<Area> newAreas, Map<Long, Area> updatedAreas) {
         if (newAreas == null) {
             throw new IllegalArgumentException("New areas list cannot be null");
         }
@@ -316,40 +316,110 @@ public class EventMap {
         if (updatedAreas == null) {
             throw new IllegalArgumentException("Updated areas list cannot be null");
         }
-        if (!newAreas.isEmpty()) {
-            for (Area newArea : newAreas) {
-                if (newArea == null) {
-                    throw new IllegalArgumentException("New areas cannot contain null");
-                }
-                if (newArea.getId() != null) {
-                    throw new IllegalArgumentException("A new area must not already have an ID");
-                }
+
+        for (Area newArea : newAreas) {
+            if (newArea == null) {
+                throw new IllegalArgumentException("New areas cannot contain null");
+            }
+
+            if (newArea.getId() != null) {
+                throw new IllegalArgumentException("A new area must not already have an ID");
             }
         }
+
+        /*
+         * This is only a temporary list for bounds and overlap validation.
+         * It does not modify the real event map.
+         */
         List<Element> candidateElements = new ArrayList<>(elements);
+
         candidateElements.addAll(newAreas);
+
+        for (Map.Entry<Long, Area> entry : updatedAreas.entrySet()) {
+
+            Long areaId = entry.getKey();
+            Area requestedArea = entry.getValue();
+            if (areaId == null || requestedArea == null) {
+                throw new IllegalArgumentException("Updated area ID and data cannot be null");
+            }
+            Area existingArea = findArea(areaId);
+            validateActiveAreaUpdate(existingArea, requestedArea);
+
+            /*
+             * Replace the existing area only in the validation list.
+             * requestedArea already contains the newly calculated size.
+             */
+            int existingIndex = candidateElements.indexOf(existingArea);
+            candidateElements.set(existingIndex, requestedArea);
+        }
+
+        System.err.println();
+        System.err.println("[ACTIVE MAP UPDATE DEBUG]");
+        System.err.println(
+                "Map size convention: first=height, second=width"
+        );
+        System.err.println(
+                "Map height=" + size.getFirst()
+                        + ", map width=" + size.getSecond()
+        );
+        System.err.println(
+                "Existing and candidate elements count="
+                        + candidateElements.size()
+        );
+
+        for (int i = 0; i < candidateElements.size(); i++) {
+            Element candidate = candidateElements.get(i);
+
+            System.err.printf(
+                    "candidate[%d]: class=%s, id=%s, name=%s, "
+                            + "location=(%s,%s), size=(%s,%s)%n",
+                    i,
+                    candidate.getClass().getSimpleName(),
+                    candidate.getId(),
+                    candidate.getName(),
+                    candidate.getLocation() == null
+                            ? null
+                            : candidate.getLocation().getFirst(),
+                    candidate.getLocation() == null
+                            ? null
+                            : candidate.getLocation().getSecond(),
+                    candidate.getSize() == null
+                            ? null
+                            : candidate.getSize().getFirst(),
+                    candidate.getSize() == null
+                            ? null
+                            : candidate.getSize().getSecond()
+            );
+        }
+
+        /*
+         * Validate new areas and enlarged seating areas together.
+         */
         validateElementsInsideMapBounds(candidateElements);
         validateElementsDoNotOverlap(candidateElements);
-        if (!updatedAreas.isEmpty()) {
-            for (Map.Entry<Long, Area> entry : updatedAreas.entrySet()) {
-                Long areaId = entry.getKey();
-                Area requestedArea = entry.getValue();
-                Area existingArea = findArea(areaId);
-                validateActiveAreaUpdate(existingArea, requestedArea);
-                if (existingArea instanceof StandingArea) {
-                    ((StandingArea) existingArea).increaseCapacityTo(requestedArea.getCapacity());
-                } else if (existingArea instanceof SeatingArea seatingArea) {
-                    SeatingArea updatedSeatingArea = (SeatingArea) requestedArea;
-                    seatingArea.expandTo(updatedSeatingArea.getRows(), updatedSeatingArea.getColumns());
-                } else {
-                    throw new IllegalArgumentException("Unknown area type");
-                }
+
+        /*
+         * Only after all validation succeeds, update the real areas.
+         */
+        for (Map.Entry<Long, Area> entry : updatedAreas.entrySet()) {
+            Area existingArea = findArea(entry.getKey());
+            Area requestedArea = entry.getValue();
+            if (existingArea instanceof StandingArea standingArea) {
+                standingArea.increaseCapacityTo(requestedArea.getCapacity());
+            } else if (existingArea instanceof SeatingArea seatingArea) {
+                SeatingArea updatedSeatingArea = (SeatingArea) requestedArea;
+                seatingArea.expandTo(updatedSeatingArea.getRows(), updatedSeatingArea.getColumns());
+            } else {
+                throw new IllegalArgumentException("Unknown area type");
             }
         }
         elements.addAll(newAreas);
     }
 
     private void validateActiveAreaUpdate(Area existingArea, Area updatedArea) {
+        if (!Objects.equals(existingArea.getLocation(), updatedArea.getLocation())) {
+            throw new IllegalArgumentException("Existing area location cannot be changed");
+        }
         if (existingArea instanceof StandingArea existingStanding && updatedArea instanceof StandingArea updatedStanding) {
             if (updatedStanding.getCapacity() < existingStanding.getCapacity()) {
                 throw new IllegalArgumentException("Standing area capacity cannot be reduced");
@@ -467,7 +537,7 @@ public class EventMap {
         int width = elementSize.getFirst();
         int height = elementSize.getSecond();
 
-        if (x < 0 || y < 0) {
+        if (x < 0 || y < 0){
             throw new IllegalArgumentException("Element location cannot be negative: " + elementName);
         }
 
@@ -475,13 +545,11 @@ public class EventMap {
             throw new IllegalArgumentException("Element size must be positive: " + elementName);
         }
 
-        long rightBoundary = (long) x + width - 1;
+        long rightBoundary = (long) x + width - 1 ;
         long bottomBoundary = (long) y + height - 1;
 
-        if (rightBoundary >= mapWidth || bottomBoundary >= mapHeight) {
-            throw new IllegalArgumentException(
-                    "Element is outside map bounds: " + elementName
-            );
+        if (rightBoundary > mapWidth || bottomBoundary > mapHeight) {
+            throw new IllegalArgumentException("Element is outside map bounds: " + elementName);
         }
     }
 

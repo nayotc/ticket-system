@@ -1829,7 +1829,7 @@ public class EventServiceAcceptanceTest {
                 new PairDTO<>(20, 20),
                 List.of(createNewStandingArea(
                         "Standing Area",
-                        18,
+                        19,
                         0,
                         3,
                         5,
@@ -1851,7 +1851,7 @@ public class EventServiceAcceptanceTest {
                 List.of(createNewStandingArea(
                         "Standing Area",
                         0,
-                        18,
+                        19,
                         5,
                         3,
                         100
@@ -2156,8 +2156,8 @@ public class EventServiceAcceptanceTest {
 
         StandingAreaDTO overlappingArea = createNewStandingArea(
                 "Overlapping Area",
-                2,
-                2,
+                1,
+                1,
                 4,
                 4,
                 50

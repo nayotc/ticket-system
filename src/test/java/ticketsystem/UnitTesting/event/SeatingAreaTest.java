@@ -22,7 +22,7 @@ class SeatingAreaTest {
     }
 
     private SeatingArea seatingArea(int rows, int columns) {
-        return new SeatingArea( "Main Seating", pair(0, 0), pair(10, 10), rows, columns,DEFAULT_PRICE);
+        return new SeatingArea( "Main Seating", pair(0, 0), rows, columns,DEFAULT_PRICE);
     }
 
     @Test
@@ -138,7 +138,6 @@ class SeatingAreaTest {
                 () -> new SeatingArea(
                         "Main Seating",
                         pair(0, 0),
-                        pair(10, 10),
                         2,
                         3,
                         new BigDecimal("-1.00")
@@ -153,7 +152,6 @@ class SeatingAreaTest {
                 () -> new SeatingArea(
                         "Main Seating",
                         pair(0, 0),
-                        pair(10, 10),
                         2,
                         3,
                         null
@@ -166,15 +164,110 @@ class SeatingAreaTest {
         SeatingArea area = new SeatingArea(
                 "Free Seating",
                 pair(0, 0),
-                pair(10, 10),
                 2,
                 3,
                 BigDecimal.ZERO
         );
 
-        assertEquals(
-                0,
-                BigDecimal.ZERO.compareTo(area.getPrice())
+        assertEquals(0, BigDecimal.ZERO.compareTo(area.getPrice()));
+    }
+
+    @Test
+    void GivenEvenRowsAndColumns_WhenCreateArea_ThenSizeUsesHalfSeatScaleAndHeader() {
+        SeatingArea area =
+                new SeatingArea(
+                        "Area A",
+                        new Pair<>(1, 1),
+                        10,
+                        20,
+                        BigDecimal.TEN
+                );
+
+        assertEquals(new Pair<>(10, 6), area.getSize());
+        assertEquals(200, area.getSeats().size());
+    }
+
+    @Test
+    void GivenOddRowsAndColumns_WhenCreateArea_ThenSizeRoundsUp() {
+        SeatingArea area =
+                new SeatingArea(
+                        "Area A",
+                        new Pair<>(1, 1),
+                        5,
+                        7,
+                        BigDecimal.TEN
+                );
+
+        assertEquals(new Pair<>(4, 4), area.getSize());
+        assertEquals(35, area.getSeats().size());
+    }
+
+    @Test
+    void GivenSmallArea_WhenCreateArea_ThenHeaderMinimumWidthIsUsed() {
+        SeatingArea area =
+                new SeatingArea(
+                        "Area A",
+                        new Pair<>(1, 1),
+                        1,
+                        1,
+                        BigDecimal.TEN
+                );
+
+        assertEquals(new Pair<>(2, 2), area.getSize());
+    }
+
+    @Test
+    void GivenLargerDimensions_WhenExpandArea_ThenSizeIsRecalculated() {
+        SeatingArea area =
+                new SeatingArea(
+                        "Area A",
+                        new Pair<>(1, 1),
+                        4,
+                        8,
+                        BigDecimal.TEN
+                );
+
+        int addedSeats =
+                area.expandTo(10, 20);
+
+        assertEquals(168, addedSeats);
+        assertEquals(10, area.getRows());
+        assertEquals(20, area.getColumns());
+
+        assertEquals(new Pair<>(10, 6), area.getSize());
+        assertEquals(200, area.getSeats().size());
+    }
+
+    @Test
+    void GivenManualSizeChange_WhenSetSize_ThenFail() {
+        SeatingArea area =
+                new SeatingArea(
+                        "Area A",
+                        new Pair<>(1, 1),
+                        10,
+                        20,
+                        BigDecimal.TEN
+                );
+
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> area.setSize(
+                        new Pair<>(50, 50)
+                )
         );
+    }
+
+    @Test
+    void GivenElevenRowsAndSixteenColumns_WhenCalculateSize_ThenAreaMatchesSeatGrid() {
+        SeatingArea area =
+                new SeatingArea(
+                        "B",
+                        new Pair<>(1, 1),
+                        11,
+                        16,
+                        BigDecimal.valueOf(20)
+                );
+
+        assertEquals(new Pair<>(8, 7), area.getSize());
     }
 }
