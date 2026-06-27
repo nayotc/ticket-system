@@ -279,7 +279,7 @@ class EventMapTest {
     void GivenElementOutsideMap_WhenValidateForActivation_ThenFail() {
         EventMap map = new EventMap(new Pair<>(10, 10));
 
-        map.addElement(new StandingArea("Standing", new Pair<>(8, 0), new Pair<>(3, 4), 100, BigDecimal.TEN));
+        map.addElement(new StandingArea("Standing", new Pair<>(9, 0), new Pair<>(3, 4), 100, BigDecimal.TEN));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, map::validateForActivation);
 

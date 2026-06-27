@@ -1006,8 +1006,8 @@ public DiscountPolicyDTO getEventDiscountPolicy(String token, Long eventId) thro
         }
 
         return "mapSize=" + pairToText(size)
-                + ", width=" + pairFirst(size)
-                + ", height=" + pairSecond(size)
+                + ", height=" + pairFirst(size)
+                + ", width=" + pairSecond(size)
                 + ", elementCount=" + elementCount
                 + ", seatingAreas=" + seatingAreas
                 + ", standingAreas=" + standingAreas

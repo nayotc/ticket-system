@@ -524,8 +524,15 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
             return;
         }
 
-        int width = Math.min(Math.max(columns / 2, 6), mapWidth());
-        int height = Math.min(Math.max(rows / 2, 4), mapHeight());
+        PairDTO<Integer, Integer> size = seatingAreaSize(rows, columns);
+
+        int width = size.first();
+        int height = size.second();
+
+        if (width > mapWidth() || height > mapHeight()) {
+            showWarning("אזור הישיבה גדול ממידות המפה. " + "הקטן את מספר השורות או המושבים בשורה.");
+            return;
+        }
 
         PairDTO<Integer, Integer> location = nextAvailableLocation(
                 Math.max(1, mapWidth() / 3),
@@ -543,7 +550,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                 activeMapEdit ? null : nextElementId++,
                 name,
                 location,
-                new PairDTO<>(width, height),
+                size,
                 "SeatingArea",
                 false,
                 price,
@@ -1017,7 +1024,11 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
             );
         }
 
-        propertiesPanel.add(positionFields, sizeFields);
+        propertiesPanel.add(positionFields);
+
+        if (!(selected instanceof SeatingAreaDTO)) {
+            propertiesPanel.add(sizeFields);
+        }
 
         if (locked) {
             Paragraph restrictionMessage = new Paragraph(selected instanceof IAreaDTO ? "באירוע פעיל ניתן רק להגדיל שורות, עמודות או קיבולת." : "לא ניתן לשנות אלמנט קיים באירוע פעיל.");
@@ -1028,29 +1039,20 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         propertiesPanel.add(delete);
     }
 
-    private void configurePropertyAccess(
-            IMapElementDTO selected
-    ) {
+    private void configurePropertyAccess(IMapElementDTO selected) {
         boolean locked = isLockedInActiveMode(selected);
+        boolean seatingArea = selected instanceof SeatingAreaDTO;
 
         elementNameField.setReadOnly(locked);
         elementXField.setReadOnly(locked);
         elementYField.setReadOnly(locked);
-        elementWidthField.setReadOnly(locked);
-        elementHeightField.setReadOnly(locked);
+        elementWidthField.setReadOnly(locked || seatingArea);
+        elementHeightField.setReadOnly(locked || seatingArea);
         selectedAreaPriceField.setReadOnly(locked);
 
-        selectedRowsField.setReadOnly(
-                !(selected instanceof SeatingAreaDTO)
-        );
-
-        selectedColumnsField.setReadOnly(
-                !(selected instanceof SeatingAreaDTO)
-        );
-
-        selectedStandingCapacityField.setReadOnly(
-                !(selected instanceof StandingAreaDTO)
-        );
+        selectedRowsField.setReadOnly(!(selected instanceof SeatingAreaDTO));
+        selectedColumnsField.setReadOnly(!(selected instanceof SeatingAreaDTO));
+        selectedStandingCapacityField.setReadOnly(!(selected instanceof StandingAreaDTO));
     }
 
     private void updatePropertiesFields(IMapElementDTO dto) {
@@ -1121,14 +1123,21 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                 return;
             }
 
-            List<SeatDTO> seats = area.id() == null ? createAvailableSeats(rows, columns) : area.seats();
+            PairDTO<Integer, Integer> newSize = seatingAreaSize(rows, columns);
+            if (!canResizeSeatingArea(selectedIndex, area.location(), newSize)) {
+                showWarning("הגדלת אזור הישיבה גורמת לחפיפה " + "או לחריגה מגבולות המפה.");
+                updatePropertiesFields(area);
+                return;
+            }
+
+            List<SeatDTO> seats = resizeSeatPreview(area.seats(), rows, columns);
 
             elements.set(selectedIndex,
                     new SeatingAreaDTO(
                             area.id(),
                             area.name(),
                             area.location(),
-                            area.size(),
+                            newSize,
                             area.type(),
                             area.soldOut(),
                             area.price(),
@@ -1164,8 +1173,60 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                     )
             );
         }
-
+        renderCanvas();
         renderStats();
+    }
+
+    private boolean canResizeSeatingArea(int elementIndex, PairDTO<Integer, Integer> location, PairDTO<Integer, Integer> size) {
+        if (location == null || size == null) {
+            return false;
+        }
+
+        int x = location.first();
+        int y = location.second();
+        int width = size.first();
+        int height = size.second();
+
+        if (x < 1 || y < 1 || width <= 0 || height <= 0) {
+            return false;
+        }
+
+        long rightBoundary = (long) x + width - 1;
+
+        long bottomBoundary = (long) y + height - 1;
+
+        if (rightBoundary > mapWidth() || bottomBoundary > mapHeight()) {
+            return false;
+        }
+
+        return isLocationAvailable(elementIndex, x, y, width, height);
+    }
+
+    private List<SeatDTO> resizeSeatPreview(List<SeatDTO> existingSeats, int rows, int columns) {
+        Map<SeatPositionDTO, SeatDTO> existingByPosition = new HashMap<>();
+
+        if (existingSeats != null) {
+            for (SeatDTO seat : existingSeats) {
+                if (seat != null && seat.position() != null) {
+                    existingByPosition.put(seat.position(), seat);
+                }
+            }
+        }
+
+        List<SeatDTO> resizedSeats = new ArrayList<>();
+
+        for (int row = 1; row <= rows; row++) {
+            for (int number = 1; number <= columns; number++) {
+                SeatPositionDTO position = new SeatPositionDTO(row, number);
+                SeatDTO existingSeat = existingByPosition.get(position);
+                if (existingSeat != null) {
+                    resizedSeats.add(existingSeat);
+                } else {
+                    resizedSeats.add(new SeatDTO(position, "AVAILABLE"));
+                }
+            }
+        }
+        return resizedSeats;
     }
 
     private void updateSelectedElementFromProperties() {
@@ -1191,8 +1252,10 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
             }
         }
 
-        int width = positive(elementWidthField.getValue());
-        int height = positive(elementHeightField.getValue());
+        PairDTO<Integer, Integer> currentSize = sizeOf(current);
+
+        int width = current instanceof SeatingAreaDTO ? currentSize.first() : positive(elementWidthField.getValue());
+        int height = current instanceof SeatingAreaDTO ? currentSize.second() : positive(elementHeightField.getValue());
         int x = clamp(positive(elementXField.getValue()), 1, maxXFor(width));
         int y = clamp(positive(elementYField.getValue()), 1, maxYFor(height));
 
@@ -1220,14 +1283,13 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
     private IMapElementDTO updateGeometry(IMapElementDTO dto, String name, int x, int y, int width, int height) {
         PairDTO<Integer, Integer> location = new PairDTO<>(x, y);
-        PairDTO<Integer, Integer> size = new PairDTO<>(width, height);
 
         if (dto instanceof SeatingAreaDTO area) {
             return new SeatingAreaDTO(
                     area.id(),
                     name,
                     location,
-                    size,
+                    seatingAreaSize(area.rows(), area.columns()),
                     area.type(),
                     area.soldOut(),
                     area.price(),
@@ -1242,7 +1304,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                     area.id(),
                     name,
                     location,
-                    size,
+                    new PairDTO<>(width, height),
                     area.type(),
                     area.soldOut(),
                     area.price(),
@@ -1253,30 +1315,18 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
         }
 
         ElementDTO element = (ElementDTO) dto;
-        return new ElementDTO(element.id(), name, location, size, element.type());
+        return new ElementDTO(element.id(), name, location, new PairDTO<>(width, height), element.type());
     }
 
-    private IMapElementDTO updateGeometry(
-            IMapElementDTO dto,
-            String name,
-            int x,
-            int y,
-            int width,
-            int height,
-            BigDecimal price
-    ) {
-        PairDTO<Integer, Integer> location =
-                new PairDTO<>(x, y);
-
-        PairDTO<Integer, Integer> size =
-                new PairDTO<>(width, height);
+    private IMapElementDTO updateGeometry(IMapElementDTO dto, String name, int x, int y, int width, int height, BigDecimal price) {
+        PairDTO<Integer, Integer> location = new PairDTO<>(x, y);
 
         if (dto instanceof SeatingAreaDTO area) {
             return new SeatingAreaDTO(
                     area.id(),
                     name,
                     location,
-                    size,
+                    seatingAreaSize(area.rows(), area.columns()),
                     area.type(),
                     area.soldOut(),
                     price,
@@ -1291,7 +1341,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                     area.id(),
                     name,
                     location,
-                    size,
+                    new PairDTO<>(width, height),
                     area.type(),
                     area.soldOut(),
                     price,
@@ -1303,13 +1353,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
         ElementDTO element = (ElementDTO) dto;
 
-        return new ElementDTO(
-                element.id(),
-                name,
-                location,
-                size,
-                element.type()
-        );
+        return new ElementDTO(element.id(), name, location, new PairDTO<>(width, height), element.type());
     }
 
     private BigDecimal areaPriceOf(IMapElementDTO dto) {
@@ -1724,6 +1768,10 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
     private int mapWidth() {
         return positive(mapWidthField.getValue());
+    }
+
+    private PairDTO<Integer, Integer> seatingAreaSize(int rows, int columns) {
+        return SeatingAreaDTO.calculateSize(rows, columns);
     }
 
     private int positive(Integer value) {

@@ -119,7 +119,6 @@ public class EventMapper {
             return new SeatingArea(
                     seatingArea.name(),
                     toDomain(seatingArea.location()),
-                    toDomain(seatingArea.size()),
                     seatingArea.rows(),
                     seatingArea.columns(),
                     seatingArea.price()
@@ -155,7 +154,6 @@ public class EventMapper {
         SeatingArea seatingArea = new SeatingArea(
                 dto.name(),
                 toDomain(dto.location()),
-                toDomain(dto.size()),
                 dto.rows(),
                 dto.columns(),
                 dto.price()
