@@ -47,7 +47,7 @@ public class Suspension {
 
         if (endDate != null && endDate.isBefore(startDate)) {
             throw new IllegalArgumentException(
-                    "End date cannot be before start date");
+                    "you cannot enter an end time that is before the current time");
         }
 
         this.suspendedByAdminId = suspendedByAdminId;

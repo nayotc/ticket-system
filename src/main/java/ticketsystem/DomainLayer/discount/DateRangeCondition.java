@@ -30,7 +30,7 @@ public class DateRangeCondition extends DiscountCondition {
 
         if (endTime.isBefore(startTime)) {
             throw new IllegalArgumentException(
-                    "End time cannot be before start time");
+                    "you cannot enter an end time that is before the current time");
         }
 
         this.startTime = startTime;

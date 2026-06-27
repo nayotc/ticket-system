@@ -42,6 +42,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.DTO.OrderDTO;
 import ticketsystem.DTO.PurchaseDTO;
+import ticketsystem.DTO.SuspentionUserDTO;
 // Project - Presentation Layer
 import ticketsystem.PresentationLayer.Components.AppCard;
 import ticketsystem.PresentationLayer.Components.MetricCard;
@@ -72,6 +73,7 @@ public class SystemAdminDashboard extends Div {
     private final TextField userEmailSearch = new TextField();
     private final TextField companyHistorySearch = new TextField();
     private final TextField userHistorySearch = new TextField();
+        private Grid<SuspentionUserDTO> suspendedUsersGrid;
 
     private Long currentLoggedInAdminId = null;
     private final Div metricsContainer = new Div();
@@ -86,7 +88,7 @@ public class SystemAdminDashboard extends Div {
 
         getElement().setAttribute("dir", "rtl");
         addClassName("system-admin-page");
-
+        this.suspendedUsersGrid = createSuspendedUsersGrid();
         loadInitialData();
 
         metricsContainer.setId("admin-overview");
@@ -164,7 +166,8 @@ public class SystemAdminDashboard extends Div {
                 createUsersPanel(),
                 createCompaniesPanel(),
                 createCompanyHistoryPanel(),
-                createUserHistoryPanel()
+                createUserHistoryPanel(),
+                createSuspendedUsersPanel()
         );
 
         return grid;
@@ -194,6 +197,22 @@ public class SystemAdminDashboard extends Div {
         return card;
     }
 
+private AppCard createSuspendedUsersPanel() {
+        AppCard card = new AppCard();
+        card.setId("admin-suspended-users");
+        card.addClassName("system-admin-panel");
+        card.addClassName("system-admin-users-panel");
+
+        Div header = createPanelHeader(
+                VaadinIcon.BAN, 
+                "משתמשים מושעים",
+                "רשימת המשתמשים שהושעו מהמערכת ואפשרות החזרתם לפעילות."
+        );
+
+        card.add(header, suspendedUsersGrid);
+        return card;
+    } 
+    
     private AppCard createCompaniesPanel() {
         AppCard card = new AppCard();
         card.setId("admin-companies");
@@ -773,6 +792,61 @@ private void openSuspendDialog(AdminUserRow user) {
         dialog.open();
     }
 
+
+    private void loadSuspendedUsersData() {
+        try {
+            String token = UiSession.getMemberToken();
+            List<SuspentionUserDTO> suspendedUsers = presenter.viewSuspendedMembers(token);
+            suspendedUsersGrid.setItems(suspendedUsers);
+        } catch (Exception e) {
+            System.err.println("Error loading suspended users: " + e.getMessage());
+            showError("שגיאה בטעינת רשימת המושעים");
+        }
+    }
+
+
+    private Grid<SuspentionUserDTO> createSuspendedUsersGrid() {
+        Grid<SuspentionUserDTO> grid = new Grid<>(SuspentionUserDTO.class, false);
+        grid.addClassName("suspended-users-grid");
+
+
+        grid.addColumn(SuspentionUserDTO::getMemberId).setHeader("מזהה משתמש").setAutoWidth(true);
+        grid.addColumn(SuspentionUserDTO::getReason).setHeader("סיבת השעיה").setAutoWidth(true);
+        
+   
+        grid.addColumn(dto -> {
+            if (dto.getStartDate() == null) return "לא זמין";
+            return dto.getStartDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        }).setHeader("תחילת השעיה").setAutoWidth(true);
+
+ 
+        grid.addColumn(dto -> {
+            if (dto.getEndDate() == null) return "לצמיתות";
+            return dto.getEndDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        }).setHeader("סיום השעיה").setAutoWidth(true);
+
+ 
+        grid.addComponentColumn(dto -> {
+            Button revokeBtn = new Button("החזר לפעילות", VaadinIcon.PLAY.create());
+            revokeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SUCCESS);
+            revokeBtn.addClickListener(e -> confirm(
+                    "החזרת משתמש לפעילות",
+                    "האם לבטל את השעיית המשתמש (" + dto.getMemberId() + ")?",
+                    () -> {
+                        try {
+                            String token = UiSession.getMemberToken();
+                            presenter.revokeSuspension(token, dto.getMemberId()); 
+                            loadSuspendedUsersData(); 
+                        } catch (Exception ex) {
+                            showError(ex.getMessage());
+                        }
+                    }
+            ));
+            return revokeBtn;
+        }).setHeader("פעולות");
+
+        return grid;
+    }
     private void loadInitialData() {
         if (presenter == null) {
             loadDemoData();
@@ -790,7 +864,7 @@ private void openSuspendDialog(AdminUserRow user) {
             
             allUsers.clear();
             allUsers.addAll(presenter.loadActiveUsers(token));
-
+            loadSuspendedUsersData();
             allCompanies.clear();
             allCompanies.addAll(toCompanyRows(presenter.loadActiveCompanies(token)));
 
@@ -801,25 +875,28 @@ private void openSuspendDialog(AdminUserRow user) {
             userHistoryRows.addAll(toUserHistoryRows(presenter.loadPurchaseHistoryByBuyer(token)));
             
         } catch (Exception exception) {
+            System.err.println("Error loading admin data: " + exception.getMessage());
+            exception.printStackTrace();
 
             allUsers.clear();
             allCompanies.clear();
             companyHistoryRows.clear();
             userHistoryRows.clear();
 
-            showError("גישה נדחתה: אין לך הרשאות של מנהל מערכת. הנך מועבר/ת לעמוד הראשי.");
+            showError("שגיאה בטעינת נתוני מערכת, או שאין לך הרשאות גישה.");
+
 
             if (UI.getCurrent() != null) {
-                UI.getCurrent().getPage().executeJs("setTimeout(() => { window.location.href = '/' }, 2500);");
+                UI.getCurrent().navigate(UiRoutes.HOME); 
             }
         }
     }
 
     private void loadDemoData() {
         allUsers.clear();
-        allUsers.add(new AdminUserRow(101L, "noam@test.com", "נועם כהן", "פעיל", true, null, null, null));
-        allUsers.add(new AdminUserRow(102L, "maya@test.com", "מאיה לוי", "פעיל", true, null, null, null));
-        allUsers.add(new AdminUserRow(103L, "admin-watch@test.com", "חשבון בבדיקה", "פעיל", true, null, null, null));
+        allUsers.add(new AdminUserRow(101L, "noam@test.com", "נועם כהן", "פעיל", true));
+        allUsers.add(new AdminUserRow(102L, "maya@test.com", "מאיה לוי", "פעיל", true));
+        allUsers.add(new AdminUserRow(103L, "admin-watch@test.com", "חשבון בבדיקה", "פעיל", true));
 
         allCompanies.clear();
         allCompanies.add(new CompanyTableRow(11L, "LiveNation Israel", 1L, "פעילה"));
@@ -1036,10 +1113,7 @@ private void openSuspendDialog(AdminUserRow user) {
             String email,
             String displayName,
             String status,
-            boolean isActive,
-            LocalDateTime suspensionStartDate,
-            LocalDateTime suspensionEndDate,
-            String suspensionReason
+            boolean isActive
     ) {
     }
 
