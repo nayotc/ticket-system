@@ -39,7 +39,7 @@ public class ExternalSystemsIntegrationTest {
                 paymentService.pay(BigDecimal.valueOf(1000), details);
 
         assertNotNull(transactionId);
-        assertTrue(transactionId > 0);
+        assertTrue(transactionId >= 10_000 && transactionId <= 100_000);
     }
 
     @Test
@@ -50,7 +50,7 @@ public class ExternalSystemsIntegrationTest {
                 paymentService.pay(BigDecimal.valueOf(1000), details);
 
         assertNotNull(transactionId);
-        assertTrue(transactionId > 0);
+        assertTrue(transactionId >= 10_000 && transactionId <= 100_000);
 
         boolean refunded = paymentService.refund(transactionId);
 
