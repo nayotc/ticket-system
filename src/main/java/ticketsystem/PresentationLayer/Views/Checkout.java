@@ -949,9 +949,9 @@ public class Checkout extends VerticalLayout implements BeforeEnterObserver {
 
         String digits = onlyDigits(cardNumber.getValue());
 
-        if (digits.length() < 12) {
+        if (digits.length() != 16) {
             cardNumber.setInvalid(true);
-            cardNumber.setErrorMessage("מספר הכרטיס קצר מדי");
+            cardNumber.setErrorMessage("מספר הכרטיס חייב להכיל 16 ספרות");
             valid = false;
         }
 
