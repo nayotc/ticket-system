@@ -1,17 +1,12 @@
 package ticketsystem.ApplicationLayer;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
-import ticketsystem.DTO.Event.ElementDTO;
-import ticketsystem.DTO.Event.EventDTO;
-import ticketsystem.DTO.Event.EventMapDTO;
-import ticketsystem.DTO.Event.IMapElementDTO;
-import ticketsystem.DTO.Event.PairDTO;
-import ticketsystem.DTO.Event.SeatDTO;
-import ticketsystem.DTO.Event.SeatPositionDTO;
-import ticketsystem.DTO.Event.SeatingAreaDTO;
-import ticketsystem.DTO.Event.StandingAreaDTO;
+import ticketsystem.DTO.Event.*;
 import ticketsystem.DomainLayer.event.*;
 
 public class EventMapper {
@@ -52,13 +47,16 @@ public class EventMapper {
             return null;
         }
 
-        EventMap eventMap = new EventMap(toDomain(dto.size()));
+        List<Element> elements = null;
 
-        for (IMapElementDTO mapElement : dto.getElementDTOs()) {
-            eventMap.addElement(toDomain(mapElement));
+        if (dto.getElementDTOs() != null) {
+            elements = dto.getElementDTOs()
+                    .stream()
+                    .map(EventMapper::toDomain)
+                    .collect(Collectors.toCollection(ArrayList::new));
         }
 
-        return eventMap;
+        return new EventMap(toDomain(dto.size()), elements);
     }
 
     public static Element toDomain(IMapElementDTO  dto) {
@@ -92,6 +90,54 @@ public class EventMapper {
         );
     }
 
+    public static Area toNewArea(IAreaDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Area data cannot be null");
+        }
+
+        if (dto.id() != null) {
+            throw new IllegalArgumentException("A new area must not have an ID");
+        }
+
+        return toAreaDefinition(dto);
+    }
+
+    public static Area toAreaUpdate(IAreaDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Area data cannot be null");
+        }
+
+        if (dto.id() == null) {
+            throw new IllegalArgumentException("An updated area must have an ID");
+        }
+
+        return toAreaDefinition(dto);
+    }
+
+    private static Area toAreaDefinition(IAreaDTO dto) {
+        if (dto instanceof SeatingAreaDTO seatingArea) {
+            return new SeatingArea(
+                    seatingArea.name(),
+                    toDomain(seatingArea.location()),
+                    seatingArea.rows(),
+                    seatingArea.columns(),
+                    seatingArea.price()
+            );
+        }
+
+        if (dto instanceof StandingAreaDTO standingArea) {
+            return new StandingArea(
+                    standingArea.name(),
+                    toDomain(standingArea.location()),
+                    toDomain(standingArea.size()),
+                    standingArea.capacity(),
+                    standingArea.price()
+            );
+        }
+
+        throw new IllegalArgumentException("Unsupported area type: " + dto.getClass().getSimpleName());
+    }
+
     public static Pair<Integer, Integer> toDomain(PairDTO<Integer, Integer> dto) {
         if (dto == null) {
             return null;
@@ -108,7 +154,6 @@ public class EventMapper {
         SeatingArea seatingArea = new SeatingArea(
                 dto.name(),
                 toDomain(dto.location()),
-                toDomain(dto.size()),
                 dto.rows(),
                 dto.columns(),
                 dto.price()

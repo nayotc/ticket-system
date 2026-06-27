@@ -26,6 +26,7 @@ import ticketsystem.DTO.Event.SeatDTO;
 import ticketsystem.DTO.Event.SeatPositionDTO;
 import ticketsystem.DTO.Event.SeatingAreaDTO;
 import ticketsystem.DTO.Event.StandingAreaDTO;
+import ticketsystem.DomainLayer.event.SeatingArea;
 import ticketsystem.PresentationLayer.Components.Notifications;
 import ticketsystem.PresentationLayer.Components.ReservationTimer;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
@@ -40,6 +41,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.ClientCallable;
@@ -58,6 +60,11 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     private static final int MIN_ZOOM = 60;
     private static final int MAX_ZOOM = 160;
     private static final int ZOOM_STEP = 10;
+
+    private static final double SEAT_SIZE_CELL_RATIO = 0.40;
+    private static final double SEAT_GAP_CELL_RATIO = 0.08;
+    private static final int MIN_SEAT_SIZE = 8;
+    private static final int MIN_SEAT_GAP = 2;
 
     private final Map<SeatKey, SelectedSeat> selectedSeats = new LinkedHashMap<>();
     private final Map<Long, SelectedStandingArea> selectedStandingAreas = new LinkedHashMap<>();
@@ -433,7 +440,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         return summary;
     }
 
-   private void handleContinue() {
+    private void handleContinue() {
         if (eventId == null) {
             Notifications.error("לא ניתן לבצע הזמנה עבור אירוע לא תקין");
             return;
@@ -553,7 +560,14 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         Div surface = new Div();
         surface.addClassName("ticket-map-surface");
         surface.getElement().setAttribute("dir", "ltr");
+
+        surface.getStyle().set("position", "relative");
+        int seatSize = Math.max(MIN_SEAT_SIZE, (int) Math.round(cellSize * SEAT_SIZE_CELL_RATIO));
+        int seatGap = Math.max(MIN_SEAT_GAP, (int) Math.round(cellSize * SEAT_GAP_CELL_RATIO));
         surface.getStyle().set("--ticket-cell-size", cellSize + "px");
+        surface.getStyle().set("--ticket-seat-size", seatSize + "px");
+        surface.getStyle().set("--ticket-seat-gap", seatGap + "px");
+        surface.getStyle().set("--ticket-area-header-height", SeatingArea.HEADER_HEIGHT_UNITS * cellSize + "px");
         surface.getStyle().set("width", mapColumns() * cellSize + "px");
         surface.getStyle().set("height", mapRows() * cellSize + "px");
 
@@ -649,21 +663,56 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         areaCard.addClassName("map-area-card");
         areaCard.addClassName("map-seating-area");
 
+        areaCard.getStyle().set("display", "flex");
+        areaCard.getStyle().set("flex-direction", "column");
+        areaCard.getStyle().set("box-sizing", "border-box");
+        areaCard.getStyle().set("padding", "0");
+        areaCard.getStyle().set("gap", "0");
+        areaCard.getStyle().set("overflow", "hidden");
+
+        String areaName = safeText(area.name(), "אזור ישיבה");
+
         Div header = new Div();
         header.addClassName("map-area-header");
-        header.add(new Span(safeText(area.name(), "אזור ישיבה")), new Span(formatMoney(area.price())));
+        header.getStyle().set("height", "var(--ticket-area-header-height)");
+        header.getStyle().set("min-height", "var(--ticket-area-header-height)");
+        header.getStyle().set("flex", "0 0 var(--ticket-area-header-height)");
+        header.getStyle().set("box-sizing", "border-box");
+
+        Span name = new Span(areaName);
+        name.addClassName("map-area-name");
+
+        // Displays the complete name when hovering over the title.
+        name.getElement().setAttribute("title", areaName);
+
+        Span price = new Span(formatMoney(area.price()));
+        price.addClassName("map-area-price");
+
+        header.add(name, price);
 
         Div seatsGrid = new Div();
         seatsGrid.addClassName("seat-grid");
-        seatsGrid.getStyle().set("grid-template-columns", "repeat(" + Math.max(area.columns(), 1) + ", minmax(0, 1fr))");
-        seatsGrid.getStyle().set("grid-template-rows", "repeat(" + Math.max(area.rows(), 1) + ", minmax(0, 1fr))");
-        Map<SeatKey, SeatDTO> seatLookup = buildSeatLookup(area);
 
+        seatsGrid.getStyle().set("flex", "1 1 auto");
+        seatsGrid.getStyle().set("width", "100%");
+        seatsGrid.getStyle().set("box-sizing", "border-box");
+        seatsGrid.getStyle().set("padding", "0");
+        seatsGrid.getStyle().set("grid-template-columns", "repeat(" + Math.max(area.columns(), 1) + ", var(--ticket-seat-size))");
+        seatsGrid.getStyle().set("grid-template-rows", "repeat(" + Math.max(area.rows(), 1) + ", var(--ticket-seat-size))");
+        seatsGrid.getStyle().set("gap", "var(--ticket-seat-gap)");
+        seatsGrid.getStyle().set("justify-content", "center");
+        seatsGrid.getStyle().set("align-content", "center");
+        seatsGrid.getStyle().set("justify-items", "center");
+        seatsGrid.getStyle().set("align-items", "center");
+        seatsGrid.getStyle().set("min-width", "0");
+        seatsGrid.getStyle().set("min-height", "0");
+        seatsGrid.getStyle().set("overflow", "hidden");
+
+        Map<SeatKey, SeatDTO> seatLookup = buildSeatLookup(area);
         for (int row = 1; row <= area.rows(); row++) {
             for (int number = 1; number <= area.columns(); number++) {
                 SeatKey key = new SeatKey(area.id(), row, number);
                 SeatDTO seat = seatLookup.get(key);
-
                 if (seat == null) {
                     seat = soldSeat(row, number);
                 }
@@ -722,6 +771,15 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
 
         Div seatBox = new Div();
         seatBox.addClassName("map-seat");
+        seatBox.getStyle().set("width", "var(--ticket-seat-size)");
+        seatBox.getStyle().set("height", "var(--ticket-seat-size)");
+        seatBox.getStyle().set("min-width", "var(--ticket-seat-size)");
+        seatBox.getStyle().set("min-height", "var(--ticket-seat-size)");
+        seatBox.getStyle().set("max-width", "var(--ticket-seat-size)");
+        seatBox.getStyle().set("max-height", "var(--ticket-seat-size)");
+        seatBox.getStyle().set("box-sizing", "border-box");
+        seatBox.getStyle().set("padding", "0");
+        seatBox.getStyle().set("flex", "0 0 auto");
         seatBox.getElement().setAttribute("title", safeText(area.name(), "אזור ישיבה") + " שורה " + row + " מושב " + number);
 
         if (selected) {
@@ -797,16 +855,37 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
     }
 
     private void positionOnMap(Div component, PairDTO<Integer, Integer> location, PairDTO<Integer, Integer> size) {
+        validatePositivePair("location", location);
+        validatePositivePair("size", size);
+
         int x = clamp(location.first(), 1, mapColumns());
         int y = clamp(location.second(), 1, mapRows());
         int width = clamp(size.first(), 1, Math.max(1, mapColumns() - x + 1));
         int height = clamp(size.second(), 1, Math.max(1, mapRows() - y + 1));
 
         component.addClassName("ticket-map-element-positioned");
+
+        component.getStyle().set("position", "absolute");
         component.getStyle().set("left", (x - 1) * cellSize + "px");
         component.getStyle().set("top", (y - 1) * cellSize + "px");
         component.getStyle().set("width", width * cellSize + "px");
         component.getStyle().set("height", height * cellSize + "px");
+        component.getStyle().set("box-sizing", "border-box");
+    }
+
+    private void validatePositivePair(
+            String fieldName,
+            PairDTO<Integer, Integer> pair
+    ) {
+        if (pair == null
+                || pair.first() == null
+                || pair.second() == null
+                || pair.first() < 1
+                || pair.second() < 1) {
+            throw new IllegalStateException(
+                    "Invalid map " + fieldName + ": " + pair
+            );
+        }
     }
 
     private void toggleSeat(SeatingAreaDTO area, SeatDTO seat) {
