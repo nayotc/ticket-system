@@ -151,7 +151,7 @@ public class NotificationCenter {
         connection.unregister.run();
         connection.detachRegistration.remove();
     }
-    }
+    
 
     private void show(Notification notification) {
         String rawMessage = safeRawMessage(notification);
