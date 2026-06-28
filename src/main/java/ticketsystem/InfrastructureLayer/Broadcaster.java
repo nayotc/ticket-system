@@ -31,7 +31,21 @@ public class Broadcaster implements IBrodcaster {
     }
 
     public void addListener(String sessionId, Consumer<Notification> notifier) {
+        if (sessionId == null || sessionId.isBlank() || notifier == null) {
+            return;
+        }
+
         notifiers.computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>()).add(notifier);
+    }
+
+    public static boolean hasListeners(String targetId) {
+        if (targetId == null || targetId.isBlank()) {
+            return false;
+        }
+
+        List<Consumer<Notification>> listeners = notifiers.get(targetId);
+
+        return listeners != null && !listeners.isEmpty();
     }
 
     public static void removeListener(String sessionId, Consumer<Notification> notifier) {

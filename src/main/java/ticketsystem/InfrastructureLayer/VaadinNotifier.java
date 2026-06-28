@@ -29,6 +29,12 @@ public class VaadinNotifier implements INotifier {
         }
 
         String targetId = memberId.toString();
+        boolean hasListeners = Broadcaster.hasListeners(targetId);
+
+        if ("Your active order is about to expire. Please complete your purchase soon.".equals(message.trim())
+                && !hasListeners) {
+            return;
+        }
 
         Notification notification = new Notification(targetId, message, Type.INFO);
 
@@ -83,17 +89,31 @@ public class VaadinNotifier implements INotifier {
         }
 
         String targetId = memberId.toString();
-
-        Notification notification = new Notification(targetId,message, companyId, Type.ACTION);
+        Notification notification = new Notification(targetId, message, companyId, Type.ACTION);
 
         Notification savedNotification = notificationsRepository.save(notification);
 
         broadcastAfterCommit(targetId, savedNotification);
+        }
+
+    @Override
+    public void notifyMemberIfOnline(Long memberId, String message) {
+        if (memberId == null || message == null || message.isBlank()) {
+            return;
+        }
+
+        String targetId = memberId.toString();
+
+        if (!Broadcaster.hasListeners(targetId)) {
+            return;
+        }
+
+        Notification notification = new Notification(targetId, message, Type.INFO);
+        Broadcaster.broadcast(targetId, notification);
     }
 
     private void broadcastAfterCommit(String targetId, Notification notification) {
         boolean activeTransaction = TransactionSynchronizationManager.isActualTransactionActive();
-
         boolean synchronizationActive = TransactionSynchronizationManager.isSynchronizationActive();
 
         if (activeTransaction && synchronizationActive) {

@@ -65,6 +65,7 @@ public class ReservationService {
     private final Set<Long> soldOutNotificationSentEventIds = ConcurrentHashMap.newKeySet();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final long EXPIRATION_WARNING_BEFORE_MINUTES = 2;
+    private final Set<Long> expirationExpiredSentOrderIds = ConcurrentHashMap.newKeySet();
 
     public ReservationService(
             IOrderRepository orderRepository,
@@ -587,11 +588,10 @@ public class ReservationService {
     }
 
     private void expireCurrentOrder(String token, ActiveOrder order, Event event) {
-        notifyOrderOwner(
+        notifyOrderExpiredOnce(
                 order,
                 "Your active order has expired. Please select tickets again."
         );
-
         expirationWarningSentOrderIds.remove(order.getOrderId());
         //eventRepository.updateEvent(event);
         releaseTicketInEvent(order.getTickets());
@@ -877,7 +877,7 @@ public class ReservationService {
                 if (reservationDomeinService.timeExpire(event, order)) {
                     List<Ticket> tickets= reservationDomeinService.expire(event, order);
                     
-                    notifyOrderOwner(
+                    notifyOrderExpiredOnce(
                             order,
                             "Your active order has expired. The reserved tickets were released back to the inventory.");
                     
@@ -893,9 +893,9 @@ public class ReservationService {
 
                 if (reservationDomeinService.timeAboutToExpire(event, order) && expirationWarningSentOrderIds.add(order.getOrderId())) {
 
-                    notifyOrderOwner(
-                            order,
-                            "Your active order is about to expire. Please complete your purchase soon.");
+                notifyOrderOwnerIfOnline(
+                        order,
+                        "Your active order is about to expire. Please complete your purchase soon.");
 
                     logger.logEvent(
                             "Active order expiration warning sent: " + order.getOrderId(),
@@ -929,7 +929,7 @@ public class ReservationService {
 
                     List<Ticket> tickets = reservationDomeinService.expire(event, order);
 
-                    notifyOrderOwner(
+                    notifyOrderExpiredOnce(
                             order,
                             "Your active order has expired. The reserved tickets were released back to the inventory."
                     );
@@ -1047,6 +1047,44 @@ public class ReservationService {
         }
     }
 
+    private void notifyOrderExpiredOnce(ActiveOrder order, String message) {
+        if (order == null || order.getOrderId() == null) {
+            return;
+        }
+
+        if (!expirationExpiredSentOrderIds.add(order.getOrderId())) {
+            return;
+        }
+
+        notifyOrderOwner(order, message);
+    }
+    private void notifyOrderOwnerIfOnline(ActiveOrder order, String message) {
+        if (order == null || message == null || message.isBlank()) {
+            return;
+        }
+
+        try {
+            if (order.getUserId() != null) {
+                notificationsService.notifyMemberIfOnline(order.getUserId(), message);
+                return;
+            }
+
+            String sessionToken = order.getSessionToken();
+            if (sessionToken == null) {
+                return;
+            }
+
+            try {
+                tokenService.validateToken(sessionToken);
+                notificationsService.notifyGuest(sessionToken, message);
+            } catch (Exception ignored) {
+                // אורח לא מחובר / טוקן פג — אין למי לשלוח התראה בזמן אמת
+            }
+
+        } catch (Exception e) {
+            logger.logEvent("Failed to notify order owner online. reason=" + e.getMessage(), LogLevel.WARN);
+        }
+    }
     public OrderDTO toDTO(ActiveOrder order, Event event, BigDecimal total, Integer transactionId) {
         if (order == null) {
             throw new IllegalArgumentException("Order cannot be null");

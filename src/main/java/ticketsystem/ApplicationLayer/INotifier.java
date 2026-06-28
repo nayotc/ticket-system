@@ -15,4 +15,8 @@ public interface INotifier {
     void notifyMembers(Collection<Long> memberIds, String message);
 
     void notifyGuests(Collection<String> guestTokens, String message);
+
+    default void notifyMemberIfOnline(Long memberId, String message) {
+        notifyMember(memberId, message);
+    }
 }

@@ -2,6 +2,8 @@ package ticketsystem.PresentationLayer.Notifications;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.server.VaadinSession;
+import com.vaadin.flow.server.communication.PushConnection;
+
 import org.springframework.stereotype.Component;
 import ticketsystem.ApplicationLayer.IBrodcaster;
 import ticketsystem.ApplicationLayer.NotificationService;
@@ -112,6 +114,13 @@ public class NotificationCenter {
                     return;
                 }
 
+                if (isStaleActiveOrderExpirationWarning(notification)) {
+                    if (notificationId != null) {
+                        notificationService.markAsDelivered(notificationId);
+                    }
+                    return;
+                }
+
                 show(notification);
 
                 if (notificationId != null) {
@@ -142,6 +151,7 @@ public class NotificationCenter {
         connection.unregister.run();
         connection.detachRegistration.remove();
     }
+    
 
     private void show(Notification notification) {
         String rawMessage = safeRawMessage(notification);
@@ -326,6 +336,10 @@ public class NotificationCenter {
         dialog.setCloseOnOutsideClick(false); 
         dialog.open();
     }
+    private boolean isStaleActiveOrderExpirationWarning(Notification notification) {
+        return "Your active order is about to expire. Please complete your purchase soon."
+                .equals(safeRawMessage(notification));
+    }
 
     private static final class PushConnection {
 
@@ -343,4 +357,4 @@ public class NotificationCenter {
             this.targetId = targetId;
         }
     }
-}
+    }
