@@ -60,10 +60,6 @@ public class NotificationCenter {
         showPending(ui, targetId);
     }
 
-    public void disconnect() {
-        disconnect(UI.getCurrent());
-    }
-
     public void disconnect(UI ui) {
         if (ui == null) {
             return;
@@ -76,10 +72,7 @@ public class NotificationCenter {
             return;
         }
 
-        ComponentUtil.setData(ui, PushConnection.class, null);
-
-        connection.unregister.run();
-        connection.detachRegistration.remove();
+        cleanupConnection(ui, connection);
     }
 
     public void showPending(UI ui, String targetId) {
@@ -141,8 +134,13 @@ public class NotificationCenter {
             return;
         }
 
+        cleanupConnection(ui, expectedConnection);
+    }
+
+    private void cleanupConnection(UI ui, PushConnection connection) {
         ComponentUtil.setData(ui, PushConnection.class, null);
-        expectedConnection.unregister.run();
+        connection.unregister.run();
+        connection.detachRegistration.remove();
     }
 
     private void show(Notification notification) {
