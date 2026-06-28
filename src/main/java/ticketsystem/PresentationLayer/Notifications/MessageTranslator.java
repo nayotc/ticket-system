@@ -64,7 +64,24 @@ public final class MessageTranslator {
             return translated;
         }
 
+        translated = translatePolicyMessage(trimmed);
+        if (translated != null) {
+            return translated;
+        }
+
         return message;
+    }
+
+    private static String translatePolicyMessage(String message) {
+        if (message.contains("cannot be greater than maximum tickets")) {
+            return "מינימום הכרטיסים לא יכול להיות גדול מהמקסימום.";
+        }
+
+        if (message.contains("condition start date cannot be after end date")) {
+            return "תאריך הסיום לא יכול להיות לפני תאריך ההתחלה.";
+        }
+
+        return null;
     }
 
     private static String translateProductionCompanyMessage(String message) {
