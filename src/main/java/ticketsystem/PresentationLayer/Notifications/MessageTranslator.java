@@ -29,7 +29,12 @@ public final class MessageTranslator {
 
         EXACT_TRANSLATIONS.put(
                 "Your active order has expired. The reserved tickets were released back to the inventory.",
-                "תוקף ההזמנה הפעילה שלך פג. הכרטיסים ששוריינו שוחררו חזרה למלאי."
+                "פג תוקף שריון הכרטיסים. הכרטיסים שוחררו וניתן לבחור אותם מחדש."
+        );
+
+        EXACT_TRANSLATIONS.put(
+                "Your active order has expired. Please select tickets again.",
+                "פג תוקף שריון הכרטיסים. יש לבחור כרטיסים מחדש."
         );
 
         EXACT_TRANSLATIONS.put(

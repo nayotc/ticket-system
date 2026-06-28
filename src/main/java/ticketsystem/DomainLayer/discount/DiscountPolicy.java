@@ -57,12 +57,27 @@ public class DiscountPolicy {
         return id;
     }
 
-    public void addDiscount(DiscountTypes discount) {
-        if (discount == null) {
-            throw new IllegalArgumentException("Discount cannot be null");
-        }
-        discounts.add(discount);
+  public void addDiscount(DiscountTypes discount) {
+    if (discount == null) {
+        throw new IllegalArgumentException("Discount cannot be null");
     }
+
+    if (discount instanceof CouponDiscount newCoupon) {
+        boolean exists = discounts.stream()
+                .filter(CouponDiscount.class::isInstance)
+                .map(CouponDiscount.class::cast)
+                .anyMatch(existing ->
+                        existing.getCouponCode().equalsIgnoreCase(newCoupon.getCouponCode()));
+
+        if (exists) {
+            throw new IllegalArgumentException(
+                    "A coupon with the same code already exists."
+            );
+        }
+    }
+
+    discounts.add(discount);
+}
 
     public void setDiscountCompositionType(DiscountCompositionType compositionType) {
         if (compositionType == null) {

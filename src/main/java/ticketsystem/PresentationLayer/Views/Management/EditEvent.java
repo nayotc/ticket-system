@@ -53,6 +53,9 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import ticketsystem.PresentationLayer.Constants.UiRoutes;
 
 @Route(value = "companies/:companyId/events/:eventId/edit", layout = ManagementLayout.class)
 public class EditEvent extends PageContainer implements BeforeEnterObserver {
@@ -416,9 +419,26 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
         Button save = createPrimaryButton("שמירת פרטים", "✓");
         save.addClickListener(event -> saveGeneralDetails());
 
-        Div actions = new Div(save);
+        Button editMapButton = createSecondaryButton("עריכת מפת אירוע", "⌖");
+        editMapButton.addClickListener(event -> navigateToMapEditor());
+        editMapButton.addClassName("edit-map-button");
+
+        Div actions = new Div(save, editMapButton);
         actions.addClassName("policy-section-actions");
         return actions;
+    }
+
+    private void navigateToMapEditor() {
+        if (companyId == null || eventId == null) {
+            Notifications.error("לא ניתן לפתוח את עורך המפה.");
+            return;
+        }
+
+        String route = UiRoutes.HALL_MAP_BUILDER
+                .replace(":companyId", String.valueOf(companyId))
+                .replace(":eventId", String.valueOf(eventId));
+
+        UI.getCurrent().navigate(route);
     }
 
     private Component createStatusSummary() {

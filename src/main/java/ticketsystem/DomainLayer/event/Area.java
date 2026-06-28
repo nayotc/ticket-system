@@ -25,6 +25,8 @@ public abstract class Area extends Element {
 
     public abstract boolean isSoldOut();
 
+    public abstract long getCapacity();
+
     public BigDecimal getPrice() {
         return price;
     }

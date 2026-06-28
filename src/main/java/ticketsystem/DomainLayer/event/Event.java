@@ -5,12 +5,16 @@ import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.DTO.Event.EventMapDTO;
+import ticketsystem.DTO.Event.IAreaDTO;
 import ticketsystem.DomainLayer.SearchCriteria;
 import ticketsystem.DomainLayer.discount.CouponDiscount;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
@@ -304,8 +308,20 @@ public class Event {
             throw new IllegalStateException("Event map has already been defined");
         }
 
+        newMap.validateForActivation();
+
         this.map = newMap;
         this.status = eventStatus.ACTIVE;
+    }
+
+    public void updateActiveMap(List<Area> newAreas, Map<Long, Area> updatedAreas) {
+        if (status != eventStatus.ACTIVE) {
+            throw new IllegalStateException("This map operation is only allowed for an active event");
+        }
+        this.map.updateActiveAreas(newAreas, updatedAreas);
+        if (!this.map.isSoldOut() && this.saleStatus == SaleStatus.SOLD_OUT) {
+            this.saleStatus = SaleStatus.ONGOING;
+        }
     }
 
     // use case: ticket reservation

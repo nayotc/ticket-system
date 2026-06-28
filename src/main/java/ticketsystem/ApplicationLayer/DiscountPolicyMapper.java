@@ -3,6 +3,8 @@ package ticketsystem.ApplicationLayer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.Hibernate;
+
 import ticketsystem.DTO.DiscountConditionDTO;
 import ticketsystem.DTO.DiscountDTO;
 import ticketsystem.DTO.DiscountPolicyDTO;
@@ -181,7 +183,7 @@ public class DiscountPolicyMapper {
         if (condition == null) {
             return result;
         }
-
+        condition = (DiscountCondition) Hibernate.unproxy(condition);
         if (condition instanceof AndDiscountCondition and) {
             for (DiscountCondition inner : and.getConditions()) {
                 result.addAll(toConditionDTOs(inner));
