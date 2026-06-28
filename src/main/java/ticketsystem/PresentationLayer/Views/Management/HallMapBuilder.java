@@ -1487,7 +1487,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
             navigateBackToEvent();
         } catch (PresentationException exception) {
-            if (exception.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(exception.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
