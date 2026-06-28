@@ -51,8 +51,12 @@ public class Broadcaster implements IBrodcaster {
                 executor.execute(() -> {
                     try {
                         listener.accept(notification);
-                    } catch (Exception e) {
-                        removeListener(targetId, listener);
+                    } catch (RuntimeException ignored) {
+                        /*
+                         * Do not permanently unregister the UI because of one temporary
+                         * delivery failure. NotificationCenter unregisters the listener
+                         * when its UI is detached.
+                         */
                     }
                 });
             }

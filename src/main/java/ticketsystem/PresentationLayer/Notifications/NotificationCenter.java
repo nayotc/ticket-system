@@ -9,12 +9,14 @@ import ticketsystem.DomainLayer.notifications.Notification;
 import ticketsystem.PresentationLayer.Components.MessagePopup;
 import ticketsystem.PresentationLayer.Presenters.MembershipPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import com.vaadin.flow.component.ComponentUtil;
+import com.vaadin.flow.shared.Registration;
 
 @Component
 public class NotificationCenter {
-
-    private static final String PUSH_UNREGISTER_KEY = "pushUnregister";
-    private static final String PUSH_TARGET_KEY = "pushTargetId";
 
     private final IBrodcaster broadcaster;
     private final NotificationService notificationService;
@@ -33,50 +35,44 @@ public class NotificationCenter {
             return;
         }
 
-        VaadinSession session = VaadinSession.getCurrent();
+        PushConnection currentConnection =
+                ComponentUtil.getData(ui, PushConnection.class);
 
-        if (session == null) {
+        if (currentConnection != null
+                && targetId.equals(currentConnection.targetId)) {
             return;
         }
 
-        Object currentTarget = session.getAttribute(PUSH_TARGET_KEY);
-        Object currentUnregister = session.getAttribute(PUSH_UNREGISTER_KEY);
+        disconnect(ui);
 
-        if (targetId.equals(currentTarget) && currentUnregister instanceof Runnable) {
-            return;
-        }
+        PushConnection connection = new PushConnection(targetId);
+        ComponentUtil.setData(ui, PushConnection.class, connection);
 
-        disconnect();
+        connection.unregister = broadcaster.registerListener(
+                targetId,
+                notification -> deliver(ui, connection, notification)
+        );
 
-        Runnable unregister = broadcaster.registerListener(targetId, notification -> {
-            ui.access(() -> {
-                show(notification);
+        connection.detachRegistration = ui.addDetachListener(
+                event -> disconnectConnection(ui, connection)
+        );
 
-                if (notification.getId() != null) {
-                    notificationService.markAsDelivered(notification.getId());
-                }
-            });
-        });
-
-        session.setAttribute(PUSH_UNREGISTER_KEY, unregister);
-        session.setAttribute(PUSH_TARGET_KEY, targetId);
+        showPending(ui, targetId);
     }
 
-    public void disconnect() {
-        VaadinSession session = VaadinSession.getCurrent();
-
-        if (session == null) {
+    public void disconnect(UI ui) {
+        if (ui == null) {
             return;
         }
 
-        Object unregister = session.getAttribute(PUSH_UNREGISTER_KEY);
+        PushConnection connection =
+                ComponentUtil.getData(ui, PushConnection.class);
 
-        if (unregister instanceof Runnable runnable) {
-            runnable.run();
+        if (connection == null) {
+            return;
         }
 
-        session.setAttribute(PUSH_UNREGISTER_KEY, null);
-        session.setAttribute(PUSH_TARGET_KEY, null);
+        cleanupConnection(ui, connection);
     }
 
     public void showPending(UI ui, String targetId) {
@@ -84,15 +80,67 @@ public class NotificationCenter {
             return;
         }
 
-        notificationService.getPendingNotifications(targetId).forEach(notification -> {
+        PushConnection connection =
+                ComponentUtil.getData(ui, PushConnection.class);
+
+        if (connection == null
+                || !targetId.equals(connection.targetId)) {
+            return;
+        }
+
+        notificationService.getPendingNotifications(targetId)
+                .forEach(notification ->
+                        deliver(ui, connection, notification));
+    }
+
+    private void deliver(UI ui, PushConnection expectedConnection, Notification notification) {
+        if (notification == null) {
+            return;
+        }
+
+        try {
             ui.access(() -> {
+                PushConnection currentConnection = ComponentUtil.getData(ui, PushConnection.class);
+
+                if (currentConnection != expectedConnection) {
+                    return;
+                }
+
+                Long notificationId = notification.getId();
+
+                if (notificationId != null && !expectedConnection.displayedNotificationIds.add(notificationId)) {
+                    return;
+                }
+
                 show(notification);
 
-                if (notification.getId() != null) {
-                    notificationService.markAsDelivered(notification.getId());
+                if (notificationId != null) {
+                    notificationService.markAsDelivered(notificationId);
                 }
             });
-        });
+        } catch (RuntimeException ignored) {
+            /*
+             * The UI was detached before the access task could be scheduled.
+             * The persisted notification stays pending and will be loaded by
+             * the next UI connection.
+             */
+        }
+    }
+
+    private void disconnectConnection(UI ui, PushConnection expectedConnection) {
+        PushConnection currentConnection = ComponentUtil.getData(ui, PushConnection.class);
+
+        if (currentConnection != expectedConnection) {
+            return;
+        }
+
+        cleanupConnection(ui, expectedConnection);
+    }
+
+    private void cleanupConnection(UI ui, PushConnection connection) {
+        ComponentUtil.setData(ui, PushConnection.class, null);
+        connection.unregister.run();
+        connection.detachRegistration.remove();
     }
 
     private void show(Notification notification) {
@@ -277,5 +325,22 @@ public class NotificationCenter {
         dialog.setCloseOnEsc(false); 
         dialog.setCloseOnOutsideClick(false); 
         dialog.open();
+    }
+
+    private static final class PushConnection {
+
+        private final String targetId;
+        private final Set<Long> displayedNotificationIds =
+                ConcurrentHashMap.newKeySet();
+
+        private Runnable unregister = () -> {
+        };
+
+        private Registration detachRegistration = () -> {
+        };
+
+        private PushConnection(String targetId) {
+            this.targetId = targetId;
+        }
     }
 }
