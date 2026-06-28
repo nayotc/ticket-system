@@ -747,6 +747,7 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
     try {
         Event event = canEditEventDiscount(token, eventId);
 
+        DiscountPolicyValidator.validate(policyDTO);
         DiscountPolicy policy = discountMapper.toDomain(policyDTO);
         event.setDiscountPolicy(policy);
         eventRepository.updateEvent(event);
@@ -793,6 +794,7 @@ public DiscountPolicyDTO getEventDiscountPolicy(String token, Long eventId) thro
         try {
             Event event = canEditPurchasePolicy(token, eventId);
 
+            PurchasePolicyValidator.validate(policyDTO);
             PurchasePolicy policy = mapper.toDomain(policyDTO);
 
 

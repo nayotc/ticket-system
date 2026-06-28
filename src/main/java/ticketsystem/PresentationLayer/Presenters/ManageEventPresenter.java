@@ -14,6 +14,7 @@ import ticketsystem.DTO.PurchaseRuleType;
 import ticketsystem.DomainLayer.discount.DiscountCompositionType;
 import ticketsystem.DomainLayer.event.SaleStatus;
 import ticketsystem.InfrastructureLayer.LogbackSystemLogger;
+import ticketsystem.PresentationLayer.Notifications.MessageTranslator;
 import ticketsystem.PresentationLayer.Views.Management.CreateEvent;
 import ticketsystem.PresentationLayer.Views.Management.EditEvent;
 import ticketsystem.PresentationLayer.Views.Management.EditEvent.DiscountConditionType;
@@ -612,29 +613,40 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
              * Event form validation.
              */
             case "Event name cannot be null or empty", "Event name cannot be empty." -> "יש להזין שם לאירוע.";
-            case "Event date must be in the future", "Event date cannot be in the past." -> "יש לבחור תאריך עתידי לאירוע.";
+            case "Event date must be in the future", "Event date cannot be in the past." ->
+                    "יש לבחור תאריך עתידי לאירוע.";
             case "Event location cannot be null", "Event location cannot be empty." -> "יש לבחור מיקום לאירוע.";
-            case "Traffic threshold must be a positive number", "Traffic threshold must be a positive integer." -> "סף העומס חייב להיות מספר חיובי.";
+            case "Traffic threshold must be a positive number", "Traffic threshold must be a positive integer." ->
+                    "סף העומס חייב להיות מספר חיובי.";
             case "Event category cannot be null", "Event category cannot be empty." -> "יש לבחור קטגוריה לאירוע.";
             case "Artist name cannot be null or empty", "Artist name cannot be empty." -> "יש להזין שם אמן או מופיע.";
-            case "Price must be a non-negative number", "Price must be a positive number." -> "מחיר הכרטיס אינו יכול להיות שלילי.";
+            case "Price must be a non-negative number", "Price must be a positive number." ->
+                    "מחיר הכרטיס אינו יכול להיות שלילי.";
             case "Cannot change name of an active event" -> "לא ניתן לשנות את שם האירוע לאחר הפעלתו.";
             case "Cannot change ticket price of an active event" -> "לא ניתן לשנות את מחיר הכרטיס לאחר הפעלת האירוע.";
             case "Cannot change event's company" -> "לא ניתן להעביר את האירוע לחברת הפקה אחרת.";
-            case "Event was updated by another request" -> "פרטי האירוע השתנו מאז פתיחת העמוד. רעננו את העמוד ונסו שוב.";
+            case "Event was updated by another request" ->
+                    "פרטי האירוע השתנו מאז פתיחת העמוד. רעננו את העמוד ונסו שוב.";
             /*
              * Map input and business rules.
              */
             case "Map size must be positive" -> "גובה ורוחב המפה חייבים להיות גדולים מאפס.";
             case "Map must contain at least one element" -> "יש להוסיף לפחות אלמנט אחד למפה.";
-            case "Event map must contain at least one seating area or standing area" -> "יש להוסיף למפה לפחות אזור ישיבה או אזור עמידה.";
+            case "Event map must contain at least one seating area or standing area" ->
+                    "יש להוסיף למפה לפחות אזור ישיבה או אזור עמידה.";
             case "Event map can only be defined for a draft event" -> "ניתן להגדיר מפה מלאה רק לפני הפעלת האירוע.";
-            case "Event map has already been defined" -> "מפת האירוע כבר נשמרה. רעננו את העמוד כדי לראות את המפה העדכנית.";
-            case "This map operation is only allowed for an active event" -> "ניתן לבצע עדכון של המפה רק לאחר הפעלת האירוע.";
+            case "Event map has already been defined" ->
+                    "מפת האירוע כבר נשמרה. רעננו את העמוד כדי לראות את המפה העדכנית.";
+            case "This map operation is only allowed for an active event" ->
+                    "ניתן לבצע עדכון של המפה רק לאחר הפעלת האירוע.";
             case "Existing area location cannot be changed" -> "לא ניתן להזיז אזור קיים לאחר הפעלת האירוע.";
-            case "Standing area capacity cannot be reduced", "Standing area capacity cannot be reduced for an active event" -> "לא ניתן להקטין את הקיבולת של אזור עמידה לאחר הפעלת האירוע.";
-            case "Rows cannot be reduced for an active event", "Seating area rows cannot be reduced" -> "לא ניתן להסיר שורות מאזור ישיבה לאחר הפעלת האירוע.";
-            case "Columns cannot be reduced for an active event", "Seating area columns cannot be reduced" -> "לא ניתן להסיר עמודות מאזור ישיבה לאחר הפעלת האירוע.";
+            case "Standing area capacity cannot be reduced",
+                 "Standing area capacity cannot be reduced for an active event" ->
+                    "לא ניתן להקטין את הקיבולת של אזור עמידה לאחר הפעלת האירוע.";
+            case "Rows cannot be reduced for an active event", "Seating area rows cannot be reduced" ->
+                    "לא ניתן להסיר שורות מאזור ישיבה לאחר הפעלת האירוע.";
+            case "Columns cannot be reduced for an active event", "Seating area columns cannot be reduced" ->
+                    "לא ניתן להסיר עמודות מאזור ישיבה לאחר הפעלת האירוע.";
             case "Area type cannot be changed" -> "לא ניתן לשנות את סוג האזור לאחר הפעלת האירוע.";
             case "Rows must be positive" -> "מספר השורות חייב להיות גדול מאפס.";
             case "Columns must be positive" -> "מספר העמודות חייב להיות גדול מאפס.";
@@ -645,7 +657,8 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
             case "Cannot move to pre-sale from current sale status" -> "לא ניתן לפתוח מכירה מוקדמת ממצב המכירה הנוכחי.";
             case "Cannot open regular sale from current sale status" -> "לא ניתן לפתוח מכירה רגילה ממצב המכירה הנוכחי.";
             case "Cannot return sale status to not started" -> "לא ניתן להחזיר את המכירה למצב טרם התחלה.";
-            case "Sale status should move to sold out or ended only by the relevant business flow" -> "מצב המכירה הזה מתעדכן אוטומטית ואינו ניתן לבחירה ידנית.";
+            case "Sale status should move to sold out or ended only by the relevant business flow" ->
+                    "מצב המכירה הזה מתעדכן אוטומטית ואינו ניתן לבחירה ידנית.";
             /*
              * Cancellation.
              */
@@ -658,12 +671,14 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
             case "Discount name cannot be empty" -> "יש להזין שם להנחה.";
             case "Discount percentage must be positive" -> "אחוז ההנחה חייב להיות גדול מאפס.";
             case "Discount type cannot be empty" -> "יש לבחור סוג הנחה.";
-            case "Conditional discount must contain at least one condition" -> "יש להוסיף לפחות תנאי אחד להנחה המותנית.";
+            case "Conditional discount must contain at least one condition" ->
+                    "יש להוסיף לפחות תנאי אחד להנחה המותנית.";
             case "Discount condition cannot be empty" -> "יש להשלים את פרטי תנאי ההנחה.";
             case "Minimum tickets condition requires ticket threshold" -> "יש להזין את מספר הכרטיסים המינימלי.";
             case "Maximum tickets condition requires ticket threshold" -> "יש להזין את מספר הכרטיסים המקסימלי.";
             case "Date condition requires start time and end time" -> "יש לבחור מועד התחלה ומועד סיום לתנאי ההנחה.";
-            case "Minimum price cannot be greater than maximum price" -> "מחיר המינימום אינו יכול להיות גבוה ממחיר המקסימום.";
+            case "Minimum price cannot be greater than maximum price" ->
+                    "מחיר המינימום אינו יכול להיות גבוה ממחיר המקסימום.";
 
             /*
              * Everything else is technical or unexpected.
