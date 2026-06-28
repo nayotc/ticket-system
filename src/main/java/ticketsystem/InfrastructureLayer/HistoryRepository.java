@@ -113,4 +113,10 @@ public class HistoryRepository implements IHistoryRepository {
         return historyJpaRepository
                 .findAllByEventIdOrderByPurchaseIdAsc(eventId);
     }
+
+    @Override
+    public void updatePurchase(Purchase purchase) {
+        Objects.requireNonNull(purchase, "Purchase cannot be null.");
+        historyJpaRepository.save(purchase);
+    }
 }

@@ -159,10 +159,14 @@ public class EventCatalogPresenter {
      * @return featured event card data for the Home page
      */
     public List<EventCardViewModel> getFeaturedHomeEvents(String sessionToken) {
-        return toEventCards(
-                sessionToken,
-                eventCatalogService.getFeaturedEvents(sessionToken, 3)
-        );
+        try {
+            return toEventCards(
+                    sessionToken,
+                    eventCatalogService.getFeaturedEvents(sessionToken, 3));
+        } catch (Exception e) {
+            throw PresentationException.dispatch(e,
+                 msg -> "טעינת הקטלוג נכשלה. נסו שוב.");
+        }
     }
 
     /**
@@ -185,12 +189,17 @@ public class EventCatalogPresenter {
             String sessionToken,
             Map<String, List<String>> parameters
     ) {
-        SearchCriteria criteria = buildSearchCriteria(parameters);
+        try {
+            SearchCriteria criteria = buildSearchCriteria(parameters);
 
-        return toEventCards(
-                sessionToken,
-                eventCatalogService.globalSearch(sessionToken, criteria)
-        );
+            return toEventCards(
+                    sessionToken,
+                    eventCatalogService.globalSearch(sessionToken, criteria)
+            );
+        } catch (Exception e) {
+            throw PresentationException.dispatch(e,
+                 msg -> "טעינת הקטלוג נכשלה. נסו שוב.");
+        }
     }
 
     /**
@@ -214,20 +223,26 @@ public class EventCatalogPresenter {
             Long companyId,
             Map<String, List<String>> parameters
     ) {
-        if (companyId == null) {
-            return List.of();
+        try {
+            if (companyId == null) {
+                return List.of();
+            }
+
+            SearchCriteria criteria = buildCompanySearchCriteria(parameters);
+
+            return toEventCards(
+                    sessionToken,
+                    eventCatalogService.SearchByCompany(
+                            sessionToken,
+                            companyId,
+                            criteria
+                    )
+            );
+        
+        } catch (Exception e) {
+            throw PresentationException.dispatch(e,
+                 msg -> "טעינת הקטלוג נכשלה. נסו שוב.");
         }
-
-        SearchCriteria criteria = buildCompanySearchCriteria(parameters);
-
-        return toEventCards(
-                sessionToken,
-                eventCatalogService.SearchByCompany(
-                        sessionToken,
-                        companyId,
-                        criteria
-                )
-        );
     }
 
     /**

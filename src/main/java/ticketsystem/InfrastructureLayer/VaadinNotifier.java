@@ -9,6 +9,8 @@ import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.DomainLayer.IRepository.INotificationsRepository;
 import ticketsystem.DomainLayer.notifications.Notification;
 import ticketsystem.DomainLayer.notifications.Notification.Type;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class VaadinNotifier implements INotifier {
@@ -27,18 +29,18 @@ public class VaadinNotifier implements INotifier {
         }
 
         String targetId = memberId.toString();
-        Notification notification = new Notification(targetId, message, Type.INFO);
+        boolean hasListeners = Broadcaster.hasListeners(targetId);
+
         if ("Your active order is about to expire. Please complete your purchase soon.".equals(message.trim())
-                && !Broadcaster.hasListeners(targetId)) {
+                && !hasListeners) {
             return;
         }
 
-        if (Broadcaster.hasListeners(targetId)) {
-            Broadcaster.broadcast(targetId, notification);
-            return;
-        }
+        Notification notification = new Notification(targetId, message, Type.INFO);
 
-        notificationsRepository.save(notification);
+        Notification savedNotification = notificationsRepository.save(notification);
+
+        broadcastAfterCommit(targetId, savedNotification);
     }
 
     @Override
@@ -49,7 +51,7 @@ public class VaadinNotifier implements INotifier {
 
         Notification notification = new Notification(sessionId, message, Type.INFO);
 
-        Broadcaster.broadcast(sessionId, notification);
+        broadcastAfterCommit(sessionId, notification);
     }
 
     @Override
@@ -89,13 +91,10 @@ public class VaadinNotifier implements INotifier {
         String targetId = memberId.toString();
         Notification notification = new Notification(targetId, message, companyId, Type.ACTION);
 
-        if (Broadcaster.hasListeners(targetId)) {
-            Broadcaster.broadcast(targetId, notification);
-            return;
-        }
+        Notification savedNotification = notificationsRepository.save(notification);
 
-        notificationsRepository.save(notification);
-    }
+        broadcastAfterCommit(targetId, savedNotification);
+        }
 
     @Override
     public void notifyMemberIfOnline(Long memberId, String message) {
@@ -110,6 +109,26 @@ public class VaadinNotifier implements INotifier {
         }
 
         Notification notification = new Notification(targetId, message, Type.INFO);
+        Broadcaster.broadcast(targetId, notification);
+    }
+
+    private void broadcastAfterCommit(String targetId, Notification notification) {
+        boolean activeTransaction = TransactionSynchronizationManager.isActualTransactionActive();
+        boolean synchronizationActive = TransactionSynchronizationManager.isSynchronizationActive();
+
+        if (activeTransaction && synchronizationActive) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            Broadcaster.broadcast(targetId, notification);
+                        }
+                    }
+            );
+
+            return;
+        }
+
         Broadcaster.broadcast(targetId, notification);
     }
 }

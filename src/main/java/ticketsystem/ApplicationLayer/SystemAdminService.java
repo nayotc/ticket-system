@@ -28,6 +28,8 @@ import ticketsystem.DomainLayer.IRepository.IUserRepository;
 import ticketsystem.DomainLayer.MembershipDomainService;
 import ticketsystem.DomainLayer.company.Company;
 import ticketsystem.DomainLayer.history.Purchase;
+import ticketsystem.DomainLayer.history.PurchasedTicket;
+import ticketsystem.DomainLayer.history.TicketStatus;
 import ticketsystem.DomainLayer.order.ActiveOrder;
 import ticketsystem.DomainLayer.systemAdmin.SystemAdmin;
 import ticketsystem.DomainLayer.user.Member;
@@ -48,6 +50,7 @@ public class SystemAdminService {
     private final MembershipDomainService membershipDomain;
     private final INotifier notificationsService;
     private final ITokenService tokenService;
+    private final ITicketIssuingService ticketIssuingService;
 
     public SystemAdminService(ISystemAdminRepository adminRepository,
             IPaymentService paymentService,
@@ -59,7 +62,8 @@ public class SystemAdminService {
             IHistoryRepository historyRepository,
             MembershipDomainService membershipDomain,
             INotifier notificationsService,
-            ITokenService tokenService) {
+            ITokenService tokenService,
+            ITicketIssuingService ticketIssuingService) {
 
         this.adminRepository = adminRepository;
         this.paymentService = paymentService;
@@ -72,6 +76,7 @@ public class SystemAdminService {
         this.membershipDomain = membershipDomain;
         this.notificationsService = notificationsService;
         this.tokenService = tokenService;
+        this.ticketIssuingService = ticketIssuingService;
     }
 
     // Use Case: Ticket System Initialization (Boot time - No token required)
@@ -219,6 +224,17 @@ public class SystemAdminService {
                         + "\" was closed by a system administrator, and your role in this company was removed."
                 );
             }
+            List<Purchase> orders = historyRepository.getPurchasesByCompanyId(companyId);
+            
+            for (Purchase purchase : orders) {
+                String message = "לצערנו, חברת " + company.getName() + " נסגרה והכרטיסים שלך לאירוע " + purchase.getEventName() + " בוטלו.";
+                notificationsService.notifyMember(purchase.getMemberId(), message);
+            }
+            if (paymentService.handshake()
+                    && ticketIssuingService.handshake()) {
+                    notifyRefundInitiated(orders);
+            }
+                        
 
             logger.logEvent("Completed - closeProductionCompanyByAdmin. companyId=" + companyId, LogLevel.INFO);
             return new CompanyDTO(company);
@@ -229,6 +245,38 @@ public class SystemAdminService {
         } catch (Exception e) {
             logger.logError("Failed - closeProductionCompanyByAdmin. " + context + ". Unexpected error: " + e.getMessage(), e);
             throw e;
+        }
+    }
+
+    private void notifyRefundInitiated(List<Purchase> purchases) {
+
+        for (Purchase purchase : purchases) {
+            if (purchase.isRefunded()) {
+                continue;
+            }
+
+            paymentService.refund(
+                    purchase.getTransactionId()
+            );
+
+
+            notifyRefundCompleted(purchase);
+
+            purchase.setRefunded(true);
+
+            for (PurchasedTicket ticket :
+                    purchase.getTickets()) {
+                ticket.setStatus(TicketStatus.CANCELED);
+            }
+            historyRepository.updatePurchase(purchase);  
+        }
+    }
+    
+    private void notifyRefundCompleted(Purchase purchase) {
+        if (notificationsService == null
+                || purchase == null
+                || purchase.getMemberId() == null) {
+            return;
         }
     }
 
@@ -273,7 +321,6 @@ public class SystemAdminService {
         }
     }
 
-    // Use Case 6.4: View Purchase History by Buyer
     // Use Case 6.4: View Purchase History by Buyer
     @Transactional(readOnly = true)
     public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(String sessionToken) {

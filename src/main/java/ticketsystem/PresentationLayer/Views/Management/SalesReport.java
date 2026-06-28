@@ -282,7 +282,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             bindSalesReport(report, transactions);
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -330,7 +330,7 @@ public class SalesReport extends PageContainer implements BeforeEnterObserver {
             Notifications.success("הנתונים רועננו בהצלחה.");
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }

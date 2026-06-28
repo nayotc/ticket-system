@@ -24,10 +24,16 @@ public class MyAccountPresenter {
             return userService.getMyAccountDTO(token);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    e.getMessage()
+                ));
+        
         } catch (Exception e) {
-            throw new PresentationException("טעינת פרטי המשתמש נכשלה.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    "טעינת פרטי המשתמש נכשלה."
+                ));
         }
     }
 
@@ -36,10 +42,16 @@ public class MyAccountPresenter {
             return userService.updateMemberUsername(token, password, username, newUsername);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    e.getMessage()
+                ));
+        
         } catch (Exception e) {
-            throw new PresentationException("עדכון שם המשתמש נכשל.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    "עדכון שם המשתמש נכשל."
+                ));
         }
     }
 
@@ -48,10 +60,16 @@ public class MyAccountPresenter {
             return userService.updateMemberPassword(token, password, username, newPassword);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    e.getMessage()
+                ));
 
         } catch (Exception e) {
-            throw new PresentationException("עדכון הסיסמה נכשל.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    "עדכון הסיסמה נכשל."
+                ));
         }
     }
 
@@ -60,10 +78,16 @@ public class MyAccountPresenter {
             return userService.updateMemberFullName(token,password,username, newFullName);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    e.getMessage()
+                ));
+        
         } catch (Exception e) {
-            throw new PresentationException("עדכון השם המלא נכשל.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    "עדכון השם המלא נכשל."
+                ));
         }
     }
 
@@ -72,10 +96,16 @@ public class MyAccountPresenter {
             return userService.updateMemberPhone(token, password, username, newPhone);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    e.getMessage()
+                ));
+        
         } catch (Exception e) {
-            throw new PresentationException("עדכון מספר הטלפון נכשל.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    "עדכון מספר הטלפון נכשל."
+                ));
         }
     }
 
@@ -84,10 +114,16 @@ public class MyAccountPresenter {
             return historyService.getHistoryForUser(token);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    e.getMessage()
+                ));
+        
         } catch (Exception e) {
-            throw new PresentationException("טעינת היסטוריית הרכישות נכשלה.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    "טעינת היסטוריית הרכישות נכשלה."
+                ));
         }
     }
 
@@ -161,12 +197,27 @@ public class MyAccountPresenter {
             throw e;
 
         } catch (Exception e) {
-            throw new PresentationException("שמירת פרטי החשבון נכשלה.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateMyAccountError(msg,
+                    "שמירת פרטי החשבון נכשלה."
+                ));
         }
     }
 
     public void openPurchaseDetails(String purchaseId){
 
+    }
+
+    // TODO: Implement the translation to Hebrew message
+    private String translateMyAccountError(String message, String fallback) {
+        if (message == null || message.isBlank()) {
+            return fallback;
+        }
+
+        return switch (message.trim()) {
+
+            default -> fallback;
+        };
     }
 
 }

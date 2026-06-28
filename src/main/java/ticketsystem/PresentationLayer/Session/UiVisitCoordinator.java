@@ -43,14 +43,10 @@ public class UiVisitCoordinator {
                 password
         );
 
-        notificationCenter.disconnect();
+        notificationCenter.disconnect(ui);
+
         syncBrowserExitToken(ui);
         connectCurrentTarget(ui);
-
-        notificationCenter.showPending(
-                ui,
-                UiSession.getNotificationTargetId()
-        );
     }
 
     public void logoutToGuest(UI ui) {
@@ -60,7 +56,8 @@ public class UiVisitCoordinator {
 
         authPresenter.logOut(UiSession.getCurrentToken());
 
-        notificationCenter.disconnect();
+        notificationCenter.disconnect(ui);
+
         syncBrowserExitToken(ui);
         connectCurrentTarget(ui);
     }
@@ -118,7 +115,7 @@ public class UiVisitCoordinator {
     }
 
     public void disconnect() {
-        notificationCenter.disconnect();
+        notificationCenter.disconnect(UI.getCurrent());
     }
 
     private void connectCurrentTarget(UI ui) {

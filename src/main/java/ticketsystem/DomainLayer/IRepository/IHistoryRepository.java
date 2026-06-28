@@ -60,4 +60,10 @@ public interface IHistoryRepository {
      * @return matching purchases ordered by purchase identifier
      */
     List<Purchase> getPurchasesByEventId(long eventId);
+
+    /**
+     * Updates an existing purchase.
+     * @param purchase purchase to update
+     */
+    void updatePurchase(Purchase purchase);
 }
