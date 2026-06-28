@@ -268,6 +268,7 @@ public class SystemAdminService {
                     purchase.getTickets()) {
                 ticket.setStatus(TicketStatus.CANCELED);
             }
+            historyRepository.updatePurchase(purchase);  
         }
     }
     
