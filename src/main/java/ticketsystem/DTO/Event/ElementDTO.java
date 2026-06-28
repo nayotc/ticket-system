@@ -3,7 +3,7 @@ package ticketsystem.DTO.Event;
 import ticketsystem.DomainLayer.event.Element;
 
 public record ElementDTO(
-        long id,
+        Long id,
         String name,
         PairDTO<Integer, Integer> location,
         PairDTO<Integer, Integer> size,

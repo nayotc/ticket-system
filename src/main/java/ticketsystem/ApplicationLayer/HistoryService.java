@@ -444,7 +444,7 @@ public class HistoryService
      * Notifies buyers about an event update.
      */
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public void onEventUpdated(
             Long eventId,
             LocalDateTime date,

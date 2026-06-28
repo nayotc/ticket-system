@@ -36,6 +36,7 @@ public class StandingArea extends Area {
         return new StandingArea(this);
     }
 
+    @Override
     public long getCapacity() {
         return capacity;
     }
@@ -123,5 +124,16 @@ public class StandingArea extends Area {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
         }
+    }
+
+    public long increaseCapacityTo(long newCapacity) {
+        if (newCapacity < this.capacity) {
+            throw new IllegalArgumentException("Standing area capacity cannot be reduced for an active event");
+        }
+
+        long addedCapacity = newCapacity - this.capacity;
+        this.capacity = newCapacity;
+
+        return addedCapacity;
     }
 }

@@ -2511,9 +2511,47 @@ vaadin-button.message-popup-secondary-button:hover {
 }
 
 .map-seating-area {
-    align-items: stretch;
-    border-color: rgba(208, 188, 255, 0.65);
-    background: rgba(208, 188, 255, 0.08);
+    display: grid;
+    grid-template-rows: var(--ticket-cell-size) minmax(0, 1fr);
+    gap: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.map-seating-area > .map-area-header {
+    width: 100%;
+    height: var(--ticket-cell-size);
+    min-height: var(--ticket-cell-size);
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 0.35rem;
+    padding: 0 0.4rem;
+
+    direction: rtl;
+    line-height: 1;
+    font-size: 0.75rem;
+}
+
+.map-seating-area > .map-area-header span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.map-seating-area > .map-area-header span:last-child {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.map-seating-area > .seat-grid {
+    min-height: 0;
 }
 
 .map-standing-area {
@@ -2566,20 +2604,12 @@ vaadin-button.message-popup-secondary-button:hover {
 }
 
 .map-seat {
-    width: 100%;
-    height: 100%;
-    min-width: 5px;
-    min-height: 5px;
-    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 10px;
     line-height: 1;
-    font-weight: 900;
-    transition: transform 0.16s ease, box-shadow 0.16s ease, outline-color 0.16s ease;
-    outline: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 .map-seat:hover {
@@ -2866,6 +2896,53 @@ vaadin-button.message-popup-secondary-button:hover {
 .ticket-map-empty-icon {
     font-size: 42px;
     color: var(--tn-primary);
+}
+
+.ticket-map-surface .map-seating-area {
+    box-sizing: border-box;
+    padding: 0;
+    gap: 0;
+}
+
+.ticket-map-surface .map-seating-area .seat-grid {
+    width: 100%;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+.ticket-map-surface .map-seating-area .map-area-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    width: 100%;
+    min-width: 0;
+    padding: 0 4px;
+    gap: 4px;
+
+    box-sizing: border-box;
+    overflow: hidden;
+    direction: rtl;
+}
+
+.ticket-map-surface .map-seating-area .map-area-name {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    cursor: help;
+}
+
+.ticket-map-surface .map-seating-area .map-area-price {
+    display: block;
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 @media (max-width: 1000px) {
@@ -8148,6 +8225,18 @@ vaadin-button.hall-builder-secondary-button:hover {
 .hall-builder-two-fields > * {
     flex: 1;
     min-width: 0;
+}
+
+.hall-map-element-locked {
+    cursor: default;
+}
+
+.hall-map-element-locked::after {
+    content: "🔒";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    font-size: 12px;
 }
 
 .hall-tool-grid {
