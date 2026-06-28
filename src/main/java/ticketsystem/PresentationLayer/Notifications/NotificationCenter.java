@@ -85,13 +85,20 @@ public class NotificationCenter {
         }
 
         notificationService.getPendingNotifications(targetId).forEach(notification -> {
-            ui.access(() -> {
-                show(notification);
-
+        ui.access(() -> {
+            if (isStaleActiveOrderExpirationWarning(notification)) {
                 if (notification.getId() != null) {
                     notificationService.markAsDelivered(notification.getId());
                 }
-            });
+                return;
+            }
+
+            show(notification);
+
+            if (notification.getId() != null) {
+                notificationService.markAsDelivered(notification.getId());
+            }
+        });
         });
     }
 
@@ -277,5 +284,9 @@ public class NotificationCenter {
         dialog.setCloseOnEsc(false); 
         dialog.setCloseOnOutsideClick(false); 
         dialog.open();
+    }
+    private boolean isStaleActiveOrderExpirationWarning(Notification notification) {
+        return "Your active order is about to expire. Please complete your purchase soon."
+                .equals(safeRawMessage(notification));
     }
 }

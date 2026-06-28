@@ -1080,7 +1080,7 @@ public class SelectTicketView extends Div implements BeforeEnterObserver, Before
         }
 
         activeOrderExpirationPopupShown = true;
-        MessagePopup.showNotification("פג תוקף שריון הכרטיסים. הכרטיסים שוחררו וניתן לבחור אותם מחדש.");
+ //       MessagePopup.showNotification("פג תוקף שריון הכרטיסים. הכרטיסים שוחררו וניתן לבחור אותם מחדש.");
     }
 
     private void refreshSummary(ActiveOrderDTO order) {

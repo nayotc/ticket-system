@@ -26,10 +26,19 @@ public class VaadinNotifier implements INotifier {
             return;
         }
 
-        Notification notification = new Notification(memberId.toString(), message, Type.INFO);
-        Notification savedNotification = notificationsRepository.save(notification);
+        String targetId = memberId.toString();
+        Notification notification = new Notification(targetId, message, Type.INFO);
+        if ("Your active order is about to expire. Please complete your purchase soon.".equals(message.trim())
+                && !Broadcaster.hasListeners(targetId)) {
+            return;
+        }
 
-        Broadcaster.broadcast(memberId.toString(), savedNotification);
+        if (Broadcaster.hasListeners(targetId)) {
+            Broadcaster.broadcast(targetId, notification);
+            return;
+        }
+
+        notificationsRepository.save(notification);
     }
 
     @Override
@@ -77,8 +86,30 @@ public class VaadinNotifier implements INotifier {
             return;
         }
 
-        Notification notification = new Notification(memberId.toString(), message, companyId, Type.ACTION);
-        Notification savedNotification = notificationsRepository.save(notification);
-        Broadcaster.broadcast(memberId.toString(), savedNotification);
+        String targetId = memberId.toString();
+        Notification notification = new Notification(targetId, message, companyId, Type.ACTION);
+
+        if (Broadcaster.hasListeners(targetId)) {
+            Broadcaster.broadcast(targetId, notification);
+            return;
+        }
+
+        notificationsRepository.save(notification);
+    }
+
+    @Override
+    public void notifyMemberIfOnline(Long memberId, String message) {
+        if (memberId == null || message == null || message.isBlank()) {
+            return;
+        }
+
+        String targetId = memberId.toString();
+
+        if (!Broadcaster.hasListeners(targetId)) {
+            return;
+        }
+
+        Notification notification = new Notification(targetId, message, Type.INFO);
+        Broadcaster.broadcast(targetId, notification);
     }
 }
