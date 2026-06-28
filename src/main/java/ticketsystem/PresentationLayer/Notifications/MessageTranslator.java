@@ -10,6 +10,7 @@ public final class MessageTranslator {
 
     private static final Map<String, String> EXACT_TRANSLATIONS = new LinkedHashMap<>();
     private static final DateTimeFormatter DISPLAY_DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final String DEFAULT_ERROR_MESSAGE = "הפעולה נכשלה. נסו שוב.";
 
     static {
         EXACT_TRANSLATIONS.put(
@@ -45,6 +46,17 @@ public final class MessageTranslator {
         EXACT_TRANSLATIONS.put(
                 "Your account suspension has been revoked. You now have access to your account.",
                 "השעיית החשבון שלך בוטלה. ההגבלה על ביצוע פעולות הוסרה."
+        );
+
+        EXACT_TRANSLATIONS.put(
+                "Your account has been deactivated by a system administrator.\n"
+                        + "You will no longer have access to the system.",
+                "החשבון שלך הושבת על ידי מנהל מערכת. לא ניתן עוד להתחבר למערכת."
+        );
+
+        EXACT_TRANSLATIONS.put(
+                "Congratulations! You have been promoted to System Admin.",
+                "קיבלת הרשאת מנהל מערכת."
         );
     }
 
@@ -91,6 +103,22 @@ public final class MessageTranslator {
         return message;
     }
 
+    public static String translateOrFallback(String message, String fallback) {
+        String safeFallback = fallback == null || fallback.isBlank() ? DEFAULT_ERROR_MESSAGE : fallback;
+
+        if (message == null || message.isBlank()) {
+            return safeFallback;
+        }
+
+        String translated = translate(message);
+
+        if (message.equals(translated)) {
+            return safeFallback;
+        }
+
+        return translated;
+    }
+
     private static String translatePolicyMessage(String message) {
         if (message.contains("cannot be greater than maximum tickets")) {
             return "מינימום הכרטיסים לא יכול להיות גדול מהמקסימום.";
@@ -116,6 +144,10 @@ public final class MessageTranslator {
 
         if (message.endsWith("\" has been reopened and is now active.")) {
             return "חברת ההפקה \"" + companyName + "\" נפתחה מחדש וכעת היא פעילה.";
+        }
+
+        if (message.endsWith("\" was closed by a system administrator, and your role in this company was removed.")) {
+            return "חברת ההפקה \"" + companyName + "\" נסגרה על ידי מנהל מערכת, והתפקיד שלך בחברה הוסר.";
         }
 
         return null;

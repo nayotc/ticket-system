@@ -161,4 +161,87 @@ public class MessageTranslatorTest {
 
         assertEquals(message, translated);
     }
+
+    @Test
+    void GivenAccountDeactivationMessage_WhenTranslate_ThenReturnHebrewMessage() {
+        String message =
+                "Your account has been deactivated by a system administrator.\n"
+                        + "You will no longer have access to the system.";
+
+        String translated = MessageTranslator.translate(message);
+
+        assertEquals(
+                "החשבון שלך הושבת על ידי מנהל מערכת. "
+                        + "לא ניתן עוד להתחבר למערכת.",
+                translated
+        );
+    }
+
+    @Test
+    void GivenSystemAdminPromotionMessage_WhenTranslate_ThenReturnHebrewMessage() {
+        String message =
+                "Congratulations! You have been promoted to System Admin.";
+
+        String translated = MessageTranslator.translate(message);
+
+        assertEquals(
+                "קיבלת הרשאת מנהל מערכת.",
+                translated
+        );
+    }
+
+    @Test
+    void GivenCompanyClosedBySystemAdmin_WhenTranslate_ThenReturnHebrewMessage() {
+        String message =
+                "The production company \"הפקות הדרום\" "
+                        + "was closed by a system administrator, "
+                        + "and your role in this company was removed.";
+
+        String translated = MessageTranslator.translate(message);
+
+        assertEquals(
+                "חברת ההפקה \"הפקות הדרום\" נסגרה על ידי מנהל מערכת, "
+                        + "והתפקיד שלך בחברה הוסר.",
+                translated
+        );
+    }
+
+    @Test
+    void GivenUnknownTechnicalError_WhenTranslateOrFallback_ThenReturnFallback() {
+        String translated = MessageTranslator.translateOrFallback(
+                "SQL constraint violation: users_email_key",
+                "עדכון הפרטים נכשל. נסו שוב."
+        );
+
+        assertEquals(
+                "עדכון הפרטים נכשל. נסו שוב.",
+                translated
+        );
+    }
+
+    @Test
+    void GivenKnownError_WhenTranslateOrFallback_ThenReturnTranslation() {
+        String translated = MessageTranslator.translateOrFallback(
+                "minimum tickets cannot be greater than maximum tickets",
+                "שמירת המדיניות נכשלה. נסו שוב."
+        );
+
+        assertEquals(
+                "מינימום הכרטיסים לא יכול להיות גדול מהמקסימום.",
+                translated
+        );
+    }
+
+    @Test
+    void GivenNullError_WhenTranslateOrFallback_ThenReturnFallback() {
+        String translated = MessageTranslator.translateOrFallback(
+                null,
+                "טעינת המידע נכשלה. נסו שוב."
+        );
+
+        assertEquals(
+                "טעינת המידע נכשלה. נסו שוב.",
+                translated
+        );
+    }
 }
