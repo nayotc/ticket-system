@@ -407,6 +407,7 @@ public class CompanyService {
             logger.logEvent("setCompanyPurchasePolicy started for companyId: " + companyId,ISystemLogger.LogLevel.INFO);
             Company company = canEditPurchasePolicy(token, companyId);
 
+            PurchasePolicyValidator.validate(policyDTO);
             PurchasePolicy policy = mapper.toDomain(policyDTO);
 
             company.setPurchasePolicy(policy);
@@ -590,6 +591,7 @@ public class CompanyService {
                         + ", existingDiscounts=" + beforeCount,
                 ISystemLogger.LogLevel.DEBUG);
 
+        DiscountPolicyValidator.validate(policyDTO);
         DiscountPolicy newPolicy = discountPolicyMapper.toDomain(policyDTO);
 
         company.setDiscountPolicy(newPolicy);

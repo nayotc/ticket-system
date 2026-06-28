@@ -1245,11 +1245,6 @@ private void openAddConditionDialog(DiscountDTO discount) {
         field.setItemLabelGenerator(PurchaseRuleField::getLabel);
         field.setValue(draft.field());
 
-        ComboBox<ComparisonOperator> operator = new ComboBox<>("אופרטור");
-        operator.setItems(ComparisonOperator.values());
-        operator.setItemLabelGenerator(ComparisonOperator::getLabel);
-        operator.setValue(draft.operator());
-
         NumberField value = new NumberField("ערך");
         value.setMin(0);
         value.setStep(1);
@@ -1259,7 +1254,7 @@ private void openAddConditionDialog(DiscountDTO discount) {
         unit.setValue(draft.unit());
         unit.setPlaceholder("לדוגמה: שנים, לרוכש");
 
-        Div form = new Div(field, operator, value, unit);
+        Div form = new Div(field, value, unit);
         form.addClassName("policy-dialog-form");
 
         Button cancel = createSecondaryButton("ביטול", null);
@@ -1267,15 +1262,14 @@ private void openAddConditionDialog(DiscountDTO discount) {
 
         Button save = createPrimaryButton(editing ? "עדכן תנאי" : "הוסף תנאי", null);
         save.addClickListener(event -> {
-            if (field.isEmpty() || operator.isEmpty() || value.isEmpty()) {
-                showError("יש למלא שדה, אופרטור וערך.");
+            if (field.isEmpty() || value.isEmpty()) {
+                showError("יש למלא שדה וערך.");
                 return;
             }
 
             PurchaseRuleDTO updated = new PurchaseRuleDTO(
                     draft.id(),
                     field.getValue(),
-                    operator.getValue(),
                     value.getValue().intValue(),
                     unit.getValue() == null ? "" : unit.getValue().trim()
             );
@@ -1385,7 +1379,11 @@ private void openAddConditionDialog(DiscountDTO discount) {
     };
 
     Button addCondition = createSecondaryButton("הוסף תנאי", null);
-    addCondition.addClickListener(event -> openAddConditionDialog(conditionDrafts, conditionsContainer));
+    addCondition.addClickListener(event -> openAddConditionDialog(
+            name.getValue().trim(),
+            conditionDrafts,
+            conditionsContainer
+    ));
 
     Div conditionalBox = new Div(addCondition, conditionsContainer);
     conditionalBox.addClassName("discount-conditional-box");
@@ -1445,6 +1443,14 @@ private void openAddConditionDialog(DiscountDTO discount) {
             return;
         }
 
+        if (selectedType == DiscountType.CONDITIONAL) {
+            String ticketConditionError = invalidDiscountTicketConditionMessage(conditionDrafts);
+            if (ticketConditionError != null) {
+                showError(ticketConditionError);
+                return;
+            }
+        }
+
         DiscountDTO updated = new DiscountDTO(
                 draft.id(),
                 name.getValue().trim(),
@@ -1472,7 +1478,8 @@ private void openAddConditionDialog(DiscountDTO discount) {
     dialog.open();
 }
 
-private void openAddConditionDialog(List<DiscountConditionDTO> conditionDrafts,
+private void openAddConditionDialog(String discountName,
+                                    List<DiscountConditionDTO> conditionDrafts,
                                     Div conditionsContainer) {
     Dialog dialog = new Dialog();
     dialog.addClassName("policy-editor-dialog");
@@ -1551,6 +1558,15 @@ private void openAddConditionDialog(List<DiscountConditionDTO> conditionDrafts,
                 normalizedStartTime,
                 normalizedEndTime
         );
+
+        List<DiscountConditionDTO> candidateConditions = new ArrayList<>(conditionDrafts);
+        candidateConditions.add(newCondition);
+
+        String ticketConditionError = invalidDiscountTicketConditionMessage(candidateConditions);
+        if (ticketConditionError != null) {
+            showError(ticketConditionError);
+            return;
+        }
 
         conditionDrafts.add(newCondition);
 
@@ -1694,10 +1710,11 @@ private String conditionText(DiscountConditionDTO condition) {
 
     private void savePurchaseDraft() {
         try {
+            PurchasePolicyExpressionDraftDTO draft = getPurchasePolicyExpressionDraft();
             presenter.saveEventPurchasePolicy(
                     UiSession.getMemberToken(),
                     eventId,
-                    getPurchasePolicyExpressionDraft()
+                    draft
             );
 
             showSuccess("מדיניות הרכישה נשמרה והתעדכנה בהצלחה באירוע.");
@@ -1863,6 +1880,39 @@ private void confirmCancelEvent() {
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 
+    private String invalidDiscountTicketConditionMessage(List<DiscountConditionDTO> conditions) {
+        if (conditions == null || conditions.isEmpty()) {
+            return null;
+        }
+
+        Integer minTickets = null;
+        Integer maxTickets = null;
+
+        for (DiscountConditionDTO condition : conditions) {
+            if (condition == null || condition.conditionType() == null || condition.ticketThreshold() == null) {
+                continue;
+            }
+
+            if (condition.conditionType() == DiscountConditionType.MIN_TICKET) {
+                minTickets = minTickets == null
+                        ? condition.ticketThreshold()
+                        : Math.max(minTickets, condition.ticketThreshold());
+            }
+
+            if (condition.conditionType() == DiscountConditionType.MAX_TICKET) {
+                maxTickets = maxTickets == null
+                        ? condition.ticketThreshold()
+                        : Math.min(maxTickets, condition.ticketThreshold());
+            }
+        }
+
+        if (minTickets != null && maxTickets != null && minTickets > maxTickets) {
+            return "מינימום הכרטיסים לא יכול להיות גדול מהמקסימום.";
+        }
+
+        return null;
+    }
+
     private String prettyEnum(Enum<?> value) {
         return value == null ? "" : prettyEnum(value.name());
     }
@@ -2010,7 +2060,7 @@ private void confirmCancelEvent() {
     }
 
     public enum PurchaseRuleField {
-        AGE("גיל"),
+        AGE("גיל מינימום"),
         MIN_TICKETS("מינימום כרטיסים"),
         MAX_TICKETS("מקסימום כרטיסים");
 
@@ -2022,28 +2072,6 @@ private void confirmCancelEvent() {
 
         public String getLabel() {
             return label;
-        }
-    }
-
-    public enum ComparisonOperator {
-        GREATER_OR_EQUALS("גדול או שווה", ">="),
-        LESS_OR_EQUALS("קטן או שווה", "<="),
-        EQUALS("שווה", "=");
-
-        private final String label;
-        private final String symbol;
-
-        ComparisonOperator(String label, String symbol) {
-            this.label = label;
-            this.symbol = symbol;
-        }
-
-        public String getLabel() {
-            return label + " (" + symbol + ")";
-        }
-
-        public String getSymbol() {
-            return symbol;
         }
     }
 
@@ -2248,24 +2276,23 @@ private void confirmCancelEvent() {
     public record PurchaseRuleDTO(
             String id,
             PurchaseRuleField field,
-            ComparisonOperator operator,
             int value,
             String unit
     ) {
         public static PurchaseRuleDTO defaultRule() {
-            return new PurchaseRuleDTO(UUID.randomUUID().toString(), PurchaseRuleField.MAX_TICKETS, ComparisonOperator.LESS_OR_EQUALS, 5, "לרוכש");
+            return new PurchaseRuleDTO(UUID.randomUUID().toString(), PurchaseRuleField.MAX_TICKETS, 5, "לרוכש");
         }
 
         public PurchaseRuleDTO copy() {
-            return new PurchaseRuleDTO(id, field, operator, value, unit);
+            return new PurchaseRuleDTO(id, field, value, unit);
         }
 
         public String toDisplayText() {
-            return field.getLabel() + " " + operator.getSymbol() + " " + value + (unit == null || unit.isBlank() ? "" : " " + unit);
+            return field.getLabel() + ": " + value + (unit == null || unit.isBlank() ? "" : " " + unit);
         }
 
         public String toTechnicalText() {
-            return field.name() + " " + operator.getSymbol() + " " + value;
+            return field.name() + " = " + value;
         }
     }
 
