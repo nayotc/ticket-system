@@ -72,14 +72,34 @@ public class UiVisitCoordinator {
 
         ui.getPage().executeJs(
                 """
+                window.__tixnowCancelPendingExit = function() {
+                    const pending = sessionStorage.getItem('__tixnow_pending_exit_token');
+                    if (!pending) {
+                        return;
+                    }
+
+                    sessionStorage.removeItem('__tixnow_pending_exit_token');
+                    navigator.sendBeacon('/api/session/cancel-exit', pending);
+                };
+
                 if (!window.__tixnowExitHookInstalled) {
                     window.__tixnowExitHookInstalled = true;
-                    window.addEventListener('pagehide', function() {
-                        if (window.__tixnowExitToken) {
-                            navigator.sendBeacon('/api/session/exit', window.__tixnowExitToken);
+
+                    window.addEventListener('pageshow', function() {
+                        window.__tixnowCancelPendingExit();
+                    });
+
+                    window.addEventListener('pagehide', function(event) {
+                        if (event.persisted || !window.__tixnowExitToken) {
+                            return;
                         }
+
+                        sessionStorage.setItem('__tixnow_pending_exit_token', window.__tixnowExitToken);
+                        navigator.sendBeacon('/api/session/exit', window.__tixnowExitToken);
                     });
                 }
+
+                window.__tixnowCancelPendingExit();
                 """
         );
     }
