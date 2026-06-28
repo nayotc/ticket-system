@@ -268,7 +268,7 @@ public class ReservationPresenter {
             if (quote.discountTotal().compareTo(BigDecimal.ZERO) > 0) {
                 messages.add("המחיר כולל הנחות שהופעלו לפי מדיניות ההנחות.");
             } else if (couponCode != null && !couponCode.isBlank()) {
-                messages.add("קוד הקופון לא הפעיל הנחה עבור ההזמנה הנוכחית.");
+                messages.add("הקופון אינו פעיל כרגע או שאינו תורם להנחה");
             }
 
             return new OrderPricing(
