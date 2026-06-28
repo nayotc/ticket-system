@@ -20,7 +20,7 @@ import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseEx
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseNodeType;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.LogicalOperator;
 import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseRuleField;
-import ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.ComparisonOperator;
+import ticketsystem.PresentationLayer.Notifications.MessageTranslator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +56,7 @@ public class PoliciesEditorPresenter {
             companyService.setCompanyPurchasePolicy(sessionToken, companyId, appPurchasePolicy);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw new PresentationException(MessageTranslator.translate(e.getMessage()));
         } catch (Exception e) {
             throw new PresentationException("An error occurred while saving the purchase policy. Please try again.");
         }
@@ -77,14 +77,13 @@ public class PoliciesEditorPresenter {
         try {
 
             DiscountPolicyDTO appDiscountPolicy = mapToAppDiscountPolicy(discountDraft);
-           
 
             companyService.setCompanyDiscountPolicy(token, eventId, appDiscountPolicy);
 
         } catch (PresentationException exception) {
             throw exception;
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw new PresentationException(exception.getMessage());
+            throw new PresentationException(MessageTranslator.translate(exception.getMessage()));
         } catch (Exception exception) {
             throw new PresentationException("אירעה שגיאה בעת שמירת מדיניות ההנחות. נסו שוב.");
         }
@@ -156,34 +155,28 @@ public class PoliciesEditorPresenter {
      */
     private ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseRuleDTO mapToUiLeafRule(PurchaseRuleDTO appRule) {
         PurchaseRuleField field;
-        ComparisonOperator operator;
         String unit = "";
 
         switch (appRule.getType()) {
             case MIN_AGE:
                 field = PurchaseRuleField.AGE;
-                operator = ComparisonOperator.GREATER_OR_EQUALS;
                 unit = "שנים";
                 break;
             case MIN_TICKETS:
                 field = PurchaseRuleField.MIN_TICKETS;
-                operator = ComparisonOperator.GREATER_OR_EQUALS;
                 unit = "לרוכש";
                 break;
             case MAX_TICKETS:
                 field = PurchaseRuleField.MAX_TICKETS;
-                operator = ComparisonOperator.LESS_OR_EQUALS;
                 unit = "לרוכש";
                 break;
             default:
                 field = PurchaseRuleField.MAX_TICKETS;
-                operator = ComparisonOperator.EQUALS;
         }
 
         return new ticketsystem.PresentationLayer.Views.Management.PoliciesEditor.PurchaseRuleDTO(
                 UUID.randomUUID().toString(),
                 field,
-                operator,
                 appRule.getValue() != null ? appRule.getValue() : 0,
                 unit
         );

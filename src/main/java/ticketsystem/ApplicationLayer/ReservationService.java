@@ -526,7 +526,10 @@ public class ReservationService {
                 completeOrderInventory(order);
                 saveOrder(order);
                 
-                event.SoldOut();
+                if(event.isSoldOut()){
+                     event.SoldOut();
+                    eventRepository.updateSaleStatus(eventId,SaleStatus.SOLD_OUT);
+                }
                  
                 notifyOrderOwner(
                         order,
