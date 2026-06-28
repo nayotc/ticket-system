@@ -104,23 +104,16 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
     private void configureFields() {
         eventName.setPlaceholder("לדוגמה: Neon Nights Festival");
         artistName.setPlaceholder("לדוגמה: עומר אדם, Coldplay, Tech Summit");
-        ticketPrice.setPlaceholder("לדוגמה: 149.90");
         trafficThreshold.setPlaceholder("לדוגמה: 1000");
         lotteryWinnersNumber.setPlaceholder("לדוגמה: 250");
 
         eventName.setPrefixComponent(VaadinIcon.TICKET.create());
         artistName.setPrefixComponent(VaadinIcon.MICROPHONE.create());
-        ticketPrice.addClassName("create-event-price-field");
         trafficThreshold.addClassName("create-event-traffic-field");
 
-        ticketPrice.setPrefixComponent(VaadinIcon.MONEY.create());
         trafficThreshold.setPrefixComponent(VaadinIcon.USERS.create());
 
-        Span shekel = new Span("₪");
-        shekel.addClassName("create-event-price-currency");
-        ticketPrice.setSuffixComponent(shekel);
 
-        ticketPrice.getElement().setAttribute("inputmode", "decimal");
         trafficThreshold.getElement().setAttribute("inputmode", "numeric");
 
         category.setItems(EventCategory.values());
@@ -168,7 +161,6 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
                 eventDate,
                 eventTime,
                 location,
-                ticketPrice,
                 trafficThreshold,
                 saleOpening,
                 mapSize
@@ -271,7 +263,6 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
                 category,
                 twoColumns,
                 location,
-                ticketPrice,
                 trafficThreshold
         );
 
@@ -412,7 +403,7 @@ public class CreateEvent extends PageContainer implements BeforeEnterObserver {
         EventCategory selectedCategory = readRequiredValue(category, "קטגוריה");
         EventLocation selectedLocation = readRequiredValue(location, "מיקום");
         LocalDateTime dateTime = readDateTime();
-        BigDecimal price = readPrice();
+        BigDecimal price = BigDecimal.ZERO; //readPrice();
         Long threshold = readTrafficThreshold();
         SaleOpeningOption selectedSaleOpening = readRequiredValue(saleOpening, "אופן פתיחת המכירה");
         Integer winnersNumber = readLotteryWinnersNumber(selectedSaleOpening);
