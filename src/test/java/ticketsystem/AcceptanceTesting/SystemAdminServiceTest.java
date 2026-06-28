@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.INotifier;
 import ticketsystem.ApplicationLayer.ISystemLogger;
+import ticketsystem.ApplicationLayer.ITicketIssuingService;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.TokenService;
 import ticketsystem.ApplicationLayer.UserAccessService;
@@ -96,7 +97,7 @@ public class SystemAdminServiceTest {
     private RecordingNotifier recordingNotifier;
     private INotifier notifier;
     private InMemoryNotificationsRepository notificationRepo;
-
+    private ITicketIssuingService ticketIssuingService;
     private UserAccessService userAccessService;
 
     @BeforeEach
@@ -114,6 +115,7 @@ public class SystemAdminServiceTest {
         recordingNotifier = new RecordingNotifier();
         notifier = recordingNotifier;
         userAccessService = new UserAccessService(userRepo);
+        ticketIssuingService=new SecureBarcodeProxy();
         companyService = new CompanyService(companyRepo, tokenService, membershipDomain, logger, userAccessService, notifier);
         orderRepo = new InMemoryOrderRepository();
         systemAdminService = new SystemAdminService(
@@ -127,7 +129,8 @@ public class SystemAdminServiceTest {
                 historyRepo,
                 membershipDomain,
                 notifier,
-                tokenService
+                tokenService,
+                ticketIssuingService
         );
     }
 
@@ -894,7 +897,7 @@ public class SystemAdminServiceTest {
         FailureStateSnapshot afterState = captureStateSnapshot();
         Member savedMember = userRepo.getMemberById(memberId);
 
-        assertTrue(exception.getMessage().contains("End date cannot be before start date"));
+        assertTrue(exception.getMessage().contains("you cannot enter an end time that is before the current time"));
         assertNotNull(savedMember);
         assertFalse(savedMember.isSuspended());
         assertStateUnchanged(beforeState, afterState, "Suspend member with invalid dates");
