@@ -28,7 +28,7 @@ import ticketsystem.DomainLayer.user.Permission;
  * create or update history override this setting with a writable transaction.</p>
  */
 @Service
-@Transactional(readOnly = true)
+@Transactional
 public class HistoryService
         implements OrderCompletedListener, EventUpdatesListener {
 
@@ -444,7 +444,7 @@ public class HistoryService
      * Notifies buyers about an event update.
      */
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public void onEventUpdated(
             Long eventId,
             LocalDateTime date,

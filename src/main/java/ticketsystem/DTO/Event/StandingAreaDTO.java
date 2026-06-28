@@ -5,7 +5,7 @@ import ticketsystem.DomainLayer.event.StandingArea;
 import java.math.BigDecimal;
 
 public record StandingAreaDTO(
-        long id,
+        Long id,
         String name,
         PairDTO<Integer, Integer> location,
         PairDTO<Integer, Integer> size,
@@ -15,7 +15,7 @@ public record StandingAreaDTO(
         long capacity,
         long reserved,
         long sold
-) implements IMapElementDTO {
+) implements IAreaDTO {
 
     public static StandingAreaDTO from(StandingArea area) {
         if (area == null) {
