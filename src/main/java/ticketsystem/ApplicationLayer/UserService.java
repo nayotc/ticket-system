@@ -305,6 +305,19 @@ public class UserService {
                         LogLevel.WARN);
                 throw new IllegalArgumentException("Username is already taken.");
             }
+            Member member = userRepository.getMemberByUsername(username);
+            if (member == null) {
+                logger.logEvent(
+                        "Update username rejected: member not found after authentication, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Username update failed. Please try again.");
+            }
+            if(member.isSuspended()){
+                logger.logEvent(
+                        "Update username rejected: member is suspended, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Username update failed. Member is suspended.");
+            }
 
             boolean ok = userRepository.updateRegisteredMemberUsername(username, newUsername);
             if (!ok) {
@@ -348,6 +361,19 @@ public class UserService {
                         "Update password rejected: authentication failed, username=" + username,
                         LogLevel.WARN);
                 throw new IllegalArgumentException("Invalid username or password.");
+            }
+                        Member member = userRepository.getMemberByUsername(username);
+            if (member == null) {
+                logger.logEvent(
+                        "Update username rejected: member not found after authentication, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Username update failed. Please try again.");
+            }
+            if(member.isSuspended()){
+                logger.logEvent(
+                        "Update username rejected: member is suspended, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Username update failed. Member is suspended.");
             }
 
             String newHashedPassword = passwordService.hashPassword(newPassword);
@@ -566,14 +592,20 @@ public class UserService {
                         LogLevel.WARN);
                 throw new IllegalArgumentException("Invalid username or password.");
             }
+            if(member.isSuspended()){
+                logger.logEvent(
+                        "Update full name rejected: member is suspended, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Full name update failed. Member is suspended.");
+            }
 
             member.setFullName(newFullName);
             boolean ok = userRepository.updateMember(member);
             if (!ok) {
                 logger.logEvent(
-                        "Update password rejected: repository update failed, username=" + username,
+                        "Update full name rejected: repository update failed, username=" + username,
                         LogLevel.WARN);
-                throw new IllegalStateException("Password update failed. Please try again.");
+                throw new IllegalStateException("Full name update failed. Please try again.");
             }
 
             logger.logEvent(
@@ -616,13 +648,20 @@ public class UserService {
                 throw new IllegalArgumentException("Invalid username or password.");
             }
 
+            if(member.isSuspended()){
+                logger.logEvent(
+                        "Update phone rejected: member is suspended, username=" + username,
+                        LogLevel.WARN);
+                throw new IllegalStateException("Phone update failed. Member is suspended.");
+            }
+
             member.setPhone(normalizedPhone);
             boolean ok = userRepository.updateMember(member);
             if (!ok) {
                 logger.logEvent(
-                        "Update password rejected: repository update failed, username=" + username,
+                        "Update phone rejected: repository update failed, username=" + username,
                         LogLevel.WARN);
-                throw new IllegalStateException("Password update failed. Please try again.");
+                throw new IllegalStateException("Phone update failed. Please try again.");
             }
 
             logger.logEvent(

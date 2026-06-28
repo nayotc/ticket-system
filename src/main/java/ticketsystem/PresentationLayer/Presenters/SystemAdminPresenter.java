@@ -2,6 +2,13 @@ package ticketsystem.PresentationLayer.Presenters;
 
 import org.springframework.stereotype.Component;
 
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.textfield.TextField;
+
 import ticketsystem.ApplicationLayer.CompanyService;
 import ticketsystem.ApplicationLayer.SystemAdminService;
 import ticketsystem.ApplicationLayer.UserService;
@@ -56,7 +63,7 @@ public class SystemAdminPresenter {
                             user.getUserName(), // Using UserName (serves as email)
                             user.getFullName(), // Using FullName
                             user.isSuspended() ? "מושעה" : "פעיל", // Dynamically set status based on suspension
-                            user.isActive() // Using isActive flag
+                            user.isActive()// Using isActive flag
                     ))
                     .collect(Collectors.toList());
         } catch (PresentationException e) {

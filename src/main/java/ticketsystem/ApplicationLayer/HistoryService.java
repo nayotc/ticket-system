@@ -435,6 +435,7 @@ public class HistoryService
                     purchase.getTickets()) {
                 ticket.setStatus(TicketStatus.CANCELED);
             }
+            historyRepository.updatePurchase(purchase);
         }
 
         return allSucceeded;
