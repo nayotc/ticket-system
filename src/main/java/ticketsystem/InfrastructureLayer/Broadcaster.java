@@ -35,9 +35,7 @@ public class Broadcaster implements IBrodcaster {
             return;
         }
 
-        CopyOnWriteArrayList<Consumer<Notification>> listeners = new CopyOnWriteArrayList<>();
-        listeners.add(notifier);
-        notifiers.put(sessionId, listeners);
+        notifiers.computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>()).add(notifier);
     }
 
     public static boolean hasListeners(String targetId) {
