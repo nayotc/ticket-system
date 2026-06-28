@@ -337,14 +337,14 @@ public class ReservationService {
     }
 
     /**
-     * Returns the current valid active order for the given UI session token.
+     * Returns the current order that should still be visible for the given UI session token.
      *
      * <p>Before returning the order, the method runs the existing expiration flow
      * for the order's event, so an expired order is released, deleted, and not
      * returned to the UI.</p>
      *
      * @param token active guest/member session token
-     * @return active order DTO for the current session, or null if no valid active order exists
+     * @return order DTO for the current session, or null if no viewable order exists
      */
     public ActiveOrderDTO viewCurrentActiveOrder(String token) {
         try {
@@ -357,7 +357,7 @@ public class ReservationService {
                     ? orderRepository.getActiveOrderBySessionToken(token)
                     : orderRepository.getActiveOrderByUserId(userId);
 
-            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+            if (!isViewableActiveOrderStatus(order)) {
                 return null;
             }
 
@@ -368,7 +368,7 @@ public class ReservationService {
                     ? orderRepository.getActiveOrderBySessionToken(token)
                     : orderRepository.getActiveOrderByUserId(userId);
 
-            if (order == null || order.getStatus() != ActiveOrder.OrderStatus.ACTIVE) {
+            if (!isViewableActiveOrderStatus(order)) {
                 return null;
             }
 
@@ -386,6 +386,26 @@ public class ReservationService {
             logger.logEvent("viewCurrentActiveOrder failed: " + e.getMessage(), LogLevel.WARN);
             throw e;
         }
+    }
+
+    /**
+     * Returns whether an active-order-like record should still be visible to the user.
+     *
+     * <p>An order with {@code PAYMENT_FAILED} should remain visible so the user can
+     * review the order after a failed payment attempt instead of losing access to it.</p>
+     *
+     * @param order the current order, or {@code null} if no order exists
+     * @return {@code true} if the order can be displayed to the user
+     */
+    private boolean isViewableActiveOrderStatus(ActiveOrder order) {
+        if (order == null) {
+            return false;
+        }
+
+        return switch (order.getStatus()) {
+            case ACTIVE, PAYMENT_FAILED -> true;
+            default -> false;
+        };
     }
 
     /**
