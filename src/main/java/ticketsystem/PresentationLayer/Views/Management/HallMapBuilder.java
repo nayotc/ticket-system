@@ -434,9 +434,9 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
             selectedIndex = elements.isEmpty() ? -1 : 0;
             renderAll();
             
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
-                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
+                UiSession.handleTimeoutRedirect();
                 return;
             }
             showError(messageOrDefault(e, "לא ניתן לטעון את פרטי האירוע"));
@@ -1435,9 +1435,9 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
                 UI.getCurrent().navigate(UiRoutes.COMPANY_MANAGEMENT.replace(":companyId", String.valueOf(companyId)));
             }
             
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
-                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
+                UiSession.handleTimeoutRedirect();
                 return;
             }
             showError(messageOrDefault(e, "שמירת המפה נכשלה"));
@@ -1487,7 +1487,7 @@ public class HallMapBuilder extends Div implements BeforeEnterObserver {
 
             navigateBackToEvent();
         } catch (PresentationException exception) {
-            if (exception.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(exception.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }

@@ -1196,9 +1196,9 @@ private String conditionText(DiscountConditionDTO condition) {
             applyDiscountPolicyDraft(discountDraft);
             refreshVisiblePolicySections();
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
-                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
+                UiSession.handleTimeoutRedirect();
                 return;
             }
             showError(e.getMessage());
@@ -1283,7 +1283,7 @@ private String conditionText(DiscountConditionDTO condition) {
             showSuccess("מדיניות הרכישה נשמרה והתעדכנה בהצלחה בחברה.");
             
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -1306,9 +1306,9 @@ private String conditionText(DiscountConditionDTO condition) {
 
             showSuccess("מדיניות ההנחות נשמרה והתעדכנה בהצלחה בחברה.");
         
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
-                ticketsystem.PresentationLayer.Session.UiSession.handleTimeoutRedirect();
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
+                UiSession.handleTimeoutRedirect();
                 return;
             }
             showError(e.getMessage());

@@ -24,6 +24,7 @@ import ticketsystem.PresentationLayer.Layouts.MainLayout;
 import ticketsystem.PresentationLayer.Presenters.EventCardPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter;
 import ticketsystem.PresentationLayer.Presenters.EventCatalogPresenter.EventCardViewModel;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
@@ -255,8 +256,8 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                     EventCardPresenter.PurchaseRequestResult result =
                             eventCardPresenter.requestPurchase(UiSession.getCurrentToken(), eventId);
                     UI.getCurrent().navigate(result.route());
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                         return;
                     }
@@ -271,8 +272,8 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                 try {
                     eventCardPresenter.registerToLottery(UiSession.getMemberToken(), eventId);
                     Notifications.success("נרשמת להגרלה בהצלחה.");
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                         return;
                     }
@@ -286,8 +287,8 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
             public boolean isPreSaleCodeValid(Long eventId, String lotteryCode) {
                 try {
                     return eventCardPresenter.isPreSaleCodeValid(UiSession.getMemberToken(), eventId, lotteryCode);
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                     } else {
                         Notifications.error(e.getMessage());
@@ -305,8 +306,8 @@ public class SearchResults extends PageContainer implements BeforeEnterObserver 
                     EventCardPresenter.PurchaseRequestResult result =
                             eventCardPresenter.requestPurchase(UiSession.getCurrentToken(), eventId);
                     UI.getCurrent().navigate(result.route());
-                } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-                    if (e.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                         return;
                     }

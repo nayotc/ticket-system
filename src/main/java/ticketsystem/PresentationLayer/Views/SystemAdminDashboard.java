@@ -50,6 +50,7 @@ import ticketsystem.PresentationLayer.Components.StatusBadge;
 import ticketsystem.PresentationLayer.Components.ViewHeader;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Layouts.AdminLayout;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Presenters.SystemAdminPresenter;
 import ticketsystem.PresentationLayer.Session.UiSession;
 
@@ -1095,7 +1096,7 @@ private void openSuspendDialog(AdminUserRow user) {
     private void handleAdminActionError(Exception e) {
         String msg = e.getMessage() != null ? e.getMessage() : "";
 
-        if (e instanceof ticketsystem.PresentationLayer.Presenters.PresentationException pe && pe.isSessionTimeout()) {
+        if (e instanceof ticketsystem.PresentationLayer.Presenters.PresentationException pe && PresentationException.isSessionTimeoutMessage(pe.getMessage())) {
             UiSession.handleTimeoutRedirect();
             return;
         }

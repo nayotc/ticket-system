@@ -239,7 +239,7 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             refreshTabs();
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -277,7 +277,7 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             );
             applyPurchasePolicyDraft(purchaseDraft);
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -295,7 +295,7 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             );
             applyDiscountPolicyDraft(discountDraft);
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -456,7 +456,7 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             sold = presenter.getSoldTicketsCount(UiSession.getMemberToken(), eventId);
             capacity = presenter.getEventCapacity(UiSession.getMemberToken(), eventId);
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return summary;
             }
@@ -495,7 +495,7 @@ public class EditEvent extends PageContainer implements BeforeEnterObserver {
             try {
                 hasLottery = presenter.hasLottery(UiSession.getMemberToken(), eventId);
             } catch (PresentationException e) {
-                if (e.isSessionTimeout()) {
+                if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                     UiSession.handleTimeoutRedirect();
                     return wrapper;
                 }
@@ -651,7 +651,7 @@ private boolean hasStatus(String status) {
             Notifications.success("מצב המכירה עודכן בהצלחה.");
             loadEventDetails();
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -668,7 +668,7 @@ private boolean hasStatus(String status) {
             Notifications.success("הגרלה בוצעה בהצלחה, מכירה מוקדמת נפתחה.");
             loadEventDetails();
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -705,7 +705,7 @@ private boolean hasStatus(String status) {
             Notifications.success("פרטי האירוע נשמרו בהצלחה.");
             loadEventDetails();
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -1740,7 +1740,7 @@ private String conditionText(DiscountConditionDTO condition) {
             showSuccess("מדיניות הרכישה נשמרה והתעדכנה בהצלחה באירוע.");
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -1760,7 +1760,7 @@ private String conditionText(DiscountConditionDTO condition) {
             showSuccess("מדיניות ההנחות נשמרה והתעדכנה בהצלחה באירוע.");
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
@@ -1807,14 +1807,14 @@ private void confirmCancelEvent() {
 
                     Notifications.success("אירוע בוטל בהצלחה.");
 
-                } catch (PresentationException exception) {
-                    if (exception.isSessionTimeout()) {
+                } catch (PresentationException e) {
+                    if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                         UiSession.handleTimeoutRedirect();
                         return;
                     }
-                    Notifications.error(exception.getMessage());
+                    Notifications.error(e.getMessage());
 
-                } catch (Exception exception) {
+                } catch (Exception e) {
                     Notifications.error("אירעה שגיאה בעת ביטול האירוע. נסו שוב.");
 
                 } finally {

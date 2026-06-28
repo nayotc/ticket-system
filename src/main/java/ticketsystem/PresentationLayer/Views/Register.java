@@ -223,11 +223,11 @@ public class Register extends PageContainer {
             Notifications.success("ההרשמה נקלטה בהצלחה");
             UI.getCurrent().navigate(UiRoutes.LOGIN);
 
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             // Handle timeout gracefully. Since the user is a guest, 
             // handleTimeoutRedirect() will clear the stale token without reloading 
             // the page, keeping the form data intact.
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect();
                 return;
             }
