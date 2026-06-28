@@ -16,6 +16,8 @@ public class ReservationTimer extends Div {
     private static final Duration DEFAULT_RESERVATION_DURATION = Duration.ofMinutes(10);
 
     private final Span time = new Span("10:00");
+    private Runnable expirationHandler;
+    private boolean expirationHandled;
 
     public ReservationTimer() {
         getElement().setAttribute("dir", "rtl");
@@ -32,6 +34,7 @@ public class ReservationTimer extends Div {
         time.getElement().setAttribute("data-reservation-timer-time", "true");
 
         add(icon, label, time);
+        getElement().addEventListener("reservation-timer-expired", event -> handleClientExpiration());
         refreshFromSession();
     }
 
@@ -85,6 +88,7 @@ public class ReservationTimer extends Div {
             return;
         }
 
+        expirationHandled = false;
         setVisible(true);
         getElement().setAttribute("data-deadline-epoch-millis", String.valueOf(deadline));
         time.setText(formatRemaining(deadline - Instant.now().toEpochMilli()));
@@ -104,6 +108,27 @@ public class ReservationTimer extends Div {
     protected void onDetach(DetachEvent detachEvent) {
         getElement().executeJs("if (this.__reservationTimerInterval) { clearInterval(this.__reservationTimerInterval); this.__reservationTimerInterval = null; }");
         super.onDetach(detachEvent);
+    }
+
+    public void setExpirationHandler(Runnable expirationHandler) {
+        this.expirationHandler = expirationHandler;
+    }
+
+    private void handleClientExpiration() {
+        if (expirationHandled) {
+            return;
+        }
+
+        expirationHandled = true;
+        clear();
+
+        setVisible(false);
+        getElement().removeAttribute("data-deadline-epoch-millis");
+        time.setText("00:00");
+
+        if (expirationHandler != null) {
+            expirationHandler.run();
+        }
     }
 
     private void startClientCountdown() {
@@ -136,6 +161,7 @@ public class ReservationTimer extends Div {
                         root.classList.add('reservation-timer-expired');
                         clearInterval(root.__reservationTimerInterval);
                         root.__reservationTimerInterval = null;
+                        root.dispatchEvent(new CustomEvent('reservation-timer-expired'));
                     }
                 };
 
@@ -183,6 +209,7 @@ public class ReservationTimer extends Div {
         session.setAttribute(DEADLINE_SESSION_KEY, expiresAtEpochMillis);
     }
 
+    expirationHandled = false;
     setVisible(true);
     getElement().setAttribute("data-deadline-epoch-millis", String.valueOf(expiresAtEpochMillis));
     time.setText(formatRemaining(expiresAtEpochMillis - now));
