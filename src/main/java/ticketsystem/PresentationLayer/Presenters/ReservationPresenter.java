@@ -75,10 +75,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Active order could not be loaded. Please try again.");
+            throw presentationError(e, "Active order could not be loaded. Please try again.");
         }
     }
 
@@ -110,10 +110,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw checkoutError(e.getMessage());
+            throw checkoutError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw checkoutError("Buyer details could not be loaded. Please try again.");
+            throw checkoutError(e, "Buyer details could not be loaded. Please try again.");
         }
     }
 
@@ -159,10 +159,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Event data could not be loaded. Please try again.");
+            throw presentationError(e, "Event data could not be loaded. Please try again.");
         }
     }
 
@@ -200,10 +200,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Event data could not be loaded. Please try again.");
+            throw presentationError(e, "Event data could not be loaded. Please try again.");
         }
     }
 
@@ -282,9 +282,9 @@ public class ReservationPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
         } catch (Exception e) {
-            throw presentationError("Pricing could not be calculated. Please try again.");
+            throw presentationError(e, "Pricing could not be calculated. Please try again.");
         }
     }
 
@@ -368,10 +368,10 @@ public class ReservationPresenter {
         } catch (PresentationException e) {
             throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationError(e.getMessage());}
-        // } catch (Exception e) {
-        //     throw presentationError("Failed to validate purchase policy. Please try again.");
-        // }
+            throw presentationError(e, e.getMessage());
+        } catch (Exception e) {
+            throw presentationError(e, "Failed to validate purchase policy. Please try again.");
+        }
     }
 
     /**
@@ -439,10 +439,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Checkout failed. Please try again.");
+            throw presentationError(e, "Checkout failed. Please try again.");
         }
     }
 
@@ -468,10 +468,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Event data could not be loaded. Please try again.");
+            throw presentationError(e, "Event data could not be loaded. Please try again.");
         }
     }
 
@@ -511,10 +511,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Ticket selection failed. Please try again.");
+            throw presentationError(e, "Ticket selection failed. Please try again.");
         }
     }
 
@@ -559,10 +559,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Ticket removal failed. Please try again.");
+            throw presentationError(e, "Ticket removal failed. Please try again.");
         }
     }
 
@@ -601,10 +601,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Ticket removal failed. Please try again.");
+            throw presentationError(e, "Ticket removal failed. Please try again.");
         }
     }
 
@@ -645,10 +645,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Ticket selection failed. Please try again.");
+            throw presentationError(e, "Ticket selection failed. Please try again.");
         }
     }
 
@@ -687,10 +687,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Ticket removal failed. Please try again.");
+            throw presentationError(e, "Ticket removal failed. Please try again.");
         }
     }
 
@@ -1098,10 +1098,10 @@ public class ReservationPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw presentationError(e.getMessage());
+            throw presentationError(e, e.getMessage());
 
         } catch (Exception e) {
-            throw presentationError("Ticket selection failed. Please try again.");
+            throw presentationError(e, "Ticket selection failed. Please try again.");
         }
     }
 
@@ -1152,7 +1152,7 @@ public class ReservationPresenter {
         throw e;
 
     } catch (Exception e) {
-        throw presentationError("Selection access time could not be loaded.");
+        throw presentationError(e, "Selection access time could not be loaded.");
     }
 }
 
@@ -1172,8 +1172,16 @@ public boolean expireSelectionAccessIfNeeded(String token, Long eventId) {
         throw e;
 
     } catch (Exception e) {
-        throw presentationError("Selection access could not be checked.");
+        throw presentationError(e, "Selection access could not be checked.");
     }
 }
+
+    private PresentationException presentationError(Exception e, String fallbackMessage) {
+        return PresentationException.dispatch(e, msg -> translateReservationError(msg != null ? msg : fallbackMessage));
+    }
+
+    private PresentationException checkoutError(Exception e, String fallbackMessage) {
+        return PresentationException.dispatch(e, msg -> translateCheckoutError(msg != null ? msg : fallbackMessage));
+    }
 
 }

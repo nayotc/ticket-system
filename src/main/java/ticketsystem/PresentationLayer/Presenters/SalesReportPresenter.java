@@ -60,30 +60,37 @@ public class SalesReportPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateSalesReportError(
-                            e.getMessage(),
-                            "הפקת דוח המכירות נכשלה. יש לנסות שוב."
-                    )
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "הפקת דוח המכירות נכשלה. יש לנסות שוב."
+                ));
 
         } catch (Exception e) {
-            throw new PresentationException(
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
                     "אירעה שגיאה במהלך הפקת דוח המכירות. יש לנסות שוב."
-            );
+                ));
         }
     }
 
     public List<OrderDTO> getCompanyHistoryUnfiltered(String token, Long companyId) {
-    try {
+        try {
             return historyService.getHistoryForCompany(token, companyId);
+            
         } catch (PresentationException e) {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "טעינת היסטוריית החברה ללא סינון נכשלה. יש לנסות שוב."
+                ));
+
         } catch (Exception e) {
-            throw new PresentationException("An error occurred while presenting the company history. Please try again.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "אירעה שגיאה במהלך טעינת היסטוריית החברה ללא סינון. יש לנסות שוב."
+                ));
         }
     }
 
@@ -96,17 +103,16 @@ public class SalesReportPresenter {
             throw e;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateSalesReportError(
-                            e.getMessage(),
-                            "טעינת עסקאות החברה נכשלה. יש לנסות שוב."
-                    )
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "טעינת עסקאות החברה נכשלה. יש לנסות שוב."
+                ));
 
         } catch (Exception e) {
-            throw new PresentationException(
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
                     "אירעה שגיאה במהלך טעינת עסקאות החברה. יש לנסות שוב."
-            );
+                ));
         }
     }
 
@@ -145,18 +151,18 @@ public class SalesReportPresenter {
             
         } catch (PresentationException e) {
             throw e;
+        
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateSalesReportError(
-                            e.getMessage(),
-                            "ייצוא דוח המכירות נכשל. יש לנסות שוב."
-                    )
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
+                    "ייצוא דוח המכירות נכשל. יש לנסות שוב."
+                ));
 
         } catch (Exception e) {
-            throw new PresentationException(
+            throw PresentationException.dispatch(e, 
+                msg -> translateSalesReportError(msg,
                     "אירעה שגיאה במהלך ייצוא דוח המכירות. יש לנסות שוב."
-            );
+                ));
         }
     }
 

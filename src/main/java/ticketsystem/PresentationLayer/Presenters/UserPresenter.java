@@ -26,19 +26,16 @@ public class UserPresenter {
             boolean updated = userService.updateMemberUsername(sessionToken, password, username, newUsername);
 
             if (!updated) {
-                throw new PresentationException("Username update failed. Please check your details and try again.");
+                throw new PresentationException("עדכון שם המשתמש נכשל. אנא בדקו את הפרטים נסו שוב.");
             }
 
             return true;
-
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
+        
         } catch (Exception e) {
-            throw new PresentationException("Username update failed. Please try again.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateUserError(msg,
+                    "עדכון שם המשתמש נכשל. אנא נסו שוב."
+                ));
         }
     }
 
@@ -47,19 +44,49 @@ public class UserPresenter {
             boolean updated = userService.updateMemberPassword(sessionToken, password, username, newPassword);
 
             if (!updated) {
-                throw new PresentationException("Password update failed. Please check your details and try again.");
+                throw new PresentationException("עדכון הסיסמה נכשל. אנא בדקו את הפרטים ונסו שוב.");
             }
 
             return true;
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(e.getMessage());
-
         } catch (Exception e) {
-            throw new PresentationException("Password update failed. Please try again.");
+            throw PresentationException.dispatch(e, 
+                msg -> translateUserError(msg,
+                    "עדכון הסיסמה נכשל. אנא נסו שוב."
+                ));
         }
+    }
+
+    private String translateUserError(String message, String fallbackMessage) {
+        if (message == null || message.isBlank()) {
+            return fallbackMessage;
+        }
+
+        String cleanMessage = message.trim();
+
+        return switch (cleanMessage) {
+            case "Username update failed. Please check your details and try again." ->
+                    "עדכון שם המשתמש נכשל. אנא בדקו את הפרטים ונסו שוב.";
+
+            case "Password update failed. Please check your details and try again." ->
+                    "עדכון הסיסמה נכשל. אנא בדקו את הפרטים ונסו שוב.";
+
+            case "Incorrect password", "Incorrect current password." ->
+                    "הסיסמה הנוכחית שהוזנה שגויה.";
+
+            case "Username already taken", "New username is already taken." ->
+                    "שם המשתמש החדש כבר תפוס על ידי משתמש אחר.";
+
+            case "New username cannot be the same as the old one." ->
+                    "שם המשתמש החדש זהה לשם המשתמש הנוכחי.";
+
+            case "New password cannot be the same as the old one." ->
+                    "הסיסמה החדשה אינה יכולה להיות זהה לסיסמה הנוכחית.";
+
+            case "User not found.", "Member not found." ->
+                    "המשתמש לא נמצא במערכת.";
+
+            default -> fallbackMessage;
+        };
     }
 }

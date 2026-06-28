@@ -322,7 +322,6 @@ public class SystemAdminService {
     }
 
     // Use Case 6.4: View Purchase History by Buyer
-    // Use Case 6.4: View Purchase History by Buyer
     @Transactional(readOnly = true)
     public Map<Long, List<OrderDTO>> getPurchaseHistoryByBuyer(String sessionToken) {
         logger.logEvent("Started - getPurchaseHistoryByBuyer.", LogLevel.INFO);

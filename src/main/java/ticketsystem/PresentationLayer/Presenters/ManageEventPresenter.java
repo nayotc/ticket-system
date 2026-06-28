@@ -687,9 +687,27 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
         };
     }
 
+    // private PresentationException presentationException(String operation, Exception originalException, String fallbackMessage) {
+    //     String originalMessage = originalException == null ? null : originalException.getMessage();
+
+    //     logger.logError(
+    //             "Presenter operation failed"
+    //                     + ", operation=" + operation
+    //                     + ", exceptionType="
+    //                     + (originalException == null
+    //                     ? "unknown"
+    //                     : originalException.getClass().getName())
+    //                     + ", originalMessage=" + originalMessage,
+    //             originalException
+    //     );
+
+    //     return new PresentationException(resolveUserMessage(originalMessage, fallbackMessage));
+    // }
+
     private PresentationException presentationException(String operation, Exception originalException, String fallbackMessage) {
         String originalMessage = originalException == null ? null : originalException.getMessage();
 
+        // 1. ה-Logger המקורי שלכם רץ כרגיל בשורה הראשונה ומתעד הכל ללוגים (אפס פגיעה בתיעוד!)
         logger.logError(
                 "Presenter operation failed"
                         + ", operation=" + operation
@@ -701,7 +719,16 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
                 originalException
         );
 
-        return new PresentationException(resolveUserMessage(originalMessage, fallbackMessage));
+        // הגנה קטנה: אם הדרייבר זרק חריגה שהטקסט שלה הוא Null, עוטפים במחרוזת ריקה כדי שהמתרגם לא יקרס
+        Exception exceptionToDispatch = (originalException != null && originalException.getMessage() == null)
+                ? new Exception("", originalException)
+                : originalException;
+
+        // 2. הניתוב החכם: מעביר ל-dispatch את החריגה + את מתודת התרגום של חברת הצוות שלך!
+        return PresentationException.dispatch(
+                exceptionToDispatch,
+                msg -> resolveUserMessage(msg, fallbackMessage)
+        );
     }
 
     private EditEvent.DiscountPolicyDraftDTO mapToUiDiscountPolicyDraft(

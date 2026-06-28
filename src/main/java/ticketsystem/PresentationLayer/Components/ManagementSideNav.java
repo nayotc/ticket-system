@@ -16,6 +16,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import ticketsystem.DTO.CompanyDTO;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
 import ticketsystem.PresentationLayer.Presenters.CompanyPresenter;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.DomainLayer.user.Permission;
 
@@ -128,9 +129,9 @@ public class ManagementSideNav extends Div {
                     companyId,
                     permission
             );
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
+        } catch (PresentationException e) {
             // 1. בודקים מפורשות אם זה ניתוק
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 UiSession.handleTimeoutRedirect(); // מנתבים החוצה
             }
             // 2. מחזירים false גם במקרה של ניתוק וגם במקרה של חוסר הרשאה רגיל
@@ -225,8 +226,8 @@ public class ManagementSideNav extends Div {
             dialog.close();
             UI.getCurrent().navigate(routeForCompany(company.getId()));
             
-        } catch (ticketsystem.PresentationLayer.Presenters.PresentationException e) {
-            if (e.isSessionTimeout()) {
+        } catch (PresentationException e) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 dialog.close();
                 UiSession.handleTimeoutRedirect();
                 return; 

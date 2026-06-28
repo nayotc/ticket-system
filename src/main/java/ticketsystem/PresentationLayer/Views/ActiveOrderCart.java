@@ -93,7 +93,7 @@ public class ActiveOrderCart extends VerticalLayout {
             renderCart();
         
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                 } else {
@@ -395,7 +395,7 @@ public class ActiveOrderCart extends VerticalLayout {
             showError("קוד הקופון לא הפעיל הנחה עבור ההזמנה הנוכחית");
 
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                 } else {
@@ -479,7 +479,7 @@ public class ActiveOrderCart extends VerticalLayout {
             refreshHeader();
         
         } catch (PresentationException e) {
-            if (e.isSessionTimeout()) {
+            if (PresentationException.isSessionTimeoutMessage(e.getMessage())) {
                 if (UiSession.isLoggedIn()) {
                     UiSession.handleTimeoutRedirect();
                 } else {

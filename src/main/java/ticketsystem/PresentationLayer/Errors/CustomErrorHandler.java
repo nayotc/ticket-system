@@ -9,6 +9,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.Notification.Position;
 
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.ApplicationLayer.ISystemLogger;
 import ticketsystem.ApplicationLayer.ISystemLogger.LogLevel;
@@ -32,49 +33,37 @@ public class CustomErrorHandler implements ErrorHandler {
     public void error(ErrorEvent event) {
         Throwable cause = event.getThrowable();
 
+        // לולאה שעוברת על כל שרשרת השגיאות כדי למצוא את המקור
         while (cause != null) {
             String msg = cause.getMessage();
             
             if (msg != null) {
-                boolean isTimeout =       
-                    msg.contains("JWT") ||
-                    msg.contains("Invalid session ID") ||
-                    msg.contains("Invalid session token") ||
-                    msg.contains("Token is missing or null") ||
-                    msg.contains("Session is no longer active") ||
-                    msg.contains("Invalid or expired security token");
-
-                if (isTimeout) {
+                // 1. בדיקת Timeout
+                if (PresentationException.isSessionTimeoutMessage(msg)) {
                     handleSessionTimeout();
                     return; 
                 }
 
-                boolean isDbError = 
-                    msg.contains("CannotCreateTransactionException") ||
-                    msg.contains("JDBCConnectionException") ||
-                    msg.contains("Communications link failure") ||
-                    msg.contains("Connection refused") ||
-                    msg.contains("DataAccessResourceFailureException");
-
-                if (isDbError) {
+                // 2. בדיקת ניתוק DB - כאן השינוי המרכזי
+                if (PresentationException.isDbDisconnectMessage(msg)) {
                     UI ui = UI.getCurrent();
                     if (ui != null) {
                         ui.access(() -> {
+                            // שימוש בהודעה המוגדרת ב-PresentationException
                             Notification.show(
-                                "השירות אינו זמין זמנית עקב בעיית תקשורת. נסו שוב עוד מספר רגעים.", 
+                                PresentationException.DB_DISCONNECT_HEBREW_MSG, 
                                 5000, 
-                                Notification.Position.TOP_CENTER
+                                Position.TOP_CENTER
                             );
                         });
                     }
                     return;
                 }
             }
-            cause = cause.getCause();
+            cause = cause.getCause(); // חשוב: צלילה לשגיאת המקור
         }
 
-        // Fallback for other unexpected errors
-        // event.getThrowable().printStackTrace();
+        // Fallback: שגיאה לא מזוהה
         logger.logEvent("Unhandled UI exception: " + event.getThrowable().getMessage(), LogLevel.DEBUG);
         UI ui = UI.getCurrent();
         if (ui != null) {
@@ -85,6 +74,13 @@ public class CustomErrorHandler implements ErrorHandler {
                     Position.TOP_CENTER
                 );
             });
+        }
+    }
+
+    private void showNotification(String text) {
+        UI ui = UI.getCurrent();
+        if (ui != null) {
+            ui.access(() -> Notification.show(text, 5000, Position.TOP_CENTER));
         }
     }
 

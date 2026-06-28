@@ -20,18 +20,11 @@ public class CompanyPresenter implements ManagementSideNav.ManagementSideNavPres
         try {
             return companyService.createProductionCompany(sessionToken, companyName);
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "יצירת חברת ההפקה נכשלה. יש לנסות שוב.")
-            );
-
         } catch (Exception e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "יצירת חברת ההפקה נכשלה. יש לנסות שוב.")
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateCompanyError(msg,
+                    "יצירת חברת ההפקה נכשלה. יש לנסות שוב."
+                ));
         }
     }
 
@@ -39,18 +32,11 @@ public class CompanyPresenter implements ManagementSideNav.ManagementSideNavPres
         try {
             return companyService.closeProductionCompany(sessionToken, companyId);
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "סגירת חברת ההפקה נכשלה. יש לנסות שוב.")
-            );
-
         } catch (Exception e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "סגירת חברת ההפקה נכשלה. יש לנסות שוב.")
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateCompanyError(msg,
+                    "סגירת חברת ההפקה נכשלה. יש לנסות שוב."
+                ));
         }
     }
 
@@ -58,18 +44,11 @@ public class CompanyPresenter implements ManagementSideNav.ManagementSideNavPres
         try {
             return companyService.reopenProductionCompany(sessionToken, companyId);
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "פתיחת חברת ההפקה מחדש נכשלה. יש לנסות שוב.")
-            );
-
         } catch (Exception e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "פתיחת חברת ההפקה מחדש נכשלה. יש לנסות שוב.")
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateCompanyError(msg,
+                    "פתיחת חברת ההפקה מחדש נכשלה. יש לנסות שוב."
+                ));
         }
     }
 
@@ -77,18 +56,11 @@ public class CompanyPresenter implements ManagementSideNav.ManagementSideNavPres
         try {
             return companyService.getCompanyDetails(sessionToken, companyId);
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "טעינת פרטי חברת ההפקה נכשלה. יש לנסות שוב.")
-            );
-
         } catch (Exception e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "טעינת פרטי חברת ההפקה נכשלה. יש לנסות שוב.")
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateCompanyError(msg,
+                    "טעינת פרטי חברת ההפקה נכשלה. יש לנסות שוב."
+                ));
         }
     }
 
@@ -96,18 +68,11 @@ public class CompanyPresenter implements ManagementSideNav.ManagementSideNavPres
         try {
             return companyService.getFirstManagedCompanyId(sessionToken);
 
-        } catch (PresentationException e) {
-            throw e;
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "לא ניתן לטעון את חברת ההפקה המנוהלת. יש לנסות שוב.")
-            );
-
         } catch (Exception e) {
-            throw new PresentationException(
-                    translateCompanyError(e.getMessage(), "לא ניתן לטעון את חברת ההפקה המנוהלת. יש לנסות שוב.")
-            );
+            throw PresentationException.dispatch(e, 
+                msg -> translateCompanyError(msg,
+                    "לא ניתן לטעון את חברת ההפקה המנוהלת. יש לנסות שוב."
+                ));
         }
     }
 
