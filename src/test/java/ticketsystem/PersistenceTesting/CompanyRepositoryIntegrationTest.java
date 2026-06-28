@@ -1,4 +1,4 @@
-package ticketsystem.IntegrationTesting;
+package ticketsystem.PersistenceTesting;
 
 import java.util.HashSet;
 import java.util.List;

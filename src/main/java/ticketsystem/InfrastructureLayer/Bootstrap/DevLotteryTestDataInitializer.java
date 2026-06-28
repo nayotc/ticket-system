@@ -38,10 +38,9 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
     private static final String LOTTERY_REGISTRATION_EVENT_NAME = "פסטיבל אורות הלילה";
 
     private static final String REGISTRATION_TEST_USERNAME = "test@test.com";
-    private static final String REGISTRATION_TEST_PASSWORD = "123456";
+    private static final String REDACTED_PASSWORD = "<redacted>";
 
     private static final String WINNER_USERNAME = "owner@test.com";
-    private static final String WINNER_PASSWORD = "123456";
 
     private static final String FOUNDER_USERNAME = "founder@test.com";
     private static final String FOUNDER_PASSWORD = "123456";
@@ -78,9 +77,9 @@ public class DevLotteryTestDataInitializer implements CommandLineRunner {
             printWinnerCode(preSaleWinnerEvent.getId(), preSaleLotteryId);
 
             System.out.println("Registration test username: " + REGISTRATION_TEST_USERNAME);
-            System.out.println("Registration test password: " + REGISTRATION_TEST_PASSWORD);
+            System.out.println("Registration test password: " + REDACTED_PASSWORD);
             System.out.println("Winner username: " + WINNER_USERNAME);
-            System.out.println("Winner password: " + WINNER_PASSWORD);
+            System.out.println("Winner password: " + REDACTED_PASSWORD);
             System.out.println("Use the printed/generated code from this run.");
 
         } catch (Exception e) {

@@ -96,6 +96,13 @@ public class NotificationCenter {
     }
 
     private void show(Notification notification) {
+        String rawMessage = safeRawMessage(notification);
+
+        if (rawMessage.contains("deactivated by a system administrator")) {
+            showDeactivationAndLogout();
+            return;
+        }
+
         if (isAssignmentRequest(notification)) {
             showAssignmentRequest(notification);
             return;
@@ -249,5 +256,26 @@ public class NotificationCenter {
         }
 
         return value.substring(start, end);
+    }
+
+    private void showDeactivationAndLogout() {
+        com.vaadin.flow.component.dialog.Dialog dialog = new com.vaadin.flow.component.dialog.Dialog();
+        dialog.add("חשבונך נחסם והוסר על ידי מנהל המערכת. הנך מנותק כעת.");
+
+        com.vaadin.flow.component.button.Button okButton = new com.vaadin.flow.component.button.Button("אישור", event -> {
+            dialog.close();
+            
+            VaadinSession session = VaadinSession.getCurrent();
+            if (session != null) {
+                session.close();
+            }
+            
+            UI.getCurrent().getPage().setLocation("/login");
+        });
+
+        dialog.add(okButton);
+        dialog.setCloseOnEsc(false); 
+        dialog.setCloseOnOutsideClick(false); 
+        dialog.open();
     }
 }

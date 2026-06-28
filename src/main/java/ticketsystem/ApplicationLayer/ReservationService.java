@@ -95,6 +95,7 @@ public class ReservationService {
     }
 
     // UC 2.5,2.4
+    @Transactional
     public boolean selectSeatTicket(String token, Long eventId, Long areaId, seatPositionDTO position,
             String lotteryCode) {
           
@@ -136,7 +137,7 @@ public class ReservationService {
             throw e;
         }
     }
-
+    @Transactional
     public boolean selectStandingTicket(String token, Long eventId, Long areaId, int quantity, String lotteryCode) {
           
         try {
@@ -181,6 +182,7 @@ public class ReservationService {
     }
 
     // UC 2.7
+    @Transactional
     public boolean removeTicketFromActiveOrder(String token, Long eventId, Long ticketId) {
           
         try {
@@ -213,7 +215,7 @@ public class ReservationService {
             throw e;
         }
     }
-
+    @Transactional
     public boolean removeSeatTicketFromActiveOrder(String token, Long eventId, Long areaId, seatPositionDTO position) {
           
 
@@ -268,7 +270,7 @@ public class ReservationService {
             throw e;
         }
     }
-
+    @Transactional
     public boolean removeStandingTicketsFromActiveOrder(String token, Long eventId, Long areaId, int quantity) {
           
         try {
@@ -522,7 +524,10 @@ public class ReservationService {
                 completeOrderInventory(order);
                 saveOrder(order);
                 
-                event.SoldOut();
+                if(event.isSoldOut()){
+                     event.SoldOut();
+                    eventRepository.updateSaleStatus(eventId,SaleStatus.SOLD_OUT);
+                }
                  
                 notifyOrderOwner(
                         order,
@@ -1054,7 +1059,7 @@ public class ReservationService {
                 location,
                 memberId,
                 companyId,
-                null,
+                event.getOpenedBy(),
                 eventId,
                 total == null ? BigDecimal.ZERO : total,
                 transactionId,

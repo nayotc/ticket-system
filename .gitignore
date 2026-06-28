@@ -12,5 +12,6 @@ logs/
 src/main/frontend/generated/
 .classpath
 .project
+.settings/select-ticket-debug.txt
 .settings/
 /all-changes.patch

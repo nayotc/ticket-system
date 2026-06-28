@@ -35,6 +35,9 @@ public class Member extends User {
     @Column(name = "hashed_password")
     private String hashedPassword;
 
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive = true;
+
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CompanyRole> companyRoles = new ArrayList<>();
 
@@ -66,6 +69,7 @@ public class Member extends User {
         setVersion(other.getVersion());
         this.suspension = other.suspension == null ? null : new Suspension(other.suspension);
         this.companyRoles = new ArrayList<>();
+        this.isActive = other.isActive;
         for (CompanyRole originalRole : other.companyRoles) {
             CompanyRole copiedRole = copyRole(originalRole);
             if (copiedRole != null) {
@@ -128,7 +132,14 @@ public class Member extends User {
     public void setHashedPassword(String hashedPassword) {
         this.hashedPassword = hashedPassword;
     }
+    
+    public boolean isActive() {
+        return isActive;
+    }
 
+    public void deactivate() {
+        this.isActive = false;
+    }
     public List<CompanyRole> getAllRoles() {
         return companyRoles.stream().collect(Collectors.toList());
     }

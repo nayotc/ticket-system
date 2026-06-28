@@ -255,7 +255,8 @@ public class SystemAdminServiceTest {
         assertEquals("SUCCESS: Member deactivated and associated records cleaned up.", result);
 
         User deletedUser = userRepo.getMemberById(memberId);
-        assertTrue(deletedUser == null, "Member should be removed from UserRepository.");
+        Member memberDeleted = (Member) deletedUser;
+        assertTrue(memberDeleted.isActive() == false, "Member sould be deactivated.");
     }    
 
    @Test
