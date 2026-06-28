@@ -13,6 +13,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import ticketsystem.PresentationLayer.Constants.UiRoutes;
+import ticketsystem.PresentationLayer.Presenters.PresentationException;
 import ticketsystem.PresentationLayer.Session.UiSession;
 import ticketsystem.PresentationLayer.Session.UiVisitCoordinator;
 
@@ -129,6 +130,27 @@ public class PublicHeader extends Header {
             return;
         }
 
+        // try {
+        //     Long managedCompanyId = presenter.getFirstManagedCompanyId(UiSession.getMemberToken());
+
+        //     if (managedCompanyId == null || managedCompanyId <= 0) {
+        //         UI.getCurrent().navigate(UiRoutes.CREATE_PRODUCTION_COMPANY);
+        //         return;
+        //     }
+
+        //     UI.getCurrent().navigate(routeForCompanyManagement(managedCompanyId));
+        // } catch (Exception exception) {
+        //     /*
+        //      * Temporary safe fallback for UI stage.
+        //      *
+        //      * Later, the real presenter should decide whether the error means:
+        //      * 1. invalid session -> navigate to login
+        //      * 2. no managed company -> navigate to create company
+        //      * 3. system error -> show error popup
+        //      */
+        //     UI.getCurrent().navigate(UiRoutes.CREATE_PRODUCTION_COMPANY);
+        // }
+
         try {
             Long managedCompanyId = presenter.getFirstManagedCompanyId(UiSession.getMemberToken());
 
@@ -138,15 +160,24 @@ public class PublicHeader extends Header {
             }
 
             UI.getCurrent().navigate(routeForCompanyManagement(managedCompanyId));
+            
         } catch (Exception exception) {
-            /*
-             * Temporary safe fallback for UI stage.
-             *
-             * Later, the real presenter should decide whether the error means:
-             * 1. invalid session -> navigate to login
-             * 2. no managed company -> navigate to create company
-             * 3. system error -> show error popup
-             */
+            // 1. משתמשים ב-dispatch כדי לנתח את סוג השגיאה
+            PresentationException pe = PresentationException.dispatch(exception, msg -> msg);
+
+            // 2. אם ה-DB מנותק, אנחנו עוצרים ומציגים התראה (לא מנווטים לשום מקום!)
+            if (PresentationException.isDbDisconnectMessage(pe.getMessage())) {
+                Notifications.error(pe.getMessage());
+                return;
+            }
+
+            // 3. אם זה כשל התחברות (למשל טוקן פג תוקף)
+            if (PresentationException.isSessionTimeoutMessage(pe.getMessage())) {
+                UiSession.handleTimeoutRedirect();
+                return;
+            }
+
+            // 4. לכל שגיאה אחרת - נשארים ב-Fallback המקורי שלך
             UI.getCurrent().navigate(UiRoutes.CREATE_PRODUCTION_COMPANY);
         }
     }

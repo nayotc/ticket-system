@@ -16,13 +16,13 @@ public class PresentationException extends RuntimeException {
             return pe; 
         }
         
-        if (rawException == null) {
-            return new PresentationException("אירעה שגיאה.");
-        }
-
         // 1. Handle DB disconnections
         if (isDbDisconnect(rawException)) {
             return new PresentationException(DB_DISCONNECT_HEBREW_MSG);
+        }
+
+        if (rawException == null) {
+            return new PresentationException("אירעה שגיאה.");
         }
 
         String topMsg = rawException.getMessage();
