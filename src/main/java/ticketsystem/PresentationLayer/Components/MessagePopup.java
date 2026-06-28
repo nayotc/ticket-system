@@ -186,6 +186,11 @@ public class MessagePopup extends Dialog {
 
     private Paragraph createMessage(String message) {
         Paragraph messageElement = new Paragraph(message);
+
+        if (message != null && message.contains("\n")) {
+            messageElement.getStyle().set("white-space", "pre-line");
+        }
+
         messageElement.addClassName("message-popup-message");
         return messageElement;
     }
