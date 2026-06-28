@@ -344,4 +344,70 @@ class EventMapTest {
 
         assertEquals(originalElementCount, map.getElements().size());
     }
+
+    @Test
+    void GivenElementEndsExactlyAtMapWidth_WhenValidateForActivation_ThenSucceeds() {
+        EventMap map = new EventMap(new Pair<>(10, 10));
+
+        map.addElement(new StandingArea(
+                "Standing",
+                new Pair<>(8, 0),
+                new Pair<>(2, 3),
+                20,
+                BigDecimal.TEN
+        ));
+
+        assertDoesNotThrow(map::validateForActivation);
+    }
+
+    @Test
+    void GivenElementExceedsMapWidthByOne_WhenValidateForActivation_ThenFails() {
+        EventMap map = new EventMap(new Pair<>(10, 10));
+
+        map.addElement(new StandingArea(
+                "Standing",
+                new Pair<>(10, 1),
+                new Pair<>(2, 3),
+                20,
+                BigDecimal.TEN
+        ));
+
+        assertThrows(IllegalArgumentException.class, map::validateForActivation);
+    }
+
+    @Test
+    void GivenElementAtTopLeft_WhenValidateForActivation_ThenSucceeds() {
+        EventMap map = new EventMap(new Pair<>(10, 10));
+
+        map.addElement(new StandingArea(
+                "Standing",
+                new Pair<>(0, 0),
+                new Pair<>(2, 2),
+                20,
+                BigDecimal.TEN
+        ));
+
+        assertDoesNotThrow(map::validateForActivation);
+    }
+
+    @Test
+    void GivenElementsTouchWithoutOverlap_WhenValidateForActivation_ThenSucceeds() {
+        EventMap map = new EventMap(new Pair<>(10, 10));
+
+        map.addElement(new StandingArea(
+                "Standing",
+                new Pair<>(0, 0),
+                new Pair<>(5, 5),
+                20,
+                BigDecimal.TEN
+        ));
+
+        map.addElement(new Element(
+                "Stage",
+                new Pair<>(5, 0),
+                new Pair<>(3, 3)
+        ));
+
+        assertDoesNotThrow(map::validateForActivation);
+    }
 }

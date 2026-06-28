@@ -261,53 +261,6 @@ public class EventMap {
                 .sum();
     }
 
-
-    public long increaseStandingAreaCapacity(
-            Long areaId,
-            long newCapacity
-    ) {
-        StandingArea area = findStandingArea(areaId);
-        return area.increaseCapacityTo(newCapacity);
-    }
-
-    private SeatingArea findSeatingArea(Long areaId) {
-        if (areaId == null) {
-            throw new IllegalArgumentException("Area ID cannot be null");
-        }
-
-        if (elements == null) {
-            throw new IllegalArgumentException("Seating area not found");
-        }
-
-        return elements.stream()
-                .filter(SeatingArea.class::isInstance)
-                .map(SeatingArea.class::cast)
-                .filter(area -> Objects.equals(area.getId(), areaId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Seating area not found: " + areaId
-                ));
-    }
-
-    private StandingArea findStandingArea(Long areaId) {
-        if (areaId == null) {
-            throw new IllegalArgumentException("Area ID cannot be null");
-        }
-
-        if (elements == null) {
-            throw new IllegalArgumentException("Standing area not found");
-        }
-
-        return elements.stream()
-                .filter(StandingArea.class::isInstance)
-                .map(StandingArea.class::cast)
-                .filter(area -> Objects.equals(area.getId(), areaId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Standing area not found: " + areaId
-                ));
-    }
-
     public void updateActiveAreas(List<Area> newAreas, Map<Long, Area> updatedAreas) {
         if (newAreas == null) {
             throw new IllegalArgumentException("New areas list cannot be null");

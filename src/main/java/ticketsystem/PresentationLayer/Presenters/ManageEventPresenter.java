@@ -64,9 +64,12 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
                             request.lotteryWinnersNumber()
                     );
                 } catch (Exception lotteryException) {
-                    rollbackCreatedEvent(request.sessionId(), eventId);
-                    logger.logEvent("Failed to create lottery for event " + eventId + ": " + lotteryException.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-                    throw new PresentationException("אירעה שגיאה בעת יצירת הגרלה. נסו שוב.");
+                    try {
+                        eventService.rollbackCreatedEvent(request.sessionId(), eventId);
+                    } catch (Exception rollbackException) {
+                        lotteryException.addSuppressed(rollbackException);
+                    }
+                    throw presentationException("createEventLottery", lotteryException, "לא ניתן ליצור את האירוע עם ההגרלה. נסו שוב.");
                 }
             }
 
@@ -74,11 +77,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
 
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while creating event: " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת יצירת האירוע. נסו שוב.");
+            throw presentationException("operationName", exception, "לא ניתן ליצור את האירוע. בדקו את הפרטים ונסו שוב.");
         }
     }
 
@@ -89,11 +89,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             return eventService.getEvent(sessionId, eventId);
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while loading event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת טעינת פרטי האירוע. נסו שוב.");
+            throw presentationException("operationName", exception, "לא ניתן לטעון את פרטי האירוע. רעננו את העמוד ונסו שוב.");
         }
     }
 
@@ -104,11 +101,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             return Boolean.TRUE.equals(eventService.defineEventMap(sessionId, eventId, mapDTO));
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while defining map for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת שמירת מפת האולם. נסו שוב.");
+            throw presentationException("operationName", exception, "לא ניתן לשמור את מפת האולם. בדקו את המפה ונסו שוב.");
         }
     }
 
@@ -122,11 +116,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             return Boolean.TRUE.equals(eventService.updateActiveEvantMap(sessionId, eventId, newAreas, updatedAreas));
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while updating map for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת עדכון מפת האולם. נסו שוב.");
+            throw presentationException("operationName", exception, "לא ניתן לעדכן את מפת האולם. רעננו את העמוד ונסו שוב.");
         }
     }
 
@@ -137,11 +128,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             return eventService.getEventMap(sessionId, eventId);
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while loading event map " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת טעינת מפת האירוע.");
+            throw presentationException("operationName", exception, "לא ניתן לטעון את מפת האירוע. רעננו את העמוד ונסו שוב.");
         }
     }
 
@@ -152,33 +140,36 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             return Boolean.TRUE.equals(eventService.updateEvent(request.sessionId(), request.event()));
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while updating event: " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת עדכון פרטי האירוע. נסו שוב.");
+            throw presentationException("operationName", exception,  "לא ניתן לעדכן את פרטי האירוע. בדקו את הפרטים ונסו שוב.");
         }
     }
 
     @Override
     public EditEvent.PurchasePolicyExpressionDraftDTO loadEventPurchasePolicy(String token, Long eventId) {
-        validateEventId(eventId);
+        try {
+            validateEventId(eventId);
 
-        /*
-         * EventService currently exposes setEventPurchasePolicy(...), but the uploaded service
-         * does not expose a matching getEventPurchasePolicy(...).
-         * This returns an empty draft so the editor can work without inventing a new service API.
-         */
-        return new EditEvent.PurchasePolicyExpressionDraftDTO(
-                String.valueOf(eventId),
-                new EditEvent.PurchaseExpressionNodeDTO(
-                        UUID.randomUUID().toString(),
-                        EditEvent.PurchaseNodeType.GROUP,
-                        EditEvent.LogicalOperator.AND,
-                        null,
-                        new ArrayList<>()
-                )
-        );
+            /*
+             * EventService currently exposes setEventPurchasePolicy(...), but the uploaded service
+             * does not expose a matching getEventPurchasePolicy(...).
+             * This returns an empty draft so the editor can work without inventing a new service API.
+             */
+            return new EditEvent.PurchasePolicyExpressionDraftDTO(
+                    String.valueOf(eventId),
+                    new EditEvent.PurchaseExpressionNodeDTO(
+                            UUID.randomUUID().toString(),
+                            EditEvent.PurchaseNodeType.GROUP,
+                            EditEvent.LogicalOperator.AND,
+                            null,
+                            new ArrayList<>()
+                    )
+            );
+        } catch (PresentationException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw presentationException("operationName", exception,  "לא ניתן לטעון את פרטי מדיניות הרכישה. רעננו ונסו שוב.");
+        }
     }
 
     @Override
@@ -189,11 +180,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             eventService.setEventPurchasePolicy(token, eventId, appPurchasePolicy);
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while saving purchase policy for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת שמירת מדיניות הרכישה. נסו שוב.");
+            throw presentationException("operationName", exception,"לא ניתן לשמור את מדיניות הרכישה. בדקו את הכללים ונסו שוב.");
         }
     }
 
@@ -205,11 +193,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             eventService.cancelEvent(token, eventId);
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while canceling event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת ביטול האירוע. נסו שוב.");
+            throw presentationException("operationName", exception, "לא ניתן לבטל את האירוע כעת. נסו שוב מאוחר יותר.");
         }
     }
 
@@ -225,11 +210,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
 
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while saving discount policy for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת שמירת מדיניות ההנחות. נסו שוב.");
+            throw presentationException("operationName", exception, "לא ניתן לשמור את מדיניות ההנחות. בדקו את ההנחות ונסו שוב.");
         }
     }
 
@@ -244,11 +226,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             eventService.updateEventSaleStatus(token, eventId, targetStatus);
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while updating sale status for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת עדכון מצב המכירה. נסו שוב.");
+            throw presentationException("operationName", exception, "לא ניתן לעדכן את מצב המכירה. רעננו את העמוד ונסו שוב.");
         }
     }
 
@@ -259,11 +238,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             return lotteryService.hasLotteryForEvent(sessionId, eventId);
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while checking lottery for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת בדיקת הגרלה לאירוע. נסו שוב.");
+            throw presentationException("operationName", exception, "לא ניתן לבדוק את פרטי ההגרלה. נסו שוב.");
         }
     }
 
@@ -276,11 +252,8 @@ public class ManageEventPresenter implements CreateEvent.CreateEventPresenter, H
             lotteryService.conductLotteryDraw(sessionId, lotteryId, companyId);
         } catch (PresentationException exception) {
             throw exception;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw presentationException(exception.getMessage());
         } catch (Exception exception) {
-            logger.logEvent("Unexpected error while conducting lottery for event " + eventId + ": " + exception.getMessage(), LogbackSystemLogger.LogLevel.DEBUG);
-            throw new PresentationException("אירעה שגיאה בעת ביצוע ההגרלה. נסו שוב.");
+            throw presentationException("operationName", exception,  "לא ניתן לבצע את ההגרלה כעת. בדקו את מצב ההגרלה ונסו שוב.");
         }
     }
     @Override
@@ -291,15 +264,8 @@ public int getEventCapacity(String sessionId, Long eventId) {
 
     } catch (PresentationException exception) {
         throw exception;
-    } catch (IllegalArgumentException | IllegalStateException exception) {
-        throw presentationException(exception.getMessage());
     } catch (Exception exception) {
-        logger.logEvent(
-                "Unexpected error while loading event capacity for event "
-                        + eventId + ": " + exception.getMessage(),
-                LogbackSystemLogger.LogLevel.DEBUG
-        );
-        throw new PresentationException("אירעה שגיאה בעת טעינת קיבולת האירוע. נסו שוב.");
+        throw presentationException("operationName", exception,  "לא ניתן לטעון את קיבולת האירוע. רעננו את העמוד ונסו שוב.");
     }
 }
 @Override
@@ -310,15 +276,8 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
 
     } catch (PresentationException exception) {
         throw exception;
-    } catch (IllegalArgumentException | IllegalStateException exception) {
-        throw presentationException(exception.getMessage());
     } catch (Exception exception) {
-        logger.logEvent(
-                "Unexpected error while loading sold tickets count for event "
-                        + eventId + ": " + exception.getMessage(),
-                LogbackSystemLogger.LogLevel.DEBUG
-        );
-        throw new PresentationException("אירעה שגיאה בעת טעינת נתוני המכירות. נסו שוב.");
+        throw presentationException("operationName", exception,"לא ניתן לטעון את נתוני המכירות. רעננו את העמוד ונסו שוב.");
     }
 }
 
@@ -383,7 +342,7 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
             case MIN_TICKETS -> appRule.setType(PurchaseRuleType.MIN_TICKETS);
             case MAX_TICKETS -> appRule.setType(PurchaseRuleType.MAX_TICKETS);
             case AGE -> appRule.setType(PurchaseRuleType.MIN_AGE);
-            default -> throw new PresentationException("Unknown purchase rule field selected.");
+            default -> throw new IllegalArgumentException("Unknown purchase rule field selected.");
         }
 
         return appRule;
@@ -495,7 +454,7 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
 
         }
 
-        default -> throw new PresentationException("Unknown discount type selected.");
+        default -> throw new IllegalArgumentException("Unknown discount type selected.");
     }
 
     return appDiscount;
@@ -580,97 +539,154 @@ public int getSoldTicketsCount(String sessionId, Long eventId) {
         }
     }
 
-    private String translateError(String message) {
-        if (message == null || message.isBlank()) {
-            return "אירעה שגיאה. נסו שוב.";
+    private String resolveUserMessage(String originalMessage, String fallbackMessage) {
+        String safeFallback = fallbackMessage == null || fallbackMessage.isBlank() ? "לא ניתן להשלים את הפעולה. נסו שוב." : fallbackMessage;
+
+        if (originalMessage == null || originalMessage.isBlank()) {
+            return safeFallback;
         }
 
-        if (message != null && (
-                message.contains("JWT") ||
-                message.contains("expired") ||
-                message.contains("Invalid") ||
-                message.contains("Invalid session ID") ||
-                message.contains("Token is missing or null") ||
-                message.contains("Session is no longer active") ||
-                message.contains("Invalid or expired security token")
-        )) {
-            return message;
+        String normalizedMessage = originalMessage.toLowerCase();
+
+        /*
+         * Authentication errors are actionable.
+         * Do not expose JWT or token implementation details.
+         */
+        if (normalizedMessage.contains("jwt")
+                || normalizedMessage.contains("token")
+                || normalizedMessage.contains("session")
+                || normalizedMessage.contains("expired")) {
+            return "פג תוקף ההתחברות. התחברו מחדש ונסו שוב.";
         }
 
-        if (message.startsWith("Map elements cannot overlap")) {
-            return "לא ניתן לשמור את מפת האולם כי קיימים אלמנטים שחופפים במיקום. הזז את האלמנטים כך שלא יכסו אחד את השני.";
-        }
-        if (message.contains("Cancellation failed") || message.contains("Some refunds were not completed")) {
-            return "ביטול האירוע נכשל. חלק מההחזרים לא הושלמו. ניתן לנסות שוב מאוחר יותר.";
-        }
-        if (message.contains("User does not have permission to update event map")) {
-            return "אין לך הרשאה לעדכן את מפת האירוע.";
-        }
-        if (message.contains("Standing area capacity cannot be reduced")) {
-            return "לא ניתן להקטין קיבולת באזור עמידה של אירוע פעיל.";
-        }
-        if (message.contains("Rows cannot be reduced") || message.contains("Seating area rows cannot be reduced")) {
-            return "לא ניתן להקטין את מספר השורות באירוע פעיל.";
-        }
-        if (message.contains("Columns cannot be reduced") || message.contains("Seating area columns cannot be reduced")) {
-            return "לא ניתן להקטין את מספר העמודות באירוע פעיל.";
-        }
-        if (message.contains("Area type cannot be changed")) {
-            return "לא ניתן לשנות את סוג האזור באירוע פעיל.";
-        }
-        if (message.contains("A new area must not have an ID")) {
-            return "קרתה תקלה בעדכון מפת האירוע נא לרענן את העמוד ולנסות שנית.";
-        }
-        if (message.contains("An updated area must have an ID")) {
-            return "קרתה תקלה בעדכון מפת האירוע נא לרענן את העמוד ולנסות שנית.";
-        }
-        if (message.contains("Event must be active")) {
-            return "ניתן לבצע עדכון מוגבל זה רק באירוע פעיל.";
+        /*
+         * Permission errors are actionable, but the user does not need
+         * the internal permission name.
+         */
+        if (originalMessage.contains("User does not have permission")) {
+            return "אין לך הרשאה לבצע פעולה זו.";
         }
 
-        return switch (message) {
-            case "Invalid token.", "Invalid session ID" -> "אנא התחבר מחדש";
-            case "User does not have permission to create event for this company.",
-                 "User does not have permission to create an event" -> "אין לך הרשאות ליצור אירוע עבור החברה הזו.";
-            case "User does not have permission to define event map" -> "אין לך הרשאה להגדיר מפת אולם לאירוע הזה.";
-            case "Event name cannot be empty." -> "שם האירוע לא יכול להיות ריק.";
-            case "Event date cannot be in the past." -> "תאריך האירוע לא יכול להיות בעבר.";
-            case "Event location cannot be empty." -> "יש לבחור מיקום לאירוע.";
-            case "Traffic threshold must be a positive integer." -> "סף התנועה חייב להיות מספר שלם חיובי.";
-            case "Event category cannot be empty." -> "קטגוריית האירוע לא יכולה להיות ריקה.";
-            case "Artist name cannot be empty." -> "שם האמן לא יכול להיות ריק.";
-            case "Price must be a positive number." -> "המחיר חייב להיות מספר חיובי.";
-            case "Event not found" -> "האירוע לא נמצא.";
-            case "Event ID cannot be null" -> "מזהה האירוע חסר.";
-            case "Map data cannot be null" -> "פרטי המפה חסרים.";
-            case "Map size must be positive" -> "גודל המפה חייב להיות חיובי.";
-            case "Map must contain at least one element" -> "המפה חייבת להכיל לפחות אלמנט אחד.";
-            case "Cannot change name of an active event" -> "לא ניתן לשנות שם של אירוע פעיל.";
-            case "Cannot change ticket price of an active event" -> "לא ניתן לשנות מחיר כרטיס של אירוע פעיל.";
-            case "Event was updated by another request" -> "האירוע עודכן במקום אחר. טען מחדש ונסה שוב.";
-            case "Purchase policy data cannot be null" -> "פרטי מדיניות הרכישה חסרים.";
-            case "Discount composition type cannot be null" -> "יש לבחור לוגיקת שילוב הנחות.";
-            case "Discount data cannot be null" -> "פרטי ההנחה חסרים.";
-            case "Discount name cannot be empty" -> "שם ההנחה לא יכול להיות ריק.";
-            case "Discount percentage must be positive" -> "אחוז ההנחה חייב להיות חיובי.";
-            case "Discount type cannot be empty" -> "יש לבחור סוג הנחה.";
-            case "Unsupported discount type" -> "סוג ההנחה אינו נתמך.";
-            case "Discount condition cannot be empty" -> "יש להזין תנאי להנחה מותנית.";
-            case "Unsupported discount condition" -> "התנאי שהוזן אינו קיים ב-ConditionalDiscount.Condition.";
+        /*
+         * Do not mention an ID, repository result or internal lookup.
+         */
+        if (originalMessage.equals("Event not found")
+                || originalMessage.equals("Event does not exist")
+                || originalMessage.equals("Error: Event not found.")
+                || originalMessage.equals("Event Event does not exist")) {
+            return "האירוע המבוקש אינו זמין עוד. רעננו את העמוד ונסו שוב.";
+        }
+
+        /*
+         * Messages with dynamic technical suffixes.
+         */
+        if (originalMessage.startsWith("Map elements cannot overlap")) {
+            return "לא ניתן לשמור את המפה כי קיימים בה אלמנטים חופפים. הזיזו אותם ונסו שוב.";
+        }
+
+        if (originalMessage.startsWith("Element is outside map bounds")) {
+            return "אחד האלמנטים נמצא מחוץ לגבולות המפה. הזיזו אותו ונסו שוב.";
+        }
+
+        if (originalMessage.startsWith("Element location cannot be negative")) {
+            return "לא ניתן למקם אלמנט מחוץ לשטח המפה.";
+        }
+
+        if (originalMessage.startsWith("Element size must be positive")) {
+            return "גובה ורוחב האלמנט חייבים להיות גדולים מאפס.";
+        }
+
+        if (originalMessage.contains("Cancellation failed") || originalMessage.contains("Some refunds were not completed")) {
+            return "לא ניתן היה להשלים את ביטול האירוע. נסו שוב מאוחר יותר.";
+        }
+
+        return switch (originalMessage) {
+            /*
+             * Safe validations created by this presenter.
+             */
+            case "פרטי האירוע חסרים." -> "יש להזין את פרטי האירוע.";
+
+            case "כאשר נבחרת הגרלה חובה להזין מספר זוכים חיובי." -> originalMessage;
+
+            /*
+             * Event form validation.
+             */
+            case "Event name cannot be null or empty", "Event name cannot be empty." -> "יש להזין שם לאירוע.";
+            case "Event date must be in the future", "Event date cannot be in the past." -> "יש לבחור תאריך עתידי לאירוע.";
+            case "Event location cannot be null", "Event location cannot be empty." -> "יש לבחור מיקום לאירוע.";
+            case "Traffic threshold must be a positive number", "Traffic threshold must be a positive integer." -> "סף העומס חייב להיות מספר חיובי.";
+            case "Event category cannot be null", "Event category cannot be empty." -> "יש לבחור קטגוריה לאירוע.";
+            case "Artist name cannot be null or empty", "Artist name cannot be empty." -> "יש להזין שם אמן או מופיע.";
+            case "Price must be a non-negative number", "Price must be a positive number." -> "מחיר הכרטיס אינו יכול להיות שלילי.";
+            case "Cannot change name of an active event" -> "לא ניתן לשנות את שם האירוע לאחר הפעלתו.";
+            case "Cannot change ticket price of an active event" -> "לא ניתן לשנות את מחיר הכרטיס לאחר הפעלת האירוע.";
+            case "Cannot change event's company" -> "לא ניתן להעביר את האירוע לחברת הפקה אחרת.";
+            case "Event was updated by another request" -> "פרטי האירוע השתנו מאז פתיחת העמוד. רעננו את העמוד ונסו שוב.";
+            /*
+             * Map input and business rules.
+             */
+            case "Map size must be positive" -> "גובה ורוחב המפה חייבים להיות גדולים מאפס.";
+            case "Map must contain at least one element" -> "יש להוסיף לפחות אלמנט אחד למפה.";
+            case "Event map must contain at least one seating area or standing area" -> "יש להוסיף למפה לפחות אזור ישיבה או אזור עמידה.";
+            case "Event map can only be defined for a draft event" -> "ניתן להגדיר מפה מלאה רק לפני הפעלת האירוע.";
+            case "Event map has already been defined" -> "מפת האירוע כבר נשמרה. רעננו את העמוד כדי לראות את המפה העדכנית.";
+            case "This map operation is only allowed for an active event" -> "ניתן לבצע עדכון של המפה רק לאחר הפעלת האירוע.";
+            case "Existing area location cannot be changed" -> "לא ניתן להזיז אזור קיים לאחר הפעלת האירוע.";
+            case "Standing area capacity cannot be reduced", "Standing area capacity cannot be reduced for an active event" -> "לא ניתן להקטין את הקיבולת של אזור עמידה לאחר הפעלת האירוע.";
+            case "Rows cannot be reduced for an active event", "Seating area rows cannot be reduced" -> "לא ניתן להסיר שורות מאזור ישיבה לאחר הפעלת האירוע.";
+            case "Columns cannot be reduced for an active event", "Seating area columns cannot be reduced" -> "לא ניתן להסיר עמודות מאזור ישיבה לאחר הפעלת האירוע.";
+            case "Area type cannot be changed" -> "לא ניתן לשנות את סוג האזור לאחר הפעלת האירוע.";
+            case "Rows must be positive" -> "מספר השורות חייב להיות גדול מאפס.";
+            case "Columns must be positive" -> "מספר העמודות חייב להיות גדול מאפס.";
+            /*
+             * Sale status.
+             */
             case "Sale status cannot be null" -> "יש לבחור מצב מכירה.";
-            case "Cannot move to pre-sale from current sale status" -> "ניתן להתחיל מכירה מוקדמת רק כאשר המכירה טרם נפתחה.";
-            case "Cannot open regular sale from current sale status" -> "ניתן לפתוח מכירה רגילה רק לפני מכירה או מתוך מכירה מוקדמת.";
-            case "User does not have permission to update event sale status" -> "אין לך הרשאה לעדכן מצב מכירה לאירוע הזה.";
-            case "Event map must contain at least one seating area or standing area" -> "מפת האירוע חייבת להכיל לפחות אזור ישיבה או אזור עמידה אחד.";
-            case "Event is already canceled" -> "האירוע כבר מבוטל.";
-            case "Event Event does not exist" -> "האירוע לא קיים.";
-            case "Event cancellation failed. Please try again later to complete the cancellation process." -> "ביטול אירוע נכשל, נסה שוב מאוחר יותר. ";
-            default -> message;
+            case "Cannot move to pre-sale from current sale status" -> "לא ניתן לפתוח מכירה מוקדמת ממצב המכירה הנוכחי.";
+            case "Cannot open regular sale from current sale status" -> "לא ניתן לפתוח מכירה רגילה ממצב המכירה הנוכחי.";
+            case "Cannot return sale status to not started" -> "לא ניתן להחזיר את המכירה למצב טרם התחלה.";
+            case "Sale status should move to sold out or ended only by the relevant business flow" -> "מצב המכירה הזה מתעדכן אוטומטית ואינו ניתן לבחירה ידנית.";
+            /*
+             * Cancellation.
+             */
+            case "Event is already canceled", "Event is already cancelled" -> "האירוע כבר מבוטל.";
+            case "Cannot cancel an event that has already occurred" -> "לא ניתן לבטל אירוע שכבר התקיים.";
+            case "Only inactive or cancelled events can be removed" -> "לא ניתן למחוק אירוע פעיל.";
+            /*
+             * Discounts and policies.
+             */
+            case "Discount name cannot be empty" -> "יש להזין שם להנחה.";
+            case "Discount percentage must be positive" -> "אחוז ההנחה חייב להיות גדול מאפס.";
+            case "Discount type cannot be empty" -> "יש לבחור סוג הנחה.";
+            case "Conditional discount must contain at least one condition" -> "יש להוסיף לפחות תנאי אחד להנחה המותנית.";
+            case "Discount condition cannot be empty" -> "יש להשלים את פרטי תנאי ההנחה.";
+            case "Minimum tickets condition requires ticket threshold" -> "יש להזין את מספר הכרטיסים המינימלי.";
+            case "Maximum tickets condition requires ticket threshold" -> "יש להזין את מספר הכרטיסים המקסימלי.";
+            case "Date condition requires start time and end time" -> "יש לבחור מועד התחלה ומועד סיום לתנאי ההנחה.";
+            case "Minimum price cannot be greater than maximum price" -> "מחיר המינימום אינו יכול להיות גבוה ממחיר המקסימום.";
+
+            /*
+             * Everything else is technical or unexpected.
+             */
+            default -> safeFallback;
         };
     }
 
-    private PresentationException presentationException(String message) {
-        return new PresentationException(translateError(message));
+    private PresentationException presentationException(String operation, Exception originalException, String fallbackMessage) {
+        String originalMessage = originalException == null ? null : originalException.getMessage();
+
+        logger.logError(
+                "Presenter operation failed"
+                        + ", operation=" + operation
+                        + ", exceptionType="
+                        + (originalException == null
+                        ? "unknown"
+                        : originalException.getClass().getName())
+                        + ", originalMessage=" + originalMessage,
+                originalException
+        );
+
+        return new PresentationException(resolveUserMessage(originalMessage, fallbackMessage));
     }
 
     private EditEvent.DiscountPolicyDraftDTO mapToUiDiscountPolicyDraft(
@@ -790,14 +806,8 @@ public EditEvent.DiscountPolicyDraftDTO loadEventDiscountPolicy(String token, Lo
 
     } catch (PresentationException exception) {
         throw exception;
-    } catch (IllegalArgumentException | IllegalStateException exception) {
-        throw presentationException(exception.getMessage());
     } catch (Exception exception) {
-        logger.logEvent(
-                "Unexpected error while loading discount policy for event " + eventId + ": " + exception.getMessage(),
-                LogbackSystemLogger.LogLevel.DEBUG
-        );
-        throw new PresentationException("אירעה שגיאה בעת טעינת מדיניות ההנחות. נסו שוב.");
+        throw presentationException("operationName", exception, "לא ניתן לטעון את פרטי מדיניות ההנחות. רעננו את העמוד ונסו שוב");
     }
 }
 
